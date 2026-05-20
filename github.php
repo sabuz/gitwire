@@ -31,6 +31,7 @@ GHWP_Error_Handler::register();
 add_action(
 	'plugins_loaded',
 	static function () {
+		GHWP_Installer::init();
 		GHWP_REST::init();
 		if ( is_admin() ) {
 			GHWP_Admin::init();

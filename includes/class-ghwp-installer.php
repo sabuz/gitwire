@@ -4,6 +4,47 @@ defined( 'ABSPATH' ) || exit;
 class GHWP_Installer {
 
 	// -----------------------------------------------------------------------
+	// Boot
+	// -----------------------------------------------------------------------
+
+	public static function init(): void {
+		add_action( 'deleted_plugin', [ self::class, 'on_plugin_deleted' ] );
+		add_action( 'deleted_theme', [ self::class, 'on_theme_deleted' ] );
+	}
+
+	public static function on_plugin_deleted( string $plugin_file ): void {
+		$installed = (array) get_option( 'ghwp_installed', [] );
+		$dirty     = false;
+
+		foreach ( $installed as $full_name => $rec ) {
+			if ( ( $rec['plugin_file'] ?? '' ) === $plugin_file ) {
+				unset( $installed[ $full_name ] );
+				$dirty = true;
+			}
+		}
+
+		if ( $dirty ) {
+			update_option( 'ghwp_installed', $installed );
+		}
+	}
+
+	public static function on_theme_deleted( string $stylesheet ): void {
+		$installed = (array) get_option( 'ghwp_installed', [] );
+		$dirty     = false;
+
+		foreach ( $installed as $full_name => $rec ) {
+			if ( ( $rec['type'] ?? '' ) === 'theme' && ( $rec['slug'] ?? '' ) === $stylesheet ) {
+				unset( $installed[ $full_name ] );
+				$dirty = true;
+			}
+		}
+
+		if ( $dirty ) {
+			update_option( 'ghwp_installed', $installed );
+		}
+	}
+
+	// -----------------------------------------------------------------------
 	// Public API
 	// -----------------------------------------------------------------------
 
