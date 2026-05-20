@@ -1,27 +1,35 @@
 import { useState, useEffect, useCallback } from '@wordpress/element';
-import { TabPanel, Spinner } from '@wordpress/components';
+import { Spinner } from '@wordpress/components';
 import SettingsPanel  from './components/SettingsPanel';
 import BrowsePanel    from './components/BrowsePanel';
 import InstalledPanel from './components/InstalledPanel';
 import * as api from './api';
 
-export default function App( { initialData } ) {
-	const [ settings,    setSettings    ] = useState( initialData.settings   || null );
-	const [ connection,  setConnection  ] = useState( initialData.connection || null );
-	const [ installed,   setInstalled   ] = useState( initialData.installed  || {} );
-	const [ loading,     setLoading     ] = useState( ! initialData.settings );
-	const [ initialTab,  setInitialTab  ] = useState( 'settings' );
+const TABS = [
+	{ name: 'installed', label: 'Installed' },
+	{ name: 'browse',    label: 'Browse GitHub' },
+	{ name: 'settings',  label: 'Settings' },
+];
 
-	// Post-install redirect via sessionStorage
+export default function App( { initialData } ) {
+	const [ settings,   setSettings   ] = useState( initialData.settings   || null );
+	const [ connection, setConnection ] = useState( initialData.connection  || null );
+	const [ installed,  setInstalled  ] = useState( initialData.installed   || {} );
+	const [ loading,    setLoading    ] = useState( ! initialData.settings );
+	const needsSetup    = ! initialData.settings?.username;
+	const firstActivation = !! initialData.first_activation;
+	const [ activeTab, setActiveTab ] = useState(
+		firstActivation || needsSetup ? 'settings' : 'installed'
+	);
+
 	useEffect( () => {
 		const tab = sessionStorage.getItem( 'ghwp_goto_tab' );
 		if ( tab ) {
 			sessionStorage.removeItem( 'ghwp_goto_tab' );
-			setInitialTab( tab );
+			setActiveTab( tab );
 		}
 	}, [] );
 
-	// Fetch initial data if not server-rendered
 	useEffect( () => {
 		if ( ! initialData.settings ) {
 			Promise.all( [ api.getSettings(), api.getInstalled() ] )
@@ -36,58 +44,65 @@ export default function App( { initialData } ) {
 	}, [] );
 
 	if ( loading || ! settings ) {
-		return <div style={ { padding: 32, textAlign: 'center' } }><Spinner /></div>;
+		return (
+			<div className="ghwp-page">
+				<div style={ { padding: 48, textAlign: 'center' } }><Spinner /></div>
+			</div>
+		);
 	}
 
 	const installedCount = Object.keys( installed ).length;
 
-	const tabs = [
-		{ name: 'settings',  title: 'Settings' },
-		{ name: 'browse',    title: 'Browse GitHub' },
-		{
-			name:  'installed',
-			title: installedCount > 0 ? `Installed (${ installedCount })` : 'Installed',
-		},
-	];
-
 	return (
-		<div className="ghwp-app">
-			<h1 className="ghwp-page-title">
-				<span className="dashicons dashicons-randomize" />
-				GitHub for WordPress
-			</h1>
+		<div className="ghwp-page">
+			<div className="ghwp-page-header">
+				<h1 className="ghwp-page-title">GitHub for WordPress</h1>
+			</div>
 
-			<TabPanel tabs={ tabs } initialTabName={ initialTab }>
-				{ ( tab ) => {
-					if ( tab.name === 'settings' ) {
-						return (
-							<SettingsPanel
-								settings={ settings }
-								connection={ connection }
-								onSave={ ( s ) => setSettings( s ) }
-								onConnectionUpdate={ ( c ) => setConnection( c ) }
-							/>
-						);
-					}
-					if ( tab.name === 'browse' ) {
-						return (
-							<BrowsePanel
-								settings={ settings }
-								installed={ installed }
-								onInstalled={ refreshInstalled }
-							/>
-						);
-					}
-					if ( tab.name === 'installed' ) {
-						return (
-							<InstalledPanel
-								installed={ installed }
-								onRefresh={ refreshInstalled }
-							/>
-						);
-					}
-				} }
-			</TabPanel>
+			<nav className="ghwp-page-nav" aria-label="Plugin navigation">
+				{ TABS.map( ( tab ) => {
+					const label = tab.name === 'installed' && installedCount > 0
+						? `Installed (${ installedCount })`
+						: tab.label;
+					return (
+						<button
+							key={ tab.name }
+							className={ `ghwp-nav-tab${ activeTab === tab.name ? ' is-active' : '' }` }
+							onClick={ () => setActiveTab( tab.name ) }
+							aria-selected={ activeTab === tab.name }
+						>
+							{ label }
+						</button>
+					);
+				} ) }
+			</nav>
+
+			<div className="ghwp-page-content">
+				{ activeTab === 'settings' && (
+					<SettingsPanel
+						settings={ settings }
+						connection={ connection }
+						onSave={ ( s ) => setSettings( s ) }
+						onConnectionUpdate={ ( c ) => setConnection( c ) }
+					/>
+				) }
+				{ activeTab === 'browse' && (
+					<BrowsePanel
+						settings={ settings }
+						installed={ installed }
+						onInstalled={ refreshInstalled }
+					/>
+				) }
+				{ activeTab === 'installed' && (
+					<InstalledPanel
+						installed={ installed }
+						settings={ settings }
+						onRefresh={ refreshInstalled }
+						onGoToSettings={ () => setActiveTab( 'settings' ) }
+						onGoToBrowse={ () => setActiveTab( 'browse' ) }
+					/>
+				) }
+			</div>
 		</div>
 	);
 }

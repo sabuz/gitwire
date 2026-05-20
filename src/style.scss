@@ -1,18 +1,59 @@
-// Page title
-.ghwp-page-title {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	font-size: 23px;
-	font-weight: 400;
-	margin: 0 0 20px;
-	color: #1d2327;
+// -----------------------------------------------------------------------
+// Page chrome — extends to fill the WP admin content area
+// -----------------------------------------------------------------------
 
-	.dashicons {
-		font-size: 26px;
-		color: #3858e9;
-		opacity: 0.85;
+.ghwp-page {
+	background: #fff;
+	// Pull out of WP's default wrap padding so we fill edge-to-edge
+	margin: -10px -20px 0;
+	min-height: calc( 100vh - 46px );
+}
+
+.ghwp-page-header {
+	padding: 16px 24px 14px;
+}
+
+.ghwp-page-title {
+	font-size: 20px;
+	font-weight: 600;
+	margin: 0;
+	color: #1d2327;
+}
+
+// Tab navigation — underline style (matches WooCommerce / core Settings)
+.ghwp-page-nav {
+	display: flex;
+	gap: 0;
+	padding: 0 24px;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.ghwp-nav-tab {
+	background: none;
+	border: none;
+	border-bottom: 3px solid transparent;
+	margin-bottom: -1px;
+	padding: 10px 16px;
+	font-size: 14px;
+	font-weight: 400;
+	color: #50575e;
+	cursor: pointer;
+	line-height: 1.4;
+	transition: color 0.1s;
+
+	&:hover:not( .is-active ) {
+		color: #1d2327;
 	}
+
+	&.is-active {
+		color: #1d2327;
+		border-bottom-color: #1d2327;
+		font-weight: 500;
+	}
+}
+
+.ghwp-page-content {
+	padding: 24px;
 }
 
 // Settings layout
@@ -114,14 +155,22 @@
 }
 
 .ghwp-repo-card {
-	background: #fff;
-	border: 1px solid #dcdcde;
-	border-radius: 4px;
-	padding: 14px 16px;
 	transition: box-shadow 0.15s ease;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba( 0, 0, 0, 0.08 );
+		box-shadow: 0 2px 8px rgba( 0, 0, 0, 0.1 );
+	}
+
+	.components-card__header {
+		padding: 10px 14px;
+	}
+
+	.components-card__body {
+		padding: 10px 14px;
+	}
+
+	.components-card__footer {
+		padding: 8px 14px;
 	}
 }
 
@@ -129,14 +178,11 @@
 	font-weight: 600;
 	font-size: 13px;
 	line-height: 1.3;
+	color: #1d2327;
+	text-decoration: none;
 
-	a {
-		color: #1d2327;
-		text-decoration: none;
-
-		&:hover {
-			color: #3858e9;
-		}
+	&:hover {
+		color: #3858e9;
 	}
 }
 

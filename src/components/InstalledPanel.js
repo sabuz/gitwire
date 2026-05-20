@@ -7,8 +7,9 @@ import {
 } from '@wordpress/components';
 import * as api from '../api';
 
-export default function InstalledPanel( { installed, onRefresh } ) {
-	const entries = Object.values( installed );
+export default function InstalledPanel( { installed, settings, onRefresh, onGoToSettings, onGoToBrowse } ) {
+	const entries     = Object.values( installed );
+	const isConfigured = !! settings?.username;
 
 	if ( entries.length === 0 ) {
 		return (
@@ -18,7 +19,21 @@ export default function InstalledPanel( { installed, onRefresh } ) {
 						className="dashicons dashicons-randomize"
 						style={ { fontSize: 36, display: 'block', margin: '0 auto 12px', opacity: 0.3 } }
 					/>
-					<p style={ { margin: 0 } }>No repositories installed yet. Browse GitHub to install one.</p>
+					{ isConfigured ? (
+						<>
+							<p style={ { margin: '0 0 12px' } }>No repositories installed yet.</p>
+							<Button variant="primary" onClick={ onGoToBrowse }>
+								Browse GitHub to install one
+							</Button>
+						</>
+					) : (
+						<>
+							<p style={ { margin: '0 0 12px' } }>Connect your GitHub account to get started.</p>
+							<Button variant="primary" onClick={ onGoToSettings }>
+								Set up GitHub connection
+							</Button>
+						</>
+					) }
 				</CardBody>
 			</Card>
 		);

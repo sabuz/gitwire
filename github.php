@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: GitHub for WordPress
- * Plugin URI:  https://fastlinemedia.com
+ * Plugin URI:  https://github.com/sabuz/ghwp
  * Description: Pull GitHub repositories directly into WordPress as plugins or themes. Switch branches and auto-recover from fatal errors.
  * Version:     1.0.0
  * Author:      Nazmul Sabuz
@@ -39,6 +39,7 @@ register_activation_hook( GHWP_FILE, static function () {
 	if ( ! get_option( 'ghwp_settings' ) ) {
 		add_option( 'ghwp_settings', [ 'token' => '', 'username' => '', 'smart_install' => true ] );
 	}
+	set_transient( 'ghwp_first_activation', true, 60 );
 } );
 
 register_deactivation_hook( GHWP_FILE, static function () {

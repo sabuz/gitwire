@@ -209,10 +209,12 @@ class GHWP_REST {
 
 		$settings = (array) get_option( 'ghwp_settings', [] );
 		$api      = new GHWP_API( $settings['token'] ?? '' );
-		$result   = $api->detect_type( $owner, $repo, $branch );
+		$result = $api->detect_type( $owner, $repo, $branch );
 
+		// Absorb GitHub errors (private repo, rate-limit, network) so the
+		// frontend always gets a valid response and can render the card.
 		if ( is_wp_error( $result ) ) {
-			return $result;
+			$result = [ 'type' => 'unknown', 'subtype' => null, 'confidence' => 'none', 'name' => '' ];
 		}
 
 		set_transient( $cache_key, $result, HOUR_IN_SECONDS );

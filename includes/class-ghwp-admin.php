@@ -37,9 +37,14 @@ class GHWP_Admin {
 		$asset_file = GHWP_DIR . 'build/index.asset.php';
 		$asset      = file_exists( $asset_file ) ? require $asset_file : [ 'dependencies' => [], 'version' => GHWP_VERSION ];
 
+		// wp-scripts outputs styles imported in JS to style-index.css
+		$css_file = file_exists( GHWP_DIR . 'build/index.css' )
+			? GHWP_URL . 'build/index.css'
+			: GHWP_URL . 'build/style-index.css';
+
 		wp_enqueue_style(
 			'ghwp-app',
-			GHWP_URL . 'build/index.css',
+			$css_file,
 			[ 'wp-components' ],
 			$asset['version']
 		);
@@ -52,21 +57,27 @@ class GHWP_Admin {
 			true
 		);
 
-		$settings   = (array) get_option( 'ghwp_settings', [] );
-		$connection = get_option( 'ghwp_connection_cache', null );
-		$installed  = GHWP_Installer::get_installed();
+		$settings          = (array) get_option( 'ghwp_settings', [] );
+		$connection        = get_option( 'ghwp_connection_cache', null );
+		$installed         = GHWP_Installer::get_installed();
+		$first_activation  = (bool) get_transient( 'ghwp_first_activation' );
+
+		if ( $first_activation ) {
+			delete_transient( 'ghwp_first_activation' );
+		}
 
 		wp_add_inline_script(
 			'ghwp-app',
 			'window.GHWP = ' . wp_json_encode( [
-				'nonce'      => wp_create_nonce( 'wp_rest' ),
-				'settings'   => [
+				'nonce'            => wp_create_nonce( 'wp_rest' ),
+				'first_activation' => $first_activation,
+				'settings'         => [
 					'username'      => $settings['username']      ?? '',
 					'token'         => $settings['token']         ?? '',
 					'smart_install' => $settings['smart_install'] ?? true,
 				],
-				'connection' => $connection ?: null,
-				'installed'  => $installed ?: (object) [],
+				'connection'       => $connection ?: null,
+				'installed'        => $installed ?: (object) [],
 			] ) . ';',
 			'before'
 		);
