@@ -23,17 +23,17 @@ class GHWP_API {
 			if ( is_wp_error( $user ) ) {
 				return $user;
 			}
-			$result['login']      = $user['login']      ?? '';
-			$result['name']       = $user['name']       ?? '';
+			$result['login']      = $user['login'] ?? '';
+			$result['name']       = $user['name'] ?? '';
 			$result['avatar_url'] = $user['avatar_url'] ?? '';
 		}
 
 		// Rate limit — always fetch so we always have the numbers
 		$rate = $this->get( '/rate_limit' );
 		if ( ! is_wp_error( $rate ) ) {
-			$result['rate_limit']     = $rate['rate']['limit']     ?? 60;
+			$result['rate_limit']     = $rate['rate']['limit'] ?? 60;
 			$result['rate_remaining'] = $rate['rate']['remaining'] ?? 0;
-			$result['rate_reset']     = $rate['rate']['reset']     ?? 0;
+			$result['rate_reset']     = $rate['rate']['reset'] ?? 0;
 		}
 
 		return $result;
@@ -93,7 +93,12 @@ class GHWP_API {
 					$name = $this->extract_header( $css, 'Theme Name' );
 				}
 			}
-			return [ 'type' => 'theme', 'subtype' => 'block', 'confidence' => 'high', 'name' => $name ];
+			return [
+				'type'       => 'theme',
+				'subtype'    => 'block',
+				'confidence' => 'high',
+				'name'       => $name,
+			];
 		}
 
 		// 2. style.css with "Theme Name:" header → theme
@@ -118,14 +123,23 @@ class GHWP_API {
 			array_keys( $files ),
 			fn( $n ) => str_ends_with( $n, '.php' ) && ( $files[ $n ]['type'] ?? '' ) === 'file'
 		);
-		usort( $php_files, static function ( $a, $b ) use ( $priority_names ) {
-			$ai = array_search( $a, $priority_names, true );
-			$bi = array_search( $b, $priority_names, true );
-			if ( $ai === false && $bi === false ) return 0;
-			if ( $ai === false ) return 1;
-			if ( $bi === false ) return -1;
-			return $ai - $bi;
-		} );
+		usort(
+			$php_files,
+			static function ( $a, $b ) use ( $priority_names ) {
+				$ai = array_search( $a, $priority_names, true );
+				$bi = array_search( $b, $priority_names, true );
+				if ( $ai === false && $bi === false ) {
+					return 0;
+				}
+				if ( $ai === false ) {
+					return 1;
+				}
+				if ( $bi === false ) {
+					return -1;
+				}
+				return $ai - $bi;
+			}
+		);
 
 		foreach ( array_slice( $php_files, 0, 5 ) as $lc_name ) {
 			$real_name = $files[ $lc_name ]['name'];
@@ -142,20 +156,40 @@ class GHWP_API {
 
 		// 4. templates/ directory → block theme structure without headers
 		if ( isset( $files['templates'] ) && ( $files['templates']['type'] ?? '' ) === 'dir' ) {
-			return [ 'type' => 'theme', 'subtype' => 'block', 'confidence' => 'medium', 'name' => '' ];
+			return [
+				'type'       => 'theme',
+				'subtype'    => 'block',
+				'confidence' => 'medium',
+				'name'       => '',
+			];
 		}
 
 		// 5. functions.php → classic theme
 		if ( isset( $files['functions.php'] ) ) {
-			return [ 'type' => 'theme', 'subtype' => 'classic', 'confidence' => 'medium', 'name' => '' ];
+			return [
+				'type'       => 'theme',
+				'subtype'    => 'classic',
+				'confidence' => 'medium',
+				'name'       => '',
+			];
 		}
 
 		// 6. Any PHP files → probably a plugin
 		if ( ! empty( $php_files ) ) {
-			return [ 'type' => 'plugin', 'subtype' => null, 'confidence' => 'low', 'name' => '' ];
+			return [
+				'type'       => 'plugin',
+				'subtype'    => null,
+				'confidence' => 'low',
+				'name'       => '',
+			];
 		}
 
-		return [ 'type' => 'unknown', 'subtype' => null, 'confidence' => 'none', 'name' => '' ];
+		return [
+			'type'       => 'unknown',
+			'subtype'    => null,
+			'confidence' => 'none',
+			'name'       => '',
+		];
 	}
 
 	// -----------------------------------------------------------------------
@@ -205,11 +239,14 @@ class GHWP_API {
 		$api_url = self::BASE . '/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
 			. '/zipball/' . rawurlencode( $branch );
 
-		$response = wp_remote_get( $api_url, [
-			'headers'     => $this->headers(),
-			'redirection' => 0,   // do NOT follow – we want the Location header
-			'timeout'     => 15,
-		] );
+		$response = wp_remote_get(
+			$api_url,
+			[
+				'headers'     => $this->headers(),
+				'redirection' => 0,   // do NOT follow – we want the Location header
+				'timeout'     => 15,
+			]
+		);
 
 		if ( is_wp_error( $response ) ) {
 			return $response;
@@ -261,10 +298,13 @@ class GHWP_API {
 	}
 
 	private function get( string $endpoint ): array|WP_Error {
-		$response = wp_remote_get( self::BASE . $endpoint, [
-			'headers' => $this->headers(),
-			'timeout' => 15,
-		] );
+		$response = wp_remote_get(
+			self::BASE . $endpoint,
+			[
+				'headers' => $this->headers(),
+				'timeout' => 15,
+			]
+		);
 
 		if ( is_wp_error( $response ) ) {
 			return $response;

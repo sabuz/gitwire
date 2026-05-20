@@ -174,7 +174,7 @@ class GHWP_Installer {
 
 		// ----- Detect main plugin file -----------------------------------
 		if ( $type === 'plugin' ) {
-			$plugin_file = self::find_plugin_file( $install_path, $slug );
+			$plugin_file            = self::find_plugin_file( $install_path, $slug );
 			$pending['plugin_file'] = $plugin_file;
 			update_option( 'ghwp_pending_update', $pending, false );
 		}

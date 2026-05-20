@@ -11,22 +11,31 @@ const TABS = [
 	{ name: 'settings',  label: 'Settings' },
 ];
 
+// Sync active tab with the URL so the WP sidebar submenu stays highlighted.
+function syncUrl( tabName ) {
+	const url = new URL( window.location.href );
+	if ( tabName === 'installed' ) {
+		url.searchParams.delete( 'path' );
+	} else {
+		url.searchParams.set( 'path', tabName );
+	}
+	history.replaceState( null, '', url.toString() );
+}
+
 export default function App( { initialData } ) {
 	const [ settings,   setSettings   ] = useState( initialData.settings   || null );
 	const [ connection, setConnection ] = useState( initialData.connection  || null );
 	const [ installed,  setInstalled  ] = useState( initialData.installed   || {} );
 	const [ loading,    setLoading    ] = useState( ! initialData.settings );
-	const needsSetup    = ! initialData.settings?.username;
-	const firstActivation = !! initialData.first_activation;
-	const [ activeTab, setActiveTab ] = useState(
-		firstActivation || needsSetup ? 'settings' : 'installed'
-	);
+	const [ activeTab,  setActiveTab  ] = useState( initialData.initial_tab || 'installed' );
 
+	// Post-install redirect via sessionStorage overrides everything.
 	useEffect( () => {
 		const tab = sessionStorage.getItem( 'ghwp_goto_tab' );
 		if ( tab ) {
 			sessionStorage.removeItem( 'ghwp_goto_tab' );
 			setActiveTab( tab );
+			syncUrl( tab );
 		}
 	}, [] );
 
@@ -42,6 +51,11 @@ export default function App( { initialData } ) {
 		const i = await api.getInstalled();
 		setInstalled( i );
 	}, [] );
+
+	const goToTab = ( tabName ) => {
+		setActiveTab( tabName );
+		syncUrl( tabName );
+	};
 
 	if ( loading || ! settings ) {
 		return (
@@ -68,7 +82,7 @@ export default function App( { initialData } ) {
 						<button
 							key={ tab.name }
 							className={ `ghwp-nav-tab${ activeTab === tab.name ? ' is-active' : '' }` }
-							onClick={ () => setActiveTab( tab.name ) }
+							onClick={ () => goToTab( tab.name ) }
 							aria-selected={ activeTab === tab.name }
 						>
 							{ label }
@@ -98,8 +112,8 @@ export default function App( { initialData } ) {
 						installed={ installed }
 						settings={ settings }
 						onRefresh={ refreshInstalled }
-						onGoToSettings={ () => setActiveTab( 'settings' ) }
-						onGoToBrowse={ () => setActiveTab( 'browse' ) }
+						onGoToSettings={ () => goToTab( 'settings' ) }
+						onGoToBrowse={ () => goToTab( 'browse' ) }
 					/>
 				) }
 			</div>

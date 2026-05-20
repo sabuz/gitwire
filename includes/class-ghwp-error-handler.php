@@ -44,10 +44,10 @@ class GHWP_Error_Handler {
 		self::db_delete_option( 'ghwp_pending_update' );
 
 		$install_path = $pending['install_path'] ?? null;
-		$backup_path  = $pending['backup_path']  ?? null;
-		$plugin_file  = $pending['plugin_file']  ?? null;
-		$full_name    = $pending['full_name']     ?? 'unknown';
-		$type         = $pending['type']          ?? 'plugin';
+		$backup_path  = $pending['backup_path'] ?? null;
+		$plugin_file  = $pending['plugin_file'] ?? null;
+		$full_name    = $pending['full_name'] ?? 'unknown';
+		$type         = $pending['type'] ?? 'plugin';
 
 		// ----- Restore backup -------------------------------------------
 		if ( $backup_path && is_dir( $backup_path ) ) {
@@ -117,7 +117,7 @@ class GHWP_Error_Handler {
 			$wpdb->update(
 				$wpdb->options,
 				[ 'option_value' => $serialized ],
-				[ 'option_name'  => $name ],
+				[ 'option_name' => $name ],
 				[ '%s' ],
 				[ '%s' ]
 			);
@@ -156,7 +156,7 @@ class GHWP_Error_Handler {
 		$wpdb->update(
 			$wpdb->options,
 			[ 'option_value' => serialize( $active ) ],
-			[ 'option_name'  => 'active_plugins' ],
+			[ 'option_name' => 'active_plugins' ],
 			[ '%s' ],
 			[ '%s' ]
 		);

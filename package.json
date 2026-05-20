@@ -1,12 +1,21 @@
 {
-  "name": "github-for-wordpress",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "wp-scripts build",
-    "start": "wp-scripts start"
-  },
-  "devDependencies": {
-    "@wordpress/scripts": "^32.2.0"
-  }
+	"name": "github-for-wordpress",
+	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"build": "wp-scripts build",
+		"start": "wp-scripts start",
+		"lint:js": "wp-scripts lint-js src --ext .js,.jsx",
+		"lint:js:fix": "wp-scripts lint-js src --ext .js,.jsx --fix",
+		"lint:scss": "wp-scripts lint-style 'src/**/*.scss'",
+		"lint:scss:fix": "wp-scripts lint-style 'src/**/*.scss' --fix",
+		"lint:php": "composer phpcs",
+		"lint:php:fix": "composer phpcbf",
+		"lint": "npm run lint:js && npm run lint:scss"
+	},
+	"devDependencies": {
+		"@wordpress/eslint-plugin": "^22.0.0",
+		"@wordpress/scripts": "^32.2.0",
+		"stylelint-order": "^6.0.0"
+	}
 }

@@ -12,58 +12,102 @@ class GHWP_REST {
 	public static function register_routes(): void {
 		$ns = self::NS;
 
-		register_rest_route( $ns, '/settings', [
-			[ 'methods' => 'GET',  'callback' => [ self::class, 'get_settings'  ], 'permission_callback' => [ self::class, 'can_manage' ] ],
-			[ 'methods' => 'POST', 'callback' => [ self::class, 'save_settings' ], 'permission_callback' => [ self::class, 'can_manage' ] ],
-		] );
+		register_rest_route(
+			$ns,
+			'/settings',
+			[
+				[
+					'methods'             => 'GET',
+					'callback'            => [ self::class, 'get_settings' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+				[
+					'methods'             => 'POST',
+					'callback'            => [ self::class, 'save_settings' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+			]
+		);
 
-		register_rest_route( $ns, '/connection', [
-			'methods'             => 'GET',
-			'callback'            => [ self::class, 'test_connection' ],
-			'permission_callback' => [ self::class, 'can_manage' ],
-		] );
+		register_rest_route(
+			$ns,
+			'/connection',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'test_connection' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
 
-		register_rest_route( $ns, '/repos', [
-			'methods'             => 'GET',
-			'callback'            => [ self::class, 'get_repos' ],
-			'permission_callback' => [ self::class, 'can_manage' ],
-		] );
+		register_rest_route(
+			$ns,
+			'/repos',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'get_repos' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
 
-		register_rest_route( $ns, '/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branches', [
-			'methods'             => 'GET',
-			'callback'            => [ self::class, 'get_branches' ],
-			'permission_callback' => [ self::class, 'can_manage' ],
-		] );
+		register_rest_route(
+			$ns,
+			'/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branches',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'get_branches' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
 
-		register_rest_route( $ns, '/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/detect', [
-			'methods'             => 'GET',
-			'callback'            => [ self::class, 'detect_repo' ],
-			'permission_callback' => [ self::class, 'can_manage' ],
-		] );
+		register_rest_route(
+			$ns,
+			'/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/detect',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'detect_repo' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
 
-		register_rest_route( $ns, '/install', [
-			'methods'             => 'POST',
-			'callback'            => [ self::class, 'install' ],
-			'permission_callback' => [ self::class, 'can_manage' ],
-		] );
+		register_rest_route(
+			$ns,
+			'/install',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'install' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
 
-		register_rest_route( $ns, '/installed', [
-			'methods'             => 'GET',
-			'callback'            => [ self::class, 'get_installed' ],
-			'permission_callback' => [ self::class, 'can_manage' ],
-		] );
+		register_rest_route(
+			$ns,
+			'/installed',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'get_installed' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
 
-		register_rest_route( $ns, '/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branch', [
-			'methods'             => 'POST',
-			'callback'            => [ self::class, 'switch_branch' ],
-			'permission_callback' => [ self::class, 'can_manage' ],
-		] );
+		register_rest_route(
+			$ns,
+			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branch',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'switch_branch' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
 
-		register_rest_route( $ns, '/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)', [
-			'methods'             => 'DELETE',
-			'callback'            => [ self::class, 'remove_installed' ],
-			'permission_callback' => [ self::class, 'can_manage' ],
-		] );
+		register_rest_route(
+			$ns,
+			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)',
+			[
+				'methods'             => 'DELETE',
+				'callback'            => [ self::class, 'remove_installed' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
 	}
 
 	public static function can_manage(): bool {
@@ -77,15 +121,15 @@ class GHWP_REST {
 	public static function get_settings(): array {
 		$s = (array) get_option( 'ghwp_settings', [] );
 		return [
-			'username'      => $s['username']      ?? '',
-			'token'         => $s['token']         ?? '',
+			'username'      => $s['username'] ?? '',
+			'token'         => $s['token'] ?? '',
 			'smart_install' => $s['smart_install'] ?? true,
 		];
 	}
 
 	public static function save_settings( WP_REST_Request $req ): array|WP_Error {
-		$token         = sanitize_text_field( $req->get_param( 'token' )         ?? '' );
-		$username      = sanitize_text_field( $req->get_param( 'username' )      ?? '' );
+		$token         = sanitize_text_field( $req->get_param( 'token' ) ?? '' );
+		$username      = sanitize_text_field( $req->get_param( 'username' ) ?? '' );
 		$smart_install = (bool) $req->get_param( 'smart_install' );
 
 		if ( ! $username ) {
@@ -95,7 +139,10 @@ class GHWP_REST {
 		update_option( 'ghwp_settings', compact( 'token', 'username', 'smart_install' ) );
 		delete_option( 'ghwp_connection_cache' );
 
-		return [ 'saved' => true, 'smart_install' => $smart_install ];
+		return [
+			'saved'         => true,
+			'smart_install' => $smart_install,
+		];
 	}
 
 	// -----------------------------------------------------------------------
@@ -113,12 +160,12 @@ class GHWP_REST {
 
 		$data = [
 			'authenticated'  => ! empty( $result['login'] ),
-			'login'          => $result['login']          ?? '',
-			'name'           => $result['name']           ?? '',
-			'avatar_url'     => $result['avatar_url']     ?? '',
-			'rate_limit'     => $result['rate_limit']     ?? 60,
+			'login'          => $result['login'] ?? '',
+			'name'           => $result['name'] ?? '',
+			'avatar_url'     => $result['avatar_url'] ?? '',
+			'rate_limit'     => $result['rate_limit'] ?? 60,
 			'rate_remaining' => $result['rate_remaining'] ?? 0,
-			'rate_reset'     => $result['rate_reset']     ?? 0,
+			'rate_reset'     => $result['rate_reset'] ?? 0,
 			'checked_at'     => time(),
 		];
 
@@ -154,22 +201,25 @@ class GHWP_REST {
 			return $result;
 		}
 
-		$repos = array_map( static function ( $r ) use ( $installed ) {
-			$full_name = $r['full_name'] ?? '';
-			return [
-				'id'              => $r['id'],
-				'name'            => $r['name'],
-				'full_name'       => $full_name,
-				'owner'           => $r['owner']['login'] ?? explode( '/', $full_name )[0],
-				'description'     => $r['description']  ?? '',
-				'private'         => (bool) ( $r['private'] ?? false ),
-				'html_url'        => $r['html_url']      ?? '',
-				'default_branch'  => $r['default_branch'] ?? 'main',
-				'updated_at'      => $r['updated_at']    ?? '',
-				'stargazers_count'=> (int) ( $r['stargazers_count'] ?? 0 ),
-				'installed'       => $installed[ $full_name ] ?? null,
-			];
-		}, $result );
+		$repos = array_map(
+			static function ( $r ) use ( $installed ) {
+				$full_name = $r['full_name'] ?? '';
+				return [
+					'id'               => $r['id'],
+					'name'             => $r['name'],
+					'full_name'        => $full_name,
+					'owner'            => $r['owner']['login'] ?? explode( '/', $full_name )[0],
+					'description'      => $r['description'] ?? '',
+					'private'          => (bool) ( $r['private'] ?? false ),
+					'html_url'         => $r['html_url'] ?? '',
+					'default_branch'   => $r['default_branch'] ?? 'main',
+					'updated_at'       => $r['updated_at'] ?? '',
+					'stargazers_count' => (int) ( $r['stargazers_count'] ?? 0 ),
+					'installed'        => $installed[ $full_name ] ?? null,
+				];
+			},
+			$result
+		);
 
 		$payload = [
 			'repos'    => $repos,
@@ -184,7 +234,7 @@ class GHWP_REST {
 
 	public static function get_branches( WP_REST_Request $req ): array|WP_Error {
 		$owner    = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo     = sanitize_text_field( $req->get_param( 'repo' )  );
+		$repo     = sanitize_text_field( $req->get_param( 'repo' ) );
 		$settings = (array) get_option( 'ghwp_settings', [] );
 		$api      = new GHWP_API( $settings['token'] ?? '' );
 		$result   = $api->get_branches( $owner, $repo );
@@ -198,7 +248,7 @@ class GHWP_REST {
 
 	public static function detect_repo( WP_REST_Request $req ): array|WP_Error {
 		$owner  = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo   = sanitize_text_field( $req->get_param( 'repo' )  );
+		$repo   = sanitize_text_field( $req->get_param( 'repo' ) );
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? 'HEAD' );
 
 		$cache_key = 'ghwp_detect_' . md5( $owner . $repo . $branch );
@@ -209,12 +259,17 @@ class GHWP_REST {
 
 		$settings = (array) get_option( 'ghwp_settings', [] );
 		$api      = new GHWP_API( $settings['token'] ?? '' );
-		$result = $api->detect_type( $owner, $repo, $branch );
+		$result   = $api->detect_type( $owner, $repo, $branch );
 
 		// Absorb GitHub errors (private repo, rate-limit, network) so the
 		// frontend always gets a valid response and can render the card.
 		if ( is_wp_error( $result ) ) {
-			$result = [ 'type' => 'unknown', 'subtype' => null, 'confidence' => 'none', 'name' => '' ];
+			$result = [
+				'type'       => 'unknown',
+				'subtype'    => null,
+				'confidence' => 'none',
+				'name'       => '',
+			];
 		}
 
 		set_transient( $cache_key, $result, HOUR_IN_SECONDS );
@@ -227,8 +282,8 @@ class GHWP_REST {
 	// -----------------------------------------------------------------------
 
 	public static function install( WP_REST_Request $req ): array|WP_Error {
-		$owner  = sanitize_text_field( $req->get_param( 'owner' )  ?? '' );
-		$repo   = sanitize_text_field( $req->get_param( 'repo' )   ?? '' );
+		$owner  = sanitize_text_field( $req->get_param( 'owner' ) ?? '' );
+		$repo   = sanitize_text_field( $req->get_param( 'repo' ) ?? '' );
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? 'main' );
 		$type   = sanitize_key( $req->get_param( 'type' ) ?? 'plugin' );
 
@@ -261,7 +316,7 @@ class GHWP_REST {
 
 	public static function switch_branch( WP_REST_Request $req ): array|WP_Error {
 		$owner  = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo   = sanitize_text_field( $req->get_param( 'repo' )  );
+		$repo   = sanitize_text_field( $req->get_param( 'repo' ) );
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? '' );
 
 		if ( ! $branch ) {
@@ -286,7 +341,7 @@ class GHWP_REST {
 
 	public static function remove_installed( WP_REST_Request $req ): array|WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo      = sanitize_text_field( $req->get_param( 'repo' )  );
+		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
 		$full_name = $owner . '/' . $repo;
 		$result    = GHWP_Installer::remove( $full_name );
 
