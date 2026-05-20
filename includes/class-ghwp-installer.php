@@ -8,18 +8,25 @@ class GHWP_Installer {
 	// -----------------------------------------------------------------------
 
 	public static function init(): void {
-		add_action( 'deleted_plugin', [ self::class, 'on_plugin_deleted' ] );
-		add_action( 'deleted_theme', [ self::class, 'on_theme_deleted' ] );
+		add_action( 'deleted_plugin', [ self::class, 'on_plugin_deleted' ], 10, 2 );
+		add_action( 'deleted_theme', [ self::class, 'on_theme_deleted' ], 10, 2 );
 	}
 
-	public static function on_plugin_deleted( string $plugin_file ): void {
-		$installed = (array) get_option( 'ghwp_installed', [] );
-		$dirty     = false;
+	public static function on_plugin_deleted( string $plugin_file, bool $deleted ): void {
+		if ( ! $deleted ) {
+			return;
+		}
+
+		// Build the absolute path of the deleted plugin's directory.
+		$deleted_dir = untrailingslashit( WP_PLUGIN_DIR ) . '/' . dirname( $plugin_file );
+		$installed   = (array) get_option( 'ghwp_installed', [] );
+		$dirty       = false;
 
 		foreach ( $installed as $full_name => $rec ) {
-			if ( ( $rec['plugin_file'] ?? '' ) === $plugin_file ) {
+			if ( untrailingslashit( $rec['install_path'] ?? '' ) === $deleted_dir ) {
 				unset( $installed[ $full_name ] );
 				$dirty = true;
+				break;
 			}
 		}
 
@@ -28,14 +35,21 @@ class GHWP_Installer {
 		}
 	}
 
-	public static function on_theme_deleted( string $stylesheet ): void {
-		$installed = (array) get_option( 'ghwp_installed', [] );
-		$dirty     = false;
+	public static function on_theme_deleted( string $stylesheet, bool $deleted ): void {
+		if ( ! $deleted ) {
+			return;
+		}
+
+		// Build the absolute path of the deleted theme's directory.
+		$deleted_dir = untrailingslashit( get_theme_root() ) . '/' . $stylesheet;
+		$installed   = (array) get_option( 'ghwp_installed', [] );
+		$dirty       = false;
 
 		foreach ( $installed as $full_name => $rec ) {
-			if ( ( $rec['type'] ?? '' ) === 'theme' && ( $rec['slug'] ?? '' ) === $stylesheet ) {
+			if ( untrailingslashit( $rec['install_path'] ?? '' ) === $deleted_dir ) {
 				unset( $installed[ $full_name ] );
 				$dirty = true;
+				break;
 			}
 		}
 
