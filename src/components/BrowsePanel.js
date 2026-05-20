@@ -124,9 +124,10 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 				className="ghwp-browse-toolbar"
 				gap={ 3 }
 				align="center"
-				style={ { marginBottom: 16 } }
+				justify="flex-start"
+				style={ { marginBottom: 24 } }
 			>
-				<FlexBlock>
+				<FlexBlock style={ { maxWidth: 340 } }>
 					<SearchControl
 						value={ search }
 						onChange={ setSearch }
@@ -249,13 +250,25 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 						</a>
 					</FlexBlock>
 					<FlexItem>
-						<span
-							className={ `ghwp-visibility-badge ${
-								repo.private ? 'ghwp-private' : 'ghwp-public'
-							}` }
-						>
-							{ repo.private ? 'Private' : 'Public' }
-						</span>
+						<Flex gap={ 1 } align="center">
+							<FlexItem>
+								<TypeBadge
+									detection={ detection }
+									installed={ installed }
+								/>
+							</FlexItem>
+							<FlexItem>
+								<span
+									className={ `ghwp-visibility-badge ${
+										repo.private
+											? 'ghwp-private'
+											: 'ghwp-public'
+									}` }
+								>
+									{ repo.private ? 'Private' : 'Public' }
+								</span>
+							</FlexItem>
+						</Flex>
 					</FlexItem>
 				</Flex>
 			</CardHeader>
@@ -264,34 +277,66 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 				{ repo.description && (
 					<p className="ghwp-repo-desc">{ repo.description }</p>
 				) }
-				<TypeBadge detection={ detection } installed={ installed } />
 			</CardBody>
 
-			<CardFooter justify="flex-end">
-				{ isInstalled ? (
-					<span className="ghwp-installed-chip">
-						<span className="dashicons dashicons-yes-alt" />
-						Installed
-					</span>
-				) : (
-					<Button
-						variant="primary"
-						size="compact"
-						onClick={ onInstall }
-						disabled={ ! canInstall }
-						isBusy={ detecting && ! smartInstall }
-						title={
-							blockedBySmartInstall
-								? 'Smart Install is on — only verified WordPress plugins and themes can be installed.'
-								: undefined
-						}
-					>
-						Install
-					</Button>
-				) }
+			<CardFooter>
+				<FlexBlock>
+					{ repo.updated_at && (
+						<span className="ghwp-repo-updated">
+							Updated { timeAgo( repo.updated_at ) }
+						</span>
+					) }
+				</FlexBlock>
+				<FlexItem>
+					{ isInstalled ? (
+						<span className="ghwp-installed-chip">
+							<span className="dashicons dashicons-yes-alt" />
+							Installed
+						</span>
+					) : (
+						<Button
+							variant="primary"
+							size="compact"
+							onClick={ onInstall }
+							disabled={ ! canInstall }
+							isBusy={ detecting && ! smartInstall }
+							title={
+								blockedBySmartInstall
+									? 'Smart Install is on — only verified WordPress plugins and themes can be installed.'
+									: undefined
+							}
+						>
+							Install
+						</Button>
+					) }
+				</FlexItem>
 			</CardFooter>
 		</Card>
 	);
+}
+
+function timeAgo( dateStr ) {
+	const s = Math.floor( ( Date.now() - new Date( dateStr ) ) / 1000 );
+	if ( s < 60 ) {
+		return 'just now';
+	}
+	const m = Math.floor( s / 60 );
+	if ( m < 60 ) {
+		return `${ m }m ago`;
+	}
+	const h = Math.floor( m / 60 );
+	if ( h < 24 ) {
+		return `${ h }h ago`;
+	}
+	const d = Math.floor( h / 24 );
+	if ( d < 30 ) {
+		return `${ d }d ago`;
+	}
+	const mo = Math.floor( d / 30 );
+	if ( mo < 12 ) {
+		return `${ mo }mo ago`;
+	}
+	return `${ Math.floor( mo / 12 ) }y ago`;
 }
 
 function TypeBadge( { detection, installed } ) {

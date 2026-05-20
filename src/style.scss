@@ -20,13 +20,13 @@ body.ghwp-admin-page {
 }
 
 .ghwp-page-header {
-	padding: 16px 24px 14px;
+	padding: 16px 32px;
 }
 
 .ghwp-page-title {
-	font-size: 20px;
+	font-size: 15px;
 	font-weight: 600;
-	margin: 0;
+	// margin: 0;
 	color: #1d2327;
 }
 
@@ -63,7 +63,7 @@ body.ghwp-admin-page {
 }
 
 .ghwp-page-content {
-	padding: 24px;
+	padding: 48px 32px;
 }
 
 // Settings layout
@@ -97,6 +97,7 @@ body.ghwp-admin-page {
 	border-radius: 3px;
 	margin-left: 6px;
 	vertical-align: middle;
+	user-select: none;
 }
 
 // Connection status card
@@ -160,8 +161,8 @@ body.ghwp-admin-page {
 
 .ghwp-repo-grid {
 	display: grid;
-	grid-template-columns: repeat( auto-fill, minmax( 300px, 1fr ) );
-	gap: 16px;
+	grid-template-columns: repeat( 3, 1fr );
+	gap: 24px;
 }
 
 .ghwp-repo-card {
@@ -171,11 +172,21 @@ body.ghwp-admin-page {
 		box-shadow: 0 2px 8px rgba( 0, 0, 0, 0.1 );
 	}
 
+	// WP Card renders children inside an inner Content div (position:relative only).
+	// Make it a flex column so the body can grow and the footer stays pinned.
+	> div:first-child {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+	}
+
 	.components-card__header {
 		padding: 10px 14px;
 	}
 
 	.components-card__body {
+		flex: 1;
+		max-height: none !important;
 		padding: 10px 14px;
 	}
 
@@ -207,14 +218,19 @@ body.ghwp-admin-page {
 	overflow: hidden;
 }
 
+.ghwp-repo-updated {
+	font-size: 11px;
+	color: #8c959f;
+}
+
 // Visibility badge
 .ghwp-visibility-badge {
-	font-size: 10px;
+	display: inline-flex;
+	align-items: center;
+	font-size: 11px;
 	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	padding: 2px 7px;
-	border-radius: 12px;
+	padding: 2px 8px;
+	border-radius: 3px;
 	white-space: nowrap;
 
 	&.ghwp-private {

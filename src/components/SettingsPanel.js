@@ -7,7 +7,7 @@ import {
 	FlexBlock,
 	FlexItem,
 	TextControl,
-	CheckboxControl,
+	ToggleControl,
 	Button,
 	Notice,
 	Spinner,
@@ -137,10 +137,10 @@ export default function SettingsPanel( {
 							__nextHasNoMarginBottom
 						/>
 
-						<Spacer marginTop={ 4 } />
+						<Spacer marginTop={ 5 } />
 
 						<div className="ghwp-smart-install-wrap">
-							<CheckboxControl
+							<ToggleControl
 								label={
 									<>
 										<strong>Smart Install</strong>{ ' ' }
@@ -158,7 +158,7 @@ export default function SettingsPanel( {
 
 						<Spacer marginTop={ 5 } />
 
-						<Flex gap={ 3 }>
+						<Flex justify="flex-start" gap={ 3 }>
 							<Button
 								variant="primary"
 								onClick={ handleSave }
@@ -311,9 +311,7 @@ function ConnectionStatus( { connection, testing } ) {
 
 				<div style={ { fontSize: 12 } }>
 					<Flex justify="space-between" style={ { marginBottom: 6 } }>
-						<span style={ { color: '#24292f' } }>
-							API requests this hour
-						</span>
+						<span style={ { color: '#24292f' } }>API Usage</span>
 						<strong>
 							{ rate_remaining?.toLocaleString() } /{ ' ' }
 							{ rate_limit?.toLocaleString() }
