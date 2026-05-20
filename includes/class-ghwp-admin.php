@@ -7,6 +7,26 @@ class GHWP_Admin {
 		add_action( 'admin_menu', [ self::class, 'add_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue' ] );
 		add_action( 'admin_notices', [ self::class, 'show_fatal_notice' ] );
+		add_filter( 'admin_body_class', [ self::class, 'body_class' ] );
+		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
+	}
+
+	public static function hide_admin_notices(): void {
+		$screen = get_current_screen();
+		if ( ! $screen || false === strpos( $screen->id, 'ghwp' ) ) {
+			return;
+		}
+		remove_all_actions( 'admin_notices' );
+		remove_all_actions( 'all_admin_notices' );
+		remove_all_actions( 'admin_footer_text' );
+	}
+
+	public static function body_class( string $classes ): string {
+		$screen = get_current_screen();
+		if ( $screen && false !== strpos( $screen->id, 'ghwp' ) ) {
+			$classes .= ' ghwp-admin-page';
+		}
+		return $classes;
 	}
 
 	// -----------------------------------------------------------------------
@@ -60,9 +80,8 @@ class GHWP_Admin {
 	// -----------------------------------------------------------------------
 
 	public static function enqueue( string $hook ): void {
-		// Both the top-level page and all submenus share the same render callback.
-		$allowed = [ 'toplevel_page_ghwp', 'github_page_ghwp' ];
-		if ( ! in_array( $hook, $allowed, true ) ) {
+		// Match toplevel_page_ghwp and github_page_ghwp-{browse,settings}.
+		if ( false === strpos( $hook, '_page_ghwp' ) ) {
 			return;
 		}
 
@@ -96,13 +115,13 @@ class GHWP_Admin {
 		$connection       = get_option( 'ghwp_connection_cache', null );
 		$installed        = GHWP_Installer::get_installed();
 		$first_activation = (bool) get_transient( 'ghwp_first_activation' );
-		$path             = sanitize_key( $_GET['path'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification
 
 		if ( $first_activation ) {
 			delete_transient( 'ghwp_first_activation' );
 		}
 
-		// Derive initial tab from URL path, activation state, or setup status.
+		// Derive initial tab from path param, activation state, or setup status.
+		$path = sanitize_key( $_GET['path'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification
 		if ( $first_activation || ( ! ( $settings['username'] ?? '' ) ) ) {
 			$initial_tab = 'settings';
 		} elseif ( in_array( $path, [ 'browse', 'settings' ], true ) ) {

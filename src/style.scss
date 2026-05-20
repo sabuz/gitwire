@@ -1,11 +1,21 @@
 // -----------------------------------------------------------------------
-// Page chrome — extends to fill the WP admin content area
+// Page chrome — zero out WP admin content padding and fill edge-to-edge
 // -----------------------------------------------------------------------
+
+body.ghwp-admin-page {
+	background: #fff;
+
+	#wpcontent {
+		padding: 0;
+	}
+
+	.wrap {
+		margin: 0;
+	}
+}
 
 .ghwp-page {
 	background: #fff;
-	// Pull out of WP's default wrap padding so we fill edge-to-edge
-	margin: -10px -20px 0;
 	min-height: calc( 100vh - 46px );
 }
 

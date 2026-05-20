@@ -11,15 +11,40 @@ const TABS = [
 	{ name: 'settings',  label: 'Settings' },
 ];
 
+// Keep the WP sidebar submenu .current class in sync with the active tab.
+function updateSidebarActive( tabName ) {
+	const submenu = document.querySelector( '#toplevel_page_ghwp .wp-submenu' );
+	if ( ! submenu ) {
+		return;
+	}
+	const expectedPath = tabName === 'installed' ? '' : tabName;
+	submenu.querySelectorAll( 'li' ).forEach( ( li ) => {
+		const a = li.querySelector( 'a' );
+		if ( ! a ) {
+			return;
+		}
+		try {
+			const params = new URL( a.href ).searchParams;
+			const isActive = ( params.get( 'path' ) || '' ) === expectedPath;
+			li.classList.toggle( 'current', isActive );
+			a.classList.toggle( 'current', isActive );
+		} catch ( _ ) {
+			// ignore malformed hrefs
+		}
+	} );
+}
+
 // Sync active tab with the URL so the WP sidebar submenu stays highlighted.
 function syncUrl( tabName ) {
 	const url = new URL( window.location.href );
+	url.searchParams.set( 'page', 'ghwp' );
 	if ( tabName === 'installed' ) {
 		url.searchParams.delete( 'path' );
 	} else {
 		url.searchParams.set( 'path', tabName );
 	}
 	history.replaceState( null, '', url.toString() );
+	updateSidebarActive( tabName );
 }
 
 export default function App( { initialData } ) {
@@ -36,7 +61,42 @@ export default function App( { initialData } ) {
 			sessionStorage.removeItem( 'ghwp_goto_tab' );
 			setActiveTab( tab );
 			syncUrl( tab );
+		} else {
+			updateSidebarActive( initialData.initial_tab || 'installed' );
 		}
+	}, [] );
+
+	// Intercept WP sidebar submenu clicks so tab switches stay client-side.
+	useEffect( () => {
+		const submenu = document.querySelector( '#toplevel_page_ghwp .wp-submenu' );
+		if ( ! submenu ) {
+			return;
+		}
+		const PATH_TO_TAB = { '': 'installed', browse: 'browse', settings: 'settings' };
+		function handleClick( e ) {
+			const a = e.target.closest( 'a' );
+			if ( ! a ) {
+				return;
+			}
+			try {
+				const params = new URL( a.href ).searchParams;
+				if ( params.get( 'page' ) !== 'ghwp' ) {
+					return;
+				}
+				const tab = PATH_TO_TAB[ params.get( 'path' ) || '' ];
+				if ( tab === undefined ) {
+					return;
+				}
+				e.preventDefault();
+				e.stopPropagation();
+				setActiveTab( tab );
+				syncUrl( tab );
+			} catch ( _ ) {
+				// ignore malformed hrefs
+			}
+		}
+		submenu.addEventListener( 'click', handleClick );
+		return () => submenu.removeEventListener( 'click', handleClick );
 	}, [] );
 
 	useEffect( () => {
