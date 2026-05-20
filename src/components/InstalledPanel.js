@@ -1,35 +1,65 @@
 import { useState, useEffect } from '@wordpress/element';
 import {
-	Button, SelectControl, Notice, Spinner,
-	Flex, FlexBlock, FlexItem,
-	Card, CardBody,
+	Button,
+	SelectControl,
+	Notice,
+	Spinner,
+	Flex,
+	FlexBlock,
+	FlexItem,
+	Card,
+	CardBody,
 	__experimentalConfirmDialog as ConfirmDialog,
 } from '@wordpress/components';
 import * as api from '../api';
 
-export default function InstalledPanel( { installed, settings, onRefresh, onGoToSettings, onGoToBrowse } ) {
-	const entries     = Object.values( installed );
+export default function InstalledPanel( {
+	installed,
+	settings,
+	onRefresh,
+	onGoToSettings,
+	onGoToBrowse,
+} ) {
+	const entries = Object.values( installed );
 	const isConfigured = !! settings?.username;
 
 	if ( entries.length === 0 ) {
 		return (
 			<Card>
-				<CardBody style={ { textAlign: 'center', padding: '48px 24px', color: '#8c959f' } }>
+				<CardBody
+					style={ {
+						textAlign: 'center',
+						padding: '48px 24px',
+						color: '#8c959f',
+					} }
+				>
 					<span
 						className="dashicons dashicons-randomize"
-						style={ { fontSize: 36, display: 'block', margin: '0 auto 12px', opacity: 0.3 } }
+						style={ {
+							fontSize: 36,
+							display: 'block',
+							margin: '0 auto 12px',
+							opacity: 0.3,
+						} }
 					/>
 					{ isConfigured ? (
 						<>
-							<p style={ { margin: '0 0 12px' } }>No repositories installed yet.</p>
+							<p style={ { margin: '0 0 12px' } }>
+								No repositories installed yet.
+							</p>
 							<Button variant="primary" onClick={ onGoToBrowse }>
 								Browse GitHub to install one
 							</Button>
 						</>
 					) : (
 						<>
-							<p style={ { margin: '0 0 12px' } }>Connect your GitHub account to get started.</p>
-							<Button variant="primary" onClick={ onGoToSettings }>
+							<p style={ { margin: '0 0 12px' } }>
+								Connect your GitHub account to get started.
+							</p>
+							<Button
+								variant="primary"
+								onClick={ onGoToSettings }
+							>
 								Set up GitHub connection
 							</Button>
 						</>
@@ -57,13 +87,13 @@ export default function InstalledPanel( { installed, settings, onRefresh, onGoTo
 function InstalledRow( { record, onRefresh } ) {
 	const { full_name, owner, repo, type, branch } = record;
 
-	const [ activeBranch, setActiveBranch   ] = useState( branch );
-	const [ branches,     setBranches       ] = useState( null );
-	const [ switching,    setSwitching      ] = useState( false );
-	const [ updating,     setUpdating       ] = useState( false );
-	const [ removing,     setRemoving       ] = useState( false );
-	const [ notice,       setNotice         ] = useState( null );
-	const [ confirmOpen,  setConfirmOpen    ] = useState( false );
+	const [ activeBranch, setActiveBranch ] = useState( branch );
+	const [ branches, setBranches ] = useState( null );
+	const [ switching, setSwitching ] = useState( false );
+	const [ updating, setUpdating ] = useState( false );
+	const [ removing, setRemoving ] = useState( false );
+	const [ notice, setNotice ] = useState( null );
+	const [ confirmOpen, setConfirmOpen ] = useState( false );
 
 	useEffect( () => {
 		api.getBranches( owner, repo )
@@ -77,15 +107,23 @@ function InstalledRow( { record, onRefresh } ) {
 
 	const handleSwitch = async ( newBranch ) => {
 		setActiveBranch( newBranch );
-		if ( newBranch === activeBranch ) return;
+		if ( newBranch === activeBranch ) {
+			return;
+		}
 		setSwitching( true );
 		setNotice( null );
 		try {
 			await api.switchBranch( owner, repo, newBranch );
-			setNotice( { status: 'success', message: `Switched to ${ newBranch }.` } );
+			setNotice( {
+				status: 'success',
+				message: `Switched to ${ newBranch }.`,
+			} );
 			onRefresh();
 		} catch ( e ) {
-			setNotice( { status: 'error', message: e.message || 'Branch switch failed.' } );
+			setNotice( {
+				status: 'error',
+				message: e.message || 'Branch switch failed.',
+			} );
 			setActiveBranch( branch );
 		} finally {
 			setSwitching( false );
@@ -97,10 +135,16 @@ function InstalledRow( { record, onRefresh } ) {
 		setNotice( null );
 		try {
 			await api.switchBranch( owner, repo, activeBranch );
-			setNotice( { status: 'success', message: 'Updated to latest commit.' } );
+			setNotice( {
+				status: 'success',
+				message: 'Updated to latest commit.',
+			} );
 			onRefresh();
 		} catch ( e ) {
-			setNotice( { status: 'error', message: e.message || 'Update failed.' } );
+			setNotice( {
+				status: 'error',
+				message: e.message || 'Update failed.',
+			} );
 		} finally {
 			setUpdating( false );
 		}
@@ -114,7 +158,10 @@ function InstalledRow( { record, onRefresh } ) {
 			await api.removeInstalled( owner, repo );
 			onRefresh();
 		} catch ( e ) {
-			setNotice( { status: 'error', message: e.message || 'Remove failed.' } );
+			setNotice( {
+				status: 'error',
+				message: e.message || 'Remove failed.',
+			} );
 			setRemoving( false );
 		}
 	};
@@ -128,7 +175,13 @@ function InstalledRow( { record, onRefresh } ) {
 					<FlexBlock style={ { minWidth: 220 } }>
 						<div className="ghwp-installed-name">{ full_name }</div>
 						<div style={ { marginTop: 4 } }>
-							<span className={ `ghwp-type-badge ${ type === 'theme' ? 'ghwp-type-theme' : 'ghwp-type-plugin' }` }>
+							<span
+								className={ `ghwp-type-badge ${
+									type === 'theme'
+										? 'ghwp-type-theme'
+										: 'ghwp-type-plugin'
+								}` }
+							>
 								{ type === 'theme' ? 'Theme' : 'Plugin' }
 							</span>
 						</div>
@@ -172,14 +225,27 @@ function InstalledRow( { record, onRefresh } ) {
 
 				{ notice && (
 					<div style={ { marginTop: 10 } }>
-						<Notice status={ notice.status } isDismissible onRemove={ () => setNotice( null ) }>
+						<Notice
+							status={ notice.status }
+							isDismissible
+							onRemove={ () => setNotice( null ) }
+						>
 							{ notice.message }
 						</Notice>
 					</div>
 				) }
 
 				{ ( switching || removing ) && (
-					<div style={ { marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, color: '#57606a', fontSize: 13 } }>
+					<div
+						style={ {
+							marginTop: 8,
+							display: 'flex',
+							alignItems: 'center',
+							gap: 6,
+							color: '#57606a',
+							fontSize: 13,
+						} }
+					>
 						<Spinner />
 						{ switching ? 'Switching branch…' : 'Removing…' }
 					</div>
@@ -191,7 +257,8 @@ function InstalledRow( { record, onRefresh } ) {
 					onConfirm={ handleRemove }
 					onCancel={ () => setConfirmOpen( false ) }
 				>
-					Remove <strong>{ full_name }</strong> from WordPress? The files will be deleted.
+					Remove <strong>{ full_name }</strong> from WordPress? The
+					files will be deleted.
 				</ConfirmDialog>
 			) }
 		</Card>

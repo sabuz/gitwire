@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from '@wordpress/element';
 import { Spinner } from '@wordpress/components';
-import SettingsPanel  from './components/SettingsPanel';
-import BrowsePanel    from './components/BrowsePanel';
+import SettingsPanel from './components/SettingsPanel';
+import BrowsePanel from './components/BrowsePanel';
 import InstalledPanel from './components/InstalledPanel';
 import * as api from './api';
 
 const TABS = [
 	{ name: 'installed', label: 'Installed' },
-	{ name: 'browse',    label: 'Browse GitHub' },
-	{ name: 'settings',  label: 'Settings' },
+	{ name: 'browse', label: 'Browse GitHub' },
+	{ name: 'settings', label: 'Settings' },
 ];
 
 // Keep the WP sidebar submenu .current class in sync with the active tab.
@@ -48,11 +48,15 @@ function syncUrl( tabName ) {
 }
 
 export default function App( { initialData } ) {
-	const [ settings,   setSettings   ] = useState( initialData.settings   || null );
-	const [ connection, setConnection ] = useState( initialData.connection  || null );
-	const [ installed,  setInstalled  ] = useState( initialData.installed   || {} );
-	const [ loading,    setLoading    ] = useState( ! initialData.settings );
-	const [ activeTab,  setActiveTab  ] = useState( initialData.initial_tab || 'installed' );
+	const [ settings, setSettings ] = useState( initialData.settings || null );
+	const [ connection, setConnection ] = useState(
+		initialData.connection || null
+	);
+	const [ installed, setInstalled ] = useState( initialData.installed || {} );
+	const [ loading, setLoading ] = useState( ! initialData.settings );
+	const [ activeTab, setActiveTab ] = useState(
+		initialData.initial_tab || 'installed'
+	);
 
 	// Post-install redirect via sessionStorage overrides everything.
 	useEffect( () => {
@@ -68,11 +72,17 @@ export default function App( { initialData } ) {
 
 	// Intercept WP sidebar submenu clicks so tab switches stay client-side.
 	useEffect( () => {
-		const submenu = document.querySelector( '#toplevel_page_ghwp .wp-submenu' );
+		const submenu = document.querySelector(
+			'#toplevel_page_ghwp .wp-submenu'
+		);
 		if ( ! submenu ) {
 			return;
 		}
-		const PATH_TO_TAB = { '': 'installed', browse: 'browse', settings: 'settings' };
+		const PATH_TO_TAB = {
+			'': 'installed',
+			browse: 'browse',
+			settings: 'settings',
+		};
 		function handleClick( e ) {
 			const a = e.target.closest( 'a' );
 			if ( ! a ) {
@@ -102,7 +112,10 @@ export default function App( { initialData } ) {
 	useEffect( () => {
 		if ( ! initialData.settings ) {
 			Promise.all( [ api.getSettings(), api.getInstalled() ] )
-				.then( ( [ s, i ] ) => { setSettings( s ); setInstalled( i ); } )
+				.then( ( [ s, i ] ) => {
+					setSettings( s );
+					setInstalled( i );
+				} )
 				.finally( () => setLoading( false ) );
 		}
 	}, [] ); // eslint-disable-line
@@ -120,7 +133,9 @@ export default function App( { initialData } ) {
 	if ( loading || ! settings ) {
 		return (
 			<div className="ghwp-page">
-				<div style={ { padding: 48, textAlign: 'center' } }><Spinner /></div>
+				<div style={ { padding: 48, textAlign: 'center' } }>
+					<Spinner />
+				</div>
 			</div>
 		);
 	}
@@ -135,13 +150,16 @@ export default function App( { initialData } ) {
 
 			<nav className="ghwp-page-nav" aria-label="Plugin navigation">
 				{ TABS.map( ( tab ) => {
-					const label = tab.name === 'installed' && installedCount > 0
-						? `Installed (${ installedCount })`
-						: tab.label;
+					const label =
+						tab.name === 'installed' && installedCount > 0
+							? `Installed (${ installedCount })`
+							: tab.label;
 					return (
 						<button
 							key={ tab.name }
-							className={ `ghwp-nav-tab${ activeTab === tab.name ? ' is-active' : '' }` }
+							className={ `ghwp-nav-tab${
+								activeTab === tab.name ? ' is-active' : ''
+							}` }
 							onClick={ () => goToTab( tab.name ) }
 							aria-selected={ activeTab === tab.name }
 						>

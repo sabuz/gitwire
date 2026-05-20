@@ -1,20 +1,34 @@
 import { useState, useEffect } from '@wordpress/element';
-import { Modal, SelectControl, Button, Notice, Spinner, Flex } from '@wordpress/components';
+import {
+	Modal,
+	SelectControl,
+	Button,
+	Notice,
+	Spinner,
+	Flex,
+} from '@wordpress/components';
 import * as api from '../api';
 
-export default function InstallModal( { repo, smartInstall, onClose, onInstalled } ) {
-	const [ branches,   setBranches   ] = useState( [] );
-	const [ branch,     setBranch     ] = useState( repo.default_branch || 'main' );
-	const [ detection,  setDetection  ] = useState( null );
-	const [ type,       setType       ] = useState( 'plugin' );
+export default function InstallModal( {
+	repo,
+	smartInstall,
+	onClose,
+	onInstalled,
+} ) {
+	const [ branches, setBranches ] = useState( [] );
+	const [ branch, setBranch ] = useState( repo.default_branch || 'main' );
+	const [ detection, setDetection ] = useState( null );
+	const [ type, setType ] = useState( 'plugin' );
 	const [ installing, setInstalling ] = useState( false );
-	const [ notice,     setNotice     ] = useState( null );
-	const [ countdown,  setCountdown  ] = useState( null );
+	const [ notice, setNotice ] = useState( null );
+	const [ countdown, setCountdown ] = useState( null );
 
 	// Fetch branches + detect in parallel on open
 	useEffect( () => {
 		api.getBranches( repo.owner, repo.name )
-			.then( ( b ) => setBranches( b.map( ( n ) => ( { label: n, value: n } ) ) ) )
+			.then( ( b ) =>
+				setBranches( b.map( ( n ) => ( { label: n, value: n } ) ) )
+			)
 			.catch( () => {} );
 
 		api.detectRepo( repo.owner, repo.name, repo.default_branch )
@@ -24,27 +38,31 @@ export default function InstallModal( { repo, smartInstall, onClose, onInstalled
 					setType( d.type );
 				}
 			} )
-			.catch( () => setDetection( { type: 'unknown', confidence: 'none' } ) );
+			.catch( () =>
+				setDetection( { type: 'unknown', confidence: 'none' } )
+			);
 	}, [] ); // eslint-disable-line
 
-	const canInstall = detection && (
-		detection.type !== 'unknown' || ! smartInstall
-	);
+	const canInstall =
+		detection && ( detection.type !== 'unknown' || ! smartInstall );
 
 	const handleInstall = async () => {
 		setInstalling( true );
 		setNotice( null );
 		try {
 			const result = await api.install( {
-				owner:  repo.owner,
-				repo:   repo.name,
+				owner: repo.owner,
+				repo: repo.name,
 				branch,
-				type:   detection?.type !== 'unknown' ? detection.type : type,
+				type: detection?.type !== 'unknown' ? detection.type : type,
 			} );
 			onInstalled( result );
 			startCountdown();
 		} catch ( e ) {
-			setNotice( { status: 'error', message: e.message || 'Installation failed.' } );
+			setNotice( {
+				status: 'error',
+				message: e.message || 'Installation failed.',
+			} );
 			setInstalling( false );
 		}
 	};
@@ -74,7 +92,10 @@ export default function InstallModal( { repo, smartInstall, onClose, onInstalled
 			style={ { maxWidth: 480 } }
 		>
 			{ /* Detection badge */ }
-			<DetectionBadge detection={ detection } smartInstall={ smartInstall } />
+			<DetectionBadge
+				detection={ detection }
+				smartInstall={ smartInstall }
+			/>
 
 			{ /* Type selector — only shown for unknown repos when smart install is off */ }
 			{ detection && detection.type === 'unknown' && ! smartInstall && (
@@ -83,7 +104,7 @@ export default function InstallModal( { repo, smartInstall, onClose, onInstalled
 					value={ type }
 					options={ [
 						{ label: 'Plugin', value: 'plugin' },
-						{ label: 'Theme',  value: 'theme'  },
+						{ label: 'Theme', value: 'theme' },
 					] }
 					onChange={ setType }
 					__nextHasNoMarginBottom
@@ -95,9 +116,15 @@ export default function InstallModal( { repo, smartInstall, onClose, onInstalled
 				<SelectControl
 					label="Branch"
 					value={ branch }
-					options={ branches.length
-						? branches
-						: [ { label: repo.default_branch || 'main', value: repo.default_branch || 'main' } ]
+					options={
+						branches.length
+							? branches
+							: [
+									{
+										label: repo.default_branch || 'main',
+										value: repo.default_branch || 'main',
+									},
+							  ]
 					}
 					onChange={ setBranch }
 					disabled={ installing }
@@ -114,8 +141,13 @@ export default function InstallModal( { repo, smartInstall, onClose, onInstalled
 			) }
 
 			{ countdown !== null && (
-				<Notice status="success" isDismissible={ false } style={ { marginTop: 12 } }>
-					Installation complete — opening Installed tab in <strong>{ countdown }</strong>
+				<Notice
+					status="success"
+					isDismissible={ false }
+					style={ { marginTop: 12 } }
+				>
+					Installation complete — opening Installed tab in{ ' ' }
+					<strong>{ countdown }</strong>
 				</Notice>
 			) }
 
@@ -123,7 +155,9 @@ export default function InstallModal( { repo, smartInstall, onClose, onInstalled
 				<Button
 					variant="primary"
 					onClick={ handleInstall }
-					disabled={ ! canInstall || installing || countdown !== null }
+					disabled={
+						! canInstall || installing || countdown !== null
+					}
 					isBusy={ installing }
 				>
 					{ installing ? 'Installing…' : 'Install' }
@@ -154,31 +188,36 @@ function DetectionBadge( { detection, smartInstall } ) {
 
 	if ( type === 'plugin' ) {
 		badgeClass = 'ghwp-detect-plugin';
-		label      = confidence === 'high'
-			? `WordPress Plugin${ name ? ` — ${ name }` : '' }`
-			: 'Likely a WordPress Plugin';
+		label =
+			confidence === 'high'
+				? `WordPress Plugin${ name ? ` — ${ name }` : '' }`
+				: 'Likely a WordPress Plugin';
 	} else if ( type === 'theme' && subtype === 'block' ) {
 		badgeClass = 'ghwp-detect-theme';
-		label      = confidence === 'high'
-			? `Block Theme${ name ? ` — ${ name }` : '' }`
-			: 'Likely a Block Theme';
+		label =
+			confidence === 'high'
+				? `Block Theme${ name ? ` — ${ name }` : '' }`
+				: 'Likely a Block Theme';
 	} else if ( type === 'theme' ) {
 		badgeClass = 'ghwp-detect-theme';
-		label      = confidence === 'high'
-			? `Classic Theme${ name ? ` — ${ name }` : '' }`
-			: 'Likely a Classic Theme';
+		label =
+			confidence === 'high'
+				? `Classic Theme${ name ? ` — ${ name }` : '' }`
+				: 'Likely a Classic Theme';
 	} else {
 		badgeClass = 'ghwp-detect-unknown';
-		label      = 'Not recognised as a WordPress project';
+		label = 'Not recognised as a WordPress project';
 	}
 
 	return (
 		<div className="ghwp-detect-row">
-			<span className={ `ghwp-detect-badge ${ badgeClass }` }>{ label }</span>
+			<span className={ `ghwp-detect-badge ${ badgeClass }` }>
+				{ label }
+			</span>
 			{ type === 'unknown' && smartInstall && (
 				<p className="ghwp-detect-note ghwp-detect-blocked">
-					Smart Install is enabled — only verified plugins and themes can be installed.
-					Disable it in Settings to override.
+					Smart Install is enabled — only verified plugins and themes
+					can be installed. Disable it in Settings to override.
 				</p>
 			) }
 			{ type === 'unknown' && ! smartInstall && (

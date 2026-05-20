@@ -1,20 +1,35 @@
 import { useState } from '@wordpress/element';
 import {
-	Card, CardBody, CardHeader,
-	Flex, FlexBlock, FlexItem,
-	TextControl, CheckboxControl, Button, Notice, Spinner,
+	Card,
+	CardBody,
+	CardHeader,
+	Flex,
+	FlexBlock,
+	FlexItem,
+	TextControl,
+	CheckboxControl,
+	Button,
+	Notice,
+	Spinner,
 	__experimentalHeading as Heading,
-	__experimentalSpacer  as Spacer,
+	__experimentalSpacer as Spacer,
 } from '@wordpress/components';
 import * as api from '../api';
 
-export default function SettingsPanel( { settings, connection, onSave, onConnectionUpdate } ) {
-	const [ token,        setToken        ] = useState( settings.token        || '' );
-	const [ username,     setUsername     ] = useState( settings.username     || '' );
-	const [ smartInstall, setSmartInstall ] = useState( settings.smart_install !== false );
-	const [ saving,       setSaving       ] = useState( false );
-	const [ testing,      setTesting      ] = useState( false );
-	const [ notice,       setNotice       ] = useState( null );
+export default function SettingsPanel( {
+	settings,
+	connection,
+	onSave,
+	onConnectionUpdate,
+} ) {
+	const [ token, setToken ] = useState( settings.token || '' );
+	const [ username, setUsername ] = useState( settings.username || '' );
+	const [ smartInstall, setSmartInstall ] = useState(
+		settings.smart_install !== false
+	);
+	const [ saving, setSaving ] = useState( false );
+	const [ testing, setTesting ] = useState( false );
+	const [ notice, setNotice ] = useState( null );
 
 	const runTest = async () => {
 		setTesting( true );
@@ -30,24 +45,40 @@ export default function SettingsPanel( { settings, connection, onSave, onConnect
 
 	const handleSave = async () => {
 		if ( ! username.trim() ) {
-			setNotice( { status: 'error', message: 'GitHub Username is required.' } );
+			setNotice( {
+				status: 'error',
+				message: 'GitHub Username is required.',
+			} );
 			return;
 		}
 		setSaving( true );
 		try {
-			await api.saveSettings( { token, username, smart_install: smartInstall } );
+			await api.saveSettings( {
+				token,
+				username,
+				smart_install: smartInstall,
+			} );
 			onSave( { token, username, smart_install: smartInstall } );
 			setNotice( { status: 'success', message: 'Settings saved.' } );
 			await runTest();
 		} catch ( e ) {
-			setNotice( { status: 'error', message: e.message || 'Save failed.' } );
+			setNotice( {
+				status: 'error',
+				message: e.message || 'Save failed.',
+			} );
 		} finally {
 			setSaving( false );
 		}
 	};
 
 	return (
-		<Flex align="flex-start" gap={ 6 } wrap className="ghwp-settings-row">
+		<Flex
+			align="flex-start"
+			justify="center"
+			gap={ 6 }
+			wrap
+			className="ghwp-settings-row"
+		>
 			<FlexBlock style={ { minWidth: 300, maxWidth: 540 } }>
 				<Card>
 					<CardHeader>
@@ -79,7 +110,9 @@ export default function SettingsPanel( { settings, connection, onSave, onConnect
 							label={
 								<>
 									Personal Access Token{ ' ' }
-									<span className="ghwp-label-optional">(Optional)</span>
+									<span className="ghwp-label-optional">
+										(Optional)
+									</span>
 								</>
 							}
 							type="password"
@@ -89,7 +122,8 @@ export default function SettingsPanel( { settings, connection, onSave, onConnect
 							autoComplete="new-password"
 							help={
 								<>
-									Required only for private repositories. Create one at{ ' ' }
+									Required only for private repositories.
+									Create one at{ ' ' }
 									<a
 										href="https://github.com/settings/tokens/new"
 										target="_blank"
@@ -110,7 +144,9 @@ export default function SettingsPanel( { settings, connection, onSave, onConnect
 								label={
 									<>
 										<strong>Smart Install</strong>{ ' ' }
-										<span className="ghwp-badge-recommended">Recommended</span>
+										<span className="ghwp-badge-recommended">
+											Recommended
+										</span>
 									</>
 								}
 								checked={ smartInstall }
@@ -145,7 +181,10 @@ export default function SettingsPanel( { settings, connection, onSave, onConnect
 			</FlexBlock>
 
 			<FlexItem style={ { width: 260, flexShrink: 0 } }>
-				<ConnectionStatus connection={ connection } testing={ testing } />
+				<ConnectionStatus
+					connection={ connection }
+					testing={ testing }
+				/>
 			</FlexItem>
 		</Flex>
 	);
@@ -157,9 +196,17 @@ function ConnectionStatus( { connection, testing } ) {
 	if ( testing ) {
 		return (
 			<Card>
-				<CardBody style={ { textAlign: 'center', padding: '32px 16px' } }>
+				<CardBody
+					style={ { textAlign: 'center', padding: '32px 16px' } }
+				>
 					<Spinner />
-					<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+					<p
+						style={ {
+							marginTop: 8,
+							color: '#757575',
+							fontSize: 13,
+						} }
+					>
 						Checking connection…
 					</p>
 				</CardBody>
@@ -170,13 +217,25 @@ function ConnectionStatus( { connection, testing } ) {
 	if ( ! connection ) {
 		return (
 			<Card>
-				<CardBody style={ { textAlign: 'center', padding: '32px 16px', color: '#8c959f' } }>
+				<CardBody
+					style={ {
+						textAlign: 'center',
+						padding: '32px 16px',
+						color: '#8c959f',
+					} }
+				>
 					<span
 						className="dashicons dashicons-randomize"
-						style={ { fontSize: 32, display: 'block', margin: '0 auto 8px', opacity: 0.35 } }
+						style={ {
+							fontSize: 32,
+							display: 'block',
+							margin: '0 auto 8px',
+							opacity: 0.35,
+						} }
 					/>
 					<p style={ { margin: 0, fontSize: 12, lineHeight: 1.5 } }>
-						Save your settings and click "Test Connection" to verify.
+						Save your settings and click "Test Connection" to
+						verify.
 					</p>
 				</CardBody>
 			</Card>
@@ -195,8 +254,19 @@ function ConnectionStatus( { connection, testing } ) {
 		);
 	}
 
-	const { login, name, avatar_url, authenticated, rate_limit, rate_remaining, rate_reset } = connection;
-	const pct      = rate_limit > 0 ? Math.round( ( rate_remaining / rate_limit ) * 100 ) : 0;
+	const {
+		login,
+		name,
+		avatar_url,
+		authenticated,
+		rate_limit,
+		rate_remaining,
+		rate_reset,
+	} = connection;
+	const pct =
+		rate_limit > 0
+			? Math.round( ( rate_remaining / rate_limit ) * 100 )
+			: 0;
 	const barColor = pct > 50 ? '#4ac26b' : pct > 20 ? '#e3b341' : '#cf222e';
 
 	return (
@@ -207,10 +277,20 @@ function ConnectionStatus( { connection, testing } ) {
 						<img
 							src={ avatar_url }
 							alt={ login }
-							style={ { width: 52, height: 52, borderRadius: '50%', display: 'block', margin: '0 auto 8px' } }
+							style={ {
+								width: 52,
+								height: 52,
+								borderRadius: '50%',
+								display: 'block',
+								margin: '0 auto 8px',
+							} }
 						/>
-						<div style={ { fontWeight: 700 } }>{ name || login }</div>
-						<div style={ { fontSize: 12, color: '#57606a' } }>@{ login }</div>
+						<div style={ { fontWeight: 700 } }>
+							{ name || login }
+						</div>
+						<div style={ { fontSize: 12, color: '#57606a' } }>
+							@{ login }
+						</div>
 						<span className="ghwp-conn-badge ghwp-conn-badge--ok">
 							<span className="dashicons dashicons-yes-alt" />
 							Authenticated
@@ -231,24 +311,29 @@ function ConnectionStatus( { connection, testing } ) {
 
 				<div style={ { fontSize: 12 } }>
 					<Flex justify="space-between" style={ { marginBottom: 6 } }>
-						<span style={ { color: '#24292f' } }>API requests this hour</span>
+						<span style={ { color: '#24292f' } }>
+							API requests this hour
+						</span>
 						<strong>
-							{ rate_remaining?.toLocaleString() } / { rate_limit?.toLocaleString() }
+							{ rate_remaining?.toLocaleString() } /{ ' ' }
+							{ rate_limit?.toLocaleString() }
 						</strong>
 					</Flex>
 					<div className="ghwp-rate-track">
 						<div
 							className="ghwp-rate-fill"
-							style={ { width: `${ pct }%`, background: barColor } }
+							style={ {
+								width: `${ pct }%`,
+								background: barColor,
+							} }
 						/>
 					</div>
 					<p className="ghwp-rate-note">
 						{ rate_limit === 60
 							? "Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour."
 							: rate_reset
-								? `Resets in ${ humanDiff( rate_reset ) }.`
-								: 'Resets in about an hour.'
-						}
+							? `Resets in ${ humanDiff( rate_reset ) }.`
+							: 'Resets in about an hour.' }
 					</p>
 				</div>
 			</CardBody>
@@ -258,7 +343,9 @@ function ConnectionStatus( { connection, testing } ) {
 
 function humanDiff( ts ) {
 	const s = ts - Math.floor( Date.now() / 1000 );
-	if ( s <= 0 ) return 'moments';
+	if ( s <= 0 ) {
+		return 'moments';
+	}
 	const m = Math.floor( s / 60 );
 	return m > 0 ? `${ m }m ${ s % 60 }s` : `${ s }s`;
 }

@@ -14,6 +14,7 @@
 		"lint": "npm run lint:js && npm run lint:scss"
 	},
 	"devDependencies": {
+		"@wordpress/element": "^6.46.0",
 		"@wordpress/eslint-plugin": "^22.0.0",
 		"@wordpress/scripts": "^32.2.0",
 		"stylelint-order": "^6.0.0"

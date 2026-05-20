@@ -9,7 +9,5 @@ if ( window.GHWP?.nonce ) {
 
 const container = document.getElementById( 'ghwp-app' );
 if ( container ) {
-	createRoot( container ).render(
-		<App initialData={ window.GHWP || {} } />
-	);
+	createRoot( container ).render( <App initialData={ window.GHWP || {} } /> );
 }
