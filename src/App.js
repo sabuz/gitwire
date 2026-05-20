@@ -11,6 +11,17 @@ const TABS = [
 	{ name: 'settings', label: 'Settings' },
 ];
 
+function tabUrl( tabName ) {
+	const url = new URL( window.location.href );
+	url.searchParams.set( 'page', 'ghwp' );
+	if ( tabName === 'installed' ) {
+		url.searchParams.delete( 'path' );
+	} else {
+		url.searchParams.set( 'path', tabName );
+	}
+	return url.toString();
+}
+
 // Keep the WP sidebar submenu .current class in sync with the active tab.
 function updateSidebarActive( tabName ) {
 	const submenu = document.querySelector( '#toplevel_page_ghwp .wp-submenu' );
@@ -146,28 +157,34 @@ export default function App( { initialData } ) {
 		<div className="ghwp-page">
 			<div className="ghwp-page-header">
 				<h1 className="ghwp-page-title">GitHub for WordPress</h1>
-			</div>
 
-			<nav className="ghwp-page-nav" aria-label="Plugin navigation">
+				<nav className="ghwp-page-nav" aria-label="Plugin navigation">
 				{ TABS.map( ( tab ) => {
 					const label =
 						tab.name === 'installed' && installedCount > 0
 							? `Installed (${ installedCount })`
 							: tab.label;
 					return (
-						<button
+						<a
 							key={ tab.name }
+							href={ tabUrl( tab.name ) }
 							className={ `ghwp-nav-tab${
 								activeTab === tab.name ? ' is-active' : ''
 							}` }
-							onClick={ () => goToTab( tab.name ) }
-							aria-selected={ activeTab === tab.name }
+							onClick={ ( e ) => {
+								e.preventDefault();
+								goToTab( tab.name );
+							} }
+							aria-current={
+								activeTab === tab.name ? 'page' : undefined
+							}
 						>
 							{ label }
-						</button>
+						</a>
 					);
 				} ) }
-			</nav>
+				</nav>
+			</div>
 
 			<div className="ghwp-page-content">
 				{ activeTab === 'settings' && (
