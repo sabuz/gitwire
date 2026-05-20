@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output (compiled by wp-scripts, not committed)
+build/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment / secrets
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+Thumbs.db

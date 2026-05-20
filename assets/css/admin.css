@@ -1,0 +1,736 @@
+/* =========================================================
+   GitHub for WordPress – Admin Styles
+   ========================================================= */
+
+:root {
+	--ghwp-primary:   #0969da;
+	--ghwp-success:   #1a7f37;
+	--ghwp-danger:    #cf222e;
+	--ghwp-border:    #d0d7de;
+	--ghwp-surface:   #f6f8fa;
+	--ghwp-radius:    6px;
+	--ghwp-shadow:    0 1px 3px rgba(0,0,0,.12);
+}
+
+/* ---- Wrapper ---- */
+.ghwp-wrap {
+	max-width: 1100px;
+}
+
+.ghwp-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 1.5rem;
+	margin-bottom: 16px;
+}
+
+.ghwp-header .dashicons {
+	font-size: 1.6rem;
+	color: var(--ghwp-primary);
+}
+
+/* ---- Tabs ---- */
+.ghwp-tabs {
+	display: flex;
+	gap: 0;
+	border-bottom: 2px solid var(--ghwp-border);
+	margin-bottom: 24px;
+}
+
+.ghwp-tab {
+	background: none;
+	border: none;
+	border-bottom: 3px solid transparent;
+	margin-bottom: -2px;
+	padding: 10px 20px;
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 600;
+	color: #57606a;
+	transition: color .15s, border-color .15s;
+	position: relative;
+	top: 2px;
+}
+
+.ghwp-tab:hover {
+	color: var(--ghwp-primary);
+}
+
+.ghwp-tab.active {
+	color: var(--ghwp-primary);
+	border-bottom-color: var(--ghwp-primary);
+}
+
+.ghwp-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--ghwp-primary);
+	color: #fff;
+	border-radius: 12px;
+	padding: 1px 7px;
+	font-size: 11px;
+	margin-left: 6px;
+}
+
+/* ---- Panels ---- */
+.ghwp-panel {
+	display: none;
+}
+
+.ghwp-panel.active {
+	display: block;
+}
+
+/* ---- Card ---- */
+.ghwp-card {
+	background: #fff;
+	border: 1px solid var(--ghwp-border);
+	border-radius: var(--ghwp-radius);
+	box-shadow: var(--ghwp-shadow);
+	padding: 24px;
+	max-width: 640px;
+}
+
+.ghwp-card h2 {
+	margin-top: 0;
+	font-size: 1rem;
+	border-bottom: 1px solid var(--ghwp-border);
+	padding-bottom: 12px;
+}
+
+/* ---- Form fields ---- */
+.ghwp-field {
+	margin-bottom: 20px;
+}
+
+.ghwp-field label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+	color: #24292f;
+}
+
+.ghwp-field input.regular-text {
+	width: 100%;
+	max-width: 400px;
+}
+
+.ghwp-field .description {
+	margin-top: 6px;
+	color: #57606a;
+}
+
+.ghwp-required {
+	color: #cf222e;
+	margin-left: 3px;
+}
+
+.ghwp-optional {
+	font-weight: 400;
+	color: #57606a;
+	font-size: 12px;
+	margin-left: 5px;
+}
+
+/* ---- Smart Install toggle ---- */
+.ghwp-field-toggle {
+	padding: 14px 16px;
+	background: var(--ghwp-surface);
+	border: 1px solid var(--ghwp-border);
+	border-radius: var(--ghwp-radius);
+}
+
+.ghwp-toggle-label {
+	display: flex !important;
+	align-items: center;
+	gap: 10px;
+	cursor: pointer;
+	font-weight: 600 !important;
+	margin-bottom: 0 !important;
+}
+
+.ghwp-toggle-label input[type="checkbox"] {
+	width: 16px;
+	height: 16px;
+	accent-color: var(--ghwp-primary);
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.ghwp-toggle-text {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.ghwp-recommended {
+	font-size: 11px;
+	font-weight: 400;
+	background: #dafbe1;
+	color: #116329;
+	border: 1px solid #4ac26b;
+	padding: 1px 8px;
+	border-radius: 20px;
+}
+
+/* ---- Detection badge (modal) ---- */
+.ghwp-detection-row {
+	margin: 12px 0 6px;
+	min-height: 28px;
+}
+
+.ghwp-detection-loading {
+	color: #57606a;
+	font-size: 13px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.ghwp-detect-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 13px;
+	font-weight: 600;
+	padding: 4px 12px;
+	border-radius: 20px;
+}
+
+.ghwp-detect-plugin {
+	background: #ddf4ff;
+	color: #0550ae;
+	border: 1px solid #80ccff;
+}
+
+.ghwp-detect-theme {
+	background: #fbefff;
+	color: #6639ba;
+	border: 1px solid #d2afff;
+}
+
+.ghwp-detect-unknown {
+	background: #fff8c5;
+	color: #7d4e00;
+	border: 1px solid #e3b341;
+}
+
+.ghwp-detect-medium {
+	opacity: .85;
+}
+
+.ghwp-detect-note {
+	font-size: 12px;
+	margin: 8px 0 0;
+	line-height: 1.5;
+}
+
+.ghwp-detect-blocked {
+	color: var(--ghwp-danger);
+}
+
+.ghwp-detect-warn {
+	color: #7d4e00;
+}
+
+/* ---- Modal repo line ---- */
+.ghwp-modal-repo-line {
+	margin: 0 0 4px;
+	font-size: 13px;
+	color: #57606a;
+}
+
+.ghwp-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.ghwp-inline-msg {
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.ghwp-inline-msg.success { color: var(--ghwp-success); }
+.ghwp-inline-msg.error   { color: var(--ghwp-danger);  }
+
+/* ---- Connection result card ---- */
+.ghwp-connection-card {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-top: 16px;
+	padding: 12px 16px;
+	background: var(--ghwp-surface);
+	border: 1px solid var(--ghwp-border);
+	border-radius: var(--ghwp-radius);
+}
+
+.ghwp-connection-card img {
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+}
+
+.ghwp-connection-card .ghwp-conn-name {
+	font-weight: 700;
+}
+
+.ghwp-connection-card .ghwp-conn-rate {
+	font-size: 12px;
+	color: #57606a;
+}
+
+/* ---- Settings two-column layout ---- */
+.ghwp-settings-row {
+	display: flex;
+	gap: 24px;
+	align-items: flex-start;
+}
+
+.ghwp-settings-form {
+	flex: 1;
+	min-width: 0;
+}
+
+.ghwp-conn-status-wrap {
+	width: 260px;
+	flex-shrink: 0;
+}
+
+.ghwp-conn-status-card {
+	background: #fff;
+	border: 1px solid var(--ghwp-border);
+	border-radius: var(--ghwp-radius);
+	box-shadow: var(--ghwp-shadow);
+	padding: 20px;
+}
+
+.ghwp-conn-avatar {
+	width: 52px;
+	height: 52px;
+	border-radius: 50%;
+	display: block;
+	margin: 0 auto 12px;
+}
+
+.ghwp-conn-info {
+	text-align: center;
+}
+
+.ghwp-conn-name {
+	font-weight: 700;
+	font-size: 14px;
+	line-height: 1.3;
+}
+
+.ghwp-conn-login {
+	display: block;
+	font-weight: 400;
+	font-size: 12px;
+	color: #57606a;
+	margin-top: 2px;
+}
+
+.ghwp-conn-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	font-weight: 600;
+	padding: 3px 10px;
+	border-radius: 20px;
+	margin-top: 8px;
+}
+
+.ghwp-conn-badge .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+.ghwp-conn-authenticated {
+	background: #dafbe1;
+	color: #116329;
+	border: 1px solid #4ac26b;
+}
+
+.ghwp-conn-unauthenticated {
+	background: #fff8c5;
+	color: #7d4e00;
+	border: 1px solid #e3b341;
+}
+
+.ghwp-conn-divider {
+	border: none;
+	border-top: 1px solid var(--ghwp-border);
+	margin: 14px 0;
+}
+
+/* ---- Rate limit bar ---- */
+.ghwp-rate-info {
+	font-size: 12px;
+}
+
+.ghwp-rate-label {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	margin-bottom: 6px;
+	color: #24292f;
+}
+
+.ghwp-rate-bar-track {
+	height: 6px;
+	background: var(--ghwp-border);
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.ghwp-rate-bar {
+	height: 100%;
+	border-radius: 3px;
+	transition: width .4s ease;
+}
+
+.ghwp-rate-bar--good   { background: #4ac26b; }
+.ghwp-rate-bar--warn   { background: #e3b341; }
+.ghwp-rate-bar--danger { background: #cf222e; }
+
+.ghwp-rate-note {
+	color: #57606a;
+	margin: 6px 0 0;
+	font-size: 11px;
+	line-height: 1.4;
+}
+
+.ghwp-conn-checked {
+	font-size: 11px;
+	color: #8c959f;
+	text-align: center;
+	margin: 10px 0 0;
+}
+
+.ghwp-conn-empty {
+	text-align: center;
+	color: #8c959f;
+	padding: 8px 0;
+}
+
+.ghwp-conn-empty .dashicons {
+	font-size: 32px;
+	width: 32px;
+	height: 32px;
+	display: block;
+	margin: 0 auto 8px;
+	opacity: .4;
+}
+
+.ghwp-conn-empty p {
+	font-size: 12px;
+	margin: 0;
+	line-height: 1.5;
+}
+
+/* ---- Browse toolbar ---- */
+.ghwp-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.ghwp-search {
+	flex: 1;
+	max-width: 320px;
+	padding: 6px 10px;
+	border: 1px solid var(--ghwp-border);
+	border-radius: var(--ghwp-radius);
+	font-size: 14px;
+}
+
+/* ---- Repo list ---- */
+.ghwp-repo-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 16px;
+}
+
+.ghwp-repo-card {
+	background: #fff;
+	border: 1px solid var(--ghwp-border);
+	border-radius: var(--ghwp-radius);
+	padding: 16px;
+	box-shadow: var(--ghwp-shadow);
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ghwp-repo-card.ghwp-installed {
+	border-left: 4px solid var(--ghwp-success);
+}
+
+.ghwp-repo-card-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.ghwp-repo-name {
+	font-weight: 700;
+	font-size: 14px;
+	word-break: break-all;
+}
+
+.ghwp-repo-name a {
+	color: var(--ghwp-primary);
+	text-decoration: none;
+}
+
+.ghwp-repo-name a:hover {
+	text-decoration: underline;
+}
+
+.ghwp-private-badge, .ghwp-public-badge {
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 20px;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.ghwp-private-badge {
+	background: #fff8c5;
+	color: #7d4e00;
+	border: 1px solid #e3b341;
+}
+
+.ghwp-public-badge {
+	background: #dafbe1;
+	color: #116329;
+	border: 1px solid #4ac26b;
+}
+
+/* ---- Card badge group ---- */
+.ghwp-card-badges {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	flex-shrink: 0;
+}
+
+/* ---- Card type badge ---- */
+.ghwp-card-type-badge {
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 20px;
+	white-space: nowrap;
+	font-weight: 600;
+}
+
+.ghwp-card-type-plugin {
+	background: #ddf4ff;
+	color: #0550ae;
+	border: 1px solid #80ccff;
+}
+
+.ghwp-card-type-theme {
+	background: #fbefff;
+	color: #6639ba;
+	border: 1px solid #d2afff;
+}
+
+.ghwp-card-type-unknown {
+	background: #f6f8fa;
+	color: #57606a;
+	border: 1px solid #d0d7de;
+}
+
+.ghwp-card-type-detecting {
+	background: #f6f8fa;
+	border: 1px solid #d0d7de;
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 8px;
+}
+
+/* ---- Extra-small spinner for badges ---- */
+.ghwp-spinner-xs {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border: 2px solid rgba(0,0,0,.12);
+	border-top-color: #57606a;
+	border-radius: 50%;
+	animation: ghwp-spin .6s linear infinite;
+}
+
+.ghwp-repo-desc {
+	font-size: 12px;
+	color: #57606a;
+	line-height: 1.4;
+	flex: 1;
+}
+
+.ghwp-repo-meta {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: 12px;
+	color: #57606a;
+}
+
+.ghwp-repo-meta .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	vertical-align: middle;
+}
+
+.ghwp-repo-card-footer {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-top: 4px;
+}
+
+.ghwp-install-btn {
+	font-size: 12px !important;
+	padding: 2px 10px !important;
+	height: auto !important;
+}
+
+.ghwp-installed-tag {
+	font-size: 12px;
+	color: var(--ghwp-success);
+	font-weight: 600;
+}
+
+/* ---- Empty state ---- */
+.ghwp-empty {
+	color: #57606a;
+	font-style: italic;
+}
+
+/* ---- Installed table ---- */
+.ghwp-table th,
+.ghwp-table td {
+	vertical-align: middle;
+}
+
+.ghwp-type-badge {
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 20px;
+	font-weight: 600;
+}
+
+.ghwp-type-plugin {
+	background: #ddf4ff;
+	color: #0550ae;
+	border: 1px solid #80ccff;
+}
+
+.ghwp-type-theme {
+	background: #fbefff;
+	color: #6639ba;
+	border: 1px solid #d2afff;
+}
+
+.ghwp-branch-wrap {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.ghwp-branch-select {
+	max-width: 150px;
+	font-size: 12px;
+}
+
+/* ---- Modal ---- */
+.ghwp-modal {
+	position: fixed;
+	inset: 0;
+	background: rgba(0,0,0,.45);
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.ghwp-modal-inner {
+	background: #fff;
+	border-radius: var(--ghwp-radius);
+	box-shadow: 0 8px 32px rgba(0,0,0,.18);
+	padding: 28px 32px;
+	min-width: 340px;
+	max-width: 460px;
+	width: 100%;
+}
+
+.ghwp-modal-inner h3 {
+	margin-top: 0;
+}
+
+.ghwp-modal-inner label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+	margin-top: 14px;
+}
+
+.ghwp-modal-inner select {
+	width: 100%;
+	padding: 6px 8px;
+	border: 1px solid var(--ghwp-border);
+	border-radius: var(--ghwp-radius);
+}
+
+.ghwp-modal-actions {
+	display: flex;
+	gap: 10px;
+	margin-top: 20px;
+}
+
+/* ---- Loading spinner ---- */
+.ghwp-spinner {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 2px solid rgba(0,0,0,.15);
+	border-top-color: var(--ghwp-primary);
+	border-radius: 50%;
+	animation: ghwp-spin .6s linear infinite;
+	vertical-align: middle;
+	margin-right: 4px;
+}
+
+@keyframes ghwp-spin {
+	to { transform: rotate(360deg); }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+	.ghwp-settings-row {
+		flex-direction: column;
+	}
+	.ghwp-conn-status-wrap {
+		width: 100%;
+	}
+}
+
+@media (max-width: 782px) {
+	.ghwp-repo-list {
+		grid-template-columns: 1fr;
+	}
+	.ghwp-toolbar {
+		flex-wrap: wrap;
+	}
+}
