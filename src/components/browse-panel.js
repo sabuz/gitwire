@@ -12,6 +12,7 @@ import {
 	CardFooter,
 	SearchControl,
 } from '@wordpress/components';
+import { Badge } from '@wordpress/ui';
 
 import * as api from '../api';
 import InstallModal from './install-modal';
@@ -326,15 +327,13 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 								/>
 							</FlexItem>
 							<FlexItem>
-								<span
-									className={ `ghwp-visibility-badge ${
-										repo.private
-											? 'ghwp-private'
-											: 'ghwp-public'
-									}` }
+								<Badge
+									intent={
+										repo.private ? 'medium' : 'stable'
+									}
 								>
 									{ repo.private ? 'Private' : 'Public' }
-								</span>
+								</Badge>
 							</FlexItem>
 						</Flex>
 					</FlexItem>
@@ -424,31 +423,28 @@ function timeAgo( dateStr ) {
 function TypeBadge( { detection, installed } ) {
 	if ( installed ) {
 		const t = installed.type;
-		const cls = t === 'theme' ? 'ghwp-type-theme' : 'ghwp-type-plugin';
 		return (
-			<span className={ `ghwp-type-badge ${ cls }` }>
+			<Badge intent={ t === 'theme' ? 'none' : 'informational' }>
 				{ t === 'theme' ? 'Theme' : 'Plugin' }
-			</span>
+			</Badge>
 		);
 	}
 	if ( ! detection ) {
 		return (
-			<span className="ghwp-type-badge ghwp-type-detecting">
+			<span className="ghwp-type-detecting">
 				<Spinner /> Detecting…
 			</span>
 		);
 	}
 	const { type, subtype } = detection;
 	if ( type === 'plugin' ) {
-		return <span className="ghwp-type-badge ghwp-type-plugin">Plugin</span>;
+		return <Badge intent="informational">Plugin</Badge>;
 	}
 	if ( type === 'theme' && subtype === 'block' ) {
-		return (
-			<span className="ghwp-type-badge ghwp-type-theme">Block Theme</span>
-		);
+		return <Badge intent="none">Block Theme</Badge>;
 	}
 	if ( type === 'theme' ) {
-		return <span className="ghwp-type-badge ghwp-type-theme">Theme</span>;
+		return <Badge intent="none">Theme</Badge>;
 	}
-	return <span className="ghwp-type-badge ghwp-type-unknown">Unknown</span>;
+	return <Badge intent="draft">Unknown</Badge>;
 }

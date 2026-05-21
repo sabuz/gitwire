@@ -18,6 +18,7 @@
 		"@wordpress/element": "^6.46.0",
 		"@wordpress/eslint-plugin": "^22.0.0",
 		"@wordpress/scripts": "^32.2.0",
+		"@wordpress/ui": "^0.13.0",
 		"stylelint-order": "^6.0.0"
 	},
 	"dependencies": {

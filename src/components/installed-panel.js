@@ -9,6 +9,7 @@ import {
 	Flex,
 	Modal,
 } from '@wordpress/components';
+import { Badge } from '@wordpress/ui';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
@@ -64,11 +65,13 @@ export default function InstalledPanel( {
 				label: 'Type',
 				getValue: ( { item } ) => item.type,
 				render: ( { item } ) => (
-					<span
-						className={ `ghwp-type-badge ghwp-type-${ item.type }` }
+					<Badge
+						intent={
+							item.type === 'theme' ? 'none' : 'informational'
+						}
 					>
 						{ item.type === 'theme' ? 'Theme' : 'Plugin' }
-					</span>
+					</Badge>
 				),
 				enableSorting: true,
 			},
@@ -78,13 +81,9 @@ export default function InstalledPanel( {
 				getValue: ( { item } ) =>
 					item.active ? 'active' : 'inactive',
 				render: ( { item } ) => (
-					<span
-						className={ `ghwp-status-badge ghwp-status-badge--${
-							item.active ? 'active' : 'inactive'
-						}` }
-					>
+					<Badge intent={ item.active ? 'stable' : 'draft' }>
 						{ item.active ? 'Active' : 'Inactive' }
-					</span>
+					</Badge>
 				),
 				enableSorting: true,
 			},
@@ -92,6 +91,9 @@ export default function InstalledPanel( {
 				id: 'branch',
 				label: 'Branch',
 				getValue: ( { item } ) => item.branch,
+				render: ( { item } ) => (
+					<Badge intent="informational">{ item.branch }</Badge>
+				),
 				enableSorting: true,
 			},
 			{
