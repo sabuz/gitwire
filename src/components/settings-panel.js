@@ -417,12 +417,13 @@ function ConnectionStatus( { connection, testing } ) {
 						color: '#8c959f',
 					} }
 				>
-					<span
-						className="dashicons dashicons-randomize"
+					<img
+						alt=""
+						aria-hidden="true"
+						src={ window.GWP?.disconnected_url }
 						style={ {
-							fontSize: 32,
-							width: 'auto',
-							height: 'auto',
+							width: 32,
+							height: 32,
 							display: 'block',
 							margin: '0 auto 8px',
 							opacity: 0.35,

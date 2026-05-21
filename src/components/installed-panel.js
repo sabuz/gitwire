@@ -149,12 +149,13 @@ export default function InstalledPanel( {
 						color: '#8c959f',
 					} }
 				>
-					<span
-						className="dashicons dashicons-randomize"
+					<img
+						alt=""
+						aria-hidden="true"
+						src={ window.GWP?.disconnected_url }
 						style={ {
-							fontSize: 36,
-							width: 'auto',
-							height: 'auto',
+							width: 36,
+							height: 36,
 							display: 'block',
 							margin: '0 auto 12px',
 							opacity: 0.3,

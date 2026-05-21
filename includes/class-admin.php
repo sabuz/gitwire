@@ -77,7 +77,7 @@ class Admin {
 	 * @return void
 	 */
 	public static function add_menu(): void {
-		$menu_icon = 'dashicons-randomize';
+		$menu_icon = 'none';
 		$icon_path = GWP_DIR . 'assets/images/icon.svg';
 		if ( file_exists( $icon_path ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
@@ -193,10 +193,11 @@ class Admin {
 			'gwp-app',
 			'window.GWP = ' . wp_json_encode(
 				[
-					'nonce'       => wp_create_nonce( 'wp_rest' ),
-					'icon_url'    => GWP_URL . 'assets/images/icon.svg',
-					'initial_tab' => $initial_tab,
-					'settings'    => [
+					'nonce'            => wp_create_nonce( 'wp_rest' ),
+					'icon_url'         => GWP_URL . 'assets/images/icon.svg',
+					'disconnected_url' => GWP_URL . 'assets/images/disconnected.svg',
+					'initial_tab'      => $initial_tab,
+					'settings'         => [
 						'username'      => $settings['username'] ?? '',
 						'token'         => $settings['token'] ?? '',
 						'smart_install' => $settings['smart_install'] ?? true,
@@ -204,8 +205,8 @@ class Admin {
 						'gitlab_token'  => $settings['gitlab_token'] ?? '',
 						'gitlab_url'    => $settings['gitlab_url'] ?? '',
 					],
-					'connection'  => $connection ? $connection : null,
-					'installed'   => $installed ? $installed : (object) [],
+					'connection'       => $connection ? $connection : null,
+					'installed'        => $installed ? $installed : (object) [],
 				]
 			) . ';',
 			'before'
