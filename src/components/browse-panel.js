@@ -1,3 +1,4 @@
+import { __ } from '@wordpress/i18n';
 import { useState, useEffect, useRef, useCallback } from '@wordpress/element';
 import {
 	Button,
@@ -55,7 +56,9 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 			setPage( pageNum );
 			enqueueDetections( data.repos );
 		} catch ( e ) {
-			setError( e.message || 'Failed to load repositories.' );
+			setError(
+				e.message || __( 'Failed to load repositories.', 'ghwp' )
+			);
 		} finally {
 			setLoading( false );
 		}
@@ -138,17 +141,19 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 	);
 
 	const typeFilters = [
-		{ id: 'all', label: 'All' },
-		{ id: 'plugin', label: 'Plugin' },
-		{ id: 'theme', label: 'Theme' },
-		{ id: 'unknown', label: 'Unknown' },
+		{ id: 'all', label: __( 'All', 'ghwp' ) },
+		{ id: 'plugin', label: __( 'Plugin', 'ghwp' ) },
+		{ id: 'theme', label: __( 'Theme', 'ghwp' ) },
+		{ id: 'unknown', label: __( 'Unknown', 'ghwp' ) },
 	];
 
 	if ( ! settings?.username && ! settings?.token ) {
 		return (
 			<Notice isDismissible={ false } status="warning">
-				Configure your GitHub username in Settings before browsing
-				repositories.
+				{ __(
+					'Configure your GitHub username in Settings before browsing repositories.',
+					'ghwp'
+				) }
 			</Notice>
 		);
 	}
@@ -166,7 +171,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 					<SearchControl
 						__nextHasNoMarginBottom
 						onChange={ setSearch }
-						placeholder="Filter repositories…"
+						placeholder={ __( 'Filter repositories…', 'ghwp' ) }
 						value={ search }
 					/>
 				</FlexBlock>
@@ -178,7 +183,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 						variant="secondary"
 						onClick={ handleRefresh }
 					>
-						Refresh
+						{ __( 'Refresh', 'ghwp' ) }
 					</Button>
 				</FlexItem>
 			</Flex>
@@ -210,7 +215,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 				>
 					{ error }{ ' ' }
 					<Button variant="link" onClick={ handleRefresh }>
-						Retry
+						{ __( 'Retry', 'ghwp' ) }
 					</Button>
 				</Notice>
 			) }
@@ -225,10 +230,14 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 				<p style={ { color: '#57606a', marginTop: 8 } }>
 					{ search.trim() ? (
 						<>
-							No repositories match <strong>{ search }</strong>.
+							{ __( 'No repositories match', 'ghwp' ) }{ ' ' }
+							<strong>{ search }</strong>.
 						</>
 					) : (
-						'No repositories match the selected filter.'
+						__(
+							'No repositories match the selected filter.',
+							'ghwp'
+						)
 					) }
 				</p>
 			) }
@@ -260,7 +269,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 						variant="secondary"
 						onClick={ () => loadRepos( page + 1 ) }
 					>
-						Load more
+						{ __( 'Load more', 'ghwp' ) }
 					</Button>
 				</div>
 			) }
@@ -358,7 +367,7 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 					{ isInstalled ? (
 						<span className="ghwp-installed-chip">
 							<span className="dashicons dashicons-yes-alt" />
-							Installed
+							{ __( 'Installed', 'ghwp' ) }
 						</span>
 					) : (
 						<Button
@@ -367,13 +376,16 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 							size="compact"
 							title={
 								blockedBySmartInstall
-									? 'Smart Install is on — only verified WordPress plugins and themes can be installed.'
+									? __(
+											'Smart Install is on — only verified WordPress plugins and themes can be installed.',
+											'ghwp'
+									  )
 									: undefined
 							}
 							variant="primary"
 							onClick={ onInstall }
 						>
-							Install
+							{ __( 'Install', 'ghwp' ) }
 						</Button>
 					) }
 				</FlexItem>
@@ -425,26 +437,28 @@ function TypeBadge( { detection, installed } ) {
 		const t = installed.type;
 		return (
 			<Badge intent={ t === 'theme' ? 'none' : 'informational' }>
-				{ t === 'theme' ? 'Theme' : 'Plugin' }
+				{ t === 'theme'
+					? __( 'Theme', 'ghwp' )
+					: __( 'Plugin', 'ghwp' ) }
 			</Badge>
 		);
 	}
 	if ( ! detection ) {
 		return (
 			<span className="ghwp-type-detecting">
-				<Spinner /> Detecting…
+				<Spinner /> { __( 'Detecting…', 'ghwp' ) }
 			</span>
 		);
 	}
 	const { type, subtype } = detection;
 	if ( type === 'plugin' ) {
-		return <Badge intent="informational">Plugin</Badge>;
+		return <Badge intent="informational">{ __( 'Plugin', 'ghwp' ) }</Badge>;
 	}
 	if ( type === 'theme' && subtype === 'block' ) {
-		return <Badge intent="none">Block Theme</Badge>;
+		return <Badge intent="none">{ __( 'Block Theme', 'ghwp' ) }</Badge>;
 	}
 	if ( type === 'theme' ) {
-		return <Badge intent="none">Theme</Badge>;
+		return <Badge intent="none">{ __( 'Theme', 'ghwp' ) }</Badge>;
 	}
-	return <Badge intent="draft">Unknown</Badge>;
+	return <Badge intent="draft">{ __( 'Unknown', 'ghwp' ) }</Badge>;
 }

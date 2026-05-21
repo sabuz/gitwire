@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 
+import { __, sprintf } from '@wordpress/i18n';
 import { useState, useEffect, useMemo } from '@wordpress/element';
 import {
 	Button,
@@ -87,7 +88,7 @@ export default function InstallModal( {
 			onInstalled( result );
 			startCountdown();
 		} catch ( e ) {
-			toast.error( e.message || 'Installation failed.' );
+			toast.error( e.message || __( 'Installation failed.', 'ghwp' ) );
 			setInstalling( false );
 		}
 	};
@@ -113,7 +114,11 @@ export default function InstallModal( {
 			shouldCloseOnClickOutside={ ! installing }
 			shouldCloseOnEsc={ ! installing }
 			style={ { maxWidth: 480 } }
-			title={ `Install ${ repo.full_name }` }
+			title={ sprintf(
+				/* translators: %s: repository full name */
+				__( 'Install %s', 'ghwp' ),
+				repo.full_name
+			) }
 			onRequestClose={ installing ? undefined : onClose }
 		>
 			<DetectionBadge
@@ -124,10 +129,10 @@ export default function InstallModal( {
 			{ detection && detection.type === 'unknown' && ! smartInstall && (
 				<SelectControl
 					__nextHasNoMarginBottom
-					label="Install as"
+					label={ __( 'Install as', 'ghwp' ) }
 					options={ [
-						{ label: 'Plugin', value: 'plugin' },
-						{ label: 'Theme', value: 'theme' },
+						{ label: __( 'Plugin', 'ghwp' ), value: 'plugin' },
+						{ label: __( 'Theme', 'ghwp' ), value: 'theme' },
 					] }
 					style={ { marginTop: 16 } }
 					value={ type }
@@ -139,7 +144,7 @@ export default function InstallModal( {
 				<ComboboxControl
 					__nextHasNoMarginBottom
 					disabled={ installing }
-					label="Branch"
+					label={ __( 'Branch', 'ghwp' ) }
 					options={ branchOptions }
 					value={ branch }
 					onChange={ ( val ) => val && setBranch( val ) }
@@ -153,15 +158,21 @@ export default function InstallModal( {
 					status="success"
 					style={ { marginTop: 12 } }
 				>
-					Installation complete — opening Installed tab in{ ' ' }
-					<strong>{ countdown }</strong>
+					{ sprintf(
+						/* translators: %d: seconds remaining */
+						__(
+							'Installation complete — opening Installed tab in %d',
+							'ghwp'
+						),
+						countdown
+					) }
 				</Notice>
 			) }
 
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 20 } }>
 				{ ! installing && countdown === null && (
 					<Button variant="tertiary" onClick={ onClose }>
-						Cancel
+						{ __( 'Cancel', 'ghwp' ) }
 					</Button>
 				) }
 				<Button
@@ -172,7 +183,9 @@ export default function InstallModal( {
 					variant="primary"
 					onClick={ handleInstall }
 				>
-					{ installing ? 'Installing…' : 'Install' }
+					{ installing
+						? __( 'Installing…', 'ghwp' )
+						: __( 'Install', 'ghwp' ) }
 				</Button>
 			</Flex>
 		</Modal>
@@ -191,7 +204,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 	if ( ! detection ) {
 		return (
 			<div className="ghwp-detect-row ghwp-detect-loading">
-				<Spinner /> Detecting project type…
+				<Spinner /> { __( 'Detecting project type…', 'ghwp' ) }
 			</div>
 		);
 	}
@@ -203,23 +216,35 @@ function DetectionBadge( { detection, smartInstall } ) {
 		badgeClass = 'ghwp-detect-plugin';
 		label =
 			confidence === 'high'
-				? `WordPress Plugin${ name ? ` — ${ name }` : '' }`
-				: 'Likely a WordPress Plugin';
+				? sprintf(
+						/* translators: %s: plugin name */
+						__( 'WordPress Plugin%s', 'ghwp' ),
+						name ? ` — ${ name }` : ''
+				  )
+				: __( 'Likely a WordPress Plugin', 'ghwp' );
 	} else if ( type === 'theme' && subtype === 'block' ) {
 		badgeClass = 'ghwp-detect-theme';
 		label =
 			confidence === 'high'
-				? `Block Theme${ name ? ` — ${ name }` : '' }`
-				: 'Likely a Block Theme';
+				? sprintf(
+						/* translators: %s: theme name */
+						__( 'Block Theme%s', 'ghwp' ),
+						name ? ` — ${ name }` : ''
+				  )
+				: __( 'Likely a Block Theme', 'ghwp' );
 	} else if ( type === 'theme' ) {
 		badgeClass = 'ghwp-detect-theme';
 		label =
 			confidence === 'high'
-				? `Classic Theme${ name ? ` — ${ name }` : '' }`
-				: 'Likely a Classic Theme';
+				? sprintf(
+						/* translators: %s: theme name */
+						__( 'Classic Theme%s', 'ghwp' ),
+						name ? ` — ${ name }` : ''
+				  )
+				: __( 'Likely a Classic Theme', 'ghwp' );
 	} else {
 		badgeClass = 'ghwp-detect-unknown';
-		label = 'Not recognised as a WordPress project';
+		label = __( 'Not recognised as a WordPress project', 'ghwp' );
 	}
 
 	return (
@@ -229,14 +254,18 @@ function DetectionBadge( { detection, smartInstall } ) {
 			</span>
 			{ type === 'unknown' && smartInstall && (
 				<p className="ghwp-detect-note ghwp-detect-blocked">
-					Smart Install is enabled — only verified plugins and themes
-					can be installed. Disable it in Settings to override.
+					{ __(
+						'Smart Install is enabled — only verified plugins and themes can be installed. Disable it in Settings to override.',
+						'ghwp'
+					) }
 				</p>
 			) }
 			{ type === 'unknown' && ! smartInstall && (
 				<p className="ghwp-detect-note ghwp-detect-warn">
-					This repo was not recognised as a WordPress plugin or theme.
-					You can still install it — choose a type below.
+					{ __(
+						'This repo was not recognised as a WordPress plugin or theme. You can still install it — choose a type below.',
+						'ghwp'
+					) }
 				</p>
 			) }
 		</div>

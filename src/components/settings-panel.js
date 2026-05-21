@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 
+import { __, sprintf } from '@wordpress/i18n';
 import { useState } from '@wordpress/element';
 import {
 	Button,
@@ -51,7 +52,9 @@ export default function SettingsPanel( {
 			const result = await api.testConnection();
 			onConnectionUpdate( result );
 		} catch ( e ) {
-			onConnectionUpdate( { error: e.message || 'Connection failed.' } );
+			onConnectionUpdate( {
+				error: e.message || __( 'Connection failed.', 'ghwp' ),
+			} );
 		} finally {
 			setTesting( false );
 		}
@@ -59,7 +62,7 @@ export default function SettingsPanel( {
 
 	const handleSave = async () => {
 		if ( ! username.trim() ) {
-			toast.error( 'GitHub Username is required.' );
+			toast.error( __( 'GitHub Username is required.', 'ghwp' ) );
 			return;
 		}
 		setSaving( true );
@@ -70,10 +73,10 @@ export default function SettingsPanel( {
 				smart_install: smartInstall,
 			} );
 			onSave( { token, username, smart_install: smartInstall } );
-			toast.success( 'Settings saved.' );
+			toast.success( __( 'Settings saved.', 'ghwp' ) );
 			await runTest();
 		} catch ( e ) {
-			toast.error( e.message || 'Save failed.' );
+			toast.error( e.message || __( 'Save failed.', 'ghwp' ) );
 		} finally {
 			setSaving( false );
 		}
@@ -90,13 +93,18 @@ export default function SettingsPanel( {
 			<FlexBlock style={ { minWidth: 300, maxWidth: 540 } }>
 				<Card>
 					<CardHeader>
-						<Heading level={ 4 }>GitHub Connection</Heading>
+						<Heading level={ 4 }>
+							{ __( 'GitHub Connection', 'ghwp' ) }
+						</Heading>
 					</CardHeader>
 					<CardBody>
 						<TextControl
 							__nextHasNoMarginBottom
-							help="Your GitHub username or organization name."
-							label="GitHub Username"
+							help={ __(
+								'Your GitHub username or organization name.',
+								'ghwp'
+							) }
+							label={ __( 'GitHub Username', 'ghwp' ) }
 							placeholder="your-github-username"
 							value={ username }
 							onChange={ setUsername }
@@ -109,8 +117,10 @@ export default function SettingsPanel( {
 							autoComplete="new-password"
 							help={
 								<>
-									Required only for private repositories.
-									Create one at{ ' ' }
+									{ __(
+										'Required only for private repositories. Create one at',
+										'ghwp'
+									) }{ ' ' }
 									<a
 										href="https://github.com/settings/tokens/new"
 										rel="noopener noreferrer"
@@ -118,14 +128,18 @@ export default function SettingsPanel( {
 									>
 										github.com/settings/tokens
 									</a>{ ' ' }
-									with the <code>repo</code> scope.
+									{ sprintf(
+										/* translators: %s: code element showing "repo" */
+										__( 'with the %s scope.', 'ghwp' ),
+										'repo'
+									) }
 								</>
 							}
 							label={
 								<>
-									Personal Access Token{ ' ' }
+									{ __( 'Personal Access Token', 'ghwp' ) }{ ' ' }
 									<span className="ghwp-label-optional">
-										(Optional)
+										{ __( '(Optional)', 'ghwp' ) }
 									</span>
 								</>
 							}
@@ -141,12 +155,17 @@ export default function SettingsPanel( {
 							<ToggleControl
 								__nextHasNoMarginBottom
 								checked={ smartInstall }
-								help="Only allow installing repositories detected as a WordPress plugin or theme."
+								help={ __(
+									'Only allow installing repositories detected as a WordPress plugin or theme.',
+									'ghwp'
+								) }
 								label={
 									<>
-										<strong>Smart Install</strong>{ ' ' }
+										<strong>
+											{ __( 'Smart Install', 'ghwp' ) }
+										</strong>{ ' ' }
 										<span className="ghwp-badge-recommended">
-											Recommended
+											{ __( 'Recommended', 'ghwp' ) }
 										</span>
 									</>
 								}
@@ -163,7 +182,7 @@ export default function SettingsPanel( {
 								variant="primary"
 								onClick={ handleSave }
 							>
-								Save Settings
+								{ __( 'Save Settings', 'ghwp' ) }
 							</Button>
 							<Button
 								disabled={ saving || testing }
@@ -171,7 +190,7 @@ export default function SettingsPanel( {
 								variant="secondary"
 								onClick={ runTest }
 							>
-								Test Connection
+								{ __( 'Test Connection', 'ghwp' ) }
 							</Button>
 						</Flex>
 					</CardBody>
@@ -211,7 +230,7 @@ function ConnectionStatus( { connection, testing } ) {
 							fontSize: 13,
 						} }
 					>
-						Checking connection…
+						{ __( 'Checking connection…', 'ghwp' ) }
 					</p>
 				</CardBody>
 			</Card>
@@ -238,8 +257,10 @@ function ConnectionStatus( { connection, testing } ) {
 						} }
 					/>
 					<p style={ { margin: 0, fontSize: 12, lineHeight: 1.5 } }>
-						Save your settings and click &quot;Test Connection&quot;
-						to verify.
+						{ __(
+							'Save your settings and click "Test Connection" to verify.',
+							'ghwp'
+						) }
 					</p>
 				</CardBody>
 			</Card>
@@ -279,14 +300,20 @@ function ConnectionStatus( { connection, testing } ) {
 		barColor = '#e3b341';
 	}
 
-	let rateNote = 'Resets in about an hour.';
+	let rateNote = __( 'Resets in about an hour.', 'ghwp' );
 	if ( rate_limit === 60 ) {
-		rateNote =
-			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.";
+		rateNote = __(
+			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.",
+			'ghwp'
+		);
 	} else if ( rate_reset ) {
 		const countdown = humanDiff( rate_reset );
 		if ( countdown ) {
-			rateNote = `Resets in ${ countdown }.`;
+			rateNote = sprintf(
+				/* translators: %s: time until reset (e.g. "5m 30s") */
+				__( 'Resets in %s.', 'ghwp' ),
+				countdown
+			);
 		}
 	}
 
@@ -314,7 +341,7 @@ function ConnectionStatus( { connection, testing } ) {
 						</div>
 						<span className="ghwp-conn-badge ghwp-conn-badge--ok">
 							<span className="dashicons dashicons-yes-alt" />
-							Authenticated
+							{ __( 'Authenticated', 'ghwp' ) }
 						</span>
 					</div>
 				) }
@@ -323,7 +350,7 @@ function ConnectionStatus( { connection, testing } ) {
 					<div style={ { textAlign: 'center', marginBottom: 14 } }>
 						<span className="ghwp-conn-badge ghwp-conn-badge--warn">
 							<span className="dashicons dashicons-warning" />
-							No token — public only
+							{ __( 'No token — public only', 'ghwp' ) }
 						</span>
 					</div>
 				) }
@@ -332,7 +359,9 @@ function ConnectionStatus( { connection, testing } ) {
 
 				<div style={ { fontSize: 12 } }>
 					<Flex justify="space-between" style={ { marginBottom: 6 } }>
-						<span style={ { color: '#24292f' } }>API Usage</span>
+						<span style={ { color: '#24292f' } }>
+							{ __( 'API Usage', 'ghwp' ) }
+						</span>
 						<strong>
 							{ rate_remaining?.toLocaleString() } /{ ' ' }
 							{ rate_limit?.toLocaleString() }
@@ -350,7 +379,11 @@ function ConnectionStatus( { connection, testing } ) {
 					<p className="ghwp-rate-note">{ rateNote }</p>
 					{ checked_at && (
 						<p className="ghwp-rate-note ghwp-rate-note--checked">
-							Last checked { unixTimeAgo( checked_at ) }
+							{ sprintf(
+								/* translators: %s: relative time (e.g. "5m ago") */
+								__( 'Last checked %s', 'ghwp' ),
+								unixTimeAgo( checked_at )
+							) }
 						</p>
 					) }
 				</div>

@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 
+import { __, sprintf } from '@wordpress/i18n';
 import { useState, useEffect, useMemo } from '@wordpress/element';
 import {
 	Button,
@@ -54,7 +55,7 @@ export default function InstalledPanel( {
 		() => [
 			{
 				id: 'name',
-				label: 'Repository',
+				label: __( 'Repository', 'ghwp' ),
 				getValue: ( { item } ) => item.full_name,
 				render: ( { item } ) => <strong>{ item.full_name }</strong>,
 				enableSorting: true,
@@ -62,7 +63,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'type',
-				label: 'Type',
+				label: __( 'Type', 'ghwp' ),
 				getValue: ( { item } ) => item.type,
 				render: ( { item } ) => (
 					<Badge
@@ -70,26 +71,30 @@ export default function InstalledPanel( {
 							item.type === 'theme' ? 'none' : 'informational'
 						}
 					>
-						{ item.type === 'theme' ? 'Theme' : 'Plugin' }
+						{ item.type === 'theme'
+							? __( 'Theme', 'ghwp' )
+							: __( 'Plugin', 'ghwp' ) }
 					</Badge>
 				),
 				enableSorting: true,
 			},
 			{
 				id: 'status',
-				label: 'Status',
+				label: __( 'Status', 'ghwp' ),
 				getValue: ( { item } ) =>
 					item.active ? 'active' : 'inactive',
 				render: ( { item } ) => (
 					<Badge intent={ item.active ? 'stable' : 'draft' }>
-						{ item.active ? 'Active' : 'Inactive' }
+						{ item.active
+							? __( 'Active', 'ghwp' )
+							: __( 'Inactive', 'ghwp' ) }
 					</Badge>
 				),
 				enableSorting: true,
 			},
 			{
 				id: 'branch',
-				label: 'Branch',
+				label: __( 'Branch', 'ghwp' ),
 				getValue: ( { item } ) => item.branch,
 				render: ( { item } ) => (
 					<Badge intent="informational">{ item.branch }</Badge>
@@ -98,7 +103,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'last_updated',
-				label: 'Last Updated',
+				label: __( 'Last Updated', 'ghwp' ),
 				getValue: ( { item } ) => item.updated_at ?? 0,
 				render: ( { item } ) => (
 					<span style={ { fontSize: 12, color: '#57606a' } }>
@@ -156,22 +161,28 @@ export default function InstalledPanel( {
 					{ isConfigured ? (
 						<>
 							<p style={ { margin: '0 0 12px' } }>
-								No repositories installed yet.
+								{ __(
+									'No repositories installed yet.',
+									'ghwp'
+								) }
 							</p>
 							<Button variant="primary" onClick={ onGoToBrowse }>
-								Browse GitHub to install one
+								{ __( 'Browse GitHub to install one', 'ghwp' ) }
 							</Button>
 						</>
 					) : (
 						<>
 							<p style={ { margin: '0 0 12px' } }>
-								Connect your GitHub account to get started.
+								{ __(
+									'Connect your GitHub account to get started.',
+									'ghwp'
+								) }
 							</p>
 							<Button
 								variant="primary"
 								onClick={ onGoToSettings }
 							>
-								Set up GitHub connection
+								{ __( 'Set up GitHub connection', 'ghwp' ) }
 							</Button>
 						</>
 					) }
@@ -218,10 +229,16 @@ function RowActions( { item, onRefresh } ) {
 		setUpdating( true );
 		try {
 			await api.switchBranch( owner, repo, branch );
-			toast.success( `${ full_name }: updated to latest commit.` );
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( '%s: updated to latest commit.', 'ghwp' ),
+					full_name
+				)
+			);
 			onRefresh();
 		} catch ( e ) {
-			toast.error( e.message || 'Update failed.' );
+			toast.error( e.message || __( 'Update failed.', 'ghwp' ) );
 		} finally {
 			setUpdating( false );
 		}
@@ -231,10 +248,16 @@ function RowActions( { item, onRefresh } ) {
 		setActivating( true );
 		try {
 			await api.activateInstalled( owner, repo );
-			toast.success( `${ full_name } activated.` );
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( '%s activated.', 'ghwp' ),
+					full_name
+				)
+			);
 			onRefresh();
 		} catch ( e ) {
-			toast.error( e.message || 'Activation failed.' );
+			toast.error( e.message || __( 'Activation failed.', 'ghwp' ) );
 		} finally {
 			setActivating( false );
 		}
@@ -244,10 +267,16 @@ function RowActions( { item, onRefresh } ) {
 		setDeactivating( true );
 		try {
 			await api.deactivateInstalled( owner, repo );
-			toast.success( `${ full_name } deactivated.` );
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( '%s deactivated.', 'ghwp' ),
+					full_name
+				)
+			);
 			onRefresh();
 		} catch ( e ) {
-			toast.error( e.message || 'Deactivation failed.' );
+			toast.error( e.message || __( 'Deactivation failed.', 'ghwp' ) );
 		} finally {
 			setDeactivating( false );
 		}
@@ -262,7 +291,9 @@ function RowActions( { item, onRefresh } ) {
 				variant="secondary"
 				onClick={ handleUpdate }
 			>
-				{ updating ? 'Updating…' : 'Pull latest' }
+				{ updating
+					? __( 'Updating…', 'ghwp' )
+					: __( 'Pull latest', 'ghwp' ) }
 			</Button>
 
 			<Button
@@ -271,7 +302,7 @@ function RowActions( { item, onRefresh } ) {
 				variant="secondary"
 				onClick={ () => setSwitchOpen( true ) }
 			>
-				Switch branch
+				{ __( 'Switch branch', 'ghwp' ) }
 			</Button>
 
 			{ ! active && (
@@ -282,7 +313,9 @@ function RowActions( { item, onRefresh } ) {
 					variant="secondary"
 					onClick={ handleActivate }
 				>
-					{ activating ? 'Activating…' : 'Activate' }
+					{ activating
+						? __( 'Activating…', 'ghwp' )
+						: __( 'Activate', 'ghwp' ) }
 				</Button>
 			) }
 
@@ -294,7 +327,9 @@ function RowActions( { item, onRefresh } ) {
 					variant="secondary"
 					onClick={ handleDeactivate }
 				>
-					{ deactivating ? 'Deactivating…' : 'Deactivate' }
+					{ deactivating
+						? __( 'Deactivating…', 'ghwp' )
+						: __( 'Deactivate', 'ghwp' ) }
 				</Button>
 			) }
 
@@ -306,7 +341,7 @@ function RowActions( { item, onRefresh } ) {
 					variant="secondary"
 					onClick={ () => setDeleteOpen( true ) }
 				>
-					Delete
+					{ __( 'Delete', 'ghwp' ) }
 				</Button>
 			) }
 
@@ -315,7 +350,13 @@ function RowActions( { item, onRefresh } ) {
 					item={ item }
 					onClose={ () => setSwitchOpen( false ) }
 					onSwitched={ ( newBranch ) => {
-						toast.success( `Switched to ${ newBranch }.` );
+						toast.success(
+							sprintf(
+								/* translators: %s: branch name */
+								__( 'Switched to %s.', 'ghwp' ),
+								newBranch
+							)
+						);
 						onRefresh();
 					} }
 					onError={ ( msg ) => toast.error( msg ) }
@@ -327,7 +368,13 @@ function RowActions( { item, onRefresh } ) {
 					item={ item }
 					onClose={ () => setDeleteOpen( false ) }
 					onDeleted={ () => {
-						toast.success( `${ full_name } deleted.` );
+						toast.success(
+							sprintf(
+								/* translators: %s: repository full name */
+								__( '%s deleted.', 'ghwp' ),
+								full_name
+							)
+						);
 						onRefresh();
 					} }
 					onError={ ( msg ) => toast.error( msg ) }
@@ -397,12 +444,16 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 
 	return (
 		<Modal
-			title={ `Switch branch — ${ item.repo }` }
+			title={ sprintf(
+				/* translators: %s: repository name */
+				__( 'Switch branch — %s', 'ghwp' ),
+				item.repo
+			) }
 			onRequestClose={ onClose }
 		>
 			<ComboboxControl
 				__nextHasNoMarginBottom
-				label="Branch"
+				label={ __( 'Branch', 'ghwp' ) }
 				options={ branchOptions }
 				value={ selectedBranch }
 				onChange={ ( val ) => val && setSelectedBranch( val ) }
@@ -410,14 +461,16 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 			/>
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
 				<Button variant="tertiary" onClick={ onClose }>
-					Cancel
+					{ __( 'Cancel', 'ghwp' ) }
 				</Button>
 				<Button
 					isBusy={ switching }
 					variant="primary"
 					onClick={ handleSwitch }
 				>
-					{ switching ? 'Switching…' : 'Switch' }
+					{ switching
+						? __( 'Switching…', 'ghwp' )
+						: __( 'Switch', 'ghwp' ) }
 				</Button>
 			</Flex>
 		</Modal>
@@ -456,16 +509,26 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 
 	return (
 		<Modal
-			title={ `Delete ${ item.full_name }?` }
+			title={ sprintf(
+				/* translators: %s: repository full name */
+				__( 'Delete %s?', 'ghwp' ),
+				item.full_name
+			) }
 			onRequestClose={ onClose }
 		>
 			<p>
-				Permanently delete <strong>{ item.full_name }</strong>? This
-				will remove all files from the server and cannot be undone.
+				{ sprintf(
+					/* translators: %s: repository full name */
+					__(
+						'Permanently delete %s? This will remove all files from the server and cannot be undone.',
+						'ghwp'
+					),
+					item.full_name
+				) }
 			</p>
 			<Flex gap={ 3 } justify="flex-end">
 				<Button variant="tertiary" onClick={ onClose }>
-					Cancel
+					{ __( 'Cancel', 'ghwp' ) }
 				</Button>
 				<Button
 					isDestructive
@@ -473,7 +536,9 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 					variant="primary"
 					onClick={ handleDelete }
 				>
-					{ deleting ? 'Deleting…' : 'Delete' }
+					{ deleting
+						? __( 'Deleting…', 'ghwp' )
+						: __( 'Delete', 'ghwp' ) }
 				</Button>
 			</Flex>
 		</Modal>

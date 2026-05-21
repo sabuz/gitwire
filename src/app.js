@@ -1,5 +1,6 @@
 import { Toaster } from 'sonner';
 
+import { __ } from '@wordpress/i18n';
 import { useState, useEffect, useCallback } from '@wordpress/element';
 import { Spinner } from '@wordpress/components';
 
@@ -9,9 +10,9 @@ import InstalledPanel from './components/installed-panel';
 import SettingsPanel from './components/settings-panel';
 
 const TABS = [
-	{ name: 'installed', label: 'Installed' },
-	{ name: 'browse', label: 'Browse GitHub' },
-	{ name: 'settings', label: 'Settings' },
+	{ name: 'installed', label: __( 'Installed', 'ghwp' ) },
+	{ name: 'browse', label: __( 'Browse GitHub', 'ghwp' ) },
+	{ name: 'settings', label: __( 'Settings', 'ghwp' ) },
 ];
 
 /**
@@ -181,9 +182,14 @@ export default function App( { initialData } ) {
 		<div className="ghwp-page">
 			<Toaster richColors position="top-right" />
 			<div className="ghwp-page-header">
-				<h1 className="ghwp-page-title">GitHub for WordPress</h1>
+				<h1 className="ghwp-page-title">
+					{ __( 'GitHub for WordPress', 'ghwp' ) }
+				</h1>
 
-				<nav aria-label="Plugin navigation" className="ghwp-page-nav">
+				<nav
+					aria-label={ __( 'Plugin navigation', 'ghwp' ) }
+					className="ghwp-page-nav"
+				>
 					{ TABS.map( ( tab ) => (
 						<a
 							key={ tab.name }

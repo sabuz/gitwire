@@ -155,6 +155,8 @@ class Admin {
 			true
 		);
 
+		wp_set_script_translations( 'ghwp-app', 'ghwp', GHWP_DIR . 'languages' );
+
 		$settings         = (array) get_option( 'ghwp_settings', [] );
 		$connection       = get_option( 'ghwp_connection_cache', null );
 		$installed        = REST::get_installed();
