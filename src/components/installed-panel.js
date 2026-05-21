@@ -264,7 +264,7 @@ function RowActions( { item, onRefresh } ) {
 					disabled={ busy }
 					isBusy={ deactivating }
 					size="compact"
-					variant="tertiary"
+					variant="secondary"
 					onClick={ handleDeactivate }
 				>
 					{ deactivating ? 'Deactivating…' : 'Deactivate' }
