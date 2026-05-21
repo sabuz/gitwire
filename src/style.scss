@@ -4,6 +4,8 @@
 .dataviews {
 
 	&-wrapper {
+		max-width: 1600px;
+		margin: 0 auto;
 		border: 1px solid #e0e0e0;
 	}
 
@@ -446,6 +448,12 @@ body.ghwp-admin-page {
 		}
 	}
 }
+
+// Installed panel — row action buttons rendered inside the DataViews table cell
+.ghwp-installed-panel .dataviews-view-table tbody td {
+	vertical-align: middle;
+}
+
 
 // Detection badge (inside modal)
 .ghwp-detect {

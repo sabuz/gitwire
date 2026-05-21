@@ -5,6 +5,7 @@ import {
 	CardBody,
 	ComboboxControl,
 	Flex,
+	Modal,
 	Notice,
 } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
@@ -16,7 +17,7 @@ const DEFAULT_VIEW = {
 	search: '',
 	page: 1,
 	perPage: 10,
-	fields: [ 'name', 'type', 'status', 'branch' ],
+	fields: [ 'name', 'type', 'status', 'branch', 'actions' ],
 	sort: { field: 'name', direction: 'asc' },
 };
 
@@ -87,120 +88,19 @@ export default function InstalledPanel( {
 				getValue: ( { item } ) => item.branch,
 				enableSorting: true,
 			},
-		],
-		[]
-	);
-
-	const actions = useMemo(
-		() => [
 			{
-				id: 'pull_latest',
-				isPrimary: true,
-				label: 'Pull latest',
-				callback: async ( [ item ] ) => {
-					setNotice( null );
-					try {
-						await api.switchBranch(
-							item.owner,
-							item.repo,
-							item.branch
-						);
-						setNotice( {
-							status: 'success',
-							message: `${ item.full_name }: updated to latest commit.`,
-						} );
-						onRefresh();
-					} catch ( e ) {
-						setNotice( {
-							status: 'error',
-							message: e.message || 'Update failed.',
-						} );
-					}
-				},
-			},
-			{
-				id: 'switch_branch',
-				label: 'Switch branch',
-				RenderModal: ( { items, closeModal } ) => (
-					<BranchSwitcherModal
-						item={ items[ 0 ] }
-						onClose={ closeModal }
-						onSwitched={ ( newBranch ) => {
-							setNotice( {
-								status: 'success',
-								message: `Switched to ${ newBranch }.`,
-							} );
-							onRefresh();
-						} }
-						onError={ ( msg ) =>
-							setNotice( { status: 'error', message: msg } )
-						}
+				id: 'actions',
+				label: '',
+				getValue: () => '',
+				render: ( { item } ) => (
+					<RowActions
+						item={ item }
+						onRefresh={ onRefresh }
+						onNotice={ setNotice }
 					/>
 				),
-			},
-			{
-				id: 'activate',
-				label: 'Activate',
-				isEligible: ( item ) => ! item.active,
-				callback: async ( [ item ] ) => {
-					setNotice( null );
-					try {
-						await api.activateInstalled( item.owner, item.repo );
-						setNotice( {
-							status: 'success',
-							message: `${ item.full_name } activated.`,
-						} );
-						onRefresh();
-					} catch ( e ) {
-						setNotice( {
-							status: 'error',
-							message: e.message || 'Activation failed.',
-						} );
-					}
-				},
-			},
-			{
-				id: 'deactivate',
-				label: 'Deactivate',
-				isEligible: ( item ) => item.active && item.type === 'plugin',
-				callback: async ( [ item ] ) => {
-					setNotice( null );
-					try {
-						await api.deactivateInstalled( item.owner, item.repo );
-						setNotice( {
-							status: 'success',
-							message: `${ item.full_name } deactivated.`,
-						} );
-						onRefresh();
-					} catch ( e ) {
-						setNotice( {
-							status: 'error',
-							message: e.message || 'Deactivation failed.',
-						} );
-					}
-				},
-			},
-			{
-				id: 'delete',
-				isDestructive: true,
-				isEligible: ( item ) => ! item.active,
-				label: 'Delete',
-				RenderModal: ( { items, closeModal } ) => (
-					<DeleteConfirmModal
-						item={ items[ 0 ] }
-						closeModal={ closeModal }
-						onDeleted={ () => {
-							setNotice( {
-								status: 'success',
-								message: `${ items[ 0 ].full_name } deleted.`,
-							} );
-							onRefresh();
-						} }
-						onError={ ( msg ) =>
-							setNotice( { status: 'error', message: msg } )
-						}
-					/>
-				),
+				enableSorting: false,
+				enableHiding: false,
 			},
 		],
 		[ onRefresh ]
@@ -271,7 +171,6 @@ export default function InstalledPanel( {
 				</div>
 			) }
 			<DataViews
-				actions={ actions }
 				data={ shownData }
 				defaultLayouts={ { table: {} } }
 				fields={ fields }
@@ -285,14 +184,188 @@ export default function InstalledPanel( {
 }
 
 /**
- * Modal body for switching the active branch of an installed repository.
+ * Inline action buttons rendered inside each DataViews table row.
+ *
+ * @param {Object}   props           Component props.
+ * @param {Object}   props.item      Installed repository record.
+ * @param {Function} props.onRefresh Callback to refresh the installed list.
+ * @param {Function} props.onNotice  Callback to set a panel-level notice.
+ * @return {JSX.Element} The rendered row actions.
+ */
+function RowActions( { item, onRefresh, onNotice } ) {
+	const { full_name, owner, repo, type, branch, active } = item;
+
+	const [ updating, setUpdating ] = useState( false );
+	const [ activating, setActivating ] = useState( false );
+	const [ deactivating, setDeactivating ] = useState( false );
+	const [ switchOpen, setSwitchOpen ] = useState( false );
+	const [ deleteOpen, setDeleteOpen ] = useState( false );
+
+	const busy = updating || activating || deactivating;
+
+	const handleUpdate = async () => {
+		setUpdating( true );
+		onNotice( null );
+		try {
+			await api.switchBranch( owner, repo, branch );
+			onNotice( {
+				status: 'success',
+				message: `${ full_name }: updated to latest commit.`,
+			} );
+			onRefresh();
+		} catch ( e ) {
+			onNotice( {
+				status: 'error',
+				message: e.message || 'Update failed.',
+			} );
+		} finally {
+			setUpdating( false );
+		}
+	};
+
+	const handleActivate = async () => {
+		setActivating( true );
+		onNotice( null );
+		try {
+			await api.activateInstalled( owner, repo );
+			onNotice( {
+				status: 'success',
+				message: `${ full_name } activated.`,
+			} );
+			onRefresh();
+		} catch ( e ) {
+			onNotice( {
+				status: 'error',
+				message: e.message || 'Activation failed.',
+			} );
+		} finally {
+			setActivating( false );
+		}
+	};
+
+	const handleDeactivate = async () => {
+		setDeactivating( true );
+		onNotice( null );
+		try {
+			await api.deactivateInstalled( owner, repo );
+			onNotice( {
+				status: 'success',
+				message: `${ full_name } deactivated.`,
+			} );
+			onRefresh();
+		} catch ( e ) {
+			onNotice( {
+				status: 'error',
+				message: e.message || 'Deactivation failed.',
+			} );
+		} finally {
+			setDeactivating( false );
+		}
+	};
+
+	return (
+		<Flex gap={ 2 } justify="flex-start" wrap>
+			<Button
+				disabled={ busy }
+				isBusy={ updating }
+				size="compact"
+				variant="secondary"
+				onClick={ handleUpdate }
+			>
+				{ updating ? 'Updating…' : 'Pull latest' }
+			</Button>
+
+			<Button
+				disabled={ busy }
+				size="compact"
+				variant="secondary"
+				onClick={ () => setSwitchOpen( true ) }
+			>
+				Switch branch
+			</Button>
+
+			{ ! active && (
+				<Button
+					disabled={ busy }
+					isBusy={ activating }
+					size="compact"
+					variant="secondary"
+					onClick={ handleActivate }
+				>
+					{ activating ? 'Activating…' : 'Activate' }
+				</Button>
+			) }
+
+			{ active && type === 'plugin' && (
+				<Button
+					disabled={ busy }
+					isBusy={ deactivating }
+					size="compact"
+					variant="tertiary"
+					onClick={ handleDeactivate }
+				>
+					{ deactivating ? 'Deactivating…' : 'Deactivate' }
+				</Button>
+			) }
+
+			{ ! active && (
+				<Button
+					disabled={ busy }
+					isDestructive
+					size="compact"
+					variant="secondary"
+					onClick={ () => setDeleteOpen( true ) }
+				>
+					Delete
+				</Button>
+			) }
+
+			{ switchOpen && (
+				<BranchSwitcherModal
+					item={ item }
+					onClose={ () => setSwitchOpen( false ) }
+					onSwitched={ ( newBranch ) => {
+						onNotice( {
+							status: 'success',
+							message: `Switched to ${ newBranch }.`,
+						} );
+						onRefresh();
+					} }
+					onError={ ( msg ) =>
+						onNotice( { status: 'error', message: msg } )
+					}
+				/>
+			) }
+
+			{ deleteOpen && (
+				<DeleteConfirmModal
+					item={ item }
+					onClose={ () => setDeleteOpen( false ) }
+					onDeleted={ () => {
+						onNotice( {
+							status: 'success',
+							message: `${ full_name } deleted.`,
+						} );
+						onRefresh();
+					} }
+					onError={ ( msg ) =>
+						onNotice( { status: 'error', message: msg } )
+					}
+				/>
+			) }
+		</Flex>
+	);
+}
+
+/**
+ * Modal for switching the active branch of an installed repository.
  *
  * @param {Object}   props            Component props.
  * @param {Object}   props.item       Installed repository record.
  * @param {Function} props.onClose    Callback to close the modal.
  * @param {Function} props.onSwitched Callback fired with the new branch name on success.
  * @param {Function} props.onError    Callback fired with an error message on failure.
- * @return {JSX.Element} The rendered branch switcher modal body.
+ * @return {JSX.Element} The rendered modal.
  */
 function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 	const { owner, repo, branch } = item;
@@ -343,7 +416,10 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 	};
 
 	return (
-		<>
+		<Modal
+			title={ `Switch branch — ${ item.repo }` }
+			onRequestClose={ onClose }
+		>
 			<ComboboxControl
 				__nextHasNoMarginBottom
 				label="Branch"
@@ -364,21 +440,21 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 					{ switching ? 'Switching…' : 'Switch' }
 				</Button>
 			</Flex>
-		</>
+		</Modal>
 	);
 }
 
 /**
- * Modal body confirming permanent deletion of an installed repository.
+ * Confirmation modal for permanently deleting an installed repository.
  *
- * @param {Object}   props            Component props.
- * @param {Object}   props.item       Installed repository record.
- * @param {Function} props.closeModal Callback to close the modal.
- * @param {Function} props.onDeleted  Callback fired after successful deletion.
- * @param {Function} props.onError    Callback fired with an error message on failure.
- * @return {JSX.Element} The rendered delete confirmation modal body.
+ * @param {Object}   props           Component props.
+ * @param {Object}   props.item      Installed repository record.
+ * @param {Function} props.onClose   Callback to close the modal.
+ * @param {Function} props.onDeleted Callback fired after successful deletion.
+ * @param {Function} props.onError   Callback fired with an error message on failure.
+ * @return {JSX.Element} The rendered modal.
  */
-function DeleteConfirmModal( { item, closeModal, onDeleted, onError } ) {
+function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 	const [ deleting, setDeleting ] = useState( false );
 
 	const handleDelete = async () => {
@@ -392,20 +468,23 @@ function DeleteConfirmModal( { item, closeModal, onDeleted, onError } ) {
 		if ( errorMsg ) {
 			setDeleting( false );
 			onError( errorMsg );
+			onClose();
 		} else {
 			onDeleted();
 		}
-		closeModal();
 	};
 
 	return (
-		<>
+		<Modal
+			title={ `Delete ${ item.full_name }?` }
+			onRequestClose={ onClose }
+		>
 			<p>
 				Permanently delete <strong>{ item.full_name }</strong>? This
 				will remove all files from the server and cannot be undone.
 			</p>
 			<Flex gap={ 3 } justify="flex-end">
-				<Button variant="tertiary" onClick={ closeModal }>
+				<Button variant="tertiary" onClick={ onClose }>
 					Cancel
 				</Button>
 				<Button
@@ -417,6 +496,6 @@ function DeleteConfirmModal( { item, closeModal, onDeleted, onError } ) {
 					{ deleting ? 'Deleting…' : 'Delete' }
 				</Button>
 			</Flex>
-		</>
+		</Modal>
 	);
 }
