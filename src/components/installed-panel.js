@@ -18,8 +18,13 @@ const DEFAULT_VIEW = {
 	search: '',
 	page: 1,
 	perPage: 10,
-	fields: [ 'name', 'type', 'status', 'branch', 'actions' ],
+	fields: [ 'name', 'type', 'status', 'branch', 'last_updated', 'actions' ],
 	sort: { field: 'name', direction: 'asc' },
+	layout: {
+		styles: {
+			name: { minWidth: 220 },
+		},
+	},
 };
 
 /**
@@ -50,6 +55,7 @@ export default function InstalledPanel( {
 				id: 'name',
 				label: 'Repository',
 				getValue: ( { item } ) => item.full_name,
+				render: ( { item } ) => <strong>{ item.full_name }</strong>,
 				enableSorting: true,
 				enableGlobalSearch: true,
 			},
@@ -86,6 +92,25 @@ export default function InstalledPanel( {
 				id: 'branch',
 				label: 'Branch',
 				getValue: ( { item } ) => item.branch,
+				enableSorting: true,
+			},
+			{
+				id: 'last_updated',
+				label: 'Last Updated',
+				getValue: ( { item } ) => item.updated_at ?? 0,
+				render: ( { item } ) => (
+					<span style={ { fontSize: 12, color: '#57606a' } }>
+						{ item.updated_at
+							? new Date(
+									item.updated_at * 1000
+							  ).toLocaleDateString( undefined, {
+									year: 'numeric',
+									month: 'short',
+									day: 'numeric',
+							  } )
+							: '—' }
+					</span>
+				),
 				enableSorting: true,
 			},
 			{
