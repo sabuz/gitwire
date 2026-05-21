@@ -1,6 +1,7 @@
-import { useState, useEffect } from '@wordpress/element';
+import { useState, useEffect, useMemo } from '@wordpress/element';
 import {
 	Button,
+	ComboboxControl,
 	Flex,
 	Modal,
 	Notice,
@@ -26,20 +27,36 @@ export default function InstallModal( {
 	onClose,
 	onInstalled,
 } ) {
-	const [ branches, setBranches ] = useState( [] );
+	const [ allBranches, setAllBranches ] = useState( [] );
 	const [ branch, setBranch ] = useState( repo.default_branch || 'main' );
+	const [ branchFilter, setBranchFilter ] = useState( '' );
 	const [ detection, setDetection ] = useState( null );
 	const [ type, setType ] = useState( 'plugin' );
 	const [ installing, setInstalling ] = useState( false );
 	const [ notice, setNotice ] = useState( null );
 	const [ countdown, setCountdown ] = useState( null );
 
+	// Filter all fetched branches by the current search term, show at most 10.
+	// Always keep the selected branch visible when no search is active.
+	const branchOptions = useMemo( () => {
+		const filter = branchFilter.toLowerCase();
+		const defaultBranch = repo.default_branch || 'main';
+		const source = allBranches.length ? allBranches : [ defaultBranch ];
+		const filtered = filter
+			? source.filter( ( b ) => b.toLowerCase().includes( filter ) )
+			: source;
+		const top = filtered.slice( 0, 10 );
+		if ( ! filter && branch && ! top.includes( branch ) ) {
+			top.unshift( branch );
+			top.splice( 10 );
+		}
+		return top.map( ( b ) => ( { label: b, value: b } ) );
+	}, [ allBranches, branchFilter, branch, repo.default_branch ] );
+
 	// Fetch branches and detect repo type in parallel on open.
 	useEffect( () => {
 		api.getBranches( repo.owner, repo.name )
-			.then( ( b ) =>
-				setBranches( b.map( ( n ) => ( { label: n, value: n } ) ) )
-			)
+			.then( ( b ) => setAllBranches( b ) )
 			.catch( () => {} );
 
 		api.detectRepo( repo.owner, repo.name, repo.default_branch )
@@ -122,22 +139,14 @@ export default function InstallModal( {
 			) }
 
 			<div style={ { marginTop: 16 } }>
-				<SelectControl
+				<ComboboxControl
 					__nextHasNoMarginBottom
 					disabled={ installing }
 					label="Branch"
-					options={
-						branches.length
-							? branches
-							: [
-									{
-										label: repo.default_branch || 'main',
-										value: repo.default_branch || 'main',
-									},
-							  ]
-					}
+					options={ branchOptions }
 					value={ branch }
-					onChange={ setBranch }
+					onChange={ ( val ) => val && setBranch( val ) }
+					onFilterValueChange={ setBranchFilter }
 				/>
 			</div>
 

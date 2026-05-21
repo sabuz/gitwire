@@ -1,3 +1,39 @@
+@use "@wordpress/dataviews/build-style/style.css";
+
+// DataViews table overrides
+.dataviews {
+
+	&-wrapper {
+		border: 1px solid #e0e0e0;
+	}
+
+	&__view-actions {
+		align-items: center !important;
+		padding: 20px 16px 16px;
+	}
+
+	&-filters__container {
+		padding: 16px;
+	}
+
+	&-view-table {
+
+		tr td:first-child,
+		tr th:first-child {
+			padding-left: 16px;
+		}
+
+		tr td:last-child,
+		tr th:last-child {
+			padding-right: 16px;
+		}
+	}
+
+	&-footer {
+		padding: 16px;
+	}
+}
+
 body.ghwp-admin-page {
 	background: #fff;
 
@@ -287,6 +323,27 @@ body.ghwp-admin-page {
 	}
 }
 
+// Status badge (active / inactive)
+.ghwp-status-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	white-space: nowrap;
+
+	&--active {
+		background: #e6f4ea;
+		color: #137333;
+	}
+
+	&--inactive {
+		background: #f3f4f6;
+		color: #6b7280;
+	}
+}
+
 // Type badges (shared across browse + installed)
 .ghwp-type-badge {
 	display: inline-flex;
@@ -362,6 +419,31 @@ body.ghwp-admin-page {
 		font-size: 14px;
 		font-weight: 600;
 		color: #1d2327;
+	}
+
+	&-badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		margin-top: 4px;
+	}
+
+	&-actions {
+		flex-wrap: wrap;
+	}
+
+	&-spinner-row {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		margin-top: 8px;
+		font-size: 13px;
+		color: #57606a;
+
+		/* stylelint-disable-next-line no-descending-specificity */
+		.components-spinner {
+			margin: 0;
+		}
 	}
 }
 

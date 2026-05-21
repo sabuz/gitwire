@@ -197,6 +197,86 @@ class Installer {
 	}
 
 	/**
+	 * Activates an installed plugin or switches to an installed theme.
+	 *
+	 * @since 1.0.0
+	 * @param string $full_name Repository full name (owner/repo).
+	 * @return true|\WP_Error True on success, WP_Error on failure.
+	 */
+	public static function activate( string $full_name ): bool|\WP_Error {
+		$installed = self::get_installed();
+
+		if ( ! isset( $installed[ $full_name ] ) ) {
+			return new \WP_Error( 'ghwp_not_found', 'Repository is not installed.' );
+		}
+
+		$rec = $installed[ $full_name ];
+
+		if ( 'plugin' === $rec['type'] ) {
+			if ( ! function_exists( 'activate_plugin' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+
+			$plugin_file = $rec['plugin_file'] ?? null;
+
+			// Self-heal: stored records may lack plugin_file. Try to find it.
+			if ( ! $plugin_file && ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
+				$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
+				if ( $plugin_file ) {
+					$installed[ $full_name ]['plugin_file'] = $plugin_file;
+					update_option( 'ghwp_installed', $installed );
+				}
+			}
+
+			if ( ! $plugin_file ) {
+				return new \WP_Error(
+					'ghwp_no_plugin_file',
+					'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.',
+					[ 'status' => 500 ]
+				);
+			}
+
+			$result = activate_plugin( $plugin_file );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+		} elseif ( 'theme' === $rec['type'] ) {
+			switch_theme( $rec['slug'] );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Deactivates an installed plugin. Themes cannot be deactivated this way.
+	 *
+	 * @since 1.0.0
+	 * @param string $full_name Repository full name (owner/repo).
+	 * @return true|\WP_Error True on success, WP_Error on failure.
+	 */
+	public static function deactivate( string $full_name ): bool|\WP_Error {
+		$installed = self::get_installed();
+
+		if ( ! isset( $installed[ $full_name ] ) ) {
+			return new \WP_Error( 'ghwp_not_found', 'Repository is not installed.' );
+		}
+
+		$rec = $installed[ $full_name ];
+
+		if ( 'plugin' !== $rec['type'] ) {
+			return new \WP_Error( 'ghwp_unsupported', 'Only plugins can be deactivated this way.', [ 'status' => 400 ] );
+		}
+
+		if ( ! function_exists( 'deactivate_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		deactivate_plugins( $rec['plugin_file'] ?? '' );
+
+		return true;
+	}
+
+	/**
 	 * Returns all currently installed repository records.
 	 *
 	 * @since 1.0.0

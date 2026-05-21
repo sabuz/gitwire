@@ -31,6 +31,18 @@ export const switchBranch = ( owner, repo, branch ) =>
 		data: { branch },
 	} );
 
+export const activateInstalled = ( owner, repo ) =>
+	apiFetch( {
+		path: `${ BASE }/installed/${ owner }/${ repo }/activate`,
+		method: 'POST',
+	} );
+
+export const deactivateInstalled = ( owner, repo ) =>
+	apiFetch( {
+		path: `${ BASE }/installed/${ owner }/${ repo }/deactivate`,
+		method: 'POST',
+	} );
+
 export const removeInstalled = ( owner, repo ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ owner }/${ repo }`,

@@ -132,6 +132,26 @@ class REST {
 
 		register_rest_route(
 			$ns,
+			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/activate',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'activate_installed' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/deactivate',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'deactivate_installed' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)',
 			[
 				'methods'             => 'DELETE',
@@ -379,13 +399,71 @@ class REST {
 	}
 
 	/**
-	 * Returns all currently installed repository records.
+	 * Returns all currently installed repository records, each annotated with
+	 * a live `active` flag reflecting the current plugin/theme state.
 	 *
 	 * @since 1.0.0
 	 * @return array<string, mixed> Map of full_name => record.
 	 */
 	public static function get_installed(): array {
-		return Installer::get_installed();
+		$records = Installer::get_installed();
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$active_theme = get_stylesheet();
+
+		foreach ( $records as &$rec ) {
+			if ( 'plugin' === $rec['type'] ) {
+				$rec['active'] = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
+			} else {
+				$rec['active'] = $active_theme === $rec['slug'];
+			}
+		}
+		unset( $rec );
+
+		return $records;
+	}
+
+	/**
+	 * Activates an installed plugin or switches to an installed theme.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, bool>|\WP_Error Success data or WP_Error on failure.
+	 */
+	public static function activate_installed( \WP_REST_Request $req ): array|\WP_Error {
+		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
+		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
+		$full_name = $owner . '/' . $repo;
+		$result    = Installer::activate( $full_name );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return [ 'activated' => true ];
+	}
+
+	/**
+	 * Deactivates an installed plugin.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, bool>|\WP_Error Success data or WP_Error on failure.
+	 */
+	public static function deactivate_installed( \WP_REST_Request $req ): array|\WP_Error {
+		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
+		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
+		$full_name = $owner . '/' . $repo;
+		$result    = Installer::deactivate( $full_name );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return [ 'deactivated' => true ];
 	}
 
 	/**
