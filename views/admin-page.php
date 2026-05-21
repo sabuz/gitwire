@@ -1,2 +1,2 @@
 <?php defined( 'ABSPATH' ) || exit; ?>
-<div id="ghwp-app"></div>
+<div id="gwp-app"></div>

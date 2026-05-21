@@ -1,6 +1,6 @@
 import apiFetch from '@wordpress/api-fetch';
 
-const BASE = '/ghwp/v1';
+const BASE = '/gwp/v1';
 
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>

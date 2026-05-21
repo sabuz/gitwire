@@ -57,7 +57,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 			enqueueDetections( data.repos );
 		} catch ( e ) {
 			setError(
-				e.message || __( 'Failed to load repositories.', 'ghwp' )
+				e.message || __( 'Failed to load repositories.', 'git' )
 			);
 		} finally {
 			setLoading( false );
@@ -141,28 +141,33 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 	);
 
 	const typeFilters = [
-		{ id: 'all', label: __( 'All', 'ghwp' ) },
-		{ id: 'plugin', label: __( 'Plugin', 'ghwp' ) },
-		{ id: 'theme', label: __( 'Theme', 'ghwp' ) },
-		{ id: 'unknown', label: __( 'Unknown', 'ghwp' ) },
+		{ id: 'all', label: __( 'All', 'git' ) },
+		{ id: 'plugin', label: __( 'Plugin', 'git' ) },
+		{ id: 'theme', label: __( 'Theme', 'git' ) },
+		{ id: 'unknown', label: __( 'Unknown', 'git' ) },
 	];
 
-	if ( ! settings?.username && ! settings?.token ) {
+	const isConfigured =
+		settings?.token ||
+		settings?.username ||
+		( settings?.provider === 'gitlab' && settings?.gitlab_token );
+
+	if ( ! isConfigured ) {
 		return (
 			<Notice isDismissible={ false } status="warning">
 				{ __(
-					'Configure your GitHub username in Settings before browsing repositories.',
-					'ghwp'
+					'Configure your connection in Settings before browsing repositories.',
+					'git'
 				) }
 			</Notice>
 		);
 	}
 
 	return (
-		<div className="ghwp-browse">
+		<div className="gwp-browse">
 			<Flex
 				align="center"
-				className="ghwp-browse-toolbar"
+				className="gwp-browse-toolbar"
 				gap={ 3 }
 				justify="flex-start"
 				style={ { marginBottom: 24 } }
@@ -171,7 +176,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 					<SearchControl
 						__nextHasNoMarginBottom
 						onChange={ setSearch }
-						placeholder={ __( 'Filter repositories…', 'ghwp' ) }
+						placeholder={ __( 'Filter repositories…', 'git' ) }
 						value={ search }
 					/>
 				</FlexBlock>
@@ -183,13 +188,13 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 						variant="secondary"
 						onClick={ handleRefresh }
 					>
-						{ __( 'Refresh', 'ghwp' ) }
+						{ __( 'Refresh', 'git' ) }
 					</Button>
 				</FlexItem>
 			</Flex>
 
 			<Flex
-				className="ghwp-type-filter"
+				className="gwp-type-filter"
 				gap={ 2 }
 				justify="flex-start"
 				style={ { marginBottom: 24 } }
@@ -215,7 +220,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 				>
 					{ error }{ ' ' }
 					<Button variant="link" onClick={ handleRefresh }>
-						{ __( 'Retry', 'ghwp' ) }
+						{ __( 'Retry', 'git' ) }
 					</Button>
 				</Notice>
 			) }
@@ -230,20 +235,20 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 				<p style={ { color: '#57606a', marginTop: 8 } }>
 					{ search.trim() ? (
 						<>
-							{ __( 'No repositories match', 'ghwp' ) }{ ' ' }
+							{ __( 'No repositories match', 'git' ) }{ ' ' }
 							<strong>{ search }</strong>.
 						</>
 					) : (
 						__(
 							'No repositories match the selected filter.',
-							'ghwp'
+							'git'
 						)
 					) }
 				</p>
 			) }
 
 			{ filtered.length > 0 && (
-				<div className="ghwp-repo-grid">
+				<div className="gwp-repo-grid">
 					{ filtered.map( ( repo ) => (
 						<RepoCard
 							key={ repo.id }
@@ -269,7 +274,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 						variant="secondary"
 						onClick={ () => loadRepos( page + 1 ) }
 					>
-						{ __( 'Load more', 'ghwp' ) }
+						{ __( 'Load more', 'git' ) }
 					</Button>
 				</div>
 			) }
@@ -314,12 +319,12 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 		! isInstalled && detection?.type === 'unknown' && smartInstall;
 
 	return (
-		<Card className="ghwp-repo-card" size="small">
+		<Card className="gwp-repo-card" size="small">
 			<CardHeader>
 				<Flex align="center" gap={ 2 } style={ { width: '100%' } }>
 					<FlexBlock>
 						<a
-							className="ghwp-repo-name"
+							className="gwp-repo-name"
 							href={ repo.html_url }
 							rel="noopener noreferrer"
 							target="_blank"
@@ -351,23 +356,23 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 
 			<CardBody>
 				{ repo.description && (
-					<p className="ghwp-repo-desc">{ repo.description }</p>
+					<p className="gwp-repo-desc">{ repo.description }</p>
 				) }
 			</CardBody>
 
 			<CardFooter>
 				<FlexBlock>
 					{ repo.updated_at && (
-						<span className="ghwp-repo-updated">
+						<span className="gwp-repo-updated">
 							Updated { timeAgo( repo.updated_at ) }
 						</span>
 					) }
 				</FlexBlock>
 				<FlexItem>
 					{ isInstalled ? (
-						<span className="ghwp-installed-chip">
+						<span className="gwp-installed-chip">
 							<span className="dashicons dashicons-yes-alt" />
-							{ __( 'Installed', 'ghwp' ) }
+							{ __( 'Installed', 'git' ) }
 						</span>
 					) : (
 						<Button
@@ -378,14 +383,14 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 								blockedBySmartInstall
 									? __(
 											'Smart Install is on — only verified WordPress plugins and themes can be installed.',
-											'ghwp'
+											'git'
 									  )
 									: undefined
 							}
 							variant="primary"
 							onClick={ onInstall }
 						>
-							{ __( 'Install', 'ghwp' ) }
+							{ __( 'Install', 'git' ) }
 						</Button>
 					) }
 				</FlexItem>
@@ -437,28 +442,26 @@ function TypeBadge( { detection, installed } ) {
 		const t = installed.type;
 		return (
 			<Badge intent={ t === 'theme' ? 'none' : 'informational' }>
-				{ t === 'theme'
-					? __( 'Theme', 'ghwp' )
-					: __( 'Plugin', 'ghwp' ) }
+				{ t === 'theme' ? __( 'Theme', 'git' ) : __( 'Plugin', 'git' ) }
 			</Badge>
 		);
 	}
 	if ( ! detection ) {
 		return (
-			<span className="ghwp-type-detecting">
-				<Spinner /> { __( 'Detecting…', 'ghwp' ) }
+			<span className="gwp-type-detecting">
+				<Spinner /> { __( 'Detecting…', 'git' ) }
 			</span>
 		);
 	}
 	const { type, subtype } = detection;
 	if ( type === 'plugin' ) {
-		return <Badge intent="informational">{ __( 'Plugin', 'ghwp' ) }</Badge>;
+		return <Badge intent="informational">{ __( 'Plugin', 'git' ) }</Badge>;
 	}
 	if ( type === 'theme' && subtype === 'block' ) {
-		return <Badge intent="none">{ __( 'Block Theme', 'ghwp' ) }</Badge>;
+		return <Badge intent="none">{ __( 'Block Theme', 'git' ) }</Badge>;
 	}
 	if ( type === 'theme' ) {
-		return <Badge intent="none">{ __( 'Theme', 'ghwp' ) }</Badge>;
+		return <Badge intent="none">{ __( 'Theme', 'git' ) }</Badge>;
 	}
-	return <Badge intent="draft">{ __( 'Unknown', 'ghwp' ) }</Badge>;
+	return <Badge intent="draft">{ __( 'Unknown', 'git' ) }</Badge>;
 }

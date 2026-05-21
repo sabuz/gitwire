@@ -38,8 +38,13 @@ export default function SettingsPanel( {
 	onSave,
 	onConnectionUpdate,
 } ) {
+	const [ provider, setProvider ] = useState( settings.provider || 'github' );
 	const [ token, setToken ] = useState( settings.token || '' );
 	const [ username, setUsername ] = useState( settings.username || '' );
+	const [ gitlabToken, setGitlabToken ] = useState(
+		settings.gitlab_token || ''
+	);
+	const [ gitlabUrl, setGitlabUrl ] = useState( settings.gitlab_url || '' );
 	const [ smartInstall, setSmartInstall ] = useState(
 		settings.smart_install !== false
 	);
@@ -53,7 +58,7 @@ export default function SettingsPanel( {
 			onConnectionUpdate( result );
 		} catch ( e ) {
 			onConnectionUpdate( {
-				error: e.message || __( 'Connection failed.', 'ghwp' ),
+				error: e.message || __( 'Connection failed.', 'git' ),
 			} );
 		} finally {
 			setTesting( false );
@@ -61,12 +66,15 @@ export default function SettingsPanel( {
 	};
 
 	const handleSave = async () => {
-		if ( ! username.trim() && ! token.trim() ) {
+		if ( provider === 'gitlab' && ! gitlabToken.trim() ) {
 			toast.error(
-				__(
-					'GitHub Username is required when no token is set.',
-					'ghwp'
-				)
+				__( 'A GitLab Personal Access Token is required.', 'git' )
+			);
+			return;
+		}
+		if ( provider === 'github' && ! username.trim() && ! token.trim() ) {
+			toast.error(
+				__( 'GitHub Username is required when no token is set.', 'git' )
 			);
 			return;
 		}
@@ -76,12 +84,30 @@ export default function SettingsPanel( {
 				token,
 				username,
 				smart_install: smartInstall,
+				provider,
+				gitlab_token: gitlabToken,
+				gitlab_url: gitlabUrl,
 			} );
-			onSave( { token, username, smart_install: smartInstall } );
-			toast.success( __( 'Settings saved.', 'ghwp' ) );
-			await runTest();
+			onSave( {
+				token,
+				username,
+				smart_install: smartInstall,
+				provider,
+				gitlab_token: gitlabToken,
+				gitlab_url: gitlabUrl,
+			} );
+			toast.success( __( 'Settings saved.', 'git' ) );
+			if ( provider === 'gitlab' ) {
+				await runTest( {
+					provider: 'gitlab',
+					gitlab_token: gitlabToken,
+					gitlab_url: gitlabUrl,
+				} );
+			} else {
+				await runTest( { username, token } );
+			}
 		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'ghwp' ) );
+			toast.error( e.message || __( 'Save failed.', 'git' ) );
 		} finally {
 			setSaving( false );
 		}
@@ -94,25 +120,40 @@ export default function SettingsPanel( {
 				token: '',
 				username: '',
 				smart_install: smartInstall,
+				provider,
+				gitlab_token: '',
+				gitlab_url: '',
 			} );
 			setUsername( '' );
 			setToken( '' );
-			onSave( { token: '', username: '', smart_install: smartInstall } );
+			setGitlabToken( '' );
+			setGitlabUrl( '' );
+			onSave( {
+				token: '',
+				username: '',
+				smart_install: smartInstall,
+				provider,
+				gitlab_token: '',
+				gitlab_url: '',
+			} );
 			onConnectionUpdate( null );
-			toast.success( __( 'GitHub connection removed.', 'ghwp' ) );
+			toast.success( __( 'Connection removed.', 'git' ) );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Disconnect failed.', 'ghwp' ) );
+			toast.error( e.message || __( 'Disconnect failed.', 'git' ) );
 		} finally {
 			setSaving( false );
 		}
 	};
 
-	const isConnected = !! ( settings.username || settings.token );
+	const isConnected =
+		provider === 'gitlab'
+			? !! settings.gitlab_token
+			: !! ( settings.username || settings.token );
 
 	return (
 		<Flex
 			align="flex-start"
-			className="ghwp-settings-row"
+			className="gwp-settings-row"
 			gap={ 6 }
 			justify="center"
 			wrap
@@ -121,81 +162,162 @@ export default function SettingsPanel( {
 				<Card>
 					<CardHeader>
 						<Heading level={ 4 }>
-							{ __( 'GitHub Connection', 'ghwp' ) }
+							{ __( 'Connection', 'git' ) }
 						</Heading>
 					</CardHeader>
 					<CardBody>
-						<TextControl
-							__nextHasNoMarginBottom
-							help={ __(
-								'Your GitHub username or organization. Not required when a token is set.',
-								'ghwp'
-							) }
-							label={ __( 'GitHub Username', 'ghwp' ) }
-							placeholder="your-github-username"
-							value={ username }
-							onChange={ setUsername }
-						/>
+						<Flex gap={ 2 } justify="flex-start">
+							<Button
+								isPressed={ provider === 'github' }
+								size="compact"
+								variant="secondary"
+								onClick={ () => setProvider( 'github' ) }
+							>
+								{ __( 'GitHub', 'git' ) }
+							</Button>
+							<Button
+								isPressed={ provider === 'gitlab' }
+								size="compact"
+								variant="secondary"
+								onClick={ () => setProvider( 'gitlab' ) }
+							>
+								{ __( 'GitLab', 'git' ) }
+							</Button>
+						</Flex>
 
 						<Spacer marginTop={ 4 } />
 
-						<TextControl
-							__nextHasNoMarginBottom
-							autoComplete="new-password"
-							help={
-								<>
-									{ __(
-										'For private repos or to limit which repos appear here.',
-										'ghwp'
-									) }{ ' ' }
-									{ __(
-										'Fine-grained (recommended):',
-										'ghwp'
-									) }{ ' ' }
-									<a
-										href="https://github.com/settings/personal-access-tokens/new"
-										rel="noopener noreferrer"
-										target="_blank"
-									>
-										{ __( 'Create token', 'ghwp' ) }
-									</a>{ ' ' }
-									{ __(
-										'— select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
-										'ghwp'
+						{ provider === 'github' && (
+							<>
+								<TextControl
+									__nextHasNoMarginBottom
+									help={ __(
+										'Your GitHub username or organization. Not required when a token is set.',
+										'git'
 									) }
-								</>
-							}
-							label={
-								<>
-									{ __( 'Personal Access Token', 'ghwp' ) }{ ' ' }
-									<span className="ghwp-label-optional">
-										{ __( '(Optional)', 'ghwp' ) }
-									</span>
-								</>
-							}
-							placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-							type="password"
-							value={ token }
-							onChange={ setToken }
-						/>
+									label={ __( 'GitHub Username', 'git' ) }
+									placeholder="your-github-username"
+									value={ username }
+									onChange={ setUsername }
+								/>
+
+								<Spacer marginTop={ 4 } />
+
+								<TextControl
+									__nextHasNoMarginBottom
+									autoComplete="new-password"
+									help={
+										<>
+											{ __(
+												'For private repos or to limit which repos appear here.',
+												'git'
+											) }{ ' ' }
+											<a
+												href="https://github.com/settings/personal-access-tokens/new"
+												rel="noopener noreferrer"
+												target="_blank"
+											>
+												{ __( 'Create token', 'git' ) }
+											</a>{ ' ' }
+											{ __(
+												'— select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
+												'git'
+											) }
+										</>
+									}
+									label={
+										<>
+											{ __(
+												'Fine-grained Access Token',
+												'git'
+											) }{ ' ' }
+											<span className="gwp-label-optional">
+												{ __( '(Optional)', 'git' ) }
+											</span>
+										</>
+									}
+									placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx"
+									type="password"
+									value={ token }
+									onChange={ setToken }
+								/>
+							</>
+						) }
+
+						{ provider === 'gitlab' && (
+							<>
+								<TextControl
+									__nextHasNoMarginBottom
+									autoComplete="new-password"
+									help={
+										<>
+											{ __( 'Required.', 'git' ) }{ ' ' }
+											<a
+												href="https://gitlab.com/-/user_settings/personal_access_tokens"
+												rel="noopener noreferrer"
+												target="_blank"
+											>
+												{ __( 'Create token', 'git' ) }
+											</a>{ ' ' }
+											{ __(
+												'— enable Projects: Read and Repository: Read permissions.',
+												'git'
+											) }
+										</>
+									}
+									label={ __(
+										'Personal Access Token',
+										'git'
+									) }
+									placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
+									type="password"
+									value={ gitlabToken }
+									onChange={ setGitlabToken }
+								/>
+
+								<Spacer marginTop={ 4 } />
+
+								<TextControl
+									__nextHasNoMarginBottom
+									help={ __(
+										'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab (e.g. https://gitlab.example.com).',
+										'git'
+									) }
+									label={
+										<>
+											{ __(
+												'GitLab Instance URL',
+												'git'
+											) }{ ' ' }
+											<span className="gwp-label-optional">
+												{ __( '(Optional)', 'git' ) }
+											</span>
+										</>
+									}
+									placeholder="https://gitlab.com"
+									value={ gitlabUrl }
+									onChange={ setGitlabUrl }
+								/>
+							</>
+						) }
 
 						<Spacer marginTop={ 5 } />
 
-						<div className="ghwp-smart-install-wrap">
+						<div className="gwp-smart-install-wrap">
 							<ToggleControl
 								__nextHasNoMarginBottom
 								checked={ smartInstall }
 								help={ __(
 									'Only allow installing repositories detected as a WordPress plugin or theme.',
-									'ghwp'
+									'git'
 								) }
 								label={
 									<>
 										<strong>
-											{ __( 'Smart Install', 'ghwp' ) }
+											{ __( 'Smart Install', 'git' ) }
 										</strong>{ ' ' }
-										<span className="ghwp-badge-recommended">
-											{ __( 'Recommended', 'ghwp' ) }
+										<span className="gwp-badge-recommended">
+											{ __( 'Recommended', 'git' ) }
 										</span>
 									</>
 								}
@@ -212,15 +334,23 @@ export default function SettingsPanel( {
 								variant="primary"
 								onClick={ handleSave }
 							>
-								{ __( 'Save Settings', 'ghwp' ) }
+								{ __( 'Save Settings', 'git' ) }
 							</Button>
 							<Button
 								disabled={ saving || testing }
 								isBusy={ testing }
 								variant="secondary"
-								onClick={ () => runTest( { username, token } ) }
+								onClick={ () =>
+									provider === 'gitlab'
+										? runTest( {
+												provider: 'gitlab',
+												gitlab_token: gitlabToken,
+												gitlab_url: gitlabUrl,
+										  } )
+										: runTest( { username, token } )
+								}
 							>
-								{ __( 'Test Connection', 'ghwp' ) }
+								{ __( 'Test Connection', 'git' ) }
 							</Button>
 							{ isConnected && (
 								<Button
@@ -229,7 +359,7 @@ export default function SettingsPanel( {
 									variant="secondary"
 									onClick={ handleDisconnect }
 								>
-									{ __( 'Disconnect', 'ghwp' ) }
+									{ __( 'Disconnect', 'git' ) }
 								</Button>
 							) }
 						</Flex>
@@ -270,7 +400,7 @@ function ConnectionStatus( { connection, testing } ) {
 							fontSize: 13,
 						} }
 					>
-						{ __( 'Checking connection…', 'ghwp' ) }
+						{ __( 'Checking connection…', 'git' ) }
 					</p>
 				</CardBody>
 			</Card>
@@ -301,7 +431,7 @@ function ConnectionStatus( { connection, testing } ) {
 					<p style={ { margin: 0, fontSize: 12, lineHeight: 1.5 } }>
 						{ __(
 							'Save your settings and click "Test Connection" to verify.',
-							'ghwp'
+							'git'
 						) }
 					</p>
 				</CardBody>
@@ -353,7 +483,11 @@ function ConnectionStatus( { connection, testing } ) {
 		rate_remaining,
 		rate_reset,
 		checked_at,
+		provider: connectionProvider,
 	} = connection;
+
+	const isGitLab = connectionProvider === 'gitlab';
+
 	const pct =
 		rate_limit > 0
 			? Math.round( ( rate_remaining / rate_limit ) * 100 )
@@ -365,18 +499,18 @@ function ConnectionStatus( { connection, testing } ) {
 		barColor = '#e3b341';
 	}
 
-	let rateNote = __( 'Resets in about an hour.', 'ghwp' );
+	let rateNote = __( 'Resets in about an hour.', 'git' );
 	if ( rate_limit === 60 ) {
 		rateNote = __(
 			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.",
-			'ghwp'
+			'git'
 		);
 	} else if ( rate_reset ) {
 		const countdown = humanDiff( rate_reset );
 		if ( countdown ) {
 			rateNote = sprintf(
 				/* translators: %s: time until reset (e.g. "5m 30s") */
-				__( 'Resets in %s.', 'ghwp' ),
+				__( 'Resets in %s.', 'git' ),
 				countdown
 			);
 		}
@@ -404,54 +538,72 @@ function ConnectionStatus( { connection, testing } ) {
 						<div style={ { fontSize: 12, color: '#57606a' } }>
 							@{ login }
 						</div>
-						<span className="ghwp-conn-badge ghwp-conn-badge--ok">
+						<span className="gwp-conn-badge gwp-conn-badge--ok">
 							<span className="dashicons dashicons-yes-alt" />
-							{ __( 'Authenticated', 'ghwp' ) }
+							{ __( 'Authenticated', 'git' ) }
+						</span>
+					</div>
+				) }
+
+				{ authenticated && ! avatar_url && (
+					<div style={ { textAlign: 'center', marginBottom: 14 } }>
+						<span className="gwp-conn-badge gwp-conn-badge--ok">
+							<span className="dashicons dashicons-yes-alt" />
+							{ __( 'Authenticated', 'git' ) }
 						</span>
 					</div>
 				) }
 
 				{ ! authenticated && (
 					<div style={ { textAlign: 'center', marginBottom: 14 } }>
-						<span className="ghwp-conn-badge ghwp-conn-badge--warn">
+						<span className="gwp-conn-badge gwp-conn-badge--warn">
 							<span className="dashicons dashicons-warning" />
-							{ __( 'No token — public only', 'ghwp' ) }
+							{ __( 'No token — public only', 'git' ) }
 						</span>
 					</div>
 				) }
 
-				<hr className="ghwp-divider" />
+				<hr className="gwp-divider" />
 
-				<div style={ { fontSize: 12 } }>
-					<Flex justify="space-between" style={ { marginBottom: 6 } }>
-						<span style={ { color: '#24292f' } }>
-							{ __( 'API Usage', 'ghwp' ) }
-						</span>
-						<strong>
-							{ rate_remaining?.toLocaleString() } /{ ' ' }
-							{ rate_limit?.toLocaleString() }
-						</strong>
-					</Flex>
-					<div className="ghwp-rate-track">
-						<div
-							className="ghwp-rate-fill"
-							style={ {
-								width: `${ pct }%`,
-								background: barColor,
-							} }
-						/>
+				{ ! isGitLab && (
+					<div style={ { fontSize: 12 } }>
+						<Flex
+							justify="space-between"
+							style={ { marginBottom: 6 } }
+						>
+							<span style={ { color: '#24292f' } }>
+								{ __( 'API Usage', 'git' ) }
+							</span>
+							<strong>
+								{ rate_remaining?.toLocaleString() } /{ ' ' }
+								{ rate_limit?.toLocaleString() }
+							</strong>
+						</Flex>
+						<div className="gwp-rate-track">
+							<div
+								className="gwp-rate-fill"
+								style={ {
+									width: `${ pct }%`,
+									background: barColor,
+								} }
+							/>
+						</div>
+						<p className="gwp-rate-note">{ rateNote }</p>
 					</div>
-					<p className="ghwp-rate-note">{ rateNote }</p>
-					{ checked_at && (
-						<p className="ghwp-rate-note ghwp-rate-note--checked">
-							{ sprintf(
-								/* translators: %s: relative time (e.g. "5m ago") */
-								__( 'Last checked %s', 'ghwp' ),
-								unixTimeAgo( checked_at )
-							) }
-						</p>
-					) }
-				</div>
+				) }
+
+				{ checked_at && (
+					<p
+						className="gwp-rate-note gwp-rate-note--checked"
+						style={ { fontSize: 12 } }
+					>
+						{ sprintf(
+							/* translators: %s: relative time (e.g. "5m ago") */
+							__( 'Last checked %s', 'git' ),
+							unixTimeAgo( checked_at )
+						) }
+					</p>
+				) }
 			</CardBody>
 		</Card>
 	);

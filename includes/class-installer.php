@@ -2,11 +2,11 @@
 /**
  * Installer — downloads and extracts GitHub repositories as plugins or themes.
  *
- * @package GitHub_WP
+ * @package Git_WP
  * @since 1.0.0
  */
 
-namespace GitHub_WP;
+namespace Git_WP;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -45,7 +45,7 @@ class Installer {
 
 		// Build the absolute path of the deleted plugin's directory.
 		$deleted_dir = untrailingslashit( WP_PLUGIN_DIR ) . '/' . dirname( $plugin_file );
-		$installed   = (array) get_option( 'ghwp_installed', [] );
+		$installed   = (array) get_option( 'gwp_installed', [] );
 		$dirty       = false;
 
 		foreach ( $installed as $full_name => $rec ) {
@@ -57,7 +57,7 @@ class Installer {
 		}
 
 		if ( $dirty ) {
-			update_option( 'ghwp_installed', $installed );
+			update_option( 'gwp_installed', $installed );
 		}
 	}
 
@@ -76,7 +76,7 @@ class Installer {
 
 		// Build the absolute path of the deleted theme's directory.
 		$deleted_dir = untrailingslashit( get_theme_root() ) . '/' . $stylesheet;
-		$installed   = (array) get_option( 'ghwp_installed', [] );
+		$installed   = (array) get_option( 'gwp_installed', [] );
 		$dirty       = false;
 
 		foreach ( $installed as $full_name => $rec ) {
@@ -88,7 +88,7 @@ class Installer {
 		}
 
 		if ( $dirty ) {
-			update_option( 'ghwp_installed', $installed );
+			update_option( 'gwp_installed', $installed );
 		}
 	}
 
@@ -154,7 +154,7 @@ class Installer {
 		$installed = self::get_installed();
 
 		if ( ! isset( $installed[ $full_name ] ) ) {
-			return new \WP_Error( 'ghwp_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
 		}
 
 		$rec    = $installed[ $full_name ];
@@ -178,7 +178,7 @@ class Installer {
 		$installed = self::get_installed();
 
 		if ( ! isset( $installed[ $full_name ] ) ) {
-			return new \WP_Error( 'ghwp_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
 		}
 
 		$rec  = $installed[ $full_name ];
@@ -191,7 +191,7 @@ class Installer {
 		}
 
 		unset( $installed[ $full_name ] );
-		update_option( 'ghwp_installed', $installed );
+		update_option( 'gwp_installed', $installed );
 
 		return true;
 	}
@@ -207,7 +207,7 @@ class Installer {
 		$installed = self::get_installed();
 
 		if ( ! isset( $installed[ $full_name ] ) ) {
-			return new \WP_Error( 'ghwp_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
 		}
 
 		$rec = $installed[ $full_name ];
@@ -225,14 +225,14 @@ class Installer {
 					$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
 					if ( $plugin_file ) {
 						$installed[ $full_name ]['plugin_file'] = $plugin_file;
-						update_option( 'ghwp_installed', $installed );
+						update_option( 'gwp_installed', $installed );
 					}
 				}
 			}
 
 			if ( ! $plugin_file ) {
 				return new \WP_Error(
-					'ghwp_no_plugin_file',
+					'gwp_no_plugin_file',
 					'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.',
 					[ 'status' => 500 ]
 				);
@@ -260,13 +260,13 @@ class Installer {
 		$installed = self::get_installed();
 
 		if ( ! isset( $installed[ $full_name ] ) ) {
-			return new \WP_Error( 'ghwp_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
 		}
 
 		$rec = $installed[ $full_name ];
 
 		if ( 'plugin' !== $rec['type'] ) {
-			return new \WP_Error( 'ghwp_unsupported', 'Only plugins can be deactivated this way.', [ 'status' => 400 ] );
+			return new \WP_Error( 'gwp_unsupported', 'Only plugins can be deactivated this way.', [ 'status' => 400 ] );
 		}
 
 		if ( ! function_exists( 'deactivate_plugins' ) ) {
@@ -281,14 +281,14 @@ class Installer {
 				$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
 				if ( $plugin_file ) {
 					$installed[ $full_name ]['plugin_file'] = $plugin_file;
-					update_option( 'ghwp_installed', $installed );
+					update_option( 'gwp_installed', $installed );
 				}
 			}
 		}
 
 		if ( ! $plugin_file ) {
 			return new \WP_Error(
-				'ghwp_no_plugin_file',
+				'gwp_no_plugin_file',
 				'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.',
 				[ 'status' => 500 ]
 			);
@@ -306,7 +306,7 @@ class Installer {
 	 * @return array<string, mixed> Map of full_name => record.
 	 */
 	public static function get_installed(): array {
-		return (array) get_option( 'ghwp_installed', [] );
+		return (array) get_option( 'gwp_installed', [] );
 	}
 
 	/**
@@ -343,9 +343,17 @@ class Installer {
 	): array|\WP_Error {
 		self::init_fs();
 
-		$settings  = (array) get_option( 'ghwp_settings', [] );
-		$api       = new API( $settings['token'] ?? '' );
+		$settings  = (array) get_option( 'gwp_settings', [] );
 		$full_name = $owner . '/' . $repo;
+
+		if ( 'gitlab' === ( $settings['provider'] ?? 'github' ) ) {
+			$api = new GitLab_API(
+				$settings['gitlab_token'] ?? '',
+				$settings['gitlab_url'] ?? ''
+			);
+		} else {
+			$api = new API( $settings['token'] ?? '' );
+		}
 
 		// Download.
 		$zip_file = $api->download_zip( $owner, $repo, $branch );
@@ -356,11 +364,11 @@ class Installer {
 		// Backup existing installation (for fatal-error rollback).
 		$backup_path = null;
 		if ( is_dir( $install_path ) ) {
-			$backup_path = $install_path . '--ghwp-bak-' . time();
+			$backup_path = $install_path . '--gwp-bak-' . time();
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
 			if ( ! rename( $install_path, $backup_path ) ) {
 				wp_delete_file( $zip_file );
-				return new \WP_Error( 'ghwp_backup_failed', 'Could not create backup of existing installation.' );
+				return new \WP_Error( 'gwp_backup_failed', 'Could not create backup of existing installation.' );
 			}
 		}
 
@@ -382,7 +390,7 @@ class Installer {
 			}
 		}
 
-		update_option( 'ghwp_pending_update', $pending, false );
+		update_option( 'gwp_pending_update', $pending, false );
 
 		// Extract.
 		$extracted = self::extract_zip( $zip_file, $install_path );
@@ -391,7 +399,7 @@ class Installer {
 		if ( is_wp_error( $extracted ) ) {
 			// Restore backup immediately (no fatal error needed).
 			self::restore_backup( $install_path, $backup_path );
-			delete_option( 'ghwp_pending_update' );
+			delete_option( 'gwp_pending_update' );
 			return $extracted;
 		}
 
@@ -399,7 +407,7 @@ class Installer {
 		if ( 'plugin' === $type ) {
 			$plugin_file            = self::find_plugin_file( $install_path, $slug );
 			$pending['plugin_file'] = $plugin_file;
-			update_option( 'ghwp_pending_update', $pending, false );
+			update_option( 'gwp_pending_update', $pending, false );
 		}
 
 		// Save record.
@@ -418,7 +426,7 @@ class Installer {
 
 		$installed               = self::get_installed();
 		$installed[ $full_name ] = $record;
-		update_option( 'ghwp_installed', $installed );
+		update_option( 'gwp_installed', $installed );
 
 		// Remove old backup now that everything succeeded.
 		if ( $backup_path && is_dir( $backup_path ) ) {
@@ -426,7 +434,7 @@ class Installer {
 			$wp_filesystem->delete( $backup_path, true );
 		}
 
-		delete_option( 'ghwp_pending_update' );
+		delete_option( 'gwp_pending_update' );
 
 		return $record;
 	}
@@ -443,7 +451,7 @@ class Installer {
 		global $wp_filesystem;
 
 		// Unzip to a temp directory first.
-		$tmp_dir = get_temp_dir() . 'ghwp-extract-' . uniqid( '', true );
+		$tmp_dir = get_temp_dir() . 'gwp-extract-' . uniqid( '', true );
 
 		$result = unzip_file( $zip_path, $tmp_dir );
 		if ( is_wp_error( $result ) ) {
@@ -454,7 +462,7 @@ class Installer {
 		$subdirs = glob( trailingslashit( $tmp_dir ) . '*', GLOB_ONLYDIR );
 		if ( empty( $subdirs ) ) {
 			$wp_filesystem->delete( $tmp_dir, true );
-			return new \WP_Error( 'ghwp_empty_zip', 'The downloaded ZIP contained no directory.' );
+			return new \WP_Error( 'gwp_empty_zip', 'The downloaded ZIP contained no directory.' );
 		}
 
 		$extracted_folder = $subdirs[0];
@@ -462,7 +470,7 @@ class Installer {
 		// Move to final destination.
 		if ( ! $wp_filesystem->move( $extracted_folder, $destination, true ) ) {
 			$wp_filesystem->delete( $tmp_dir, true );
-			return new \WP_Error( 'ghwp_move_failed', 'Could not move extracted files to destination.' );
+			return new \WP_Error( 'gwp_move_failed', 'Could not move extracted files to destination.' );
 		}
 
 		$wp_filesystem->delete( $tmp_dir, true );

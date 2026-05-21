@@ -55,7 +55,7 @@ export default function InstalledPanel( {
 		() => [
 			{
 				id: 'name',
-				label: __( 'Repository', 'ghwp' ),
+				label: __( 'Repository', 'git' ),
 				getValue: ( { item } ) => item.full_name,
 				render: ( { item } ) => <strong>{ item.full_name }</strong>,
 				enableSorting: true,
@@ -63,7 +63,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'type',
-				label: __( 'Type', 'ghwp' ),
+				label: __( 'Type', 'git' ),
 				getValue: ( { item } ) => item.type,
 				render: ( { item } ) => (
 					<Badge
@@ -72,29 +72,29 @@ export default function InstalledPanel( {
 						}
 					>
 						{ item.type === 'theme'
-							? __( 'Theme', 'ghwp' )
-							: __( 'Plugin', 'ghwp' ) }
+							? __( 'Theme', 'git' )
+							: __( 'Plugin', 'git' ) }
 					</Badge>
 				),
 				enableSorting: true,
 			},
 			{
 				id: 'status',
-				label: __( 'Status', 'ghwp' ),
+				label: __( 'Status', 'git' ),
 				getValue: ( { item } ) =>
 					item.active ? 'active' : 'inactive',
 				render: ( { item } ) => (
 					<Badge intent={ item.active ? 'stable' : 'draft' }>
 						{ item.active
-							? __( 'Active', 'ghwp' )
-							: __( 'Inactive', 'ghwp' ) }
+							? __( 'Active', 'git' )
+							: __( 'Inactive', 'git' ) }
 					</Badge>
 				),
 				enableSorting: true,
 			},
 			{
 				id: 'branch',
-				label: __( 'Branch', 'ghwp' ),
+				label: __( 'Branch', 'git' ),
 				getValue: ( { item } ) => item.branch,
 				render: ( { item } ) => (
 					<Badge intent="informational">{ item.branch }</Badge>
@@ -103,7 +103,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'last_updated',
-				label: __( 'Last Updated', 'ghwp' ),
+				label: __( 'Last Updated', 'git' ),
 				getValue: ( { item } ) => item.updated_at ?? 0,
 				render: ( { item } ) => (
 					<span style={ { fontSize: 12, color: '#57606a' } }>
@@ -162,25 +162,25 @@ export default function InstalledPanel( {
 					/>
 					{ isConfigured ? (
 						<p style={ { margin: 0 } }>
-							{ __( 'No repositories installed yet.', 'ghwp' ) }{ ' ' }
+							{ __( 'No repositories installed yet.', 'git' ) }{ ' ' }
 							<Button variant="link" onClick={ onGoToBrowse }>
-								{ __( 'Browse GitHub', 'ghwp' ) }
+								{ __( 'Browse', 'git' ) }
 							</Button>{ ' ' }
-							{ __( 'to install one.', 'ghwp' ) }
+							{ __( 'to install one.', 'git' ) }
 						</p>
 					) : (
 						<>
 							<p style={ { margin: '0 0 12px' } }>
 								{ __(
 									'Connect your GitHub account to get started.',
-									'ghwp'
+									'git'
 								) }
 							</p>
 							<Button
 								variant="primary"
 								onClick={ onGoToSettings }
 							>
-								{ __( 'Set up GitHub connection', 'ghwp' ) }
+								{ __( 'Set up GitHub connection', 'git' ) }
 							</Button>
 						</>
 					) }
@@ -190,7 +190,7 @@ export default function InstalledPanel( {
 	}
 
 	return (
-		<div className="ghwp-installed-panel">
+		<div className="gwp-installed-panel">
 			<DataViews
 				data={ shownData }
 				defaultLayouts={ { table: {} } }
@@ -230,13 +230,13 @@ function RowActions( { item, onRefresh } ) {
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
-					__( '%s: updated to latest commit.', 'ghwp' ),
+					__( '%s: updated to latest commit.', 'git' ),
 					full_name
 				)
 			);
 			onRefresh();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Update failed.', 'ghwp' ) );
+			toast.error( e.message || __( 'Update failed.', 'git' ) );
 		} finally {
 			setUpdating( false );
 		}
@@ -249,13 +249,13 @@ function RowActions( { item, onRefresh } ) {
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
-					__( '%s activated.', 'ghwp' ),
+					__( '%s activated.', 'git' ),
 					full_name
 				)
 			);
 			onRefresh();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Activation failed.', 'ghwp' ) );
+			toast.error( e.message || __( 'Activation failed.', 'git' ) );
 		} finally {
 			setActivating( false );
 		}
@@ -268,13 +268,13 @@ function RowActions( { item, onRefresh } ) {
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
-					__( '%s deactivated.', 'ghwp' ),
+					__( '%s deactivated.', 'git' ),
 					full_name
 				)
 			);
 			onRefresh();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Deactivation failed.', 'ghwp' ) );
+			toast.error( e.message || __( 'Deactivation failed.', 'git' ) );
 		} finally {
 			setDeactivating( false );
 		}
@@ -290,8 +290,8 @@ function RowActions( { item, onRefresh } ) {
 				onClick={ handleUpdate }
 			>
 				{ updating
-					? __( 'Updating…', 'ghwp' )
-					: __( 'Pull latest', 'ghwp' ) }
+					? __( 'Updating…', 'git' )
+					: __( 'Pull latest', 'git' ) }
 			</Button>
 
 			<Button
@@ -300,7 +300,7 @@ function RowActions( { item, onRefresh } ) {
 				variant="secondary"
 				onClick={ () => setSwitchOpen( true ) }
 			>
-				{ __( 'Switch branch', 'ghwp' ) }
+				{ __( 'Switch branch', 'git' ) }
 			</Button>
 
 			{ ! active && (
@@ -312,8 +312,8 @@ function RowActions( { item, onRefresh } ) {
 					onClick={ handleActivate }
 				>
 					{ activating
-						? __( 'Activating…', 'ghwp' )
-						: __( 'Activate', 'ghwp' ) }
+						? __( 'Activating…', 'git' )
+						: __( 'Activate', 'git' ) }
 				</Button>
 			) }
 
@@ -326,8 +326,8 @@ function RowActions( { item, onRefresh } ) {
 					onClick={ handleDeactivate }
 				>
 					{ deactivating
-						? __( 'Deactivating…', 'ghwp' )
-						: __( 'Deactivate', 'ghwp' ) }
+						? __( 'Deactivating…', 'git' )
+						: __( 'Deactivate', 'git' ) }
 				</Button>
 			) }
 
@@ -339,7 +339,7 @@ function RowActions( { item, onRefresh } ) {
 					variant="secondary"
 					onClick={ () => setDeleteOpen( true ) }
 				>
-					{ __( 'Delete', 'ghwp' ) }
+					{ __( 'Delete', 'git' ) }
 				</Button>
 			) }
 
@@ -351,7 +351,7 @@ function RowActions( { item, onRefresh } ) {
 						toast.success(
 							sprintf(
 								/* translators: %s: branch name */
-								__( 'Switched to %s.', 'ghwp' ),
+								__( 'Switched to %s.', 'git' ),
 								newBranch
 							)
 						);
@@ -369,7 +369,7 @@ function RowActions( { item, onRefresh } ) {
 						toast.success(
 							sprintf(
 								/* translators: %s: repository full name */
-								__( '%s deleted.', 'ghwp' ),
+								__( '%s deleted.', 'git' ),
 								full_name
 							)
 						);
@@ -444,14 +444,14 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 		<Modal
 			title={ sprintf(
 				/* translators: %s: repository name */
-				__( 'Switch branch — %s', 'ghwp' ),
+				__( 'Switch branch — %s', 'git' ),
 				item.repo
 			) }
 			onRequestClose={ onClose }
 		>
 			<ComboboxControl
 				__nextHasNoMarginBottom
-				label={ __( 'Branch', 'ghwp' ) }
+				label={ __( 'Branch', 'git' ) }
 				options={ branchOptions }
 				value={ selectedBranch }
 				onChange={ ( val ) => val && setSelectedBranch( val ) }
@@ -459,7 +459,7 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 			/>
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
 				<Button variant="tertiary" onClick={ onClose }>
-					{ __( 'Cancel', 'ghwp' ) }
+					{ __( 'Cancel', 'git' ) }
 				</Button>
 				<Button
 					isBusy={ switching }
@@ -467,8 +467,8 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 					onClick={ handleSwitch }
 				>
 					{ switching
-						? __( 'Switching…', 'ghwp' )
-						: __( 'Switch', 'ghwp' ) }
+						? __( 'Switching…', 'git' )
+						: __( 'Switch', 'git' ) }
 				</Button>
 			</Flex>
 		</Modal>
@@ -509,7 +509,7 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 		<Modal
 			title={ sprintf(
 				/* translators: %s: repository full name */
-				__( 'Delete %s?', 'ghwp' ),
+				__( 'Delete %s?', 'git' ),
 				item.full_name
 			) }
 			onRequestClose={ onClose }
@@ -519,14 +519,14 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 					/* translators: %s: repository full name */
 					__(
 						'Permanently delete %s? This will remove all files from the server and cannot be undone.',
-						'ghwp'
+						'git'
 					),
 					item.full_name
 				) }
 			</p>
 			<Flex gap={ 3 } justify="flex-end">
 				<Button variant="tertiary" onClick={ onClose }>
-					{ __( 'Cancel', 'ghwp' ) }
+					{ __( 'Cancel', 'git' ) }
 				</Button>
 				<Button
 					isDestructive
@@ -535,8 +535,8 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 					onClick={ handleDelete }
 				>
 					{ deleting
-						? __( 'Deleting…', 'ghwp' )
-						: __( 'Delete', 'ghwp' ) }
+						? __( 'Deleting…', 'git' )
+						: __( 'Delete', 'git' ) }
 				</Button>
 			</Flex>
 		</Modal>

@@ -4,11 +4,11 @@ import { createRoot } from '@wordpress/element';
 import App from './app';
 import './style.scss';
 
-if ( window.GHWP?.nonce ) {
-	apiFetch.use( apiFetch.createNonceMiddleware( window.GHWP.nonce ) );
+if ( window.GWP?.nonce ) {
+	apiFetch.use( apiFetch.createNonceMiddleware( window.GWP.nonce ) );
 }
 
-const container = document.getElementById( 'ghwp-app' );
+const container = document.getElementById( 'gwp-app' );
 if ( container ) {
-	createRoot( container ).render( <App initialData={ window.GHWP || {} } /> );
+	createRoot( container ).render( <App initialData={ window.GWP || {} } /> );
 }

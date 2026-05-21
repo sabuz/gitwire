@@ -2,11 +2,11 @@
 /**
  * GitHub API client — wraps the GitHub REST API v3.
  *
- * @package GitHub_WP
+ * @package Git_WP
  * @since 1.0.0
  */
 
-namespace GitHub_WP;
+namespace Git_WP;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -294,14 +294,14 @@ class API {
 		} else {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			return new \WP_Error(
-				'ghwp_api_error',
+				'gwp_api_error',
 				$body['message'] ?? sprintf( 'GitHub API returned HTTP %d', $code ),
 				[ 'status' => $code ]
 			);
 		}
 
 		if ( empty( $download_url ) ) {
-			return new \WP_Error( 'ghwp_no_location', 'GitHub did not return a download URL.' );
+			return new \WP_Error( 'gwp_no_location', 'GitHub did not return a download URL.' );
 		}
 
 		// Stream to disk via WordPress (handles large repos safely).
@@ -333,7 +333,7 @@ class API {
 			return $result;
 		}
 		if ( empty( $result['content'] ) ) {
-			return new \WP_Error( 'ghwp_no_content', 'File has no readable content.' );
+			return new \WP_Error( 'gwp_no_content', 'File has no readable content.' );
 		}
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 		return base64_decode( str_replace( "\n", '', $result['content'] ) );
@@ -375,7 +375,7 @@ class API {
 	private function headers(): array {
 		$h = [
 			'Accept'     => 'application/vnd.github.v3+json',
-			'User-Agent' => 'GitHub-for-WordPress/' . GHWP_VERSION,
+			'User-Agent' => 'GitHub-for-WordPress/' . GWP_VERSION,
 		];
 		if ( $this->token ) {
 			$h['Authorization'] = 'Bearer ' . $this->token;
@@ -408,7 +408,7 @@ class API {
 
 		if ( $code >= 400 ) {
 			return new \WP_Error(
-				'ghwp_api_error',
+				'gwp_api_error',
 				$body['message'] ?? sprintf( 'GitHub API error (HTTP %d)', $code ),
 				[ 'status' => $code ]
 			);

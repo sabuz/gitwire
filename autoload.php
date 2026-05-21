@@ -1,9 +1,9 @@
 <?php
 /**
- * Autoloads classes for the GitHub for WordPress plugin.
+ * Autoloads classes for the Git for WordPress plugin.
  * Uses class mapping for fast, direct file loading.
  *
- * @package GitHub_WP
+ * @package Git_WP
  * @since 1.0.0
  */
 
@@ -17,11 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @var array<string, string> $class_map
  */
 $class_map = [
-	'GitHub_WP\Admin'         => 'includes/class-admin.php',
-	'GitHub_WP\API'           => 'includes/class-api.php',
-	'GitHub_WP\Error_Handler' => 'includes/class-error-handler.php',
-	'GitHub_WP\Installer'     => 'includes/class-installer.php',
-	'GitHub_WP\REST'          => 'includes/class-rest.php',
+	'Git_WP\Admin'         => 'includes/class-admin.php',
+	'Git_WP\API'           => 'includes/class-api.php',
+	'Git_WP\GitLab_API'    => 'includes/class-gitlab-api.php',
+	'Git_WP\Error_Handler' => 'includes/class-error-handler.php',
+	'Git_WP\Installer'     => 'includes/class-installer.php',
+	'Git_WP\REST'          => 'includes/class-rest.php',
 ];
 
 spl_autoload_register(

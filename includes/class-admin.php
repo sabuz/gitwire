@@ -2,11 +2,11 @@
 /**
  * Admin class — registers menus, enqueues assets, and renders the admin page.
  *
- * @package GitHub_WP
+ * @package Git_WP
  * @since 1.0.0
  */
 
-namespace GitHub_WP;
+namespace Git_WP;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -23,7 +23,7 @@ class Admin {
 	 *
 	 * @var string
 	 */
-	private const PAGE_SLUG = 'ghwp';
+	private const PAGE_SLUG = 'gwp';
 
 	/**
 	 * Registers all admin hooks.
@@ -40,14 +40,14 @@ class Admin {
 	}
 
 	/**
-	 * Removes all admin notices on GHWP pages to keep the UI clean.
+	 * Removes all admin notices on GWP pages to keep the UI clean.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function hide_admin_notices(): void {
 		$screen = get_current_screen();
-		if ( ! $screen || false === strpos( $screen->id, 'ghwp' ) ) {
+		if ( ! $screen || false === strpos( $screen->id, 'gwp' ) ) {
 			return;
 		}
 		remove_all_actions( 'admin_notices' );
@@ -56,7 +56,7 @@ class Admin {
 	}
 
 	/**
-	 * Appends a CSS class to the body element on GHWP admin pages.
+	 * Appends a CSS class to the body element on GWP admin pages.
 	 *
 	 * @since 1.0.0
 	 * @param string $classes Space-separated list of body classes.
@@ -64,8 +64,8 @@ class Admin {
 	 */
 	public static function body_class( string $classes ): string {
 		$screen = get_current_screen();
-		if ( $screen && false !== strpos( $screen->id, 'ghwp' ) ) {
-			$classes .= ' ghwp-admin-page';
+		if ( $screen && false !== strpos( $screen->id, 'gwp' ) ) {
+			$classes .= ' gwp-admin-page';
 		}
 		return $classes;
 	}
@@ -78,8 +78,8 @@ class Admin {
 	 */
 	public static function add_menu(): void {
 		add_menu_page(
-			__( 'GitHub for WordPress', 'ghwp' ),
-			__( 'GitHub', 'ghwp' ),
+			__( 'Git for WordPress', 'git' ),
+			__( 'Git', 'git' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			[ self::class, 'render_page' ],
@@ -90,8 +90,8 @@ class Admin {
 		// First submenu replaces the auto-generated duplicate of the parent.
 		add_submenu_page(
 			self::PAGE_SLUG,
-			__( 'Installed', 'ghwp' ),
-			__( 'Installed', 'ghwp' ),
+			__( 'Installed', 'git' ),
+			__( 'Installed', 'git' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			[ self::class, 'render_page' ],
@@ -99,8 +99,8 @@ class Admin {
 
 		add_submenu_page(
 			self::PAGE_SLUG,
-			__( 'Browse GitHub', 'ghwp' ),
-			__( 'Browse GitHub', 'ghwp' ),
+			__( 'Browse', 'git' ),
+			__( 'Browse', 'git' ),
 			'manage_options',
 			self::PAGE_SLUG . '&path=browse',
 			[ self::class, 'render_page' ],
@@ -108,8 +108,8 @@ class Admin {
 
 		add_submenu_page(
 			self::PAGE_SLUG,
-			__( 'Settings', 'ghwp' ),
-			__( 'Settings', 'ghwp' ),
+			__( 'Settings', 'git' ),
+			__( 'Settings', 'git' ),
 			'manage_options',
 			self::PAGE_SLUG . '&path=settings',
 			[ self::class, 'render_page' ],
@@ -117,54 +117,54 @@ class Admin {
 	}
 
 	/**
-	 * Enqueues admin scripts and styles for GHWP pages.
+	 * Enqueues admin scripts and styles for GWP pages.
 	 *
 	 * @since 1.0.0
 	 * @param string $hook Current admin page hook suffix.
 	 * @return void
 	 */
 	public static function enqueue( string $hook ): void {
-		// Match toplevel_page_ghwp and github_page_ghwp-{browse,settings}.
-		if ( false === strpos( $hook, '_page_ghwp' ) ) {
+		// Match toplevel_page_gwp and gwp_page_gwp-{browse,settings}.
+		if ( false === strpos( $hook, '_page_gwp' ) ) {
 			return;
 		}
 
-		$asset_file = GHWP_DIR . 'build/index.asset.php';
+		$asset_file = GWP_DIR . 'build/index.asset.php';
 		$asset      = file_exists( $asset_file ) ? require $asset_file : [
 			'dependencies' => [],
-			'version'      => GHWP_VERSION,
+			'version'      => GWP_VERSION,
 		];
 
 		// wp-scripts outputs styles imported in JS to style-index.css.
-		$css_file = file_exists( GHWP_DIR . 'build/index.css' )
-			? GHWP_URL . 'build/index.css'
-			: GHWP_URL . 'build/style-index.css';
+		$css_file = file_exists( GWP_DIR . 'build/index.css' )
+			? GWP_URL . 'build/index.css'
+			: GWP_URL . 'build/style-index.css';
 
 		wp_enqueue_style(
-			'ghwp-app',
+			'gwp-app',
 			$css_file,
 			[ 'wp-components' ],
 			$asset['version']
 		);
 
 		wp_enqueue_script(
-			'ghwp-app',
-			GHWP_URL . 'build/index.js',
+			'gwp-app',
+			GWP_URL . 'build/index.js',
 			$asset['dependencies'],
 			$asset['version'],
 			true
 		);
 
-		wp_set_script_translations( 'ghwp-app', 'ghwp', GHWP_DIR . 'languages' );
+		wp_set_script_translations( 'gwp-app', 'git', GWP_DIR . 'languages' );
 
-		$settings         = (array) get_option( 'ghwp_settings', [] );
-		$has_config       = ! empty( $settings['username'] ) || ! empty( $settings['token'] );
-		$connection       = $has_config ? get_option( 'ghwp_connection_cache', null ) : null;
+		$settings         = (array) get_option( 'gwp_settings', [] );
+		$has_config       = ! empty( $settings['username'] ) || ! empty( $settings['token'] ) || ! empty( $settings['gitlab_token'] );
+		$connection       = $has_config ? get_option( 'gwp_connection_cache', null ) : null;
 		$installed        = REST::get_installed();
-		$first_activation = (bool) get_transient( 'ghwp_first_activation' );
+		$first_activation = (bool) get_transient( 'gwp_first_activation' );
 
 		if ( $first_activation ) {
-			delete_transient( 'ghwp_first_activation' );
+			delete_transient( 'gwp_first_activation' );
 		}
 
 		// Derive initial tab from path param, activation state, or setup status.
@@ -178,8 +178,8 @@ class Admin {
 		}
 
 		wp_add_inline_script(
-			'ghwp-app',
-			'window.GHWP = ' . wp_json_encode(
+			'gwp-app',
+			'window.GWP = ' . wp_json_encode(
 				[
 					'nonce'       => wp_create_nonce( 'wp_rest' ),
 					'initial_tab' => $initial_tab,
@@ -187,6 +187,9 @@ class Admin {
 						'username'      => $settings['username'] ?? '',
 						'token'         => $settings['token'] ?? '',
 						'smart_install' => $settings['smart_install'] ?? true,
+						'provider'      => $settings['provider'] ?? 'github',
+						'gitlab_token'  => $settings['gitlab_token'] ?? '',
+						'gitlab_url'    => $settings['gitlab_url'] ?? '',
 					],
 					'connection'  => $connection ? $connection : null,
 					'installed'   => $installed ? $installed : (object) [],
@@ -204,9 +207,9 @@ class Admin {
 	 */
 	public static function render_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'ghwp' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'git' ) );
 		}
-		require_once GHWP_DIR . 'views/admin-page.php';
+		require_once GWP_DIR . 'views/admin-page.php';
 	}
 
 	/**
@@ -220,27 +223,27 @@ class Admin {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-		$notice = get_option( 'ghwp_fatal_notice' );
+		$notice = get_option( 'gwp_fatal_notice' );
 		if ( ! $notice ) {
 			return;
 		}
-		delete_option( 'ghwp_fatal_notice' );
+		delete_option( 'gwp_fatal_notice' );
 
 		$name     = esc_html( $notice['full_name'] ?? 'Unknown' );
 		$restored = ! empty( $notice['restored'] );
 
 		if ( $restored ) {
 			/* translators: %s: Plugin or theme full name. */
-			$msg = sprintf( __( '<strong>GitHub for WordPress:</strong> A fatal PHP error was detected after updating <em>%s</em>. The previous version has been automatically restored and the plugin deactivated.', 'ghwp' ), $name );
+			$msg = sprintf( __( '<strong>Git for WordPress:</strong> A fatal PHP error was detected after updating <em>%s</em>. The previous version has been automatically restored and the plugin deactivated.', 'git' ), $name );
 		} else {
 			/* translators: %s: Plugin or theme full name. */
-			$msg = sprintf( __( '<strong>GitHub for WordPress:</strong> A fatal PHP error was detected after installing <em>%s</em>. The broken files have been removed.', 'ghwp' ), $name );
+			$msg = sprintf( __( '<strong>Git for WordPress:</strong> A fatal PHP error was detected after installing <em>%s</em>. The broken files have been removed.', 'git' ), $name );
 		}
 
 		printf(
 			'<div class="notice notice-error is-dismissible"><p>%s</p><details><summary>%s</summary><pre>%s</pre></details></div>',
 			wp_kses_post( $msg ),
-			esc_html__( 'Error details', 'ghwp' ),
+			esc_html__( 'Error details', 'git' ),
 			esc_html( $notice['error'] ?? '' )
 		);
 	}

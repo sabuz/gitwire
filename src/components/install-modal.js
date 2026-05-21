@@ -88,7 +88,7 @@ export default function InstallModal( {
 			onInstalled( result );
 			startCountdown();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Installation failed.', 'ghwp' ) );
+			toast.error( e.message || __( 'Installation failed.', 'git' ) );
 			setInstalling( false );
 		}
 	};
@@ -99,7 +99,7 @@ export default function InstallModal( {
 		const tick = () => {
 			secs--;
 			if ( secs <= 0 ) {
-				sessionStorage.setItem( 'ghwp_goto_tab', 'installed' );
+				sessionStorage.setItem( 'gwp_goto_tab', 'installed' );
 				window.location.reload();
 				return;
 			}
@@ -116,7 +116,7 @@ export default function InstallModal( {
 			style={ { maxWidth: 480 } }
 			title={ sprintf(
 				/* translators: %s: repository full name */
-				__( 'Install %s', 'ghwp' ),
+				__( 'Install %s', 'git' ),
 				repo.full_name
 			) }
 			onRequestClose={ installing ? undefined : onClose }
@@ -129,10 +129,10 @@ export default function InstallModal( {
 			{ detection && detection.type === 'unknown' && ! smartInstall && (
 				<SelectControl
 					__nextHasNoMarginBottom
-					label={ __( 'Install as', 'ghwp' ) }
+					label={ __( 'Install as', 'git' ) }
 					options={ [
-						{ label: __( 'Plugin', 'ghwp' ), value: 'plugin' },
-						{ label: __( 'Theme', 'ghwp' ), value: 'theme' },
+						{ label: __( 'Plugin', 'git' ), value: 'plugin' },
+						{ label: __( 'Theme', 'git' ), value: 'theme' },
 					] }
 					style={ { marginTop: 16 } }
 					value={ type }
@@ -144,7 +144,7 @@ export default function InstallModal( {
 				<ComboboxControl
 					__nextHasNoMarginBottom
 					disabled={ installing }
-					label={ __( 'Branch', 'ghwp' ) }
+					label={ __( 'Branch', 'git' ) }
 					options={ branchOptions }
 					value={ branch }
 					onChange={ ( val ) => val && setBranch( val ) }
@@ -162,7 +162,7 @@ export default function InstallModal( {
 						/* translators: %d: seconds remaining */
 						__(
 							'Installation complete — opening Installed tab in %d',
-							'ghwp'
+							'git'
 						),
 						countdown
 					) }
@@ -172,7 +172,7 @@ export default function InstallModal( {
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 20 } }>
 				{ ! installing && countdown === null && (
 					<Button variant="tertiary" onClick={ onClose }>
-						{ __( 'Cancel', 'ghwp' ) }
+						{ __( 'Cancel', 'git' ) }
 					</Button>
 				) }
 				<Button
@@ -184,8 +184,8 @@ export default function InstallModal( {
 					onClick={ handleInstall }
 				>
 					{ installing
-						? __( 'Installing…', 'ghwp' )
-						: __( 'Install', 'ghwp' ) }
+						? __( 'Installing…', 'git' )
+						: __( 'Install', 'git' ) }
 				</Button>
 			</Flex>
 		</Modal>
@@ -203,8 +203,8 @@ export default function InstallModal( {
 function DetectionBadge( { detection, smartInstall } ) {
 	if ( ! detection ) {
 		return (
-			<div className="ghwp-detect-row ghwp-detect-loading">
-				<Spinner /> { __( 'Detecting project type…', 'ghwp' ) }
+			<div className="gwp-detect-row gwp-detect-loading">
+				<Spinner /> { __( 'Detecting project type…', 'git' ) }
 			</div>
 		);
 	}
@@ -213,58 +213,58 @@ function DetectionBadge( { detection, smartInstall } ) {
 	let badgeClass, label;
 
 	if ( type === 'plugin' ) {
-		badgeClass = 'ghwp-detect-plugin';
+		badgeClass = 'gwp-detect-plugin';
 		label =
 			confidence === 'high'
 				? sprintf(
 						/* translators: %s: plugin name */
-						__( 'WordPress Plugin%s', 'ghwp' ),
+						__( 'WordPress Plugin%s', 'git' ),
 						name ? ` — ${ name }` : ''
 				  )
-				: __( 'Likely a WordPress Plugin', 'ghwp' );
+				: __( 'Likely a WordPress Plugin', 'git' );
 	} else if ( type === 'theme' && subtype === 'block' ) {
-		badgeClass = 'ghwp-detect-theme';
+		badgeClass = 'gwp-detect-theme';
 		label =
 			confidence === 'high'
 				? sprintf(
 						/* translators: %s: theme name */
-						__( 'Block Theme%s', 'ghwp' ),
+						__( 'Block Theme%s', 'git' ),
 						name ? ` — ${ name }` : ''
 				  )
-				: __( 'Likely a Block Theme', 'ghwp' );
+				: __( 'Likely a Block Theme', 'git' );
 	} else if ( type === 'theme' ) {
-		badgeClass = 'ghwp-detect-theme';
+		badgeClass = 'gwp-detect-theme';
 		label =
 			confidence === 'high'
 				? sprintf(
 						/* translators: %s: theme name */
-						__( 'Classic Theme%s', 'ghwp' ),
+						__( 'Classic Theme%s', 'git' ),
 						name ? ` — ${ name }` : ''
 				  )
-				: __( 'Likely a Classic Theme', 'ghwp' );
+				: __( 'Likely a Classic Theme', 'git' );
 	} else {
-		badgeClass = 'ghwp-detect-unknown';
-		label = __( 'Not recognised as a WordPress project', 'ghwp' );
+		badgeClass = 'gwp-detect-unknown';
+		label = __( 'Not recognised as a WordPress project', 'git' );
 	}
 
 	return (
-		<div className="ghwp-detect-row">
-			<span className={ `ghwp-detect-badge ${ badgeClass }` }>
+		<div className="gwp-detect-row">
+			<span className={ `gwp-detect-badge ${ badgeClass }` }>
 				{ label }
 			</span>
 			{ type === 'unknown' && smartInstall && (
-				<p className="ghwp-detect-note ghwp-detect-blocked">
+				<p className="gwp-detect-note gwp-detect-blocked">
 					{ __(
 						'Smart Install is enabled — only verified plugins and themes can be installed. Disable it in Settings to override.',
-						'ghwp'
+						'git'
 					) }
 				</p>
 			) }
 			{ type === 'unknown' && ! smartInstall && (
-				<p className="ghwp-detect-note ghwp-detect-warn">
+				<p className="gwp-detect-note gwp-detect-warn">
 					{ __(
 						'This repo was not recognised as a WordPress plugin or theme. You can still install it — choose a type below.',
-						'ghwp'
+						'git'
 					) }
 				</p>
 			) }

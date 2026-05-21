@@ -10,9 +10,9 @@ import InstalledPanel from './components/installed-panel';
 import SettingsPanel from './components/settings-panel';
 
 const TABS = [
-	{ name: 'installed', label: __( 'Installed', 'ghwp' ) },
-	{ name: 'browse', label: __( 'Browse GitHub', 'ghwp' ) },
-	{ name: 'settings', label: __( 'Settings', 'ghwp' ) },
+	{ name: 'installed', label: __( 'Installed', 'git' ) },
+	{ name: 'browse', label: __( 'Browse', 'git' ) },
+	{ name: 'settings', label: __( 'Settings', 'git' ) },
 ];
 
 /**
@@ -23,7 +23,7 @@ const TABS = [
  */
 function tabUrl( tabName ) {
 	const url = new URL( window.location.href );
-	url.searchParams.set( 'page', 'ghwp' );
+	url.searchParams.set( 'page', 'gwp' );
 	if ( tabName === 'installed' ) {
 		url.searchParams.delete( 'path' );
 	} else {
@@ -38,7 +38,7 @@ function tabUrl( tabName ) {
  * @param {string} tabName Active tab identifier.
  */
 function updateSidebarActive( tabName ) {
-	const submenu = document.querySelector( '#toplevel_page_ghwp .wp-submenu' );
+	const submenu = document.querySelector( '#toplevel_page_gwp .wp-submenu' );
 	if ( ! submenu ) {
 		return;
 	}
@@ -66,7 +66,7 @@ function updateSidebarActive( tabName ) {
  */
 function syncUrl( tabName ) {
 	const url = new URL( window.location.href );
-	url.searchParams.set( 'page', 'ghwp' );
+	url.searchParams.set( 'page', 'gwp' );
 	if ( tabName === 'installed' ) {
 		url.searchParams.delete( 'path' );
 	} else {
@@ -96,9 +96,9 @@ export default function App( { initialData } ) {
 
 	// Post-install redirect via sessionStorage overrides everything.
 	useEffect( () => {
-		const tab = sessionStorage.getItem( 'ghwp_goto_tab' );
+		const tab = sessionStorage.getItem( 'gwp_goto_tab' );
 		if ( tab ) {
-			sessionStorage.removeItem( 'ghwp_goto_tab' );
+			sessionStorage.removeItem( 'gwp_goto_tab' );
 			setActiveTab( tab );
 			syncUrl( tab );
 		} else {
@@ -109,7 +109,7 @@ export default function App( { initialData } ) {
 	// Intercept WP sidebar submenu clicks so tab switches stay client-side.
 	useEffect( () => {
 		const submenu = document.querySelector(
-			'#toplevel_page_ghwp .wp-submenu'
+			'#toplevel_page_gwp .wp-submenu'
 		);
 		if ( ! submenu ) {
 			return;
@@ -126,7 +126,7 @@ export default function App( { initialData } ) {
 			}
 			try {
 				const params = new URL( a.href ).searchParams;
-				if ( params.get( 'page' ) !== 'ghwp' ) {
+				if ( params.get( 'page' ) !== 'gwp' ) {
 					return;
 				}
 				const tab = PATH_TO_TAB[ params.get( 'path' ) || '' ];
@@ -168,7 +168,7 @@ export default function App( { initialData } ) {
 
 	if ( loading || ! settings ) {
 		return (
-			<div className="ghwp-page">
+			<div className="gwp-page">
 				<div style={ { padding: 48, textAlign: 'center' } }>
 					<Spinner />
 				</div>
@@ -179,16 +179,16 @@ export default function App( { initialData } ) {
 	const installedCount = Object.keys( installed ).length;
 
 	return (
-		<div className="ghwp-page">
+		<div className="gwp-page">
 			<Toaster richColors position="top-right" />
-			<div className="ghwp-page-header">
-				<h1 className="ghwp-page-title">
-					{ __( 'GitHub for WordPress', 'ghwp' ) }
+			<div className="gwp-page-header">
+				<h1 className="gwp-page-title">
+					{ __( 'Git for WordPress', 'git' ) }
 				</h1>
 
 				<nav
-					aria-label={ __( 'Plugin navigation', 'ghwp' ) }
-					className="ghwp-page-nav"
+					aria-label={ __( 'Plugin navigation', 'git' ) }
+					className="gwp-page-nav"
 				>
 					{ TABS.map( ( tab ) => (
 						<a
@@ -196,7 +196,7 @@ export default function App( { initialData } ) {
 							aria-current={
 								activeTab === tab.name ? 'page' : undefined
 							}
-							className={ `ghwp-nav-tab${
+							className={ `gwp-nav-tab${
 								activeTab === tab.name ? ' is-active' : ''
 							}` }
 							href={ tabUrl( tab.name ) }
@@ -208,7 +208,7 @@ export default function App( { initialData } ) {
 							{ tab.label }
 							{ tab.name === 'installed' &&
 								installedCount > 0 && (
-									<span className="ghwp-nav-badge">
+									<span className="gwp-nav-badge">
 										{ installedCount }
 									</span>
 								) }
@@ -217,7 +217,7 @@ export default function App( { initialData } ) {
 				</nav>
 			</div>
 
-			<div className="ghwp-page-content">
+			<div className="gwp-page-content">
 				{ activeTab === 'settings' && (
 					<SettingsPanel
 						connection={ connection }

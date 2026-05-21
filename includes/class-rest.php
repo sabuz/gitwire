@@ -1,19 +1,19 @@
 <?php
 /**
- * REST API endpoints for the GitHub for WordPress plugin.
+ * REST API endpoints for the Git for WordPress plugin.
  *
- * @package GitHub_WP
+ * @package Git_WP
  * @since 1.0.0
  */
 
-namespace GitHub_WP;
+namespace Git_WP;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Registers and handles all REST API routes under the ghwp/v1 namespace.
+ * Registers and handles all REST API routes under the gwp/v1 namespace.
  */
 class REST {
 
@@ -22,7 +22,7 @@ class REST {
 	 *
 	 * @var string
 	 */
-	private const NS = 'ghwp/v1';
+	private const NS = 'gwp/v1';
 
 	/**
 	 * Registers the rest_api_init hook.
@@ -68,11 +68,23 @@ class REST {
 				'callback'            => [ self::class, 'test_connection' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [
-					'username' => [
+					'provider'     => [
 						'type'    => 'string',
 						'default' => '',
 					],
-					'token'    => [
+					'username'     => [
+						'type'    => 'string',
+						'default' => '',
+					],
+					'token'        => [
+						'type'    => 'string',
+						'default' => '',
+					],
+					'gitlab_token' => [
+						'type'    => 'string',
+						'default' => '',
+					],
+					'gitlab_url'   => [
 						'type'    => 'string',
 						'default' => '',
 					],
@@ -188,11 +200,14 @@ class REST {
 	 * @return array<string, mixed> Settings array.
 	 */
 	public static function get_settings(): array {
-		$s = (array) get_option( 'ghwp_settings', [] );
+		$s = (array) get_option( 'gwp_settings', [] );
 		return [
 			'username'      => $s['username'] ?? '',
 			'token'         => $s['token'] ?? '',
 			'smart_install' => $s['smart_install'] ?? true,
+			'provider'      => $s['provider'] ?? 'github',
+			'gitlab_token'  => $s['gitlab_token'] ?? '',
+			'gitlab_url'    => $s['gitlab_url'] ?? '',
 		];
 	}
 
@@ -207,9 +222,19 @@ class REST {
 		$token         = sanitize_text_field( $req->get_param( 'token' ) ?? '' );
 		$username      = sanitize_text_field( $req->get_param( 'username' ) ?? '' );
 		$smart_install = (bool) $req->get_param( 'smart_install' );
+		$provider      = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$gitlab_token  = sanitize_text_field( $req->get_param( 'gitlab_token' ) ?? '' );
+		$gitlab_url    = esc_url_raw( $req->get_param( 'gitlab_url' ) ?? '' );
 
-		update_option( 'ghwp_settings', compact( 'token', 'username', 'smart_install' ) );
-		delete_option( 'ghwp_connection_cache' );
+		if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+			$provider = 'github';
+		}
+
+		update_option(
+			'gwp_settings',
+			compact( 'token', 'username', 'smart_install', 'provider', 'gitlab_token', 'gitlab_url' )
+		);
+		delete_option( 'gwp_connection_cache' );
 
 		return [
 			'saved'         => true,
@@ -218,14 +243,61 @@ class REST {
 	}
 
 	/**
-	 * Tests the GitHub API connection and caches the result.
+	 * Tests the configured API connection and caches the result.
+	 * Supports both GitHub and GitLab via the provider setting.
 	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<string, mixed>|WP_Error Connection data on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
 	 */
 	public static function test_connection( \WP_REST_Request $req ): array|\WP_Error {
-		$settings = (array) get_option( 'ghwp_settings', [] );
+		$settings     = (array) get_option( 'gwp_settings', [] );
+		$req_provider = $req->get_param( 'provider' );
+		$provider     = sanitize_key(
+			$req_provider ? $req_provider : ( $settings['provider'] ?? 'github' )
+		);
+
+		if ( 'gitlab' === $provider ) {
+			$saved_token = $settings['gitlab_token'] ?? '';
+			$saved_url   = $settings['gitlab_url'] ?? '';
+			$req_token   = $req->get_param( 'gitlab_token' );
+			$req_url     = $req->get_param( 'gitlab_url' );
+			$token       = sanitize_text_field( $req_token ? $req_token : $saved_token );
+			$gitlab_url  = esc_url_raw( $req_url ? $req_url : $saved_url );
+			$cache       = ( $token === $saved_token && $gitlab_url === $saved_url );
+
+			$api    = new GitLab_API( $token, $gitlab_url );
+			$result = $api->test_connection();
+
+			if ( is_wp_error( $result ) ) {
+				if ( $cache ) {
+					update_option(
+						'gwp_connection_cache',
+						[
+							'provider' => 'gitlab',
+							'error'    => $result->get_error_message(),
+						],
+						false
+					);
+				}
+				return $result;
+			}
+
+			$data = [
+				'provider'      => 'gitlab',
+				'authenticated' => true,
+				'login'         => $result['login'] ?? '',
+				'name'          => $result['name'] ?? '',
+				'avatar_url'    => $result['avatar_url'] ?? '',
+				'checked_at'    => time(),
+			];
+
+			if ( $cache ) {
+				update_option( 'gwp_connection_cache', $data, false );
+			}
+
+			return $data;
+		}
 
 		$saved_token    = $settings['token'] ?? '';
 		$saved_username = $settings['username'] ?? '';
@@ -245,8 +317,11 @@ class REST {
 		if ( is_wp_error( $result ) ) {
 			if ( $cache ) {
 				update_option(
-					'ghwp_connection_cache',
-					[ 'error' => $result->get_error_message() ],
+					'gwp_connection_cache',
+					[
+						'provider' => 'github',
+						'error'    => $result->get_error_message(),
+					],
 					false
 				);
 			}
@@ -254,6 +329,7 @@ class REST {
 		}
 
 		$data = [
+			'provider'       => 'github',
 			'authenticated'  => ! empty( $result['login'] ),
 			'login'          => $result['login'] ?? '',
 			'name'           => $result['name'] ?? '',
@@ -265,7 +341,7 @@ class REST {
 		];
 
 		if ( $cache ) {
-			update_option( 'ghwp_connection_cache', $data, false );
+			update_option( 'gwp_connection_cache', $data, false );
 		}
 
 		return $data;
@@ -276,18 +352,72 @@ class REST {
 	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<string, mixed>|WP_Error Repository payload on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Repository payload on success, WP_Error on failure.
 	 */
 	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
-		$settings = (array) get_option( 'ghwp_settings', [] );
-		$username = sanitize_text_field( $req->get_param( 'username' ) ?? $settings['username'] ?? '' );
+		$settings = (array) get_option( 'gwp_settings', [] );
+		$provider = $settings['provider'] ?? 'github';
 		$page     = max( 1, (int) ( $req->get_param( 'page' ) ?? 1 ) );
+
+		if ( 'gitlab' === $provider ) {
+			if ( ! ( $settings['gitlab_token'] ?? '' ) ) {
+				return new \WP_Error( 'missing_config', 'Configure a GitLab token first.', [ 'status' => 400 ] );
+			}
+
+			$cache_key = 'gwp_repos_' . md5( 'gitlab' . ( $settings['gitlab_token'] ?? '' ) . ( $settings['gitlab_url'] ?? '' ) . $page );
+			$cached    = get_transient( $cache_key );
+			if ( false !== $cached ) {
+				return $cached;
+			}
+
+			$api       = new GitLab_API( $settings['gitlab_token'] ?? '', $settings['gitlab_url'] ?? '' );
+			$result    = $api->get_repos( '', $page );
+			$installed = Installer::get_installed();
+
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			$repos = array_map(
+				static function ( $r ) use ( $installed ) {
+					$full_name  = $r['path_with_namespace'] ?? '';
+					$parts      = explode( '/', $full_name );
+					$is_private = ( $r['visibility'] ?? 'private' ) !== 'public';
+					return [
+						'id'               => $r['id'],
+						'name'             => $r['path'] ?? '',
+						'full_name'        => $full_name,
+						'owner'            => $parts[0] ?? '',
+						'description'      => $r['description'] ?? '',
+						'private'          => $is_private,
+						'html_url'         => $r['web_url'] ?? '',
+						'default_branch'   => $r['default_branch'] ?? 'main',
+						'updated_at'       => $r['last_activity_at'] ?? '',
+						'stargazers_count' => (int) ( $r['star_count'] ?? 0 ),
+						'installed'        => $installed[ $full_name ] ?? null,
+					];
+				},
+				$result
+			);
+
+			$payload = [
+				'repos'    => $repos,
+				'has_more' => count( $result ) === 100,
+				'page'     => $page,
+			];
+
+			set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
+
+			return $payload;
+		}
+
+		$username = sanitize_text_field( $req->get_param( 'username' ) ?? $settings['username'] ?? '' );
 
 		if ( ! $username && ! ( $settings['token'] ?? '' ) ) {
 			return new \WP_Error( 'missing_config', 'Configure a GitHub username or token first.', [ 'status' => 400 ] );
 		}
 
-		$cache_key = 'ghwp_repos_' . md5( ( $settings['token'] ?? '' ) . $username . $page );
+		$cache_key = 'gwp_repos_' . md5( ( $settings['token'] ?? '' ) . $username . $page );
 		$cached    = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return $cached;
@@ -337,13 +467,13 @@ class REST {
 	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<int, string>|WP_Error Branch name list on success, WP_Error on failure.
+	 * @return array<int, string>|\WP_Error Branch name list on success, WP_Error on failure.
 	 */
 	public static function get_branches( \WP_REST_Request $req ): array|\WP_Error {
 		$owner    = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo     = sanitize_text_field( $req->get_param( 'repo' ) );
-		$settings = (array) get_option( 'ghwp_settings', [] );
-		$api      = new API( $settings['token'] ?? '' );
+		$settings = (array) get_option( 'gwp_settings', [] );
+		$api      = self::make_api( $settings );
 		$result   = $api->get_branches( $owner, $repo );
 
 		if ( is_wp_error( $result ) ) {
@@ -358,21 +488,21 @@ class REST {
 	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<string, mixed>|WP_Error Detection result on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
 	public static function detect_repo( \WP_REST_Request $req ): array|\WP_Error {
 		$owner  = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo   = sanitize_text_field( $req->get_param( 'repo' ) );
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? 'HEAD' );
 
-		$cache_key = 'ghwp_detect_' . md5( $owner . $repo . $branch );
+		$cache_key = 'gwp_detect_' . md5( $owner . $repo . $branch );
 		$cached    = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return $cached;
 		}
 
-		$settings = (array) get_option( 'ghwp_settings', [] );
-		$api      = new API( $settings['token'] ?? '' );
+		$settings = (array) get_option( 'gwp_settings', [] );
+		$api      = self::make_api( $settings );
 		$result   = $api->detect_type( $owner, $repo, $branch );
 
 		// Absorb GitHub errors (private repo, rate-limit, network) so the
@@ -550,6 +680,23 @@ class REST {
 	}
 
 	/**
+	 * Returns an API client instance for the configured provider.
+	 *
+	 * @since 1.1.0
+	 * @param array<string, mixed> $settings Plugin settings array.
+	 * @return API|GitLab_API Appropriate API client.
+	 */
+	private static function make_api( array $settings ): API|GitLab_API {
+		if ( 'gitlab' === ( $settings['provider'] ?? 'github' ) ) {
+			return new GitLab_API(
+				$settings['gitlab_token'] ?? '',
+				$settings['gitlab_url'] ?? ''
+			);
+		}
+		return new API( $settings['token'] ?? '' );
+	}
+
+	/**
 	 * Deletes all cached repository transients from the options table.
 	 *
 	 * @since 1.0.0
@@ -559,7 +706,7 @@ class REST {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 		$wpdb->query(
-			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_ghwp_repos_%'"
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gwp_repos_%'"
 		);
 	}
 }

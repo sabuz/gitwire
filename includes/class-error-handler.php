@@ -10,11 +10,11 @@
  * Uses only plain PHP and raw MySQL so it works even when WordPress has
  * not finished bootstrapping.
  *
- * @package GitHub_WP
+ * @package Git_WP
  * @since 1.0.0
  */
 
-namespace GitHub_WP;
+namespace Git_WP;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -64,13 +64,13 @@ class Error_Handler {
 		}
 
 		// Read the pending-update record directly from the DB.
-		$pending = self::db_get_option( 'ghwp_pending_update' );
+		$pending = self::db_get_option( 'gwp_pending_update' );
 		if ( ! $pending ) {
 			return;
 		}
 
 		// Immediately clear the flag so we don't loop.
-		self::db_delete_option( 'ghwp_pending_update' );
+		self::db_delete_option( 'gwp_pending_update' );
 
 		$install_path = $pending['install_path'] ?? null;
 		$backup_path  = $pending['backup_path'] ?? null;
@@ -104,7 +104,7 @@ class Error_Handler {
 			'restored'  => (bool) $backup_path,
 		];
 
-		self::db_update_option( 'ghwp_fatal_notice', $notice );
+		self::db_update_option( 'gwp_fatal_notice', $notice );
 	}
 
 	/**
