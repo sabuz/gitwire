@@ -219,12 +219,14 @@ class Installer {
 
 			$plugin_file = $rec['plugin_file'] ?? null;
 
-			// Self-heal: stored records may lack plugin_file. Try to find it.
-			if ( ! $plugin_file && ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
-				$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
-				if ( $plugin_file ) {
-					$installed[ $full_name ]['plugin_file'] = $plugin_file;
-					update_option( 'ghwp_installed', $installed );
+			// Self-heal: re-scan when file is missing or path is stale/wrong.
+			if ( ! $plugin_file || ! file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
+				if ( ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
+					$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
+					if ( $plugin_file ) {
+						$installed[ $full_name ]['plugin_file'] = $plugin_file;
+						update_option( 'ghwp_installed', $installed );
+					}
 				}
 			}
 
@@ -271,7 +273,28 @@ class Installer {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		deactivate_plugins( $rec['plugin_file'] ?? '' );
+		$plugin_file = $rec['plugin_file'] ?? null;
+
+		// Self-heal: re-scan when file is missing or path is stale/wrong.
+		if ( ! $plugin_file || ! file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
+			if ( ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
+				$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
+				if ( $plugin_file ) {
+					$installed[ $full_name ]['plugin_file'] = $plugin_file;
+					update_option( 'ghwp_installed', $installed );
+				}
+			}
+		}
+
+		if ( ! $plugin_file ) {
+			return new \WP_Error(
+				'ghwp_no_plugin_file',
+				'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.',
+				[ 'status' => 500 ]
+			);
+		}
+
+		deactivate_plugins( $plugin_file );
 
 		return true;
 	}
@@ -457,16 +480,33 @@ class Installer {
 	 * @return string|null Relative plugin file path, or null if not found.
 	 */
 	private static function find_plugin_file( string $plugin_dir, string $slug ): ?string {
-		if ( ! function_exists( 'get_plugins' ) ) {
+		if ( ! function_exists( 'get_plugin_data' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		// Refresh the plugin cache for our folder.
-		$plugins = get_plugins( '/' . $slug );
+		if ( ! is_dir( $plugin_dir ) ) {
+			return null;
+		}
 
-		if ( ! empty( $plugins ) ) {
-			$first_key = array_key_first( $plugins );
-			return $first_key;
+		// Try the most common convention first: slug/slug.php.
+		$candidate = $slug . '/' . $slug . '.php';
+		if ( file_exists( WP_PLUGIN_DIR . '/' . $candidate ) ) {
+			$data = get_plugin_data( WP_PLUGIN_DIR . '/' . $candidate, false, false );
+			if ( ! empty( $data['Name'] ) ) {
+				return $candidate;
+			}
+		}
+
+		// Scan all PHP files directly in the plugin directory for a Plugin Name header.
+		$files = glob( trailingslashit( $plugin_dir ) . '*.php' );
+		if ( ! $files ) {
+			return null;
+		}
+		foreach ( $files as $file ) {
+			$data = get_plugin_data( $file, false, false );
+			if ( ! empty( $data['Name'] ) ) {
+				return $slug . '/' . basename( $file );
+			}
 		}
 
 		return null;

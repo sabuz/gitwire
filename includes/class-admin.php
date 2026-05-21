@@ -157,7 +157,7 @@ class Admin {
 
 		$settings         = (array) get_option( 'ghwp_settings', [] );
 		$connection       = get_option( 'ghwp_connection_cache', null );
-		$installed        = Installer::get_installed();
+		$installed        = REST::get_installed();
 		$first_activation = (bool) get_transient( 'ghwp_first_activation' );
 
 		if ( $first_activation ) {

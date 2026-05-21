@@ -260,17 +260,18 @@ body.ghwp-admin-page {
 		}
 
 		.components-card__header {
-			padding: 10px 14px;
+			padding: 12px 16px;
 		}
 
 		.components-card__body {
 			flex: 1;
 			max-height: none !important;
-			padding: 10px 14px;
+			padding: 12px 16px;
+			min-height: 42px;
 		}
 
 		.components-card__footer {
-			padding: 8px 14px;
+			padding: 8px 16px;
 		}
 	}
 
@@ -288,7 +289,7 @@ body.ghwp-admin-page {
 
 	&-desc {
 		display: -webkit-box;
-		margin: 4px 0 0;
+		margin: 0;
 		font-size: 12px;
 		line-height: 1.5;
 		color: #57606a;
