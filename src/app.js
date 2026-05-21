@@ -23,7 +23,7 @@ const TABS = [
  */
 function tabUrl( tabName ) {
 	const url = new URL( window.location.href );
-	url.searchParams.set( 'page', 'gwp' );
+	url.searchParams.set( 'page', 'git' );
 	if ( tabName === 'installed' ) {
 		url.searchParams.delete( 'path' );
 	} else {
@@ -38,7 +38,7 @@ function tabUrl( tabName ) {
  * @param {string} tabName Active tab identifier.
  */
 function updateSidebarActive( tabName ) {
-	const submenu = document.querySelector( '#toplevel_page_gwp .wp-submenu' );
+	const submenu = document.querySelector( '#toplevel_page_git .wp-submenu' );
 	if ( ! submenu ) {
 		return;
 	}
@@ -66,7 +66,7 @@ function updateSidebarActive( tabName ) {
  */
 function syncUrl( tabName ) {
 	const url = new URL( window.location.href );
-	url.searchParams.set( 'page', 'gwp' );
+	url.searchParams.set( 'page', 'git' );
 	if ( tabName === 'installed' ) {
 		url.searchParams.delete( 'path' );
 	} else {
@@ -109,7 +109,7 @@ export default function App( { initialData } ) {
 	// Intercept WP sidebar submenu clicks so tab switches stay client-side.
 	useEffect( () => {
 		const submenu = document.querySelector(
-			'#toplevel_page_gwp .wp-submenu'
+			'#toplevel_page_git .wp-submenu'
 		);
 		if ( ! submenu ) {
 			return;
@@ -126,7 +126,7 @@ export default function App( { initialData } ) {
 			}
 			try {
 				const params = new URL( a.href ).searchParams;
-				if ( params.get( 'page' ) !== 'gwp' ) {
+				if ( params.get( 'page' ) !== 'git' ) {
 					return;
 				}
 				const tab = PATH_TO_TAB[ params.get( 'path' ) || '' ];
@@ -183,7 +183,15 @@ export default function App( { initialData } ) {
 			<Toaster richColors position="top-right" />
 			<div className="gwp-page-header">
 				<h1 className="gwp-page-title">
-					{ __( 'Git for WordPress', 'git' ) }
+					{ initialData.icon_url && (
+						<img
+							alt=""
+							aria-hidden="true"
+							className="gwp-page-title__icon"
+							src={ initialData.icon_url }
+						/>
+					) }
+					{ __( 'Git', 'git' ) }
 				</h1>
 
 				<nav

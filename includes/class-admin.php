@@ -23,7 +23,7 @@ class Admin {
 	 *
 	 * @var string
 	 */
-	private const PAGE_SLUG = 'gwp';
+	private const PAGE_SLUG = 'git';
 
 	/**
 	 * Registers all admin hooks.
@@ -47,7 +47,7 @@ class Admin {
 	 */
 	public static function hide_admin_notices(): void {
 		$screen = get_current_screen();
-		if ( ! $screen || false === strpos( $screen->id, 'gwp' ) ) {
+		if ( ! $screen || false === strpos( $screen->id, '_page_git' ) ) {
 			return;
 		}
 		remove_all_actions( 'admin_notices' );
@@ -64,7 +64,7 @@ class Admin {
 	 */
 	public static function body_class( string $classes ): string {
 		$screen = get_current_screen();
-		if ( $screen && false !== strpos( $screen->id, 'gwp' ) ) {
+		if ( $screen && false !== strpos( $screen->id, '_page_git' ) ) {
 			$classes .= ' gwp-admin-page';
 		}
 		return $classes;
@@ -77,13 +77,25 @@ class Admin {
 	 * @return void
 	 */
 	public static function add_menu(): void {
+		$menu_icon = 'dashicons-randomize';
+		$icon_path = GWP_DIR . 'assets/images/icon.svg';
+		if ( file_exists( $icon_path ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$svg_raw = (string) file_get_contents( $icon_path );
+			// Replace all hex fill/stroke colours with white so WordPress
+			// colour-scheme CSS can tint the icon via opacity correctly.
+			$svg_white = (string) preg_replace( '/(fill|stroke)="#[0-9a-fA-F]{3,6}"/', '$1="#ffffff"', $svg_raw );
+			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+			$menu_icon = 'data:image/svg+xml;base64,' . base64_encode( $svg_white );
+		}
+
 		add_menu_page(
-			__( 'Git for WordPress', 'git' ),
+			__( 'Git', 'git' ),
 			__( 'Git', 'git' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			[ self::class, 'render_page' ],
-			'dashicons-randomize',
+			$menu_icon,
 			65
 		);
 
@@ -124,8 +136,8 @@ class Admin {
 	 * @return void
 	 */
 	public static function enqueue( string $hook ): void {
-		// Match toplevel_page_gwp and gwp_page_gwp-{browse,settings}.
-		if ( false === strpos( $hook, '_page_gwp' ) ) {
+		// Match toplevel_page_git and git_page_git-{browse,settings}.
+		if ( false === strpos( $hook, '_page_git' ) ) {
 			return;
 		}
 
@@ -182,6 +194,7 @@ class Admin {
 			'window.GWP = ' . wp_json_encode(
 				[
 					'nonce'       => wp_create_nonce( 'wp_rest' ),
+					'icon_url'    => GWP_URL . 'assets/images/icon.svg',
 					'initial_tab' => $initial_tab,
 					'settings'    => [
 						'username'      => $settings['username'] ?? '',
@@ -234,10 +247,10 @@ class Admin {
 
 		if ( $restored ) {
 			/* translators: %s: Plugin or theme full name. */
-			$msg = sprintf( __( '<strong>Git for WordPress:</strong> A fatal PHP error was detected after updating <em>%s</em>. The previous version has been automatically restored and the plugin deactivated.', 'git' ), $name );
+			$msg = sprintf( __( '<strong>Git:</strong> A fatal PHP error was detected after updating <em>%s</em>. The previous version has been automatically restored and the plugin deactivated.', 'git' ), $name );
 		} else {
 			/* translators: %s: Plugin or theme full name. */
-			$msg = sprintf( __( '<strong>Git for WordPress:</strong> A fatal PHP error was detected after installing <em>%s</em>. The broken files have been removed.', 'git' ), $name );
+			$msg = sprintf( __( '<strong>Git:</strong> A fatal PHP error was detected after installing <em>%s</em>. The broken files have been removed.', 'git' ), $name );
 		}
 
 		printf(

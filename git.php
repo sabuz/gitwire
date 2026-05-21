@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Git for WordPress
+ * Plugin Name: Git
  * Plugin URI:  https://github.com/sabuz/gwp
  * Description: Pull GitHub and GitLab repositories directly into WordPress as plugins or themes. Switch branches and auto-recover from fatal errors.
  * Version:     1.1.0
