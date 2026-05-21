@@ -1,6 +1,7 @@
-import { createRoot } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
-import App from './App';
+import { createRoot } from '@wordpress/element';
+
+import App from './app';
 import './style.scss';
 
 if ( window.GHWP?.nonce ) {

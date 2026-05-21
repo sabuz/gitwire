@@ -2,24 +2,25 @@
 <ruleset name="GitHub for WordPress">
 	<description>PHP coding standards for GitHub for WordPress plugin.</description>
 
-	<!-- Scan these paths -->
+	<!-- Scan these paths. -->
 	<file>github.php</file>
+	<file>autoload.php</file>
 	<file>includes</file>
 
 	<arg name="extensions" value="php"/>
 	<arg name="colors"/>
 	<arg value="sp"/>
 
-	<!-- Use WordPress Coding Standards -->
+	<!-- Use WordPress Coding Standards. -->
 	<rule ref="WordPress"/>
 
-	<!-- Allow short array syntax [] -->
+	<!-- Allow short array syntax []. -->
 	<rule ref="WordPress">
 		<exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
 	</rule>
 	<rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
 
-	<!-- Minimum PHP version -->
+	<!-- Minimum supported versions. -->
 	<config name="minimum_supported_wp_version" value="6.4"/>
 	<config name="testVersion" value="8.1-"/>
 </ruleset>

@@ -5,13 +5,13 @@
 	"scripts": {
 		"build": "wp-scripts build",
 		"start": "wp-scripts start",
-		"lint:js": "wp-scripts lint-js src --ext .js,.jsx",
-		"lint:js:fix": "wp-scripts lint-js src --ext .js,.jsx --fix",
+		"lint:js": "eslint src/",
+		"lint:js:fix": "eslint src/ --fix",
 		"lint:scss": "wp-scripts lint-style 'src/**/*.scss'",
 		"lint:scss:fix": "wp-scripts lint-style 'src/**/*.scss' --fix",
 		"lint:php": "composer phpcs",
 		"lint:php:fix": "composer phpcbf",
-		"lint": "npm run lint:js && npm run lint:scss"
+		"lint": "npm run lint:js && npm run lint:scss && npm run lint:php"
 	},
 	"devDependencies": {
 		"@wordpress/element": "^6.46.0",

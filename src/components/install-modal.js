@@ -1,14 +1,25 @@
 import { useState, useEffect } from '@wordpress/element';
 import {
-	Modal,
-	SelectControl,
 	Button,
-	Notice,
-	Spinner,
 	Flex,
+	Modal,
+	Notice,
+	SelectControl,
+	Spinner,
 } from '@wordpress/components';
+
 import * as api from '../api';
 
+/**
+ * Install modal — lets the user choose a branch and confirms the install.
+ *
+ * @param {Object}   props              Component props.
+ * @param {Object}   props.repo         Repository data object.
+ * @param {boolean}  props.smartInstall Whether smart install is enabled.
+ * @param {Function} props.onClose      Callback fired when the modal is closed.
+ * @param {Function} props.onInstalled  Callback fired after a successful install.
+ * @return {JSX.Element} The rendered install modal.
+ */
 export default function InstallModal( {
 	repo,
 	smartInstall,
@@ -23,7 +34,7 @@ export default function InstallModal( {
 	const [ notice, setNotice ] = useState( null );
 	const [ countdown, setCountdown ] = useState( null );
 
-	// Fetch branches + detect in parallel on open
+	// Fetch branches and detect repo type in parallel on open.
 	useEffect( () => {
 		api.getBranches( repo.owner, repo.name )
 			.then( ( b ) =>
@@ -41,7 +52,7 @@ export default function InstallModal( {
 			.catch( () =>
 				setDetection( { type: 'unknown', confidence: 'none' } )
 			);
-	}, [] ); // eslint-disable-line
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const canInstall =
 		detection && ( detection.type !== 'unknown' || ! smartInstall );
@@ -85,37 +96,36 @@ export default function InstallModal( {
 
 	return (
 		<Modal
-			title={ `Install ${ repo.full_name }` }
-			onRequestClose={ installing ? undefined : onClose }
 			shouldCloseOnClickOutside={ ! installing }
 			shouldCloseOnEsc={ ! installing }
 			style={ { maxWidth: 480 } }
+			title={ `Install ${ repo.full_name }` }
+			onRequestClose={ installing ? undefined : onClose }
 		>
-			{ /* Detection badge */ }
 			<DetectionBadge
 				detection={ detection }
 				smartInstall={ smartInstall }
 			/>
 
-			{ /* Type selector — only shown for unknown repos when smart install is off */ }
 			{ detection && detection.type === 'unknown' && ! smartInstall && (
 				<SelectControl
+					__nextHasNoMarginBottom
 					label="Install as"
-					value={ type }
 					options={ [
 						{ label: 'Plugin', value: 'plugin' },
 						{ label: 'Theme', value: 'theme' },
 					] }
-					onChange={ setType }
-					__nextHasNoMarginBottom
 					style={ { marginTop: 16 } }
+					value={ type }
+					onChange={ setType }
 				/>
 			) }
 
 			<div style={ { marginTop: 16 } }>
 				<SelectControl
+					__nextHasNoMarginBottom
+					disabled={ installing }
 					label="Branch"
-					value={ branch }
 					options={
 						branches.length
 							? branches
@@ -126,15 +136,14 @@ export default function InstallModal( {
 									},
 							  ]
 					}
+					value={ branch }
 					onChange={ setBranch }
-					disabled={ installing }
-					__nextHasNoMarginBottom
 				/>
 			</div>
 
 			{ notice && (
 				<div style={ { marginTop: 12 } }>
-					<Notice status={ notice.status } isDismissible={ false }>
+					<Notice isDismissible={ false } status={ notice.status }>
 						{ notice.message }
 					</Notice>
 				</div>
@@ -142,8 +151,8 @@ export default function InstallModal( {
 
 			{ countdown !== null && (
 				<Notice
-					status="success"
 					isDismissible={ false }
+					status="success"
 					style={ { marginTop: 12 } }
 				>
 					Installation complete — opening Installed tab in{ ' ' }
@@ -153,12 +162,12 @@ export default function InstallModal( {
 
 			<Flex gap={ 3 } style={ { marginTop: 20 } }>
 				<Button
-					variant="primary"
-					onClick={ handleInstall }
 					disabled={
 						! canInstall || installing || countdown !== null
 					}
 					isBusy={ installing }
+					variant="primary"
+					onClick={ handleInstall }
 				>
 					{ installing ? 'Installing…' : 'Install' }
 				</Button>
@@ -172,8 +181,14 @@ export default function InstallModal( {
 	);
 }
 
-// ---------------------------------------------------------------------------
-
+/**
+ * Detection result badge shown inside the install modal.
+ *
+ * @param {Object}      props              Component props.
+ * @param {Object|null} props.detection    Type detection result.
+ * @param {boolean}     props.smartInstall Whether smart install is enabled.
+ * @return {JSX.Element} The rendered detection badge.
+ */
 function DetectionBadge( { detection, smartInstall } ) {
 	if ( ! detection ) {
 		return (

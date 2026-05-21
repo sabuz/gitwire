@@ -12,11 +12,21 @@ import {
 	CardFooter,
 	SearchControl,
 } from '@wordpress/components';
-import InstallModal from './InstallModal';
+
 import * as api from '../api';
+import InstallModal from './install-modal';
 
 const CONCURRENT = 3;
 
+/**
+ * Browse panel — lists the user's GitHub repositories with detection and install actions.
+ *
+ * @param {Object}   props             Component props.
+ * @param {Object}   props.settings    Plugin settings.
+ * @param {Object}   props.installed   Map of installed repositories.
+ * @param {Function} props.onInstalled Callback fired after a successful install.
+ * @return {JSX.Element} The rendered browse panel.
+ */
 export default function BrowsePanel( { settings, installed, onInstalled } ) {
 	const [ repos, setRepos ] = useState( [] );
 	const [ page, setPage ] = useState( 1 );
@@ -47,11 +57,11 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 		} finally {
 			setLoading( false );
 		}
-	}, [] ); // eslint-disable-line
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect( () => {
 		loadRepos( 1 );
-	}, [] ); // eslint-disable-line
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const enqueueDetections = ( newRepos ) => {
 		const toDetect = newRepos.filter(
@@ -111,7 +121,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 
 	if ( ! settings?.username && ! settings?.token ) {
 		return (
-			<Notice status="warning" isDismissible={ false }>
+			<Notice isDismissible={ false } status="warning">
 				Configure your GitHub username in Settings before browsing
 				repositories.
 			</Notice>
@@ -121,27 +131,27 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 	return (
 		<div className="ghwp-browse">
 			<Flex
+				align="center"
 				className="ghwp-browse-toolbar"
 				gap={ 3 }
-				align="center"
 				justify="flex-start"
 				style={ { marginBottom: 24 } }
 			>
 				<FlexBlock style={ { maxWidth: 340 } }>
 					<SearchControl
-						value={ search }
+						__nextHasNoMarginBottom
 						onChange={ setSearch }
 						placeholder="Filter repositories…"
-						__nextHasNoMarginBottom
+						value={ search }
 					/>
 				</FlexBlock>
 				<FlexItem>
 					<Button
-						variant="secondary"
-						onClick={ handleRefresh }
-						isBusy={ loading }
 						disabled={ loading }
 						icon="update"
+						isBusy={ loading }
+						variant="secondary"
+						onClick={ handleRefresh }
 					>
 						Refresh
 					</Button>
@@ -150,8 +160,8 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 
 			{ error && (
 				<Notice
-					status="error"
 					isDismissible={ false }
+					status="error"
 					style={ { marginBottom: 16 } }
 				>
 					{ error }{ ' ' }
@@ -178,13 +188,13 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 					{ filtered.map( ( repo ) => (
 						<RepoCard
 							key={ repo.id }
-							repo={ repo }
 							detection={
 								detectionsRef.current[ repo.full_name ]
 							}
 							installed={
 								installed[ repo.full_name ] || repo.installed
 							}
+							repo={ repo }
 							smartInstall={ smartInstall }
 							onInstall={ () => setModal( repo ) }
 						/>
@@ -195,10 +205,10 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 			{ hasMore && ! search && (
 				<div style={ { textAlign: 'center', marginTop: 24 } }>
 					<Button
+						disabled={ loading }
+						isBusy={ loading }
 						variant="secondary"
 						onClick={ () => loadRepos( page + 1 ) }
-						isBusy={ loading }
-						disabled={ loading }
 					>
 						Load more
 					</Button>
@@ -220,8 +230,17 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 	);
 }
 
-// ---------------------------------------------------------------------------
-
+/**
+ * Repository card displaying repo info, type badge, and install button.
+ *
+ * @param {Object}      props              Component props.
+ * @param {Object}      props.repo         Repository data object.
+ * @param {Object|null} props.detection    Type detection result.
+ * @param {Object|null} props.installed    Installed record, if any.
+ * @param {boolean}     props.smartInstall Whether smart install is enabled.
+ * @param {Function}    props.onInstall    Callback fired when Install is clicked.
+ * @return {JSX.Element} The rendered repo card.
+ */
 function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 	const isInstalled = !! installed;
 	const detecting = ! detection && ! isInstalled;
@@ -243,14 +262,14 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 						<a
 							className="ghwp-repo-name"
 							href={ repo.html_url }
-							target="_blank"
 							rel="noopener noreferrer"
+							target="_blank"
 						>
 							{ repo.full_name }
 						</a>
 					</FlexBlock>
 					<FlexItem>
-						<Flex gap={ 1 } align="center">
+						<Flex align="center" gap={ 1 }>
 							<FlexItem>
 								<TypeBadge
 									detection={ detection }
@@ -295,16 +314,16 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 						</span>
 					) : (
 						<Button
-							variant="primary"
-							size="compact"
-							onClick={ onInstall }
 							disabled={ ! canInstall }
 							isBusy={ detecting && ! smartInstall }
+							size="compact"
 							title={
 								blockedBySmartInstall
 									? 'Smart Install is on — only verified WordPress plugins and themes can be installed.'
 									: undefined
 							}
+							variant="primary"
+							onClick={ onInstall }
 						>
 							Install
 						</Button>
@@ -315,6 +334,12 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 	);
 }
 
+/**
+ * Returns a human-readable relative time string (e.g. "3d ago").
+ *
+ * @param {string} dateStr ISO date string.
+ * @return {string} Human-readable relative time.
+ */
 function timeAgo( dateStr ) {
 	const s = Math.floor( ( Date.now() - new Date( dateStr ) ) / 1000 );
 	if ( s < 60 ) {
@@ -339,6 +364,14 @@ function timeAgo( dateStr ) {
 	return `${ Math.floor( mo / 12 ) }y ago`;
 }
 
+/**
+ * Badge showing the detected or installed type of a repository.
+ *
+ * @param {Object}      props           Component props.
+ * @param {Object|null} props.detection Type detection result.
+ * @param {Object|null} props.installed Installed record, if any.
+ * @return {JSX.Element} The rendered type badge.
+ */
 function TypeBadge( { detection, installed } ) {
 	if ( installed ) {
 		const t = installed.type;

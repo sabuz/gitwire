@@ -8,8 +8,10 @@
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.0"
 	},
 	"scripts": {
-		"phpcs": "phpcs",
-		"phpcbf": "phpcbf"
+		"phpcs": "./vendor/bin/phpcs --standard=phpcs.xml --extensions=php ./includes autoload.php github.php",
+		"phpcbf": "./vendor/bin/phpcbf --standard=phpcs.xml --extensions=php ./includes autoload.php github.php",
+		"update-deps": "composer update --with-dependencies",
+		"check-updates": "composer outdated"
 	},
 	"config": {
 		"allow-plugins": {

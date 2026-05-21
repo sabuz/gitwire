@@ -1,14 +1,45 @@
 <?php
-defined( 'ABSPATH' ) || exit;
+/**
+ * REST API endpoints for the GitHub for WordPress plugin.
+ *
+ * @package GitHub_WP
+ * @since 1.0.0
+ */
 
-class GHWP_REST {
+namespace GitHub_WP;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Registers and handles all REST API routes under the ghwp/v1 namespace.
+ */
+class REST {
+
+	/**
+	 * REST API namespace.
+	 *
+	 * @var string
+	 */
 	private const NS = 'ghwp/v1';
 
+	/**
+	 * Registers the rest_api_init hook.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
 	public static function init(): void {
 		add_action( 'rest_api_init', [ self::class, 'register_routes' ] );
 	}
 
+	/**
+	 * Registers all plugin REST routes.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
 	public static function register_routes(): void {
 		$ns = self::NS;
 
@@ -110,14 +141,22 @@ class GHWP_REST {
 		);
 	}
 
+	/**
+	 * Permission callback — requires manage_options capability.
+	 *
+	 * @since 1.0.0
+	 * @return bool True if the current user can manage options.
+	 */
 	public static function can_manage(): bool {
 		return current_user_can( 'manage_options' );
 	}
 
-	// -----------------------------------------------------------------------
-	// Settings
-	// -----------------------------------------------------------------------
-
+	/**
+	 * Returns the current plugin settings.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, mixed> Settings array.
+	 */
 	public static function get_settings(): array {
 		$s = (array) get_option( 'ghwp_settings', [] );
 		return [
@@ -127,13 +166,20 @@ class GHWP_REST {
 		];
 	}
 
-	public static function save_settings( WP_REST_Request $req ): array|WP_Error {
+	/**
+	 * Saves plugin settings from the request body.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|WP_Error Success data or WP_Error on validation failure.
+	 */
+	public static function save_settings( \WP_REST_Request $req ): array|\WP_Error {
 		$token         = sanitize_text_field( $req->get_param( 'token' ) ?? '' );
 		$username      = sanitize_text_field( $req->get_param( 'username' ) ?? '' );
 		$smart_install = (bool) $req->get_param( 'smart_install' );
 
 		if ( ! $username ) {
-			return new WP_Error( 'missing_username', 'GitHub Username is required.', [ 'status' => 400 ] );
+			return new \WP_Error( 'missing_username', 'GitHub Username is required.', [ 'status' => 400 ] );
 		}
 
 		update_option( 'ghwp_settings', compact( 'token', 'username', 'smart_install' ) );
@@ -145,13 +191,15 @@ class GHWP_REST {
 		];
 	}
 
-	// -----------------------------------------------------------------------
-	// Connection
-	// -----------------------------------------------------------------------
-
-	public static function test_connection(): array|WP_Error {
+	/**
+	 * Tests the GitHub API connection and caches the result.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, mixed>|WP_Error Connection data on success, WP_Error on failure.
+	 */
+	public static function test_connection(): array|\WP_Error {
 		$settings = (array) get_option( 'ghwp_settings', [] );
-		$api      = new GHWP_API( $settings['token'] ?? '' );
+		$api      = new API( $settings['token'] ?? '' );
 		$result   = $api->test_connection();
 
 		if ( is_wp_error( $result ) ) {
@@ -174,28 +222,31 @@ class GHWP_REST {
 		return $data;
 	}
 
-	// -----------------------------------------------------------------------
-	// Repos
-	// -----------------------------------------------------------------------
-
-	public static function get_repos( WP_REST_Request $req ): array|WP_Error {
+	/**
+	 * Returns a paginated list of repositories for the configured user.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|WP_Error Repository payload on success, WP_Error on failure.
+	 */
+	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
 		$settings = (array) get_option( 'ghwp_settings', [] );
 		$username = sanitize_text_field( $req->get_param( 'username' ) ?? $settings['username'] ?? '' );
 		$page     = max( 1, (int) ( $req->get_param( 'page' ) ?? 1 ) );
 
 		if ( ! $username && ! ( $settings['token'] ?? '' ) ) {
-			return new WP_Error( 'missing_config', 'Configure a GitHub username or token first.', [ 'status' => 400 ] );
+			return new \WP_Error( 'missing_config', 'Configure a GitHub username or token first.', [ 'status' => 400 ] );
 		}
 
 		$cache_key = 'ghwp_repos_' . md5( ( $settings['token'] ?? '' ) . $username . $page );
 		$cached    = get_transient( $cache_key );
-		if ( $cached !== false ) {
+		if ( false !== $cached ) {
 			return $cached;
 		}
 
-		$api       = new GHWP_API( $settings['token'] ?? '' );
+		$api       = new API( $settings['token'] ?? '' );
 		$result    = $api->get_repos( $username, $page );
-		$installed = GHWP_Installer::get_installed();
+		$installed = Installer::get_installed();
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -232,11 +283,18 @@ class GHWP_REST {
 		return $payload;
 	}
 
-	public static function get_branches( WP_REST_Request $req ): array|WP_Error {
+	/**
+	 * Returns a list of branch names for a repository.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<int, string>|WP_Error Branch name list on success, WP_Error on failure.
+	 */
+	public static function get_branches( \WP_REST_Request $req ): array|\WP_Error {
 		$owner    = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo     = sanitize_text_field( $req->get_param( 'repo' ) );
 		$settings = (array) get_option( 'ghwp_settings', [] );
-		$api      = new GHWP_API( $settings['token'] ?? '' );
+		$api      = new API( $settings['token'] ?? '' );
 		$result   = $api->get_branches( $owner, $repo );
 
 		if ( is_wp_error( $result ) ) {
@@ -246,19 +304,26 @@ class GHWP_REST {
 		return array_column( $result, 'name' );
 	}
 
-	public static function detect_repo( WP_REST_Request $req ): array|WP_Error {
+	/**
+	 * Detects the WordPress type (plugin/theme) of a repository, with caching.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|WP_Error Detection result on success, WP_Error on failure.
+	 */
+	public static function detect_repo( \WP_REST_Request $req ): array|\WP_Error {
 		$owner  = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo   = sanitize_text_field( $req->get_param( 'repo' ) );
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? 'HEAD' );
 
 		$cache_key = 'ghwp_detect_' . md5( $owner . $repo . $branch );
 		$cached    = get_transient( $cache_key );
-		if ( $cached !== false ) {
+		if ( false !== $cached ) {
 			return $cached;
 		}
 
 		$settings = (array) get_option( 'ghwp_settings', [] );
-		$api      = new GHWP_API( $settings['token'] ?? '' );
+		$api      = new API( $settings['token'] ?? '' );
 		$result   = $api->detect_type( $owner, $repo, $branch );
 
 		// Absorb GitHub errors (private repo, rate-limit, network) so the
@@ -277,29 +342,32 @@ class GHWP_REST {
 		return $result;
 	}
 
-	// -----------------------------------------------------------------------
-	// Install / manage
-	// -----------------------------------------------------------------------
-
-	public static function install( WP_REST_Request $req ): array|WP_Error {
+	/**
+	 * Installs a repository as a plugin or theme.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
+	 */
+	public static function install( \WP_REST_Request $req ): array|\WP_Error {
 		$owner  = sanitize_text_field( $req->get_param( 'owner' ) ?? '' );
 		$repo   = sanitize_text_field( $req->get_param( 'repo' ) ?? '' );
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? 'main' );
 		$type   = sanitize_key( $req->get_param( 'type' ) ?? 'plugin' );
 
 		if ( ! in_array( $type, [ 'plugin', 'theme' ], true ) ) {
-			return new WP_Error( 'invalid_type', 'Type must be plugin or theme.', [ 'status' => 400 ] );
+			return new \WP_Error( 'invalid_type', 'Type must be plugin or theme.', [ 'status' => 400 ] );
 		}
 		if ( ! $owner || ! $repo ) {
-			return new WP_Error( 'missing_params', 'Missing owner or repo.', [ 'status' => 400 ] );
+			return new \WP_Error( 'missing_params', 'Missing owner or repo.', [ 'status' => 400 ] );
 		}
 
 		if ( ! function_exists( 'unzip_file' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
-		$method = $type === 'theme' ? 'install_theme' : 'install_plugin';
-		$result = GHWP_Installer::$method( $owner, $repo, $branch );
+		$method = 'theme' === $type ? 'install_theme' : 'install_plugin';
+		$result = Installer::$method( $owner, $repo, $branch );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -310,17 +378,30 @@ class GHWP_REST {
 		return $result;
 	}
 
+	/**
+	 * Returns all currently installed repository records.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, mixed> Map of full_name => record.
+	 */
 	public static function get_installed(): array {
-		return GHWP_Installer::get_installed();
+		return Installer::get_installed();
 	}
 
-	public static function switch_branch( WP_REST_Request $req ): array|WP_Error {
+	/**
+	 * Switches the active branch for an installed repository.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|WP_Error Updated record on success, WP_Error on failure.
+	 */
+	public static function switch_branch( \WP_REST_Request $req ): array|\WP_Error {
 		$owner  = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo   = sanitize_text_field( $req->get_param( 'repo' ) );
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? '' );
 
 		if ( ! $branch ) {
-			return new WP_Error( 'missing_branch', 'Branch is required.', [ 'status' => 400 ] );
+			return new \WP_Error( 'missing_branch', 'Branch is required.', [ 'status' => 400 ] );
 		}
 
 		if ( ! function_exists( 'unzip_file' ) ) {
@@ -328,7 +409,7 @@ class GHWP_REST {
 		}
 
 		$full_name = $owner . '/' . $repo;
-		$result    = GHWP_Installer::switch_branch( $full_name, $branch );
+		$result    = Installer::switch_branch( $full_name, $branch );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -339,11 +420,18 @@ class GHWP_REST {
 		return $result;
 	}
 
-	public static function remove_installed( WP_REST_Request $req ): array|WP_Error {
+	/**
+	 * Removes an installed repository.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, bool>|WP_Error Success data or WP_Error on failure.
+	 */
+	public static function remove_installed( \WP_REST_Request $req ): array|\WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
 		$full_name = $owner . '/' . $repo;
-		$result    = GHWP_Installer::remove( $full_name );
+		$result    = Installer::remove( $full_name );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -354,11 +442,15 @@ class GHWP_REST {
 		return [ 'removed' => true ];
 	}
 
-	// -----------------------------------------------------------------------
-
+	/**
+	 * Deletes all cached repository transients from the options table.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
 	private static function bust_repos_cache(): void {
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 		$wpdb->query(
 			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_ghwp_repos_%'"
 		);

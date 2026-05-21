@@ -1,21 +1,34 @@
 import { useState } from '@wordpress/element';
 import {
+	Button,
 	Card,
 	CardBody,
 	CardHeader,
 	Flex,
 	FlexBlock,
 	FlexItem,
-	TextControl,
-	ToggleControl,
-	Button,
 	Notice,
 	Spinner,
+	TextControl,
+	ToggleControl,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalHeading as Heading,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalSpacer as Spacer,
 } from '@wordpress/components';
+
 import * as api from '../api';
 
+/**
+ * Settings panel — GitHub connection credentials and smart install toggle.
+ *
+ * @param {Object}   props                    Component props.
+ * @param {Object}   props.settings           Current plugin settings.
+ * @param {Object}   props.connection         Cached connection status, if any.
+ * @param {Function} props.onSave             Callback fired after settings are saved.
+ * @param {Function} props.onConnectionUpdate Callback fired after a connection test.
+ * @return {JSX.Element} The rendered settings panel.
+ */
 export default function SettingsPanel( {
 	settings,
 	connection,
@@ -74,10 +87,10 @@ export default function SettingsPanel( {
 	return (
 		<Flex
 			align="flex-start"
-			justify="center"
-			gap={ 6 }
-			wrap
 			className="ghwp-settings-row"
+			gap={ 6 }
+			justify="center"
+			wrap
 		>
 			<FlexBlock style={ { minWidth: 300, maxWidth: 540 } }>
 				<Card>
@@ -87,8 +100,8 @@ export default function SettingsPanel( {
 					<CardBody>
 						{ notice && (
 							<Notice
-								status={ notice.status }
 								isDismissible
+								status={ notice.status }
 								onRemove={ () => setNotice( null ) }
 							>
 								{ notice.message }
@@ -96,17 +109,33 @@ export default function SettingsPanel( {
 						) }
 
 						<TextControl
+							__nextHasNoMarginBottom
+							help="Your GitHub username or organization name."
 							label="GitHub Username"
+							placeholder="your-github-username"
 							value={ username }
 							onChange={ setUsername }
-							placeholder="your-github-username"
-							help="Your GitHub username or organization name."
-							__nextHasNoMarginBottom
 						/>
 
 						<Spacer marginTop={ 4 } />
 
 						<TextControl
+							__nextHasNoMarginBottom
+							autoComplete="new-password"
+							help={
+								<>
+									Required only for private repositories.
+									Create one at{ ' ' }
+									<a
+										href="https://github.com/settings/tokens/new"
+										rel="noopener noreferrer"
+										target="_blank"
+									>
+										github.com/settings/tokens
+									</a>{ ' ' }
+									with the <code>repo</code> scope.
+								</>
+							}
 							label={
 								<>
 									Personal Access Token{ ' ' }
@@ -115,32 +144,19 @@ export default function SettingsPanel( {
 									</span>
 								</>
 							}
+							placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
 							type="password"
 							value={ token }
 							onChange={ setToken }
-							placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-							autoComplete="new-password"
-							help={
-								<>
-									Required only for private repositories.
-									Create one at{ ' ' }
-									<a
-										href="https://github.com/settings/tokens/new"
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										github.com/settings/tokens
-									</a>{ ' ' }
-									with the <code>repo</code> scope.
-								</>
-							}
-							__nextHasNoMarginBottom
 						/>
 
 						<Spacer marginTop={ 5 } />
 
 						<div className="ghwp-smart-install-wrap">
 							<ToggleControl
+								__nextHasNoMarginBottom
+								checked={ smartInstall }
+								help="Only allow installing repositories detected as a WordPress plugin or theme."
 								label={
 									<>
 										<strong>Smart Install</strong>{ ' ' }
@@ -149,29 +165,26 @@ export default function SettingsPanel( {
 										</span>
 									</>
 								}
-								checked={ smartInstall }
 								onChange={ setSmartInstall }
-								help="Only allow installing repositories detected as a WordPress plugin or theme."
-								__nextHasNoMarginBottom
 							/>
 						</div>
 
 						<Spacer marginTop={ 5 } />
 
-						<Flex justify="flex-start" gap={ 3 }>
+						<Flex gap={ 3 } justify="flex-start">
 							<Button
+								disabled={ saving || testing }
+								isBusy={ saving }
 								variant="primary"
 								onClick={ handleSave }
-								isBusy={ saving }
-								disabled={ saving || testing }
 							>
 								Save Settings
 							</Button>
 							<Button
+								disabled={ saving || testing }
+								isBusy={ testing }
 								variant="secondary"
 								onClick={ runTest }
-								isBusy={ testing }
-								disabled={ saving || testing }
 							>
 								Test Connection
 							</Button>
@@ -190,8 +203,14 @@ export default function SettingsPanel( {
 	);
 }
 
-// ---------------------------------------------------------------------------
-
+/**
+ * Connection status card showing authentication state and API rate limit.
+ *
+ * @param {Object}      props            Component props.
+ * @param {Object|null} props.connection Cached connection data, if any.
+ * @param {boolean}     props.testing    Whether a connection test is in progress.
+ * @return {JSX.Element} The rendered connection status card.
+ */
 function ConnectionStatus( { connection, testing } ) {
 	if ( testing ) {
 		return (
@@ -234,8 +253,8 @@ function ConnectionStatus( { connection, testing } ) {
 						} }
 					/>
 					<p style={ { margin: 0, fontSize: 12, lineHeight: 1.5 } }>
-						Save your settings and click "Test Connection" to
-						verify.
+						Save your settings and click &quot;Test Connection&quot;
+						to verify.
 					</p>
 				</CardBody>
 			</Card>
@@ -246,7 +265,7 @@ function ConnectionStatus( { connection, testing } ) {
 		return (
 			<Card>
 				<CardBody>
-					<Notice status="error" isDismissible={ false }>
+					<Notice isDismissible={ false } status="error">
 						{ connection.error }
 					</Notice>
 				</CardBody>
@@ -267,7 +286,20 @@ function ConnectionStatus( { connection, testing } ) {
 		rate_limit > 0
 			? Math.round( ( rate_remaining / rate_limit ) * 100 )
 			: 0;
-	const barColor = pct > 50 ? '#4ac26b' : pct > 20 ? '#e3b341' : '#cf222e';
+	let barColor = '#cf222e';
+	if ( pct > 50 ) {
+		barColor = '#4ac26b';
+	} else if ( pct > 20 ) {
+		barColor = '#e3b341';
+	}
+
+	let rateNote = 'Resets in about an hour.';
+	if ( rate_limit === 60 ) {
+		rateNote =
+			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.";
+	} else if ( rate_reset ) {
+		rateNote = `Resets in ${ humanDiff( rate_reset ) }.`;
+	}
 
 	return (
 		<Card>
@@ -275,8 +307,8 @@ function ConnectionStatus( { connection, testing } ) {
 				{ authenticated && avatar_url && (
 					<div style={ { textAlign: 'center', marginBottom: 14 } }>
 						<img
-							src={ avatar_url }
 							alt={ login }
+							src={ avatar_url }
 							style={ {
 								width: 52,
 								height: 52,
@@ -326,19 +358,19 @@ function ConnectionStatus( { connection, testing } ) {
 							} }
 						/>
 					</div>
-					<p className="ghwp-rate-note">
-						{ rate_limit === 60
-							? "Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour."
-							: rate_reset
-							? `Resets in ${ humanDiff( rate_reset ) }.`
-							: 'Resets in about an hour.' }
-					</p>
+					<p className="ghwp-rate-note">{ rateNote }</p>
 				</div>
 			</CardBody>
 		</Card>
 	);
 }
 
+/**
+ * Formats a Unix timestamp as a human-readable countdown string.
+ *
+ * @param {number} ts Unix timestamp.
+ * @return {string} Human-readable time string.
+ */
 function humanDiff( ts ) {
 	const s = ts - Math.floor( Date.now() / 1000 );
 	if ( s <= 0 ) {

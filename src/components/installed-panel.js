@@ -1,18 +1,31 @@
 import { useState, useEffect } from '@wordpress/element';
 import {
 	Button,
-	SelectControl,
-	Notice,
-	Spinner,
+	Card,
+	CardBody,
 	Flex,
 	FlexBlock,
 	FlexItem,
-	Card,
-	CardBody,
+	Notice,
+	SelectControl,
+	Spinner,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalConfirmDialog as ConfirmDialog,
 } from '@wordpress/components';
+
 import * as api from '../api';
 
+/**
+ * Installed panel — lists repositories installed from GitHub.
+ *
+ * @param {Object}   props                Component props.
+ * @param {Object}   props.installed      Map of installed repository records.
+ * @param {Object}   props.settings       Plugin settings.
+ * @param {Function} props.onRefresh      Callback to refresh the installed list.
+ * @param {Function} props.onGoToSettings Callback to navigate to the Settings tab.
+ * @param {Function} props.onGoToBrowse   Callback to navigate to the Browse tab.
+ * @return {JSX.Element} The rendered installed panel.
+ */
 export default function InstalledPanel( {
 	installed,
 	settings,
@@ -82,8 +95,14 @@ export default function InstalledPanel( {
 	);
 }
 
-// ---------------------------------------------------------------------------
-
+/**
+ * Single row in the installed list with branch switcher and action buttons.
+ *
+ * @param {Object}   props           Component props.
+ * @param {Object}   props.record    Installed repository record.
+ * @param {Function} props.onRefresh Callback to refresh the installed list.
+ * @return {JSX.Element} The rendered installed row.
+ */
 function InstalledRow( { record, onRefresh } ) {
 	const { full_name, owner, repo, type, branch } = record;
 
@@ -99,7 +118,7 @@ function InstalledRow( { record, onRefresh } ) {
 		api.getBranches( owner, repo )
 			.then( ( b ) => setBranches( b ) )
 			.catch( () => setBranches( [] ) );
-	}, [] ); // eslint-disable-line
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const branchOptions = branches
 		? branches.map( ( b ) => ( { label: b, value: b } ) )
@@ -189,33 +208,33 @@ function InstalledRow( { record, onRefresh } ) {
 
 					<FlexItem style={ { minWidth: 180 } }>
 						<SelectControl
-							label="Branch"
-							value={ activeBranch }
-							options={ branchOptions }
-							onChange={ handleSwitch }
-							disabled={ busy || branchOptions.length <= 1 }
 							__nextHasNoMarginBottom
+							disabled={ busy || branchOptions.length <= 1 }
+							label="Branch"
+							options={ branchOptions }
+							value={ activeBranch }
+							onChange={ handleSwitch }
 						/>
 					</FlexItem>
 
 					<FlexItem>
 						<Flex gap={ 2 } style={ { marginTop: 22 } }>
 							<Button
-								variant="secondary"
-								size="small"
-								onClick={ handleUpdate }
-								isBusy={ updating }
 								disabled={ busy }
+								isBusy={ updating }
+								size="small"
+								variant="secondary"
+								onClick={ handleUpdate }
 							>
 								{ updating ? 'Updating…' : 'Pull latest' }
 							</Button>
 							<Button
-								variant="tertiary"
-								size="small"
-								isDestructive
-								onClick={ () => setConfirmOpen( true ) }
-								isBusy={ removing }
 								disabled={ busy }
+								isBusy={ removing }
+								isDestructive
+								size="small"
+								variant="tertiary"
+								onClick={ () => setConfirmOpen( true ) }
 							>
 								Remove
 							</Button>
@@ -226,8 +245,8 @@ function InstalledRow( { record, onRefresh } ) {
 				{ notice && (
 					<div style={ { marginTop: 10 } }>
 						<Notice
-							status={ notice.status }
 							isDismissible
+							status={ notice.status }
 							onRemove={ () => setNotice( null ) }
 						>
 							{ notice.message }
@@ -254,8 +273,8 @@ function InstalledRow( { record, onRefresh } ) {
 
 			{ confirmOpen && (
 				<ConfirmDialog
-					onConfirm={ handleRemove }
 					onCancel={ () => setConfirmOpen( false ) }
+					onConfirm={ handleRemove }
 				>
 					Remove <strong>{ full_name }</strong> from WordPress? The
 					files will be deleted.

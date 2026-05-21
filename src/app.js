@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from '@wordpress/element';
 import { Spinner } from '@wordpress/components';
-import SettingsPanel from './components/SettingsPanel';
-import BrowsePanel from './components/BrowsePanel';
-import InstalledPanel from './components/InstalledPanel';
+
 import * as api from './api';
+import BrowsePanel from './components/browse-panel';
+import InstalledPanel from './components/installed-panel';
+import SettingsPanel from './components/settings-panel';
 
 const TABS = [
 	{ name: 'installed', label: 'Installed' },
@@ -11,6 +12,12 @@ const TABS = [
 	{ name: 'settings', label: 'Settings' },
 ];
 
+/**
+ * Builds the URL for a given tab name.
+ *
+ * @param {string} tabName Tab identifier.
+ * @return {string} Full URL with query parameters.
+ */
 function tabUrl( tabName ) {
 	const url = new URL( window.location.href );
 	url.searchParams.set( 'page', 'ghwp' );
@@ -22,7 +29,11 @@ function tabUrl( tabName ) {
 	return url.toString();
 }
 
-// Keep the WP sidebar submenu .current class in sync with the active tab.
+/**
+ * Keeps the WP sidebar submenu .current class in sync with the active tab.
+ *
+ * @param {string} tabName Active tab identifier.
+ */
 function updateSidebarActive( tabName ) {
 	const submenu = document.querySelector( '#toplevel_page_ghwp .wp-submenu' );
 	if ( ! submenu ) {
@@ -40,12 +51,16 @@ function updateSidebarActive( tabName ) {
 			li.classList.toggle( 'current', isActive );
 			a.classList.toggle( 'current', isActive );
 		} catch ( _ ) {
-			// ignore malformed hrefs
+			// Ignore malformed hrefs.
 		}
 	} );
 }
 
-// Sync active tab with the URL so the WP sidebar submenu stays highlighted.
+/**
+ * Syncs the active tab with the URL so the WP sidebar submenu stays highlighted.
+ *
+ * @param {string} tabName Active tab identifier.
+ */
 function syncUrl( tabName ) {
 	const url = new URL( window.location.href );
 	url.searchParams.set( 'page', 'ghwp' );
@@ -58,6 +73,13 @@ function syncUrl( tabName ) {
 	updateSidebarActive( tabName );
 }
 
+/**
+ * Root application component.
+ *
+ * @param {Object} props             Component props.
+ * @param {Object} props.initialData Server-side data injected via wp_add_inline_script.
+ * @return {JSX.Element} The rendered app.
+ */
 export default function App( { initialData } ) {
 	const [ settings, setSettings ] = useState( initialData.settings || null );
 	const [ connection, setConnection ] = useState(
@@ -79,7 +101,7 @@ export default function App( { initialData } ) {
 		} else {
 			updateSidebarActive( initialData.initial_tab || 'installed' );
 		}
-	}, [] );
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Intercept WP sidebar submenu clicks so tab switches stay client-side.
 	useEffect( () => {
@@ -113,12 +135,12 @@ export default function App( { initialData } ) {
 				setActiveTab( tab );
 				syncUrl( tab );
 			} catch ( _ ) {
-				// ignore malformed hrefs
+				// Ignore malformed hrefs.
 			}
 		}
 		submenu.addEventListener( 'click', handleClick );
 		return () => submenu.removeEventListener( 'click', handleClick );
-	}, [] );
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect( () => {
 		if ( ! initialData.settings ) {
@@ -129,7 +151,7 @@ export default function App( { initialData } ) {
 				} )
 				.finally( () => setLoading( false ) );
 		}
-	}, [] ); // eslint-disable-line
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const refreshInstalled = useCallback( async () => {
 		const i = await api.getInstalled();
@@ -158,47 +180,47 @@ export default function App( { initialData } ) {
 			<div className="ghwp-page-header">
 				<h1 className="ghwp-page-title">GitHub for WordPress</h1>
 
-				<nav className="ghwp-page-nav" aria-label="Plugin navigation">
-				{ TABS.map( ( tab ) => {
-					const label =
-						tab.name === 'installed' && installedCount > 0
-							? `Installed (${ installedCount })`
-							: tab.label;
-					return (
-						<a
-							key={ tab.name }
-							href={ tabUrl( tab.name ) }
-							className={ `ghwp-nav-tab${
-								activeTab === tab.name ? ' is-active' : ''
-							}` }
-							onClick={ ( e ) => {
-								e.preventDefault();
-								goToTab( tab.name );
-							} }
-							aria-current={
-								activeTab === tab.name ? 'page' : undefined
-							}
-						>
-							{ label }
-						</a>
-					);
-				} ) }
+				<nav aria-label="Plugin navigation" className="ghwp-page-nav">
+					{ TABS.map( ( tab ) => {
+						const label =
+							tab.name === 'installed' && installedCount > 0
+								? `Installed (${ installedCount })`
+								: tab.label;
+						return (
+							<a
+								key={ tab.name }
+								aria-current={
+									activeTab === tab.name ? 'page' : undefined
+								}
+								className={ `ghwp-nav-tab${
+									activeTab === tab.name ? ' is-active' : ''
+								}` }
+								href={ tabUrl( tab.name ) }
+								onClick={ ( e ) => {
+									e.preventDefault();
+									goToTab( tab.name );
+								} }
+							>
+								{ label }
+							</a>
+						);
+					} ) }
 				</nav>
 			</div>
 
 			<div className="ghwp-page-content">
 				{ activeTab === 'settings' && (
 					<SettingsPanel
-						settings={ settings }
 						connection={ connection }
-						onSave={ ( s ) => setSettings( s ) }
+						settings={ settings }
 						onConnectionUpdate={ ( c ) => setConnection( c ) }
+						onSave={ ( s ) => setSettings( s ) }
 					/>
 				) }
 				{ activeTab === 'browse' && (
 					<BrowsePanel
-						settings={ settings }
 						installed={ installed }
+						settings={ settings }
 						onInstalled={ refreshInstalled }
 					/>
 				) }
@@ -206,9 +228,9 @@ export default function App( { initialData } ) {
 					<InstalledPanel
 						installed={ installed }
 						settings={ settings }
-						onRefresh={ refreshInstalled }
-						onGoToSettings={ () => goToTab( 'settings' ) }
 						onGoToBrowse={ () => goToTab( 'browse' ) }
+						onGoToSettings={ () => goToTab( 'settings' ) }
+						onRefresh={ refreshInstalled }
 					/>
 				) }
 			</div>
