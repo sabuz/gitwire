@@ -15,12 +15,17 @@ body.ghwp-admin-page {
 }
 
 .ghwp-page {
+	min-height: calc(100vh - 46px);
 	background: #fff;
-	min-height: calc( 100vh - 46px );
 }
 
 .ghwp-page-header {
+	position: sticky;
+	top: var(--wp-admin--admin-bar--height, 32px);
+	z-index: 9;
 	padding: 16px 32px 0;
+	background-color: #fff;
+	box-shadow: inset 0 -1px 0 0 #ddd;
 }
 
 .ghwp-page-title {
@@ -29,39 +34,50 @@ body.ghwp-admin-page {
 	color: #1d2327;
 }
 
-// Tab navigation — underline style (matches WooCommerce / core Settings)
 .ghwp-page-nav {
 	display: flex;
 	gap: 24px;
-	border-bottom: 1px solid #dcdcde;
+	margin: 0;
+	padding: 0;
+	list-style: none;
 }
 
 .ghwp-nav-tab {
-	border-bottom: 3px solid transparent;
-	margin-bottom: -1px;
-	color: #50575e;
-	text-decoration: none;
-	transition: color 0.1s;
-
+	box-sizing: border-box;
 	display: inline-flex;
-    align-items: center;
-    height: 48px;
-    padding: 0;
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 20px;
+	align-items: center;
+	height: 48px;
+	padding: 0;
+	border: none;
+	border-radius: 0 !important;
+	background: transparent;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 20px;
+	color: #1a1a1a;
+	cursor: pointer;
+	transition:
+		color 0.2s ease,
+		box-shadow 0.2s ease;
+	text-decoration: none;
 
-	&:hover:not( .is-active ) {
-		color: #1d2327;
+	&:hover {
+		color: var(--wp-admin-theme-color, #3858e9);
+		text-decoration: none;
+	}
+
+	&:focus:not(:focus-visible) {
+		outline: none;
+		box-shadow: inset 0 -2px 0 0 var(--wp-admin-theme-color, #3858e9);
 	}
 
 	&.is-active {
-		color: #1d2327;
-		border-bottom-color: #1d2327;
-		font-weight: 500;
+		box-shadow: inset 0 -2px 0 0 var(--wp-admin-theme-color, #3858e9);
+		color: #1a1a1a;
+
+		&:hover {
+			color: var(--wp-admin-theme-color, #3858e9);
+		}
 	}
 }
 
@@ -75,43 +91,43 @@ body.ghwp-admin-page {
 }
 
 .ghwp-label-optional {
+	margin-left: 4px;
+	font-size: 11px;
 	font-weight: 400;
 	color: #757575;
-	font-size: 11px;
-	margin-left: 4px;
 }
 
 .ghwp-smart-install-wrap {
-	background: #f6f7f7;
+	padding: 12px 14px;
 	border: 1px solid #dcdcde;
 	border-radius: 4px;
-	padding: 12px 14px;
+	background: #f6f7f7;
 }
 
 .ghwp-badge-recommended {
 	display: inline-block;
-	background: #d1e4dd;
-	color: #14532d;
-	font-size: 10px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
+	margin-left: 6px;
 	padding: 2px 6px;
 	border-radius: 3px;
-	margin-left: 6px;
-	vertical-align: middle;
+	background: #d1e4dd;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.5px;
+	color: #14532d;
 	user-select: none;
+	text-transform: uppercase;
+	vertical-align: middle;
 }
 
 // Connection status card
 .ghwp-conn-badge {
 	display: inline-flex;
-	align-items: center;
 	gap: 4px;
-	font-size: 12px;
-	font-weight: 600;
+	align-items: center;
 	padding: 4px 10px;
 	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 600;
 
 	&--ok {
 		background: #d1e4dd;
@@ -124,24 +140,24 @@ body.ghwp-admin-page {
 	}
 
 	.dashicons {
-		font-size: 14px;
 		width: 14px;
 		height: 14px;
+		font-size: 14px;
 	}
 }
 
 .ghwp-divider {
+	margin: 12px 0;
 	border: none;
 	border-top: 1px solid #dcdcde;
-	margin: 12px 0;
 }
 
 .ghwp-rate-track {
 	height: 6px;
-	background: #e6e6e6;
-	border-radius: 3px;
-	overflow: hidden;
 	margin-bottom: 6px;
+	border-radius: 3px;
+	background: #e6e6e6;
+	overflow: hidden;
 }
 
 .ghwp-rate-fill {
@@ -151,10 +167,10 @@ body.ghwp-admin-page {
 }
 
 .ghwp-rate-note {
-	font-size: 11px;
-	color: #8c959f;
 	margin: 0;
+	font-size: 11px;
 	line-height: 1.5;
+	color: #8c959f;
 }
 
 // Browse panel
@@ -164,7 +180,7 @@ body.ghwp-admin-page {
 
 .ghwp-repo-grid {
 	display: grid;
-	grid-template-columns: repeat( 3, 1fr );
+	grid-template-columns: repeat(3, 1fr);
 	gap: 24px;
 }
 
@@ -172,11 +188,11 @@ body.ghwp-admin-page {
 	transition: box-shadow 0.15s ease;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba( 0, 0, 0, 0.1 );
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 	}
 
-	// WP Card renders children inside an inner Content div (position:relative only).
-	// Make it a flex column so the body can grow and the footer stays pinned.
+	// WP Card's inner Content div is position:relative only.
+	// Make it a flex column so the footer stays pinned.
 	> div:first-child {
 		display: flex;
 		flex-direction: column;
@@ -199,8 +215,8 @@ body.ghwp-admin-page {
 }
 
 .ghwp-repo-name {
-	font-weight: 600;
 	font-size: 13px;
+	font-weight: 600;
 	line-height: 1.3;
 	color: #1d2327;
 	text-decoration: none;
@@ -211,11 +227,11 @@ body.ghwp-admin-page {
 }
 
 .ghwp-repo-desc {
-	font-size: 12px;
-	color: #57606a;
-	margin: 4px 0 0;
-	line-height: 1.5;
 	display: -webkit-box;
+	margin: 4px 0 0;
+	font-size: 12px;
+	line-height: 1.5;
+	color: #57606a;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
 	overflow: hidden;
@@ -230,10 +246,10 @@ body.ghwp-admin-page {
 .ghwp-visibility-badge {
 	display: inline-flex;
 	align-items: center;
-	font-size: 11px;
-	font-weight: 600;
 	padding: 2px 8px;
 	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
 	white-space: nowrap;
 
 	&.ghwp-private {
@@ -250,12 +266,12 @@ body.ghwp-admin-page {
 // Type badges (shared across browse + installed)
 .ghwp-type-badge {
 	display: inline-flex;
-	align-items: center;
 	gap: 4px;
-	font-size: 11px;
-	font-weight: 600;
+	align-items: center;
 	padding: 2px 8px;
 	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
 	white-space: nowrap;
 
 	&.ghwp-type-plugin {
@@ -275,10 +291,11 @@ body.ghwp-admin-page {
 
 	&.ghwp-type-detecting {
 		background: transparent;
+
 		.components-spinner {
-			margin: 0;
 			width: 14px;
 			height: 14px;
+			margin: 0;
 		}
 	}
 }
@@ -286,19 +303,19 @@ body.ghwp-admin-page {
 // Installed chip on card
 .ghwp-installed-chip {
 	display: inline-flex;
-	align-items: center;
 	gap: 3px;
+	align-items: center;
+	padding: 3px 8px;
+	border-radius: 3px;
+	background: #e6f4ea;
 	font-size: 11px;
 	font-weight: 600;
 	color: #137333;
-	background: #e6f4ea;
-	padding: 3px 8px;
-	border-radius: 3px;
 
 	.dashicons {
-		font-size: 13px;
 		width: 13px;
 		height: 13px;
+		font-size: 13px;
 	}
 }
 
@@ -308,19 +325,19 @@ body.ghwp-admin-page {
 
 	&.ghwp-detect-loading {
 		display: flex;
-		align-items: center;
 		gap: 8px;
-		color: #57606a;
+		align-items: center;
 		font-size: 13px;
+		color: #57606a;
 	}
 }
 
 .ghwp-detect-badge {
 	display: inline-block;
-	font-size: 12px;
-	font-weight: 600;
 	padding: 4px 10px;
 	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
 
 	&.ghwp-detect-plugin {
 		background: #dbeafe;
@@ -339,8 +356,8 @@ body.ghwp-admin-page {
 }
 
 .ghwp-detect-note {
-	font-size: 12px;
 	margin: 8px 0 0;
+	font-size: 12px;
 	line-height: 1.5;
 
 	&.ghwp-detect-blocked {
@@ -360,13 +377,14 @@ body.ghwp-admin-page {
 }
 
 .ghwp-installed-row {
+
 	.components-card__body {
 		padding: 14px 16px;
 	}
 }
 
 .ghwp-installed-name {
-	font-weight: 600;
 	font-size: 14px;
+	font-weight: 600;
 	color: #1d2327;
 }

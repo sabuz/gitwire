@@ -4,7 +4,7 @@
  * Plugin URI:  https://github.com/sabuz/ghwp
  * Description: Pull GitHub repositories directly into WordPress as plugins or themes. Switch branches and auto-recover from fatal errors.
  * Version:     1.0.0
- * Requires at least: 6.4
+ * Requires at least: 6.9
  * Requires PHP: 8.1
  * Author:      Nazmul Sabuz
  * Author URI:  https://profiles.wordpress.org/nazsabuz
