@@ -153,23 +153,21 @@ export default function InstalledPanel( {
 						className="dashicons dashicons-randomize"
 						style={ {
 							fontSize: 36,
+							width: 'auto',
+							height: 'auto',
 							display: 'block',
 							margin: '0 auto 12px',
 							opacity: 0.3,
 						} }
 					/>
 					{ isConfigured ? (
-						<>
-							<p style={ { margin: '0 0 12px' } }>
-								{ __(
-									'No repositories installed yet.',
-									'ghwp'
-								) }
-							</p>
-							<Button variant="primary" onClick={ onGoToBrowse }>
-								{ __( 'Browse GitHub to install one', 'ghwp' ) }
-							</Button>
-						</>
+						<p style={ { margin: 0 } }>
+							{ __( 'No repositories installed yet.', 'ghwp' ) }{ ' ' }
+							<Button variant="link" onClick={ onGoToBrowse }>
+								{ __( 'Browse GitHub', 'ghwp' ) }
+							</Button>{ ' ' }
+							{ __( 'to install one.', 'ghwp' ) }
+						</p>
 					) : (
 						<>
 							<p style={ { margin: '0 0 12px' } }>

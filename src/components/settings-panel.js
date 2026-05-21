@@ -46,10 +46,10 @@ export default function SettingsPanel( {
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 
-	const runTest = async () => {
+	const runTest = async ( overrides = {} ) => {
 		setTesting( true );
 		try {
-			const result = await api.testConnection();
+			const result = await api.testConnection( overrides );
 			onConnectionUpdate( result );
 		} catch ( e ) {
 			onConnectionUpdate( {
@@ -61,8 +61,13 @@ export default function SettingsPanel( {
 	};
 
 	const handleSave = async () => {
-		if ( ! username.trim() ) {
-			toast.error( __( 'GitHub Username is required.', 'ghwp' ) );
+		if ( ! username.trim() && ! token.trim() ) {
+			toast.error(
+				__(
+					'GitHub Username is required when no token is set.',
+					'ghwp'
+				)
+			);
 			return;
 		}
 		setSaving( true );
@@ -81,6 +86,28 @@ export default function SettingsPanel( {
 			setSaving( false );
 		}
 	};
+
+	const handleDisconnect = async () => {
+		setSaving( true );
+		try {
+			await api.saveSettings( {
+				token: '',
+				username: '',
+				smart_install: smartInstall,
+			} );
+			setUsername( '' );
+			setToken( '' );
+			onSave( { token: '', username: '', smart_install: smartInstall } );
+			onConnectionUpdate( null );
+			toast.success( __( 'GitHub connection removed.', 'ghwp' ) );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Disconnect failed.', 'ghwp' ) );
+		} finally {
+			setSaving( false );
+		}
+	};
+
+	const isConnected = !! ( settings.username || settings.token );
 
 	return (
 		<Flex
@@ -101,7 +128,7 @@ export default function SettingsPanel( {
 						<TextControl
 							__nextHasNoMarginBottom
 							help={ __(
-								'Your GitHub username or organization name.',
+								'Your GitHub username or organization. Not required when a token is set.',
 								'ghwp'
 							) }
 							label={ __( 'GitHub Username', 'ghwp' ) }
@@ -118,20 +145,23 @@ export default function SettingsPanel( {
 							help={
 								<>
 									{ __(
-										'Required only for private repositories. Create one at',
+										'For private repos or to limit which repos appear here.',
+										'ghwp'
+									) }{ ' ' }
+									{ __(
+										'Fine-grained (recommended):',
 										'ghwp'
 									) }{ ' ' }
 									<a
-										href="https://github.com/settings/tokens/new"
+										href="https://github.com/settings/personal-access-tokens/new"
 										rel="noopener noreferrer"
 										target="_blank"
 									>
-										github.com/settings/tokens
+										{ __( 'Create token', 'ghwp' ) }
 									</a>{ ' ' }
-									{ sprintf(
-										/* translators: %s: code element showing "repo" */
-										__( 'with the %s scope.', 'ghwp' ),
-										'repo'
+									{ __(
+										'— select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
+										'ghwp'
 									) }
 								</>
 							}
@@ -188,10 +218,20 @@ export default function SettingsPanel( {
 								disabled={ saving || testing }
 								isBusy={ testing }
 								variant="secondary"
-								onClick={ runTest }
+								onClick={ () => runTest( { username, token } ) }
 							>
 								{ __( 'Test Connection', 'ghwp' ) }
 							</Button>
+							{ isConnected && (
+								<Button
+									disabled={ saving || testing }
+									isDestructive
+									variant="secondary"
+									onClick={ handleDisconnect }
+								>
+									{ __( 'Disconnect', 'ghwp' ) }
+								</Button>
+							) }
 						</Flex>
 					</CardBody>
 				</Card>
@@ -251,6 +291,8 @@ function ConnectionStatus( { connection, testing } ) {
 						className="dashicons dashicons-randomize"
 						style={ {
 							fontSize: 32,
+							width: 'auto',
+							height: 'auto',
 							display: 'block',
 							margin: '0 auto 8px',
 							opacity: 0.35,
@@ -270,10 +312,33 @@ function ConnectionStatus( { connection, testing } ) {
 	if ( connection.error ) {
 		return (
 			<Card>
-				<CardBody>
-					<Notice isDismissible={ false } status="error">
+				<CardBody
+					style={ {
+						textAlign: 'center',
+						padding: '32px 16px',
+					} }
+				>
+					<span
+						className="dashicons dashicons-warning"
+						style={ {
+							fontSize: 32,
+							width: 'auto',
+							height: 'auto',
+							display: 'block',
+							margin: '0 auto 8px',
+							color: '#cf222e',
+						} }
+					/>
+					<p
+						style={ {
+							margin: 0,
+							fontSize: 12,
+							lineHeight: 1.5,
+							color: '#cf222e',
+						} }
+					>
 						{ connection.error }
-					</Notice>
+					</p>
 				</CardBody>
 			</Card>
 		);

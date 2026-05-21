@@ -64,9 +64,19 @@ class REST {
 			$ns,
 			'/connection',
 			[
-				'methods'             => 'GET',
+				'methods'             => 'POST',
 				'callback'            => [ self::class, 'test_connection' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'username' => [
+						'type'    => 'string',
+						'default' => '',
+					],
+					'token'    => [
+						'type'    => 'string',
+						'default' => '',
+					],
+				],
 			]
 		);
 
@@ -198,10 +208,6 @@ class REST {
 		$username      = sanitize_text_field( $req->get_param( 'username' ) ?? '' );
 		$smart_install = (bool) $req->get_param( 'smart_install' );
 
-		if ( ! $username ) {
-			return new \WP_Error( 'missing_username', 'GitHub Username is required.', [ 'status' => 400 ] );
-		}
-
 		update_option( 'ghwp_settings', compact( 'token', 'username', 'smart_install' ) );
 		delete_option( 'ghwp_connection_cache' );
 
@@ -215,14 +221,35 @@ class REST {
 	 * Tests the GitHub API connection and caches the result.
 	 *
 	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>|WP_Error Connection data on success, WP_Error on failure.
 	 */
-	public static function test_connection(): array|\WP_Error {
+	public static function test_connection( \WP_REST_Request $req ): array|\WP_Error {
 		$settings = (array) get_option( 'ghwp_settings', [] );
-		$api      = new API( $settings['token'] ?? '' );
-		$result   = $api->test_connection();
+
+		$saved_token    = $settings['token'] ?? '';
+		$saved_username = $settings['username'] ?? '';
+
+		// Prefer params from the request so unsaved form values can be tested.
+		$req_token    = $req->get_param( 'token' );
+		$req_username = $req->get_param( 'username' );
+		$token        = sanitize_text_field( $req_token ? $req_token : $saved_token );
+		$username     = sanitize_text_field( $req_username ? $req_username : $saved_username );
+
+		// Only persist the result when testing with the saved credentials.
+		$cache = ( $token === $saved_token && $username === $saved_username );
+
+		$api    = new API( $token );
+		$result = $api->test_connection();
 
 		if ( is_wp_error( $result ) ) {
+			if ( $cache ) {
+				update_option(
+					'ghwp_connection_cache',
+					[ 'error' => $result->get_error_message() ],
+					false
+				);
+			}
 			return $result;
 		}
 
@@ -237,7 +264,9 @@ class REST {
 			'checked_at'     => time(),
 		];
 
-		update_option( 'ghwp_connection_cache', $data, false );
+		if ( $cache ) {
+			update_option( 'ghwp_connection_cache', $data, false );
+		}
 
 		return $data;
 	}

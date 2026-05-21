@@ -5,8 +5,8 @@ const BASE = '/ghwp/v1';
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>
 	apiFetch( { path: `${ BASE }/settings`, method: 'POST', data } );
-export const testConnection = () =>
-	apiFetch( { path: `${ BASE }/connection` } );
+export const testConnection = ( data = {} ) =>
+	apiFetch( { path: `${ BASE }/connection`, method: 'POST', data } );
 export const getRepos = ( page = 1 ) =>
 	apiFetch( { path: `${ BASE }/repos?page=${ page }` } );
 export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );

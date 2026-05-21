@@ -158,7 +158,8 @@ class Admin {
 		wp_set_script_translations( 'ghwp-app', 'ghwp', GHWP_DIR . 'languages' );
 
 		$settings         = (array) get_option( 'ghwp_settings', [] );
-		$connection       = get_option( 'ghwp_connection_cache', null );
+		$has_config       = ! empty( $settings['username'] ) || ! empty( $settings['token'] );
+		$connection       = $has_config ? get_option( 'ghwp_connection_cache', null ) : null;
 		$installed        = REST::get_installed();
 		$first_activation = (bool) get_transient( 'ghwp_first_activation' );
 
