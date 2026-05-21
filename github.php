@@ -34,6 +34,28 @@ use GitHub_WP\REST;
 // Register shutdown handler as early as possible so it catches fatal errors.
 Error_Handler::register();
 
+// Register a custom 30-minute cron interval.
+add_filter(
+	'cron_schedules',
+	static function ( array $schedules ): array {
+		$schedules['ghwp_half_hourly'] = [
+			'interval' => 1800,
+			'display'  => __( 'Every 30 minutes', 'ghwp' ),
+		];
+		return $schedules;
+	}
+);
+
+// Cron callback — silently refresh the cached connection status.
+add_action(
+	'ghwp_auto_check_connection',
+	static function () {
+		if ( get_option( 'ghwp_settings' ) ) {
+			REST::test_connection();
+		}
+	}
+);
+
 add_action(
 	'plugins_loaded',
 	static function () {
@@ -41,6 +63,11 @@ add_action(
 		REST::init();
 		if ( is_admin() ) {
 			Admin::init();
+		}
+
+		// Re-schedule if the event was cleared without a full deactivation.
+		if ( ! wp_next_scheduled( 'ghwp_auto_check_connection' ) ) {
+			wp_schedule_event( time(), 'ghwp_half_hourly', 'ghwp_auto_check_connection' );
 		}
 	}
 );
@@ -59,6 +86,7 @@ register_activation_hook(
 			);
 		}
 		set_transient( 'ghwp_first_activation', true, 60 );
+		wp_schedule_event( time(), 'ghwp_half_hourly', 'ghwp_auto_check_connection' );
 	}
 );
 
@@ -66,5 +94,6 @@ register_deactivation_hook(
 	GHWP_FILE,
 	static function () {
 		delete_transient( 'ghwp_repos_cache' );
+		wp_clear_scheduled_hook( 'ghwp_auto_check_connection' );
 	}
 );

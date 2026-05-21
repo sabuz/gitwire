@@ -281,6 +281,7 @@ function ConnectionStatus( { connection, testing } ) {
 		rate_limit,
 		rate_remaining,
 		rate_reset,
+		checked_at,
 	} = connection;
 	const pct =
 		rate_limit > 0
@@ -298,7 +299,10 @@ function ConnectionStatus( { connection, testing } ) {
 		rateNote =
 			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.";
 	} else if ( rate_reset ) {
-		rateNote = `Resets in ${ humanDiff( rate_reset ) }.`;
+		const countdown = humanDiff( rate_reset );
+		if ( countdown ) {
+			rateNote = `Resets in ${ countdown }.`;
+		}
 	}
 
 	return (
@@ -359,6 +363,11 @@ function ConnectionStatus( { connection, testing } ) {
 						/>
 					</div>
 					<p className="ghwp-rate-note">{ rateNote }</p>
+					{ checked_at && (
+						<p className="ghwp-rate-note ghwp-rate-note--checked">
+							Last checked { unixTimeAgo( checked_at ) }
+						</p>
+					) }
 				</div>
 			</CardBody>
 		</Card>
@@ -374,8 +383,30 @@ function ConnectionStatus( { connection, testing } ) {
 function humanDiff( ts ) {
 	const s = ts - Math.floor( Date.now() / 1000 );
 	if ( s <= 0 ) {
-		return 'moments';
+		return null;
 	}
 	const m = Math.floor( s / 60 );
 	return m > 0 ? `${ m }m ${ s % 60 }s` : `${ s }s`;
+}
+
+/**
+ * Formats a past Unix timestamp as a human-readable "X ago" string.
+ *
+ * @param {number} ts Unix timestamp in seconds.
+ * @return {string} Human-readable relative time.
+ */
+function unixTimeAgo( ts ) {
+	const s = Math.floor( Date.now() / 1000 ) - ts;
+	if ( s < 60 ) {
+		return 'just now';
+	}
+	const m = Math.floor( s / 60 );
+	if ( m < 60 ) {
+		return `${ m }m ago`;
+	}
+	const h = Math.floor( m / 60 );
+	if ( h < 24 ) {
+		return `${ h }h ago`;
+	}
+	return `${ Math.floor( h / 24 ) }d ago`;
 }

@@ -181,30 +181,30 @@ export default function App( { initialData } ) {
 				<h1 className="ghwp-page-title">GitHub for WordPress</h1>
 
 				<nav aria-label="Plugin navigation" className="ghwp-page-nav">
-					{ TABS.map( ( tab ) => {
-						const label =
-							tab.name === 'installed' && installedCount > 0
-								? `Installed (${ installedCount })`
-								: tab.label;
-						return (
-							<a
-								key={ tab.name }
-								aria-current={
-									activeTab === tab.name ? 'page' : undefined
-								}
-								className={ `ghwp-nav-tab${
-									activeTab === tab.name ? ' is-active' : ''
-								}` }
-								href={ tabUrl( tab.name ) }
-								onClick={ ( e ) => {
-									e.preventDefault();
-									goToTab( tab.name );
-								} }
-							>
-								{ label }
-							</a>
-						);
-					} ) }
+					{ TABS.map( ( tab ) => (
+						<a
+							key={ tab.name }
+							aria-current={
+								activeTab === tab.name ? 'page' : undefined
+							}
+							className={ `ghwp-nav-tab${
+								activeTab === tab.name ? ' is-active' : ''
+							}` }
+							href={ tabUrl( tab.name ) }
+							onClick={ ( e ) => {
+								e.preventDefault();
+								goToTab( tab.name );
+							} }
+						>
+							{ tab.label }
+							{ tab.name === 'installed' &&
+								installedCount > 0 && (
+									<span className="ghwp-nav-badge">
+										{ installedCount }
+									</span>
+								) }
+						</a>
+					) ) }
 				</nav>
 			</div>
 
