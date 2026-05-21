@@ -169,7 +169,12 @@ export default function InstallModal( {
 				</Notice>
 			) }
 
-			<Flex gap={ 3 } style={ { marginTop: 20 } }>
+			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 20 } }>
+				{ ! installing && countdown === null && (
+					<Button variant="tertiary" onClick={ onClose }>
+						Cancel
+					</Button>
+				) }
 				<Button
 					disabled={
 						! canInstall || installing || countdown !== null
@@ -180,11 +185,6 @@ export default function InstallModal( {
 				>
 					{ installing ? 'Installing…' : 'Install' }
 				</Button>
-				{ ! installing && countdown === null && (
-					<Button variant="tertiary" onClick={ onClose }>
-						Cancel
-					</Button>
-				) }
 			</Flex>
 		</Modal>
 	);
