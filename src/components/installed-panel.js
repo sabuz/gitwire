@@ -14,6 +14,7 @@ import { Badge } from '@wordpress/ui';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
+import ConnectPrompt from './connect-prompt';
 
 const DEFAULT_VIEW = {
 	type: 'table',
@@ -140,53 +141,42 @@ export default function InstalledPanel( {
 	);
 
 	if ( entries.length === 0 ) {
+		if ( ! isConfigured ) {
+			return <ConnectPrompt onConnect={ onGoToSettings } />;
+		}
 		return (
-			<Card>
-				<CardBody
+			<div
+				style={ {
+					textAlign: 'center',
+					padding: '72px 24px',
+				} }
+			>
+				<img
+					alt=""
+					aria-hidden="true"
+					src={ window.GWP?.disconnected_url }
 					style={ {
-						textAlign: 'center',
-						padding: '48px 24px',
-						color: '#8c959f',
+						width: 64,
+						height: 64,
+						display: 'block',
+						margin: '0 auto 20px',
+						opacity: 0.2,
+					} }
+				/>
+				<p
+					style={ {
+						margin: '0 0 16px',
+						fontSize: 16,
+						fontWeight: 600,
+						color: '#1d2327',
 					} }
 				>
-					<img
-						alt=""
-						aria-hidden="true"
-						src={ window.GWP?.disconnected_url }
-						style={ {
-							width: 36,
-							height: 36,
-							display: 'block',
-							margin: '0 auto 12px',
-							opacity: 0.3,
-						} }
-					/>
-					{ isConfigured ? (
-						<p style={ { margin: 0 } }>
-							{ __( 'No repositories installed yet.', 'git' ) }{ ' ' }
-							<Button variant="link" onClick={ onGoToBrowse }>
-								{ __( 'Browse', 'git' ) }
-							</Button>{ ' ' }
-							{ __( 'to install one.', 'git' ) }
-						</p>
-					) : (
-						<>
-							<p style={ { margin: '0 0 12px' } }>
-								{ __(
-									'Connect your GitHub account to get started.',
-									'git'
-								) }
-							</p>
-							<Button
-								variant="primary"
-								onClick={ onGoToSettings }
-							>
-								{ __( 'Set up GitHub connection', 'git' ) }
-							</Button>
-						</>
-					) }
-				</CardBody>
-			</Card>
+					{ __( 'No repositories installed yet.', 'git' ) }
+				</p>
+				<Button variant="primary" onClick={ onGoToBrowse }>
+					{ __( 'Browse repositories', 'git' ) }
+				</Button>
+			</div>
 		);
 	}
 

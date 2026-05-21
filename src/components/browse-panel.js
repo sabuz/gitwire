@@ -16,6 +16,7 @@ import {
 import { Badge } from '@wordpress/ui';
 
 import * as api from '../api';
+import ConnectPrompt from './connect-prompt';
 import InstallModal from './install-modal';
 
 const CONCURRENT = 3;
@@ -23,13 +24,19 @@ const CONCURRENT = 3;
 /**
  * Browse panel — lists the user's GitHub repositories with detection and install actions.
  *
- * @param {Object}   props             Component props.
- * @param {Object}   props.settings    Plugin settings.
- * @param {Object}   props.installed   Map of installed repositories.
- * @param {Function} props.onInstalled Callback fired after a successful install.
+ * @param {Object}   props                Component props.
+ * @param {Object}   props.settings       Plugin settings.
+ * @param {Object}   props.installed      Map of installed repositories.
+ * @param {Function} props.onInstalled    Callback fired after a successful install.
+ * @param {Function} props.onGoToSettings Callback to navigate to the Settings tab.
  * @return {JSX.Element} The rendered browse panel.
  */
-export default function BrowsePanel( { settings, installed, onInstalled } ) {
+export default function BrowsePanel( {
+	settings,
+	installed,
+	onInstalled,
+	onGoToSettings,
+} ) {
 	const [ repos, setRepos ] = useState( [] );
 	const [ page, setPage ] = useState( 1 );
 	const [ hasMore, setHasMore ] = useState( false );
@@ -153,14 +160,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 		( settings?.provider === 'gitlab' && settings?.gitlab_token );
 
 	if ( ! isConfigured ) {
-		return (
-			<Notice isDismissible={ false } status="warning">
-				{ __(
-					'Configure your connection in Settings before browsing repositories.',
-					'git'
-				) }
-			</Notice>
-		);
+		return <ConnectPrompt onConnect={ onGoToSettings } />;
 	}
 
 	return (

@@ -238,6 +238,7 @@ export default function App( { initialData } ) {
 					<BrowsePanel
 						installed={ installed }
 						settings={ settings }
+						onGoToSettings={ () => goToTab( 'settings' ) }
 						onInstalled={ refreshInstalled }
 					/>
 				) }

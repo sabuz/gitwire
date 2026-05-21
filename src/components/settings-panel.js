@@ -409,34 +409,47 @@ function ConnectionStatus( { connection, testing } ) {
 
 	if ( ! connection ) {
 		return (
-			<Card>
-				<CardBody
+			<div
+				style={ {
+					textAlign: 'center',
+					padding: '40px 16px',
+				} }
+			>
+				<img
+					alt=""
+					aria-hidden="true"
+					src={ window.GWP?.disconnected_url }
 					style={ {
-						textAlign: 'center',
-						padding: '32px 16px',
-						color: '#8c959f',
+						width: 48,
+						height: 48,
+						display: 'block',
+						margin: '0 auto 16px',
+						opacity: 0.2,
+					} }
+				/>
+				<p
+					style={ {
+						margin: '0 0 4px',
+						fontWeight: 600,
+						color: '#1d2327',
 					} }
 				>
-					<img
-						alt=""
-						aria-hidden="true"
-						src={ window.GWP?.disconnected_url }
-						style={ {
-							width: 32,
-							height: 32,
-							display: 'block',
-							margin: '0 auto 8px',
-							opacity: 0.35,
-						} }
-					/>
-					<p style={ { margin: 0, fontSize: 12, lineHeight: 1.5 } }>
-						{ __(
-							'Save your settings and click "Test Connection" to verify.',
-							'git'
-						) }
-					</p>
-				</CardBody>
-			</Card>
+					{ __( 'Not connected', 'git' ) }
+				</p>
+				<p
+					style={ {
+						margin: 0,
+						fontSize: 12,
+						color: '#8c959f',
+						lineHeight: 1.5,
+					} }
+				>
+					{ __(
+						'Save your settings and click "Test Connection" to verify.',
+						'git'
+					) }
+				</p>
+			</div>
 		);
 	}
 
