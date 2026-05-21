@@ -93,10 +93,7 @@ export default function InstalledPanel( {
 				label: '',
 				getValue: () => '',
 				render: ( { item } ) => (
-					<RowActions
-						item={ item }
-						onRefresh={ onRefresh }
-					/>
+					<RowActions item={ item } onRefresh={ onRefresh } />
 				),
 				enableSorting: false,
 				enableHiding: false,
