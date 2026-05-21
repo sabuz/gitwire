@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 import { useState, useEffect, useMemo } from '@wordpress/element';
 import {
 	Button,
@@ -6,7 +8,6 @@ import {
 	ComboboxControl,
 	Flex,
 	Modal,
-	Notice,
 } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
@@ -42,7 +43,6 @@ export default function InstalledPanel( {
 	const entries = Object.values( installed );
 	const isConfigured = !! settings?.username;
 	const [ view, setView ] = useState( DEFAULT_VIEW );
-	const [ notice, setNotice ] = useState( null );
 
 	const fields = useMemo(
 		() => [
@@ -96,7 +96,6 @@ export default function InstalledPanel( {
 					<RowActions
 						item={ item }
 						onRefresh={ onRefresh }
-						onNotice={ setNotice }
 					/>
 				),
 				enableSorting: false,
@@ -159,17 +158,6 @@ export default function InstalledPanel( {
 
 	return (
 		<div className="ghwp-installed-panel">
-			{ notice && (
-				<div style={ { marginBottom: 16 } }>
-					<Notice
-						isDismissible
-						status={ notice.status }
-						onRemove={ () => setNotice( null ) }
-					>
-						{ notice.message }
-					</Notice>
-				</div>
-			) }
 			<DataViews
 				data={ shownData }
 				defaultLayouts={ { table: {} } }
@@ -189,10 +177,9 @@ export default function InstalledPanel( {
  * @param {Object}   props           Component props.
  * @param {Object}   props.item      Installed repository record.
  * @param {Function} props.onRefresh Callback to refresh the installed list.
- * @param {Function} props.onNotice  Callback to set a panel-level notice.
  * @return {JSX.Element} The rendered row actions.
  */
-function RowActions( { item, onRefresh, onNotice } ) {
+function RowActions( { item, onRefresh } ) {
 	const { full_name, owner, repo, type, branch, active } = item;
 
 	const [ updating, setUpdating ] = useState( false );
@@ -205,19 +192,12 @@ function RowActions( { item, onRefresh, onNotice } ) {
 
 	const handleUpdate = async () => {
 		setUpdating( true );
-		onNotice( null );
 		try {
 			await api.switchBranch( owner, repo, branch );
-			onNotice( {
-				status: 'success',
-				message: `${ full_name }: updated to latest commit.`,
-			} );
+			toast.success( `${ full_name }: updated to latest commit.` );
 			onRefresh();
 		} catch ( e ) {
-			onNotice( {
-				status: 'error',
-				message: e.message || 'Update failed.',
-			} );
+			toast.error( e.message || 'Update failed.' );
 		} finally {
 			setUpdating( false );
 		}
@@ -225,19 +205,12 @@ function RowActions( { item, onRefresh, onNotice } ) {
 
 	const handleActivate = async () => {
 		setActivating( true );
-		onNotice( null );
 		try {
 			await api.activateInstalled( owner, repo );
-			onNotice( {
-				status: 'success',
-				message: `${ full_name } activated.`,
-			} );
+			toast.success( `${ full_name } activated.` );
 			onRefresh();
 		} catch ( e ) {
-			onNotice( {
-				status: 'error',
-				message: e.message || 'Activation failed.',
-			} );
+			toast.error( e.message || 'Activation failed.' );
 		} finally {
 			setActivating( false );
 		}
@@ -245,19 +218,12 @@ function RowActions( { item, onRefresh, onNotice } ) {
 
 	const handleDeactivate = async () => {
 		setDeactivating( true );
-		onNotice( null );
 		try {
 			await api.deactivateInstalled( owner, repo );
-			onNotice( {
-				status: 'success',
-				message: `${ full_name } deactivated.`,
-			} );
+			toast.success( `${ full_name } deactivated.` );
 			onRefresh();
 		} catch ( e ) {
-			onNotice( {
-				status: 'error',
-				message: e.message || 'Deactivation failed.',
-			} );
+			toast.error( e.message || 'Deactivation failed.' );
 		} finally {
 			setDeactivating( false );
 		}
@@ -325,15 +291,10 @@ function RowActions( { item, onRefresh, onNotice } ) {
 					item={ item }
 					onClose={ () => setSwitchOpen( false ) }
 					onSwitched={ ( newBranch ) => {
-						onNotice( {
-							status: 'success',
-							message: `Switched to ${ newBranch }.`,
-						} );
+						toast.success( `Switched to ${ newBranch }.` );
 						onRefresh();
 					} }
-					onError={ ( msg ) =>
-						onNotice( { status: 'error', message: msg } )
-					}
+					onError={ ( msg ) => toast.error( msg ) }
 				/>
 			) }
 
@@ -342,15 +303,10 @@ function RowActions( { item, onRefresh, onNotice } ) {
 					item={ item }
 					onClose={ () => setDeleteOpen( false ) }
 					onDeleted={ () => {
-						onNotice( {
-							status: 'success',
-							message: `${ full_name } deleted.`,
-						} );
+						toast.success( `${ full_name } deleted.` );
 						onRefresh();
 					} }
-					onError={ ( msg ) =>
-						onNotice( { status: 'error', message: msg } )
-					}
+					onError={ ( msg ) => toast.error( msg ) }
 				/>
 			) }
 		</Flex>

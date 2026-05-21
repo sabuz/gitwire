@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 import { useState } from '@wordpress/element';
 import {
 	Button,
@@ -42,7 +44,6 @@ export default function SettingsPanel( {
 	);
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
-	const [ notice, setNotice ] = useState( null );
 
 	const runTest = async () => {
 		setTesting( true );
@@ -58,10 +59,7 @@ export default function SettingsPanel( {
 
 	const handleSave = async () => {
 		if ( ! username.trim() ) {
-			setNotice( {
-				status: 'error',
-				message: 'GitHub Username is required.',
-			} );
+			toast.error( 'GitHub Username is required.' );
 			return;
 		}
 		setSaving( true );
@@ -72,13 +70,10 @@ export default function SettingsPanel( {
 				smart_install: smartInstall,
 			} );
 			onSave( { token, username, smart_install: smartInstall } );
-			setNotice( { status: 'success', message: 'Settings saved.' } );
+			toast.success( 'Settings saved.' );
 			await runTest();
 		} catch ( e ) {
-			setNotice( {
-				status: 'error',
-				message: e.message || 'Save failed.',
-			} );
+			toast.error( e.message || 'Save failed.' );
 		} finally {
 			setSaving( false );
 		}
@@ -98,16 +93,6 @@ export default function SettingsPanel( {
 						<Heading level={ 4 }>GitHub Connection</Heading>
 					</CardHeader>
 					<CardBody>
-						{ notice && (
-							<Notice
-								isDismissible
-								status={ notice.status }
-								onRemove={ () => setNotice( null ) }
-							>
-								{ notice.message }
-							</Notice>
-						) }
-
 						<TextControl
 							__nextHasNoMarginBottom
 							help="Your GitHub username or organization name."

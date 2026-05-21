@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 import { useState, useEffect, useMemo } from '@wordpress/element';
 import {
 	Button,
@@ -33,7 +35,6 @@ export default function InstallModal( {
 	const [ detection, setDetection ] = useState( null );
 	const [ type, setType ] = useState( 'plugin' );
 	const [ installing, setInstalling ] = useState( false );
-	const [ notice, setNotice ] = useState( null );
 	const [ countdown, setCountdown ] = useState( null );
 
 	// Filter all fetched branches by the current search term, show at most 10.
@@ -76,7 +77,6 @@ export default function InstallModal( {
 
 	const handleInstall = async () => {
 		setInstalling( true );
-		setNotice( null );
 		try {
 			const result = await api.install( {
 				owner: repo.owner,
@@ -87,10 +87,7 @@ export default function InstallModal( {
 			onInstalled( result );
 			startCountdown();
 		} catch ( e ) {
-			setNotice( {
-				status: 'error',
-				message: e.message || 'Installation failed.',
-			} );
+			toast.error( e.message || 'Installation failed.' );
 			setInstalling( false );
 		}
 	};
@@ -149,14 +146,6 @@ export default function InstallModal( {
 					onFilterValueChange={ setBranchFilter }
 				/>
 			</div>
-
-			{ notice && (
-				<div style={ { marginTop: 12 } }>
-					<Notice isDismissible={ false } status={ notice.status }>
-						{ notice.message }
-					</Notice>
-				</div>
-			) }
 
 			{ countdown !== null && (
 				<Notice

@@ -1,3 +1,5 @@
+import { Toaster } from 'sonner';
+
 import { useState, useEffect, useCallback } from '@wordpress/element';
 import { Spinner } from '@wordpress/components';
 
@@ -177,6 +179,7 @@ export default function App( { initialData } ) {
 
 	return (
 		<div className="ghwp-page">
+			<Toaster richColors position="top-right" />
 			<div className="ghwp-page-header">
 				<h1 className="ghwp-page-title">GitHub for WordPress</h1>
 
