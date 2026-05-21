@@ -35,6 +35,7 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 	const [ error, setError ] = useState( null );
 	const [ modal, setModal ] = useState( null );
 	const [ search, setSearch ] = useState( '' );
+	const [ typeFilter, setTypeFilter ] = useState( 'all' );
 
 	const detectionsRef = useRef( {} );
 	const queueRef = useRef( [] );
@@ -107,17 +108,37 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 
 	const smartInstall = settings?.smart_install !== false;
 
-	const filtered = search.trim()
-		? repos.filter(
-				( r ) =>
-					r.full_name
-						.toLowerCase()
-						.includes( search.toLowerCase() ) ||
-					( r.description || '' )
-						.toLowerCase()
-						.includes( search.toLowerCase() )
-		  )
-		: repos;
+	const matchesSearch = ( r ) => {
+		if ( ! search.trim() ) {
+			return true;
+		}
+		const q = search.toLowerCase();
+		return (
+			r.full_name.toLowerCase().includes( q ) ||
+			( r.description || '' ).toLowerCase().includes( q )
+		);
+	};
+
+	const matchesType = ( r ) => {
+		if ( typeFilter === 'all' ) {
+			return true;
+		}
+		const installedRec = installed[ r.full_name ] || r.installed;
+		const type = installedRec?.type ?? detectionsRef.current[ r.full_name ]?.type;
+		if ( ! type ) {
+			return false;
+		}
+		return type === typeFilter;
+	};
+
+	const filtered = repos.filter( ( r ) => matchesSearch( r ) && matchesType( r ) );
+
+	const typeFilters = [
+		{ id: 'all', label: 'All' },
+		{ id: 'plugin', label: 'Plugin' },
+		{ id: 'theme', label: 'Theme' },
+		{ id: 'unknown', label: 'Unknown' },
+	];
 
 	if ( ! settings?.username && ! settings?.token ) {
 		return (
@@ -158,6 +179,25 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 				</FlexItem>
 			</Flex>
 
+			<Flex
+				className="ghwp-type-filter"
+				gap={ 2 }
+				justify="flex-start"
+				style={ { marginBottom: 24 } }
+			>
+				{ typeFilters.map( ( f ) => (
+					<FlexItem key={ f.id }>
+						<Button
+							isPressed={ typeFilter === f.id }
+							size="compact"
+							onClick={ () => setTypeFilter( f.id ) }
+						>
+							{ f.label }
+						</Button>
+					</FlexItem>
+				) ) }
+			</Flex>
+
 			{ error && (
 				<Notice
 					isDismissible={ false }
@@ -179,7 +219,14 @@ export default function BrowsePanel( { settings, installed, onInstalled } ) {
 
 			{ repos.length > 0 && filtered.length === 0 && (
 				<p style={ { color: '#57606a', marginTop: 8 } }>
-					No repositories match <strong>{ search }</strong>.
+					{ search.trim() ? (
+						<>
+							No repositories match{ ' ' }
+							<strong>{ search }</strong>.
+						</>
+					) : (
+						'No repositories match the selected filter.'
+					) }
 				</p>
 			) }
 
