@@ -186,41 +186,18 @@ export default function BrowsePanel( {
 
 	return (
 		<div className="gwp-browse">
-			{ hasGitHub && hasGitLab && (
-				<Flex
-					gap={ 2 }
-					justify="flex-start"
-					style={ { marginBottom: 16 } }
-				>
-					<Button
-						isPressed={ provider === 'github' }
-						size="compact"
-						variant="secondary"
-						onClick={ () => setProvider( 'github' ) }
-					>
-						{ __( 'GitHub', 'git' ) }
-					</Button>
-					<Button
-						isPressed={ provider === 'gitlab' }
-						size="compact"
-						variant="secondary"
-						onClick={ () => setProvider( 'gitlab' ) }
-					>
-						{ __( 'GitLab', 'git' ) }
-					</Button>
-				</Flex>
-			) }
-
 			<Flex
 				align="center"
 				className="gwp-browse-toolbar"
 				gap={ 3 }
 				justify="flex-start"
-				style={ { marginBottom: 24 } }
+				style={ { marginBottom: 16 } }
 			>
 				<FlexBlock style={ { maxWidth: 340 } }>
 					<SearchControl
 						__nextHasNoMarginBottom
+						// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+						size="__unstable-large"
 						onChange={ setSearch }
 						placeholder={ __( 'Search repositories…', 'git' ) }
 						value={ search }
@@ -240,21 +217,48 @@ export default function BrowsePanel( {
 			</Flex>
 
 			<Flex
-				className="gwp-type-filter"
+				className="gwp-browse-filters"
 				gap={ 2 }
 				justify="flex-start"
 				style={ { marginBottom: 24 } }
+				wrap
 			>
-				{ typeFilters.map( ( f ) => (
-					<FlexItem key={ f.id }>
+				{ hasGitHub && hasGitLab && (
+					<>
 						<Button
-							isPressed={ typeFilter === f.id }
+							isPressed={ provider === 'github' }
 							size="compact"
-							onClick={ () => setTypeFilter( f.id ) }
+							variant="secondary"
+							onClick={ () => setProvider( 'github' ) }
 						>
-							{ f.label }
+							{ __( 'GitHub', 'git' ) }
 						</Button>
-					</FlexItem>
+						<Button
+							isPressed={ provider === 'gitlab' }
+							size="compact"
+							variant="secondary"
+							onClick={ () => setProvider( 'gitlab' ) }
+						>
+							{ __( 'GitLab', 'git' ) }
+						</Button>
+						<span
+							aria-hidden="true"
+							style={ {
+								borderLeft: '1px solid #ddd',
+								margin: '0 4px',
+							} }
+						/>
+					</>
+				) }
+				{ typeFilters.map( ( f ) => (
+					<Button
+						key={ f.id }
+						isPressed={ typeFilter === f.id }
+						size="compact"
+						onClick={ () => setTypeFilter( f.id ) }
+					>
+						{ f.label }
+					</Button>
 				) ) }
 			</Flex>
 
