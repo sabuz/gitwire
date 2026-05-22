@@ -170,8 +170,14 @@ class Admin {
 		wp_set_script_translations( 'gwp-app', 'git', GWP_DIR . 'languages' );
 
 		$settings         = (array) get_option( 'gwp_settings', [] );
-		$has_config       = ! empty( $settings['username'] ) || ! empty( $settings['token'] ) || ! empty( $settings['gitlab_token'] );
-		$connection       = $has_config ? get_option( 'gwp_connection_cache', null ) : null;
+		$has_github       = ! empty( $settings['username'] ) || ! empty( $settings['token'] );
+		$has_gitlab       = ! empty( $settings['gitlab_token'] );
+		$has_config       = $has_github || $has_gitlab;
+		$raw_cache        = $has_config ? (array) get_option( 'gwp_connection_cache', [] ) : [];
+		$connection       = [
+			'github' => isset( $raw_cache['github'] ) ? $raw_cache['github'] : null,
+			'gitlab' => isset( $raw_cache['gitlab'] ) ? $raw_cache['gitlab'] : null,
+		];
 		$installed        = REST::get_installed();
 		$first_activation = (bool) get_transient( 'gwp_first_activation' );
 
@@ -181,7 +187,7 @@ class Admin {
 
 		// Derive initial tab from path param, activation state, or setup status.
 		$path = sanitize_key( $_GET['path'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( $first_activation || ! ( $settings['username'] ?? '' ) ) {
+		if ( $first_activation || ! $has_config ) {
 			$initial_tab = 'settings';
 		} elseif ( in_array( $path, [ 'browse', 'settings' ], true ) ) {
 			$initial_tab = $path;
@@ -201,11 +207,10 @@ class Admin {
 						'username'      => $settings['username'] ?? '',
 						'token'         => $settings['token'] ?? '',
 						'smart_install' => $settings['smart_install'] ?? true,
-						'provider'      => $settings['provider'] ?? 'github',
 						'gitlab_token'  => $settings['gitlab_token'] ?? '',
 						'gitlab_url'    => $settings['gitlab_url'] ?? '',
 					],
-					'connection'       => $connection ? $connection : null,
+					'connection'       => $connection,
 					'installed'        => $installed ? $installed : (object) [],
 				]
 			) . ';',

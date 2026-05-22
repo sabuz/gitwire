@@ -205,7 +205,6 @@ class REST {
 			'username'      => $s['username'] ?? '',
 			'token'         => $s['token'] ?? '',
 			'smart_install' => $s['smart_install'] ?? true,
-			'provider'      => $s['provider'] ?? 'github',
 			'gitlab_token'  => $s['gitlab_token'] ?? '',
 			'gitlab_url'    => $s['gitlab_url'] ?? '',
 		];
@@ -222,19 +221,28 @@ class REST {
 		$token         = sanitize_text_field( $req->get_param( 'token' ) ?? '' );
 		$username      = sanitize_text_field( $req->get_param( 'username' ) ?? '' );
 		$smart_install = (bool) $req->get_param( 'smart_install' );
-		$provider      = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$gitlab_token  = sanitize_text_field( $req->get_param( 'gitlab_token' ) ?? '' );
 		$gitlab_url    = esc_url_raw( $req->get_param( 'gitlab_url' ) ?? '' );
 
-		if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
-			$provider = 'github';
-		}
+		$current        = (array) get_option( 'gwp_settings', [] );
+		$github_changed = ( ( $current['token'] ?? '' ) !== $token || ( $current['username'] ?? '' ) !== $username );
+		$gitlab_changed = ( ( $current['gitlab_token'] ?? '' ) !== $gitlab_token || ( $current['gitlab_url'] ?? '' ) !== $gitlab_url );
 
 		update_option(
 			'gwp_settings',
-			compact( 'token', 'username', 'smart_install', 'provider', 'gitlab_token', 'gitlab_url' )
+			compact( 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url' )
 		);
-		delete_option( 'gwp_connection_cache' );
+
+		if ( $github_changed || $gitlab_changed ) {
+			$cache = (array) get_option( 'gwp_connection_cache', [] );
+			if ( $github_changed ) {
+				$cache['github'] = null;
+			}
+			if ( $gitlab_changed ) {
+				$cache['gitlab'] = null;
+			}
+			update_option( 'gwp_connection_cache', $cache );
+		}
 
 		return [
 			'saved'         => true,
@@ -244,40 +252,72 @@ class REST {
 
 	/**
 	 * Tests the configured API connection and caches the result.
-	 * Supports both GitHub and GitLab via the provider setting.
+	 * When called without a request (e.g. from cron) tests all configured providers.
 	 *
 	 * @since 1.0.0
-	 * @param \WP_REST_Request $req REST request object.
+	 * @param \WP_REST_Request|null $req REST request object, or null for cron.
 	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
 	 */
 	public static function test_connection( ?\WP_REST_Request $req = null ): array|\WP_Error {
-		$settings     = (array) get_option( 'gwp_settings', [] );
-		$req_provider = $req ? $req->get_param( 'provider' ) : null;
-		$provider     = sanitize_key(
-			$req_provider ? $req_provider : ( $settings['provider'] ?? 'github' )
-		);
+		$settings = (array) get_option( 'gwp_settings', [] );
 
+		if ( null === $req ) {
+			// Cron path — test every provider that has saved credentials.
+			if ( ! empty( $settings['token'] ) || ! empty( $settings['username'] ) ) {
+				self::run_provider_test( 'github', $settings );
+			}
+			if ( ! empty( $settings['gitlab_token'] ) ) {
+				self::run_provider_test( 'gitlab', $settings );
+			}
+			return [];
+		}
+
+		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+			$provider = 'github';
+		}
+
+		$overrides = 'gitlab' === $provider
+			? [
+				'gitlab_token' => $req->get_param( 'gitlab_token' ),
+				'gitlab_url'   => $req->get_param( 'gitlab_url' ),
+			]
+			: [
+				'token'    => $req->get_param( 'token' ),
+				'username' => $req->get_param( 'username' ),
+			];
+
+		return self::run_provider_test( $provider, $settings, $overrides );
+	}
+
+	/**
+	 * Runs a connection test for a single provider and updates the cache slot.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Provider key: 'github' or 'gitlab'.
+	 * @param array  $settings  Saved plugin settings.
+	 * @param array  $overrides Optional credential overrides from the request.
+	 * @return array<string, mixed>|\WP_Error Connection data, or WP_Error on failure.
+	 */
+	private static function run_provider_test( string $provider, array $settings, array $overrides = [] ): array|\WP_Error {
 		if ( 'gitlab' === $provider ) {
 			$saved_token = $settings['gitlab_token'] ?? '';
 			$saved_url   = $settings['gitlab_url'] ?? '';
-			$req_token   = $req ? $req->get_param( 'gitlab_token' ) : null;
-			$req_url     = $req ? $req->get_param( 'gitlab_url' ) : null;
-			$token       = sanitize_text_field( $req_token ? $req_token : $saved_token );
-			$gitlab_url  = esc_url_raw( $req_url ? $req_url : $saved_url );
-			$cache       = ( $token === $saved_token && $gitlab_url === $saved_url );
+			$token       = sanitize_text_field( $overrides['gitlab_token'] ?? $saved_token );
+			$gitlab_url  = esc_url_raw( $overrides['gitlab_url'] ?? $saved_url );
+			$cache_this  = ( $saved_token === $token && $saved_url === $gitlab_url );
 
 			$api    = new GitLab_API( $token, $gitlab_url );
 			$result = $api->test_connection();
 
 			if ( is_wp_error( $result ) ) {
-				if ( $cache ) {
-					update_option(
-						'gwp_connection_cache',
+				if ( $cache_this ) {
+					self::set_connection_cache(
+						'gitlab',
 						[
 							'provider' => 'gitlab',
 							'error'    => $result->get_error_message(),
-						],
-						false
+						]
 					);
 				}
 				return $result;
@@ -292,8 +332,8 @@ class REST {
 				'checked_at'    => time(),
 			];
 
-			if ( $cache ) {
-				update_option( 'gwp_connection_cache', $data, false );
+			if ( $cache_this ) {
+				self::set_connection_cache( 'gitlab', $data );
 			}
 
 			return $data;
@@ -301,28 +341,21 @@ class REST {
 
 		$saved_token    = $settings['token'] ?? '';
 		$saved_username = $settings['username'] ?? '';
-
-		// Prefer params from the request so unsaved form values can be tested.
-		$req_token    = $req ? $req->get_param( 'token' ) : null;
-		$req_username = $req ? $req->get_param( 'username' ) : null;
-		$token        = sanitize_text_field( $req_token ? $req_token : $saved_token );
-		$username     = sanitize_text_field( $req_username ? $req_username : $saved_username );
-
-		// Only persist the result when testing with the saved credentials.
-		$cache = ( $token === $saved_token && $username === $saved_username );
+		$token          = sanitize_text_field( $overrides['token'] ?? $saved_token );
+		$username       = sanitize_text_field( $overrides['username'] ?? $saved_username );
+		$cache_this     = ( $saved_token === $token && $saved_username === $username );
 
 		$api    = new API( $token );
 		$result = $api->test_connection();
 
 		if ( is_wp_error( $result ) ) {
-			if ( $cache ) {
-				update_option(
-					'gwp_connection_cache',
+			if ( $cache_this ) {
+				self::set_connection_cache(
+					'github',
 					[
 						'provider' => 'github',
 						'error'    => $result->get_error_message(),
-					],
-					false
+					]
 				);
 			}
 			return $result;
@@ -340,11 +373,25 @@ class REST {
 			'checked_at'     => time(),
 		];
 
-		if ( $cache ) {
-			update_option( 'gwp_connection_cache', $data, false );
+		if ( $cache_this ) {
+			self::set_connection_cache( 'github', $data );
 		}
 
 		return $data;
+	}
+
+	/**
+	 * Updates a single provider slot in the connection cache.
+	 *
+	 * @since 1.0.0
+	 * @param string     $provider Provider key.
+	 * @param array|null $data     Connection data, or null to clear.
+	 * @return void
+	 */
+	private static function set_connection_cache( string $provider, ?array $data ): void {
+		$cache              = (array) get_option( 'gwp_connection_cache', [] );
+		$cache[ $provider ] = $data;
+		update_option( 'gwp_connection_cache', $cache, false );
 	}
 
 	/**
@@ -356,8 +403,11 @@ class REST {
 	 */
 	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
 		$settings = (array) get_option( 'gwp_settings', [] );
-		$provider = $settings['provider'] ?? 'github';
-		$page     = max( 1, (int) ( $req->get_param( 'page' ) ?? 1 ) );
+		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+			$provider = 'github';
+		}
+		$page = max( 1, (int) ( $req->get_param( 'page' ) ?? 1 ) );
 
 		if ( 'gitlab' === $provider ) {
 			if ( ! ( $settings['gitlab_token'] ?? '' ) ) {
@@ -472,8 +522,9 @@ class REST {
 	public static function get_branches( \WP_REST_Request $req ): array|\WP_Error {
 		$owner    = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo     = sanitize_text_field( $req->get_param( 'repo' ) );
+		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$settings = (array) get_option( 'gwp_settings', [] );
-		$api      = self::make_api( $settings );
+		$api      = self::make_api( $settings, $provider );
 		$result   = $api->get_branches( $owner, $repo );
 
 		if ( is_wp_error( $result ) ) {
@@ -495,14 +546,15 @@ class REST {
 		$repo   = sanitize_text_field( $req->get_param( 'repo' ) );
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? 'HEAD' );
 
-		$cache_key = 'gwp_detect_' . md5( $owner . $repo . $branch );
+		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$cache_key = 'gwp_detect_' . md5( $provider . $owner . $repo . $branch );
 		$cached    = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return $cached;
 		}
 
 		$settings = (array) get_option( 'gwp_settings', [] );
-		$api      = self::make_api( $settings );
+		$api      = self::make_api( $settings, $provider );
 		$result   = $api->detect_type( $owner, $repo, $branch );
 
 		// Absorb GitHub errors (private repo, rate-limit, network) so the
@@ -545,8 +597,13 @@ class REST {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
+		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+			$provider = 'github';
+		}
+
 		$method = 'theme' === $type ? 'install_theme' : 'install_plugin';
-		$result = Installer::$method( $owner, $repo, $branch );
+		$result = Installer::$method( $owner, $repo, $branch, '', $provider );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -680,14 +737,15 @@ class REST {
 	}
 
 	/**
-	 * Returns an API client instance for the configured provider.
+	 * Returns an API client instance for the given provider.
 	 *
 	 * @since 1.1.0
 	 * @param array<string, mixed> $settings Plugin settings array.
+	 * @param string               $provider Provider key: 'github' or 'gitlab'.
 	 * @return API|GitLab_API Appropriate API client.
 	 */
-	private static function make_api( array $settings ): API|GitLab_API {
-		if ( 'gitlab' === ( $settings['provider'] ?? 'github' ) ) {
+	private static function make_api( array $settings, string $provider = 'github' ): API|GitLab_API {
+		if ( 'gitlab' === $provider ) {
 			return new GitLab_API(
 				$settings['gitlab_token'] ?? '',
 				$settings['gitlab_url'] ?? ''

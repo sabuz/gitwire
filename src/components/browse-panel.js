@@ -1,5 +1,5 @@
 import { __ } from '@wordpress/i18n';
-import { useState, useEffect, useRef, useCallback } from '@wordpress/element';
+import { useState, useEffect, useRef, useCallback, useMemo } from '@wordpress/element';
 import {
 	Button,
 	Spinner,
@@ -37,6 +37,13 @@ export default function BrowsePanel( {
 	onInstalled,
 	onGoToSettings,
 } ) {
+	const hasGitHub = !! ( settings?.token || settings?.username );
+	const hasGitLab = !! settings?.gitlab_token;
+	const defaultProvider = useMemo(
+		() => ( hasGitHub ? 'github' : 'gitlab' ),
+		[] // eslint-disable-line react-hooks/exhaustive-deps
+	);
+
 	const [ repos, setRepos ] = useState( [] );
 	const [ page, setPage ] = useState( 1 );
 	const [ hasMore, setHasMore ] = useState( false );
@@ -45,17 +52,19 @@ export default function BrowsePanel( {
 	const [ modal, setModal ] = useState( null );
 	const [ search, setSearch ] = useState( '' );
 	const [ typeFilter, setTypeFilter ] = useState( 'all' );
+	const [ provider, setProvider ] = useState( defaultProvider );
 
 	const detectionsRef = useRef( {} );
 	const queueRef = useRef( [] );
 	const activeRef = useRef( 0 );
+	const providerRef = useRef( provider );
 	const [ , forceRender ] = useState( 0 );
 
-	const loadRepos = useCallback( async ( pageNum ) => {
+	const loadRepos = useCallback( async ( pageNum, activeProvider ) => {
 		setLoading( true );
 		setError( null );
 		try {
-			const data = await api.getRepos( pageNum );
+			const data = await api.getRepos( pageNum, activeProvider );
 			setRepos( ( prev ) =>
 				pageNum === 1 ? data.repos : [ ...prev, ...data.repos ]
 			);
@@ -72,8 +81,14 @@ export default function BrowsePanel( {
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect( () => {
-		loadRepos( 1 );
-	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
+		providerRef.current = provider;
+		setRepos( [] );
+		setPage( 1 );
+		setHasMore( false );
+		detectionsRef.current = {};
+		queueRef.current = [];
+		loadRepos( 1, provider );
+	}, [ provider ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const enqueueDetections = ( newRepos ) => {
 		const toDetect = newRepos.filter(
@@ -90,7 +105,7 @@ export default function BrowsePanel( {
 		) {
 			const repo = queueRef.current.shift();
 			activeRef.current++;
-			api.detectRepo( repo.owner, repo.name, repo.default_branch )
+			api.detectRepo( repo.owner, repo.name, repo.default_branch, providerRef.current )
 				.then( ( d ) => {
 					detectionsRef.current[ repo.full_name ] = d;
 				} )
@@ -114,7 +129,7 @@ export default function BrowsePanel( {
 		setHasMore( false );
 		detectionsRef.current = {};
 		queueRef.current = [];
-		loadRepos( 1 );
+		loadRepos( 1, provider );
 	};
 
 	const smartInstall = settings?.smart_install !== false;
@@ -154,17 +169,33 @@ export default function BrowsePanel( {
 		{ id: 'unknown', label: __( 'Unknown', 'git' ) },
 	];
 
-	const isConfigured =
-		settings?.token ||
-		settings?.username ||
-		( settings?.provider === 'gitlab' && settings?.gitlab_token );
-
-	if ( ! isConfigured ) {
+	if ( ! hasGitHub && ! hasGitLab ) {
 		return <ConnectPrompt onConnect={ onGoToSettings } />;
 	}
 
 	return (
 		<div className="gwp-browse">
+			{ hasGitHub && hasGitLab && (
+				<Flex gap={ 2 } justify="flex-start" style={ { marginBottom: 16 } }>
+					<Button
+						isPressed={ provider === 'github' }
+						size="compact"
+						variant="secondary"
+						onClick={ () => setProvider( 'github' ) }
+					>
+						{ __( 'GitHub', 'git' ) }
+					</Button>
+					<Button
+						isPressed={ provider === 'gitlab' }
+						size="compact"
+						variant="secondary"
+						onClick={ () => setProvider( 'gitlab' ) }
+					>
+						{ __( 'GitLab', 'git' ) }
+					</Button>
+				</Flex>
+			) }
+
 			<Flex
 				align="center"
 				className="gwp-browse-toolbar"
@@ -272,7 +303,7 @@ export default function BrowsePanel( {
 						disabled={ loading }
 						isBusy={ loading }
 						variant="secondary"
-						onClick={ () => loadRepos( page + 1 ) }
+						onClick={ () => loadRepos( page + 1, provider ) }
 					>
 						{ __( 'Load more', 'git' ) }
 					</Button>
@@ -281,6 +312,7 @@ export default function BrowsePanel( {
 
 			{ modal && (
 				<InstallModal
+					provider={ provider }
 					repo={ modal }
 					smartInstall={ smartInstall }
 					onClose={ () => setModal( null ) }

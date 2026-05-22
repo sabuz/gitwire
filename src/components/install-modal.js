@@ -26,6 +26,7 @@ import * as api from '../api';
  */
 export default function InstallModal( {
 	repo,
+	provider = 'github',
 	smartInstall,
 	onClose,
 	onInstalled,
@@ -57,11 +58,11 @@ export default function InstallModal( {
 
 	// Fetch branches and detect repo type in parallel on open.
 	useEffect( () => {
-		api.getBranches( repo.owner, repo.name )
+		api.getBranches( repo.owner, repo.name, provider )
 			.then( ( b ) => setAllBranches( b ) )
 			.catch( () => {} );
 
-		api.detectRepo( repo.owner, repo.name, repo.default_branch )
+		api.detectRepo( repo.owner, repo.name, repo.default_branch, provider )
 			.then( ( d ) => {
 				setDetection( d );
 				if ( d.type === 'plugin' || d.type === 'theme' ) {
@@ -84,6 +85,7 @@ export default function InstallModal( {
 				repo: repo.name,
 				branch,
 				type: detection?.type !== 'unknown' ? detection.type : type,
+				provider,
 			} );
 			onInstalled( result );
 			startCountdown();

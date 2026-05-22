@@ -96,17 +96,19 @@ class Installer {
 	 * Installs or updates a repository as a WordPress plugin.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  GitHub owner or organisation.
-	 * @param string $repo   Repository name.
-	 * @param string $branch Branch, tag, or SHA.
-	 * @param string $slug   Desired directory slug (defaults to sanitised repo name).
+	 * @param string $owner    Git owner or organisation.
+	 * @param string $repo     Repository name.
+	 * @param string $branch   Branch, tag, or SHA.
+	 * @param string $slug     Desired directory slug (defaults to sanitised repo name).
+	 * @param string $provider Git provider: 'github' or 'gitlab'.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_plugin(
 		string $owner,
 		string $repo,
 		string $branch,
-		string $slug = ''
+		string $slug = '',
+		string $provider = 'github'
 	): array|\WP_Error {
 		if ( ! $slug ) {
 			$slug = sanitize_title( $repo );
@@ -114,24 +116,26 @@ class Installer {
 
 		$destination = WP_PLUGIN_DIR . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'plugin' );
+		return self::run( $owner, $repo, $branch, $slug, $destination, 'plugin', $provider );
 	}
 
 	/**
 	 * Installs or updates a repository as a WordPress theme.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  GitHub owner or organisation.
-	 * @param string $repo   Repository name.
-	 * @param string $branch Branch, tag, or SHA.
-	 * @param string $slug   Desired directory slug (defaults to sanitised repo name).
+	 * @param string $owner    Git owner or organisation.
+	 * @param string $repo     Repository name.
+	 * @param string $branch   Branch, tag, or SHA.
+	 * @param string $slug     Desired directory slug (defaults to sanitised repo name).
+	 * @param string $provider Git provider: 'github' or 'gitlab'.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_theme(
 		string $owner,
 		string $repo,
 		string $branch,
-		string $slug = ''
+		string $slug = '',
+		string $provider = 'github'
 	): array|\WP_Error {
 		if ( ! $slug ) {
 			$slug = sanitize_title( $repo );
@@ -139,7 +143,7 @@ class Installer {
 
 		$destination = get_theme_root() . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'theme' );
+		return self::run( $owner, $repo, $branch, $slug, $destination, 'theme', $provider );
 	}
 
 	/**
@@ -157,13 +161,14 @@ class Installer {
 			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
 		}
 
-		$rec    = $installed[ $full_name ];
-		$parts  = explode( '/', $full_name );
-		$owner  = $parts[0];
-		$repo   = $parts[1];
-		$method = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
+		$rec      = $installed[ $full_name ];
+		$parts    = explode( '/', $full_name );
+		$owner    = $parts[0];
+		$repo     = $parts[1];
+		$provider = $rec['provider'] ?? 'github';
+		$method   = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
 
-		return self::$method( $owner, $repo, $new_branch, $rec['slug'] );
+		return self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider );
 	}
 
 	/**
@@ -325,12 +330,13 @@ class Installer {
 	 * Core install routine: downloads, backs up, extracts, and records a repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner        GitHub owner or organisation.
+	 * @param string $owner        Git owner or organisation.
 	 * @param string $repo         Repository name.
 	 * @param string $branch       Branch, tag, or SHA.
 	 * @param string $slug         Directory slug for the installation.
 	 * @param string $install_path Absolute filesystem path for the installation.
 	 * @param string $type         Installation type: "plugin" or "theme".
+	 * @param string $provider     Git provider: 'github' or 'gitlab'.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	private static function run(
@@ -339,14 +345,15 @@ class Installer {
 		string $branch,
 		string $slug,
 		string $install_path,
-		string $type
+		string $type,
+		string $provider = 'github'
 	): array|\WP_Error {
 		self::init_fs();
 
 		$settings  = (array) get_option( 'gwp_settings', [] );
 		$full_name = $owner . '/' . $repo;
 
-		if ( 'gitlab' === ( $settings['provider'] ?? 'github' ) ) {
+		if ( 'gitlab' === $provider ) {
 			$api = new GitLab_API(
 				$settings['gitlab_token'] ?? '',
 				$settings['gitlab_url'] ?? ''
@@ -418,6 +425,7 @@ class Installer {
 			'full_name'    => $full_name,
 			'branch'       => $branch,
 			'type'         => $type,
+			'provider'     => $provider,
 			'install_path' => $install_path,
 			'plugin_file'  => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
 			'installed_at' => time(),

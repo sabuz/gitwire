@@ -86,7 +86,7 @@ function syncUrl( tabName ) {
 export default function App( { initialData } ) {
 	const [ settings, setSettings ] = useState( initialData.settings || null );
 	const [ connection, setConnection ] = useState(
-		initialData.connection || null
+		initialData.connection || { github: null, gitlab: null }
 	);
 	const [ installed, setInstalled ] = useState( initialData.installed || {} );
 	const [ loading, setLoading ] = useState( ! initialData.settings );
@@ -230,7 +230,12 @@ export default function App( { initialData } ) {
 					<SettingsPanel
 						connection={ connection }
 						settings={ settings }
-						onConnectionUpdate={ ( c ) => setConnection( c ) }
+						onConnectionUpdate={ ( provider, data ) =>
+							setConnection( ( prev ) => ( {
+								...( prev || { github: null, gitlab: null } ),
+								[ provider ]: data,
+							} ) )
+						}
 						onSave={ ( s ) => setSettings( s ) }
 					/>
 				) }

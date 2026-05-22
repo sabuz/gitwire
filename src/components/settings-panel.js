@@ -10,7 +10,6 @@ import {
 	Flex,
 	FlexBlock,
 	FlexItem,
-	Notice,
 	Spinner,
 	TextControl,
 	ToggleControl,
@@ -23,13 +22,13 @@ import {
 import * as api from '../api';
 
 /**
- * Settings panel — GitHub connection credentials and smart install toggle.
+ * Settings panel — one card per provider plus a Smart Install card.
  *
  * @param {Object}   props                    Component props.
- * @param {Object}   props.settings           Current plugin settings.
- * @param {Object}   props.connection         Cached connection status, if any.
- * @param {Function} props.onSave             Callback fired after settings are saved.
- * @param {Function} props.onConnectionUpdate Callback fired after a connection test.
+ * @param {Object}   props.settings           Saved plugin settings.
+ * @param {Object}   props.connection         Per-provider connection cache: { github, gitlab }.
+ * @param {Function} props.onSave             Called with updated settings after save.
+ * @param {Function} props.onConnectionUpdate Called with (provider, data) after a test/disconnect.
  * @return {JSX.Element} The rendered settings panel.
  */
 export default function SettingsPanel( {
@@ -38,44 +37,112 @@ export default function SettingsPanel( {
 	onSave,
 	onConnectionUpdate,
 } ) {
-	const [ provider, setProvider ] = useState( settings.provider || 'github' );
-	const [ token, setToken ] = useState( settings.token || '' );
-	const [ username, setUsername ] = useState( settings.username || '' );
-	const [ gitlabToken, setGitlabToken ] = useState(
-		settings.gitlab_token || ''
-	);
-	const [ gitlabUrl, setGitlabUrl ] = useState( settings.gitlab_url || '' );
 	const [ smartInstall, setSmartInstall ] = useState(
 		settings.smart_install !== false
 	);
-	const [ saving, setSaving ] = useState( false );
-	const [ testing, setTesting ] = useState( false );
+	const [ savingSi, setSavingSi ] = useState( false );
 
-	const runTest = async ( overrides = {} ) => {
-		setTesting( true );
+	const handleSmartInstallChange = async ( newVal ) => {
+		setSmartInstall( newVal );
+		setSavingSi( true );
 		try {
-			const result = await api.testConnection( overrides );
-			onConnectionUpdate( result );
-		} catch ( e ) {
-			onConnectionUpdate( {
-				error: e.message || __( 'Connection failed.', 'git' ),
+			await api.saveSettings( {
+				token: settings.token,
+				username: settings.username,
+				gitlab_token: settings.gitlab_token,
+				gitlab_url: settings.gitlab_url,
+				smart_install: newVal,
 			} );
+			onSave( { ...settings, smart_install: newVal } );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Save failed.', 'git' ) );
+			setSmartInstall( ! newVal );
 		} finally {
-			setTesting( false );
+			setSavingSi( false );
 		}
 	};
 
-	const handleSave = async () => {
-		if ( provider === 'gitlab' && ! gitlabToken.trim() ) {
-			toast.error(
-				__( 'A GitLab Personal Access Token is required.', 'git' )
-			);
-			return;
-		}
-		if ( provider === 'github' && ! username.trim() && ! token.trim() ) {
-			toast.error(
-				__( 'GitHub Username is required when no token is set.', 'git' )
-			);
+	return (
+		<div className="gwp-settings-panels">
+			<GitHubCard
+				connection={ connection?.github ?? null }
+				settings={ settings }
+				smartInstall={ smartInstall }
+				onConnectionUpdate={ ( data ) =>
+					onConnectionUpdate( 'github', data )
+				}
+				onSave={ onSave }
+			/>
+
+			<Spacer marginTop={ 4 } />
+
+			<GitLabCard
+				connection={ connection?.gitlab ?? null }
+				settings={ settings }
+				smartInstall={ smartInstall }
+				onConnectionUpdate={ ( data ) =>
+					onConnectionUpdate( 'gitlab', data )
+				}
+				onSave={ onSave }
+			/>
+
+			<Spacer marginTop={ 4 } />
+
+			<Card style={ { maxWidth: 540 } }>
+				<CardHeader>
+					<Heading level={ 4 }>
+						{ __( 'Smart Install', 'git' ) }
+					</Heading>
+				</CardHeader>
+				<CardBody>
+					<ToggleControl
+						__nextHasNoMarginBottom
+						checked={ smartInstall }
+						disabled={ savingSi }
+						help={ __(
+							'Only allow installing repositories detected as a WordPress plugin or theme.',
+							'git'
+						) }
+						label={
+							<>
+								<strong>
+									{ __( 'Smart Install', 'git' ) }
+								</strong>{ ' ' }
+								<span className="gwp-badge-recommended">
+									{ __( 'Recommended', 'git' ) }
+								</span>
+							</>
+						}
+						onChange={ handleSmartInstallChange }
+					/>
+				</CardBody>
+			</Card>
+		</div>
+	);
+}
+
+/**
+ * GitHub provider card — shows a connect form when disconnected, profile when connected.
+ *
+ * @param {Object}   props                    Component props.
+ * @param {Object}   props.settings           Saved plugin settings.
+ * @param {Object}   props.connection         Cached GitHub connection data, or null.
+ * @param {boolean}  props.smartInstall       Current smart install value (preserved on save).
+ * @param {Function} props.onSave             Called with updated settings after save.
+ * @param {Function} props.onConnectionUpdate Called with connection data (or null) after test.
+ * @return {JSX.Element} The rendered card.
+ */
+function GitHubCard( { settings, connection, smartInstall, onSave, onConnectionUpdate } ) {
+	const [ token, setToken ] = useState( settings.token || '' );
+	const [ username, setUsername ] = useState( settings.username || '' );
+	const [ saving, setSaving ] = useState( false );
+	const [ testing, setTesting ] = useState( false );
+
+	const isConnected = !! ( settings.token || settings.username );
+
+	const handleConnect = async () => {
+		if ( ! token.trim() && ! username.trim() ) {
+			toast.error( __( 'Enter a username or access token.', 'git' ) );
 			return;
 		}
 		setSaving( true );
@@ -83,28 +150,29 @@ export default function SettingsPanel( {
 			await api.saveSettings( {
 				token,
 				username,
+				gitlab_token: settings.gitlab_token,
+				gitlab_url: settings.gitlab_url,
 				smart_install: smartInstall,
-				provider,
-				gitlab_token: gitlabToken,
-				gitlab_url: gitlabUrl,
 			} );
-			onSave( {
-				token,
-				username,
-				smart_install: smartInstall,
-				provider,
-				gitlab_token: gitlabToken,
-				gitlab_url: gitlabUrl,
-			} );
-			toast.success( __( 'Settings saved.', 'git' ) );
-			if ( provider === 'gitlab' ) {
-				await runTest( {
-					provider: 'gitlab',
-					gitlab_token: gitlabToken,
-					gitlab_url: gitlabUrl,
+			const newSettings = { ...settings, token, username };
+			onSave( newSettings );
+			setTesting( true );
+			try {
+				const result = await api.testConnection( {
+					provider: 'github',
+					token,
+					username,
 				} );
-			} else {
-				await runTest( { username, token } );
+				onConnectionUpdate( result );
+				toast.success( __( 'GitHub connected.', 'git' ) );
+			} catch ( e ) {
+				onConnectionUpdate( {
+					provider: 'github',
+					error: e.message || __( 'Connection test failed.', 'git' ),
+				} );
+				toast.error( e.message || __( 'Connection test failed.', 'git' ) );
+			} finally {
+				setTesting( false );
 			}
 		} catch ( e ) {
 			toast.error( e.message || __( 'Save failed.', 'git' ) );
@@ -113,31 +181,21 @@ export default function SettingsPanel( {
 		}
 	};
 
-	const handleDisconnect = async () => {
+	const handleSignOut = async () => {
 		setSaving( true );
 		try {
 			await api.saveSettings( {
 				token: '',
 				username: '',
+				gitlab_token: settings.gitlab_token,
+				gitlab_url: settings.gitlab_url,
 				smart_install: smartInstall,
-				provider,
-				gitlab_token: '',
-				gitlab_url: '',
 			} );
-			setUsername( '' );
 			setToken( '' );
-			setGitlabToken( '' );
-			setGitlabUrl( '' );
-			onSave( {
-				token: '',
-				username: '',
-				smart_install: smartInstall,
-				provider,
-				gitlab_token: '',
-				gitlab_url: '',
-			} );
+			setUsername( '' );
+			onSave( { ...settings, token: '', username: '' } );
 			onConnectionUpdate( null );
-			toast.success( __( 'Connection removed.', 'git' ) );
+			toast.success( __( 'GitHub disconnected.', 'git' ) );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Disconnect failed.', 'git' ) );
 		} finally {
@@ -145,366 +203,376 @@ export default function SettingsPanel( {
 		}
 	};
 
-	const isConnected =
-		provider === 'gitlab'
-			? !! settings.gitlab_token
-			: !! ( settings.username || settings.token );
-
 	return (
-		<Flex
-			align="flex-start"
-			className="gwp-settings-row"
-			gap={ 6 }
-			justify="center"
-			wrap
-		>
-			<FlexBlock style={ { minWidth: 300, maxWidth: 540 } }>
-				<Card>
-					<CardHeader>
+		<Card style={ { maxWidth: 540 } }>
+			<CardHeader>
+				<Flex align="center" gap={ 2 }>
+					<FlexItem>
+						<svg
+							aria-hidden="true"
+							fill="currentColor"
+							height="20"
+							viewBox="0 0 16 16"
+							width="20"
+						>
+							<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+						</svg>
+					</FlexItem>
+					<FlexBlock>
 						<Heading level={ 4 }>
-							{ __( 'Connection', 'git' ) }
+							{ __( 'GitHub', 'git' ) }
 						</Heading>
-					</CardHeader>
-					<CardBody>
-						<Flex gap={ 2 } justify="flex-start">
-							<Button
-								isPressed={ provider === 'github' }
-								size="compact"
-								variant="secondary"
-								onClick={ () => setProvider( 'github' ) }
-							>
-								{ __( 'GitHub', 'git' ) }
-							</Button>
-							<Button
-								isPressed={ provider === 'gitlab' }
-								size="compact"
-								variant="secondary"
-								onClick={ () => setProvider( 'gitlab' ) }
-							>
-								{ __( 'GitLab', 'git' ) }
-							</Button>
-						</Flex>
+					</FlexBlock>
+					{ isConnected && connection && ! connection.error && (
+						<FlexItem>
+							<span className="gwp-conn-badge gwp-conn-badge--ok">
+								<span className="dashicons dashicons-yes-alt" />
+								{ connection.authenticated
+									? __( 'Connected', 'git' )
+									: __( 'Public only', 'git' ) }
+							</span>
+						</FlexItem>
+					) }
+				</Flex>
+			</CardHeader>
+			<CardBody>
+				{ testing ? (
+					<div style={ { textAlign: 'center', padding: '24px 0' } }>
+						<Spinner />
+						<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+							{ __( 'Checking connection…', 'git' ) }
+						</p>
+					</div>
+				) : isConnected ? (
+					<ConnectedProfile
+						connection={ connection }
+						isBusy={ saving }
+						signOutLabel={ __( 'Sign Out', 'git' ) }
+						onSignOut={ handleSignOut }
+					/>
+				) : (
+					<>
+						<TextControl
+							__nextHasNoMarginBottom
+							help={ __(
+								'Your GitHub username or organization. Not required when a token is set.',
+								'git'
+							) }
+							label={ __( 'GitHub Username', 'git' ) }
+							placeholder="your-github-username"
+							value={ username }
+							onChange={ setUsername }
+						/>
 
 						<Spacer marginTop={ 4 } />
 
-						{ provider === 'github' && (
-							<>
-								<TextControl
-									__nextHasNoMarginBottom
-									help={ __(
-										'Your GitHub username or organization. Not required when a token is set.',
+						<TextControl
+							__nextHasNoMarginBottom
+							autoComplete="new-password"
+							help={
+								<>
+									{ __(
+										'For private repos or to raise the rate limit.',
+										'git'
+									) }{ ' ' }
+									<a
+										href="https://github.com/settings/personal-access-tokens/new"
+										rel="noopener noreferrer"
+										target="_blank"
+									>
+										{ __( 'Create token', 'git' ) }
+									</a>{ ' ' }
+									{ __(
+										'— select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
 										'git'
 									) }
-									label={ __( 'GitHub Username', 'git' ) }
-									placeholder="your-github-username"
-									value={ username }
-									onChange={ setUsername }
-								/>
-
-								<Spacer marginTop={ 4 } />
-
-								<TextControl
-									__nextHasNoMarginBottom
-									autoComplete="new-password"
-									help={
-										<>
-											{ __(
-												'For private repos or to limit which repos appear here.',
-												'git'
-											) }{ ' ' }
-											<a
-												href="https://github.com/settings/personal-access-tokens/new"
-												rel="noopener noreferrer"
-												target="_blank"
-											>
-												{ __( 'Create token', 'git' ) }
-											</a>{ ' ' }
-											{ __(
-												'— select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
-												'git'
-											) }
-										</>
-									}
-									label={
-										<>
-											{ __(
-												'Fine-grained Access Token',
-												'git'
-											) }{ ' ' }
-											<span className="gwp-label-optional">
-												{ __( '(Optional)', 'git' ) }
-											</span>
-										</>
-									}
-									placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx"
-									type="password"
-									value={ token }
-									onChange={ setToken }
-								/>
-							</>
-						) }
-
-						{ provider === 'gitlab' && (
-							<>
-								<TextControl
-									__nextHasNoMarginBottom
-									autoComplete="new-password"
-									help={
-										<>
-											{ __( 'Required.', 'git' ) }{ ' ' }
-											<a
-												href="https://gitlab.com/-/user_settings/personal_access_tokens"
-												rel="noopener noreferrer"
-												target="_blank"
-											>
-												{ __( 'Create token', 'git' ) }
-											</a>{ ' ' }
-											{ __(
-												'— enable Projects: Read and Repository: Read permissions.',
-												'git'
-											) }
-										</>
-									}
-									label={ __(
-										'Personal Access Token',
-										'git'
-									) }
-									placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
-									type="password"
-									value={ gitlabToken }
-									onChange={ setGitlabToken }
-								/>
-
-								<Spacer marginTop={ 4 } />
-
-								<TextControl
-									__nextHasNoMarginBottom
-									help={ __(
-										'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab (e.g. https://gitlab.example.com).',
-										'git'
-									) }
-									label={
-										<>
-											{ __(
-												'GitLab Instance URL',
-												'git'
-											) }{ ' ' }
-											<span className="gwp-label-optional">
-												{ __( '(Optional)', 'git' ) }
-											</span>
-										</>
-									}
-									placeholder="https://gitlab.com"
-									value={ gitlabUrl }
-									onChange={ setGitlabUrl }
-								/>
-							</>
-						) }
+								</>
+							}
+							label={
+								<>
+									{ __( 'Fine-grained Access Token', 'git' ) }{ ' ' }
+									<span className="gwp-label-optional">
+										{ __( '(Optional)', 'git' ) }
+									</span>
+								</>
+							}
+							placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx"
+							type="password"
+							value={ token }
+							onChange={ setToken }
+						/>
 
 						<Spacer marginTop={ 5 } />
 
-						<div className="gwp-smart-install-wrap">
-							<ToggleControl
-								__nextHasNoMarginBottom
-								checked={ smartInstall }
-								help={ __(
-									'Only allow installing repositories detected as a WordPress plugin or theme.',
-									'git'
-								) }
-								label={
-									<>
-										<strong>
-											{ __( 'Smart Install', 'git' ) }
-										</strong>{ ' ' }
-										<span className="gwp-badge-recommended">
-											{ __( 'Recommended', 'git' ) }
-										</span>
-									</>
-								}
-								onChange={ setSmartInstall }
-							/>
-						</div>
-
-						<Spacer marginTop={ 5 } />
-
-						<Flex gap={ 3 } justify="flex-start">
-							<Button
-								disabled={ saving || testing }
-								isBusy={ saving }
-								variant="primary"
-								onClick={ handleSave }
-							>
-								{ __( 'Save Settings', 'git' ) }
-							</Button>
-							<Button
-								disabled={ saving || testing }
-								isBusy={ testing }
-								variant="secondary"
-								onClick={ () =>
-									provider === 'gitlab'
-										? runTest( {
-												provider: 'gitlab',
-												gitlab_token: gitlabToken,
-												gitlab_url: gitlabUrl,
-										  } )
-										: runTest( { username, token } )
-								}
-							>
-								{ __( 'Test Connection', 'git' ) }
-							</Button>
-							{ isConnected && (
-								<Button
-									disabled={ saving || testing }
-									isDestructive
-									variant="secondary"
-									onClick={ handleDisconnect }
-								>
-									{ __( 'Disconnect', 'git' ) }
-								</Button>
-							) }
-						</Flex>
-					</CardBody>
-				</Card>
-			</FlexBlock>
-
-			<FlexItem style={ { width: 260, flexShrink: 0 } }>
-				<ConnectionStatus
-					connection={ connection }
-					testing={ testing }
-				/>
-			</FlexItem>
-		</Flex>
+						<Button
+							disabled={ saving }
+							isBusy={ saving }
+							variant="primary"
+							onClick={ handleConnect }
+						>
+							{ __( 'Connect GitHub', 'git' ) }
+						</Button>
+					</>
+				) }
+			</CardBody>
+		</Card>
 	);
 }
 
 /**
- * Connection status card showing authentication state and API rate limit.
+ * GitLab provider card — shows a connect form when disconnected, profile when connected.
  *
- * @param {Object}      props            Component props.
- * @param {Object|null} props.connection Cached connection data, if any.
- * @param {boolean}     props.testing    Whether a connection test is in progress.
- * @return {JSX.Element} The rendered connection status card.
+ * @param {Object}   props                    Component props.
+ * @param {Object}   props.settings           Saved plugin settings.
+ * @param {Object}   props.connection         Cached GitLab connection data, or null.
+ * @param {boolean}  props.smartInstall       Current smart install value (preserved on save).
+ * @param {Function} props.onSave             Called with updated settings after save.
+ * @param {Function} props.onConnectionUpdate Called with connection data (or null) after test.
+ * @return {JSX.Element} The rendered card.
  */
-function ConnectionStatus( { connection, testing } ) {
-	if ( testing ) {
-		return (
-			<Card>
-				<CardBody
-					style={ { textAlign: 'center', padding: '32px 16px' } }
-				>
-					<Spinner />
-					<p
-						style={ {
-							marginTop: 8,
-							color: '#757575',
-							fontSize: 13,
-						} }
-					>
-						{ __( 'Checking connection…', 'git' ) }
-					</p>
-				</CardBody>
-			</Card>
-		);
-	}
+function GitLabCard( { settings, connection, smartInstall, onSave, onConnectionUpdate } ) {
+	const [ gitlabToken, setGitlabToken ] = useState( settings.gitlab_token || '' );
+	const [ gitlabUrl, setGitlabUrl ] = useState( settings.gitlab_url || '' );
+	const [ saving, setSaving ] = useState( false );
+	const [ testing, setTesting ] = useState( false );
 
+	const isConnected = !! settings.gitlab_token;
+
+	const handleConnect = async () => {
+		if ( ! gitlabToken.trim() ) {
+			toast.error( __( 'A GitLab Personal Access Token is required.', 'git' ) );
+			return;
+		}
+		setSaving( true );
+		try {
+			await api.saveSettings( {
+				token: settings.token,
+				username: settings.username,
+				gitlab_token: gitlabToken,
+				gitlab_url: gitlabUrl,
+				smart_install: smartInstall,
+			} );
+			onSave( { ...settings, gitlab_token: gitlabToken, gitlab_url: gitlabUrl } );
+			setTesting( true );
+			try {
+				const result = await api.testConnection( {
+					provider: 'gitlab',
+					gitlab_token: gitlabToken,
+					gitlab_url: gitlabUrl,
+				} );
+				onConnectionUpdate( result );
+				toast.success( __( 'GitLab connected.', 'git' ) );
+			} catch ( e ) {
+				onConnectionUpdate( {
+					provider: 'gitlab',
+					error: e.message || __( 'Connection test failed.', 'git' ),
+				} );
+				toast.error( e.message || __( 'Connection test failed.', 'git' ) );
+			} finally {
+				setTesting( false );
+			}
+		} catch ( e ) {
+			toast.error( e.message || __( 'Save failed.', 'git' ) );
+		} finally {
+			setSaving( false );
+		}
+	};
+
+	const handleSignOut = async () => {
+		setSaving( true );
+		try {
+			await api.saveSettings( {
+				token: settings.token,
+				username: settings.username,
+				gitlab_token: '',
+				gitlab_url: '',
+				smart_install: smartInstall,
+			} );
+			setGitlabToken( '' );
+			setGitlabUrl( '' );
+			onSave( { ...settings, gitlab_token: '', gitlab_url: '' } );
+			onConnectionUpdate( null );
+			toast.success( __( 'GitLab disconnected.', 'git' ) );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Disconnect failed.', 'git' ) );
+		} finally {
+			setSaving( false );
+		}
+	};
+
+	return (
+		<Card style={ { maxWidth: 540 } }>
+			<CardHeader>
+				<Flex align="center" gap={ 2 }>
+					<FlexItem>
+						<svg
+							aria-hidden="true"
+							fill="#e24329"
+							height="20"
+							viewBox="0 0 16 16"
+							width="20"
+						>
+							<path d="M15.97 9.058l-.895-2.756L13.3.842a.382.382 0 0 0-.724 0L10.8 6.302H5.2L3.424.842a.382.382 0 0 0-.724 0L.925 6.302.03 9.058a.762.762 0 0 0 .277.852L8 15.37l7.693-5.46a.762.762 0 0 0 .277-.852z" />
+						</svg>
+					</FlexItem>
+					<FlexBlock>
+						<Heading level={ 4 }>
+							{ __( 'GitLab', 'git' ) }
+						</Heading>
+					</FlexBlock>
+					{ isConnected && connection && ! connection.error && (
+						<FlexItem>
+							<span className="gwp-conn-badge gwp-conn-badge--ok">
+								<span className="dashicons dashicons-yes-alt" />
+								{ __( 'Connected', 'git' ) }
+							</span>
+						</FlexItem>
+					) }
+				</Flex>
+			</CardHeader>
+			<CardBody>
+				{ testing ? (
+					<div style={ { textAlign: 'center', padding: '24px 0' } }>
+						<Spinner />
+						<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+							{ __( 'Checking connection…', 'git' ) }
+						</p>
+					</div>
+				) : isConnected ? (
+					<ConnectedProfile
+						connection={ connection }
+						isBusy={ saving }
+						signOutLabel={ __( 'Sign Out', 'git' ) }
+						onSignOut={ handleSignOut }
+					/>
+				) : (
+					<>
+						<TextControl
+							__nextHasNoMarginBottom
+							autoComplete="new-password"
+							help={
+								<>
+									{ __( 'Required.', 'git' ) }{ ' ' }
+									<a
+										href="https://gitlab.com/-/user_settings/personal_access_tokens"
+										rel="noopener noreferrer"
+										target="_blank"
+									>
+										{ __( 'Create token', 'git' ) }
+									</a>{ ' ' }
+									{ __(
+										'— enable read_api and read_repository.',
+										'git'
+									) }
+								</>
+							}
+							label={ __( 'Personal Access Token', 'git' ) }
+							placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
+							type="password"
+							value={ gitlabToken }
+							onChange={ setGitlabToken }
+						/>
+
+						<Spacer marginTop={ 4 } />
+
+						<TextControl
+							__nextHasNoMarginBottom
+							help={ __(
+								'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab (e.g. https://gitlab.example.com).',
+								'git'
+							) }
+							label={
+								<>
+									{ __( 'GitLab Instance URL', 'git' ) }{ ' ' }
+									<span className="gwp-label-optional">
+										{ __( '(Optional)', 'git' ) }
+									</span>
+								</>
+							}
+							placeholder="https://gitlab.com"
+							value={ gitlabUrl }
+							onChange={ setGitlabUrl }
+						/>
+
+						<Spacer marginTop={ 5 } />
+
+						<Button
+							disabled={ saving }
+							isBusy={ saving }
+							variant="primary"
+							onClick={ handleConnect }
+						>
+							{ __( 'Connect GitLab', 'git' ) }
+						</Button>
+					</>
+				) }
+			</CardBody>
+		</Card>
+	);
+}
+
+/**
+ * Shared connected-state profile block used by both provider cards.
+ *
+ * @param {Object}   props              Component props.
+ * @param {Object}   props.connection   Connection cache data for this provider.
+ * @param {boolean}  props.isBusy      Whether a sign-out request is in progress.
+ * @param {string}   props.signOutLabel Label for the sign-out button.
+ * @param {Function} props.onSignOut   Sign-out callback.
+ * @return {JSX.Element} The rendered profile block.
+ */
+function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 	if ( ! connection ) {
 		return (
-			<div
-				style={ {
-					textAlign: 'center',
-					padding: '40px 16px',
-				} }
-			>
-				<img
-					alt=""
-					aria-hidden="true"
-					src={ window.GWP?.disconnected_url }
-					style={ {
-						width: 48,
-						height: 48,
-						display: 'block',
-						margin: '0 auto 16px',
-						opacity: 0.2,
-					} }
-				/>
-				<p
-					style={ {
-						margin: '0 0 4px',
-						fontWeight: 600,
-						color: '#1d2327',
-					} }
-				>
-					{ __( 'Not connected', 'git' ) }
-				</p>
-				<p
-					style={ {
-						margin: 0,
-						fontSize: 12,
-						color: '#8c959f',
-						lineHeight: 1.5,
-					} }
-				>
-					{ __(
-						'Save your settings and click "Test Connection" to verify.',
-						'git'
-					) }
-				</p>
-			</div>
+			<Flex align="center" gap={ 3 } justify="space-between">
+				<FlexItem>
+					<span className="gwp-conn-badge gwp-conn-badge--ok">
+						<span className="dashicons dashicons-yes-alt" />
+						{ __( 'Credentials saved', 'git' ) }
+					</span>
+				</FlexItem>
+				<FlexItem>
+					<Button
+						disabled={ isBusy }
+						isBusy={ isBusy }
+						isDestructive
+						variant="secondary"
+						onClick={ onSignOut }
+					>
+						{ signOutLabel }
+					</Button>
+				</FlexItem>
+			</Flex>
 		);
 	}
 
 	if ( connection.error ) {
 		return (
-			<Card>
-				<CardBody
-					style={ {
-						textAlign: 'center',
-						padding: '32px 16px',
-					} }
-				>
+			<>
+				<p style={ { color: '#cf222e', fontSize: 13, margin: '0 0 12px' } }>
 					<span
 						className="dashicons dashicons-warning"
-						style={ {
-							fontSize: 32,
-							width: 'auto',
-							height: 'auto',
-							display: 'block',
-							margin: '0 auto 8px',
-							color: '#cf222e',
-						} }
+						style={ { verticalAlign: 'middle', marginRight: 4 } }
 					/>
-					<p
-						style={ {
-							margin: 0,
-							fontSize: 12,
-							lineHeight: 1.5,
-							color: '#cf222e',
-						} }
-					>
-						{ connection.error }
-					</p>
-				</CardBody>
-			</Card>
+					{ connection.error }
+				</p>
+				<Button
+					disabled={ isBusy }
+					isBusy={ isBusy }
+					isDestructive
+					variant="secondary"
+					onClick={ onSignOut }
+				>
+					{ signOutLabel }
+				</Button>
+			</>
 		);
 	}
 
-	const {
-		login,
-		name,
-		avatar_url,
-		authenticated,
-		rate_limit,
-		rate_remaining,
-		rate_reset,
-		checked_at,
-		provider: connectionProvider,
-	} = connection;
-
-	const isGitLab = connectionProvider === 'gitlab';
-
+	const isGitHub = connection.provider === 'github';
 	const pct =
-		rate_limit > 0
-			? Math.round( ( rate_remaining / rate_limit ) * 100 )
+		isGitHub && connection.rate_limit > 0
+			? Math.round( ( connection.rate_remaining / connection.rate_limit ) * 100 )
 			: 0;
 	let barColor = '#cf222e';
 	if ( pct > 50 ) {
@@ -514,121 +582,102 @@ function ConnectionStatus( { connection, testing } ) {
 	}
 
 	let rateNote = __( 'Resets in about an hour.', 'git' );
-	if ( rate_limit === 60 ) {
-		rateNote = __(
-			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.",
-			'git'
-		);
-	} else if ( rate_reset ) {
-		const countdown = humanDiff( rate_reset );
-		if ( countdown ) {
-			rateNote = sprintf(
-				/* translators: %s: time until reset (e.g. "5m 30s") */
-				__( 'Resets in %s.', 'git' ),
-				countdown
+	if ( isGitHub ) {
+		if ( connection.rate_limit === 60 ) {
+			rateNote = __(
+				"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.",
+				'git'
 			);
+		} else if ( connection.rate_reset ) {
+			const countdown = humanDiff( connection.rate_reset );
+			if ( countdown ) {
+				rateNote = sprintf(
+					/* translators: %s: time until reset */
+					__( 'Resets in %s.', 'git' ),
+					countdown
+				);
+			}
 		}
 	}
 
 	return (
-		<Card>
-			<CardBody>
-				{ authenticated && avatar_url && (
-					<div style={ { textAlign: 'center', marginBottom: 14 } }>
+		<>
+			<Flex align="center" gap={ 3 }>
+				{ connection.avatar_url && (
+					<FlexItem>
 						<img
-							alt={ login }
-							src={ avatar_url }
+							alt={ connection.login }
+							src={ connection.avatar_url }
 							style={ {
-								width: 52,
-								height: 52,
+								width: 44,
+								height: 44,
 								borderRadius: '50%',
 								display: 'block',
-								margin: '0 auto 8px',
 							} }
 						/>
-						<div style={ { fontWeight: 700 } }>
-							{ name || login }
+					</FlexItem>
+				) }
+				<FlexBlock>
+					{ ( connection.name || connection.login ) && (
+						<div style={ { fontWeight: 700, fontSize: 14 } }>
+							{ connection.name || connection.login }
 						</div>
+					) }
+					{ connection.login && (
 						<div style={ { fontSize: 12, color: '#57606a' } }>
-							@{ login }
+							@{ connection.login }
 						</div>
-						<span className="gwp-conn-badge gwp-conn-badge--ok">
-							<span className="dashicons dashicons-yes-alt" />
-							{ __( 'Authenticated', 'git' ) }
-						</span>
-					</div>
-				) }
+					) }
+					{ connection.checked_at && (
+						<div style={ { fontSize: 11, color: '#8c959f', marginTop: 2 } }>
+							{ sprintf(
+								/* translators: %s: relative time */
+								__( 'Last checked %s', 'git' ),
+								unixTimeAgo( connection.checked_at )
+							) }
+						</div>
+					) }
+				</FlexBlock>
+				<FlexItem>
+					<Button
+						disabled={ isBusy }
+						isBusy={ isBusy }
+						isDestructive
+						variant="secondary"
+						onClick={ onSignOut }
+					>
+						{ signOutLabel }
+					</Button>
+				</FlexItem>
+			</Flex>
 
-				{ authenticated && ! avatar_url && (
-					<div style={ { textAlign: 'center', marginBottom: 14 } }>
-						<span className="gwp-conn-badge gwp-conn-badge--ok">
-							<span className="dashicons dashicons-yes-alt" />
-							{ __( 'Authenticated', 'git' ) }
-						</span>
-					</div>
-				) }
-
-				{ ! authenticated && (
-					<div style={ { textAlign: 'center', marginBottom: 14 } }>
-						<span className="gwp-conn-badge gwp-conn-badge--warn">
-							<span className="dashicons dashicons-warning" />
-							{ __( 'No token — public only', 'git' ) }
-						</span>
-					</div>
-				) }
-
-				<hr className="gwp-divider" />
-
-				{ ! isGitLab && (
+			{ isGitHub && (
+				<>
+					<hr className="gwp-divider" style={ { margin: '12px 0' } } />
 					<div style={ { fontSize: 12 } }>
-						<Flex
-							justify="space-between"
-							style={ { marginBottom: 6 } }
-						>
+						<Flex justify="space-between" style={ { marginBottom: 6 } }>
 							<span style={ { color: '#24292f' } }>
 								{ __( 'API Usage', 'git' ) }
 							</span>
 							<strong>
-								{ rate_remaining?.toLocaleString() } /{ ' ' }
-								{ rate_limit?.toLocaleString() }
+								{ connection.rate_remaining?.toLocaleString() } /{ ' ' }
+								{ connection.rate_limit?.toLocaleString() }
 							</strong>
 						</Flex>
 						<div className="gwp-rate-track">
 							<div
 								className="gwp-rate-fill"
-								style={ {
-									width: `${ pct }%`,
-									background: barColor,
-								} }
+								style={ { width: `${ pct }%`, background: barColor } }
 							/>
 						</div>
 						<p className="gwp-rate-note">{ rateNote }</p>
 					</div>
-				) }
-
-				{ checked_at && (
-					<p
-						className="gwp-rate-note gwp-rate-note--checked"
-						style={ { fontSize: 12 } }
-					>
-						{ sprintf(
-							/* translators: %s: relative time (e.g. "5m ago") */
-							__( 'Last checked %s', 'git' ),
-							unixTimeAgo( checked_at )
-						) }
-					</p>
-				) }
-			</CardBody>
-		</Card>
+				</>
+			) }
+		</>
 	);
 }
 
-/**
- * Formats a Unix timestamp as a human-readable countdown string.
- *
- * @param {number} ts Unix timestamp.
- * @return {string} Human-readable time string.
- */
 function humanDiff( ts ) {
 	const s = ts - Math.floor( Date.now() / 1000 );
 	if ( s <= 0 ) {
@@ -638,12 +687,6 @@ function humanDiff( ts ) {
 	return m > 0 ? `${ m }m ${ s % 60 }s` : `${ s }s`;
 }
 
-/**
- * Formats a past Unix timestamp as a human-readable "X ago" string.
- *
- * @param {number} ts Unix timestamp in seconds.
- * @return {string} Human-readable relative time.
- */
 function unixTimeAgo( ts ) {
 	const s = Math.floor( Date.now() / 1000 ) - ts;
 	if ( s < 60 ) {

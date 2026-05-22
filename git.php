@@ -72,11 +72,12 @@ add_filter(
 	}
 );
 
-// Cron callback — silently refresh the cached connection status.
+// Cron callback — silently refresh the cached connection status for all configured providers.
 add_action(
 	'gwp_auto_check_connection',
 	static function () {
-		if ( get_option( 'gwp_settings' ) ) {
+		$settings = (array) get_option( 'gwp_settings', [] );
+		if ( $settings ) {
 			REST::test_connection();
 		}
 	}
