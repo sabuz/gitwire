@@ -250,9 +250,9 @@ class REST {
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
 	 */
-	public static function test_connection( \WP_REST_Request $req ): array|\WP_Error {
+	public static function test_connection( ?\WP_REST_Request $req = null ): array|\WP_Error {
 		$settings     = (array) get_option( 'gwp_settings', [] );
-		$req_provider = $req->get_param( 'provider' );
+		$req_provider = $req ? $req->get_param( 'provider' ) : null;
 		$provider     = sanitize_key(
 			$req_provider ? $req_provider : ( $settings['provider'] ?? 'github' )
 		);
@@ -260,8 +260,8 @@ class REST {
 		if ( 'gitlab' === $provider ) {
 			$saved_token = $settings['gitlab_token'] ?? '';
 			$saved_url   = $settings['gitlab_url'] ?? '';
-			$req_token   = $req->get_param( 'gitlab_token' );
-			$req_url     = $req->get_param( 'gitlab_url' );
+			$req_token   = $req ? $req->get_param( 'gitlab_token' ) : null;
+			$req_url     = $req ? $req->get_param( 'gitlab_url' ) : null;
 			$token       = sanitize_text_field( $req_token ? $req_token : $saved_token );
 			$gitlab_url  = esc_url_raw( $req_url ? $req_url : $saved_url );
 			$cache       = ( $token === $saved_token && $gitlab_url === $saved_url );
@@ -303,8 +303,8 @@ class REST {
 		$saved_username = $settings['username'] ?? '';
 
 		// Prefer params from the request so unsaved form values can be tested.
-		$req_token    = $req->get_param( 'token' );
-		$req_username = $req->get_param( 'username' );
+		$req_token    = $req ? $req->get_param( 'token' ) : null;
+		$req_username = $req ? $req->get_param( 'username' ) : null;
 		$token        = sanitize_text_field( $req_token ? $req_token : $saved_token );
 		$username     = sanitize_text_field( $req_username ? $req_username : $saved_username );
 
