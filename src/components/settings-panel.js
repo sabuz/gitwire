@@ -54,6 +54,7 @@ export default function SettingsPanel( {
 				smart_install: newVal,
 			} );
 			onSave( { ...settings, smart_install: newVal } );
+			toast.success( __( 'Settings saved.', 'git' ) );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Save failed.', 'git' ) );
 			setSmartInstall( ! newVal );
@@ -63,7 +64,10 @@ export default function SettingsPanel( {
 	};
 
 	return (
-		<div className="gwp-settings-panels">
+		<div
+			className="gwp-settings-panels"
+			style={ { maxWidth: 540, margin: '0 auto' } }
+		>
 			<GitHubCard
 				connection={ connection?.github ?? null }
 				settings={ settings }
@@ -88,10 +92,10 @@ export default function SettingsPanel( {
 
 			<Spacer marginTop={ 4 } />
 
-			<Card style={ { maxWidth: 540 } }>
+			<Card>
 				<CardHeader>
 					<Heading level={ 4 }>
-						{ __( 'Smart Install', 'git' ) }
+						{ __( 'Miscellaneous', 'git' ) }
 					</Heading>
 				</CardHeader>
 				<CardBody>
@@ -132,7 +136,13 @@ export default function SettingsPanel( {
  * @param {Function} props.onConnectionUpdate Called with connection data (or null) after test.
  * @return {JSX.Element} The rendered card.
  */
-function GitHubCard( { settings, connection, smartInstall, onSave, onConnectionUpdate } ) {
+function GitHubCard( {
+	settings,
+	connection,
+	smartInstall,
+	onSave,
+	onConnectionUpdate,
+} ) {
 	const [ token, setToken ] = useState( settings.token || '' );
 	const [ username, setUsername ] = useState( settings.username || '' );
 	const [ saving, setSaving ] = useState( false );
@@ -170,7 +180,9 @@ function GitHubCard( { settings, connection, smartInstall, onSave, onConnectionU
 					provider: 'github',
 					error: e.message || __( 'Connection test failed.', 'git' ),
 				} );
-				toast.error( e.message || __( 'Connection test failed.', 'git' ) );
+				toast.error(
+					e.message || __( 'Connection test failed.', 'git' )
+				);
 			} finally {
 				setTesting( false );
 			}
@@ -204,7 +216,7 @@ function GitHubCard( { settings, connection, smartInstall, onSave, onConnectionU
 	};
 
 	return (
-		<Card style={ { maxWidth: 540 } }>
+		<Card>
 			<CardHeader>
 				<Flex align="center" gap={ 2 }>
 					<FlexItem>
@@ -219,9 +231,7 @@ function GitHubCard( { settings, connection, smartInstall, onSave, onConnectionU
 						</svg>
 					</FlexItem>
 					<FlexBlock>
-						<Heading level={ 4 }>
-							{ __( 'GitHub', 'git' ) }
-						</Heading>
+						<Heading level={ 4 }>{ __( 'GitHub', 'git' ) }</Heading>
 					</FlexBlock>
 					{ isConnected && connection && ! connection.error && (
 						<FlexItem>
@@ -239,7 +249,13 @@ function GitHubCard( { settings, connection, smartInstall, onSave, onConnectionU
 				{ testing ? (
 					<div style={ { textAlign: 'center', padding: '24px 0' } }>
 						<Spinner />
-						<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+						<p
+							style={ {
+								marginTop: 8,
+								color: '#757575',
+								fontSize: 13,
+							} }
+						>
 							{ __( 'Checking connection…', 'git' ) }
 						</p>
 					</div>
@@ -330,8 +346,16 @@ function GitHubCard( { settings, connection, smartInstall, onSave, onConnectionU
  * @param {Function} props.onConnectionUpdate Called with connection data (or null) after test.
  * @return {JSX.Element} The rendered card.
  */
-function GitLabCard( { settings, connection, smartInstall, onSave, onConnectionUpdate } ) {
-	const [ gitlabToken, setGitlabToken ] = useState( settings.gitlab_token || '' );
+function GitLabCard( {
+	settings,
+	connection,
+	smartInstall,
+	onSave,
+	onConnectionUpdate,
+} ) {
+	const [ gitlabToken, setGitlabToken ] = useState(
+		settings.gitlab_token || ''
+	);
 	const [ gitlabUrl, setGitlabUrl ] = useState( settings.gitlab_url || '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
@@ -340,7 +364,9 @@ function GitLabCard( { settings, connection, smartInstall, onSave, onConnectionU
 
 	const handleConnect = async () => {
 		if ( ! gitlabToken.trim() ) {
-			toast.error( __( 'A GitLab Personal Access Token is required.', 'git' ) );
+			toast.error(
+				__( 'A GitLab Personal Access Token is required.', 'git' )
+			);
 			return;
 		}
 		setSaving( true );
@@ -352,7 +378,11 @@ function GitLabCard( { settings, connection, smartInstall, onSave, onConnectionU
 				gitlab_url: gitlabUrl,
 				smart_install: smartInstall,
 			} );
-			onSave( { ...settings, gitlab_token: gitlabToken, gitlab_url: gitlabUrl } );
+			onSave( {
+				...settings,
+				gitlab_token: gitlabToken,
+				gitlab_url: gitlabUrl,
+			} );
 			setTesting( true );
 			try {
 				const result = await api.testConnection( {
@@ -367,7 +397,9 @@ function GitLabCard( { settings, connection, smartInstall, onSave, onConnectionU
 					provider: 'gitlab',
 					error: e.message || __( 'Connection test failed.', 'git' ),
 				} );
-				toast.error( e.message || __( 'Connection test failed.', 'git' ) );
+				toast.error(
+					e.message || __( 'Connection test failed.', 'git' )
+				);
 			} finally {
 				setTesting( false );
 			}
@@ -401,7 +433,7 @@ function GitLabCard( { settings, connection, smartInstall, onSave, onConnectionU
 	};
 
 	return (
-		<Card style={ { maxWidth: 540 } }>
+		<Card>
 			<CardHeader>
 				<Flex align="center" gap={ 2 }>
 					<FlexItem>
@@ -416,9 +448,7 @@ function GitLabCard( { settings, connection, smartInstall, onSave, onConnectionU
 						</svg>
 					</FlexItem>
 					<FlexBlock>
-						<Heading level={ 4 }>
-							{ __( 'GitLab', 'git' ) }
-						</Heading>
+						<Heading level={ 4 }>{ __( 'GitLab', 'git' ) }</Heading>
 					</FlexBlock>
 					{ isConnected && connection && ! connection.error && (
 						<FlexItem>
@@ -434,7 +464,13 @@ function GitLabCard( { settings, connection, smartInstall, onSave, onConnectionU
 				{ testing ? (
 					<div style={ { textAlign: 'center', padding: '24px 0' } }>
 						<Spinner />
-						<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+						<p
+							style={ {
+								marginTop: 8,
+								color: '#757575',
+								fontSize: 13,
+							} }
+						>
 							{ __( 'Checking connection…', 'git' ) }
 						</p>
 					</div>
@@ -516,9 +552,9 @@ function GitLabCard( { settings, connection, smartInstall, onSave, onConnectionU
  *
  * @param {Object}   props              Component props.
  * @param {Object}   props.connection   Connection cache data for this provider.
- * @param {boolean}  props.isBusy      Whether a sign-out request is in progress.
+ * @param {boolean}  props.isBusy       Whether a sign-out request is in progress.
  * @param {string}   props.signOutLabel Label for the sign-out button.
- * @param {Function} props.onSignOut   Sign-out callback.
+ * @param {Function} props.onSignOut    Sign-out callback.
  * @return {JSX.Element} The rendered profile block.
  */
 function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
@@ -549,7 +585,13 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 	if ( connection.error ) {
 		return (
 			<>
-				<p style={ { color: '#cf222e', fontSize: 13, margin: '0 0 12px' } }>
+				<p
+					style={ {
+						color: '#cf222e',
+						fontSize: 13,
+						margin: '0 0 12px',
+					} }
+				>
 					<span
 						className="dashicons dashicons-warning"
 						style={ { verticalAlign: 'middle', marginRight: 4 } }
@@ -572,7 +614,9 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 	const isGitHub = connection.provider === 'github';
 	const pct =
 		isGitHub && connection.rate_limit > 0
-			? Math.round( ( connection.rate_remaining / connection.rate_limit ) * 100 )
+			? Math.round(
+					( connection.rate_remaining / connection.rate_limit ) * 100
+			  )
 			: 0;
 	let barColor = '#cf222e';
 	if ( pct > 50 ) {
@@ -629,7 +673,13 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 						</div>
 					) }
 					{ connection.checked_at && (
-						<div style={ { fontSize: 11, color: '#8c959f', marginTop: 2 } }>
+						<div
+							style={ {
+								fontSize: 11,
+								color: '#8c959f',
+								marginTop: 2,
+							} }
+						>
 							{ sprintf(
 								/* translators: %s: relative time */
 								__( 'Last checked %s', 'git' ),
@@ -653,21 +703,30 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 
 			{ isGitHub && (
 				<>
-					<hr className="gwp-divider" style={ { margin: '12px 0' } } />
+					<hr
+						className="gwp-divider"
+						style={ { margin: '12px 0' } }
+					/>
 					<div style={ { fontSize: 12 } }>
-						<Flex justify="space-between" style={ { marginBottom: 6 } }>
+						<Flex
+							justify="space-between"
+							style={ { marginBottom: 6 } }
+						>
 							<span style={ { color: '#24292f' } }>
 								{ __( 'API Usage', 'git' ) }
 							</span>
 							<strong>
-								{ connection.rate_remaining?.toLocaleString() } /{ ' ' }
-								{ connection.rate_limit?.toLocaleString() }
+								{ connection.rate_remaining?.toLocaleString() }{ ' ' }
+								/ { connection.rate_limit?.toLocaleString() }
 							</strong>
 						</Flex>
 						<div className="gwp-rate-track">
 							<div
 								className="gwp-rate-fill"
-								style={ { width: `${ pct }%`, background: barColor } }
+								style={ {
+									width: `${ pct }%`,
+									background: barColor,
+								} }
 							/>
 						</div>
 						<p className="gwp-rate-note">{ rateNote }</p>

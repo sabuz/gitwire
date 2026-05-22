@@ -6,12 +6,20 @@
 	&-wrapper {
 		max-width: 1600px;
 		margin: 0 auto;
-		border: 1px solid #e0e0e0;
 	}
 
 	&__view-actions {
 		align-items: center !important;
-		padding: 20px 16px 16px;
+		padding-top: 0;
+		padding-right: 0;
+		padding-left: 0;
+	}
+
+	&__search {
+
+		.components-input-control__input {
+			height: 40px !important;
+		}
 	}
 
 	&-filters__container {
@@ -19,20 +27,7 @@
 	}
 
 	&-view-table {
-
-		tr td:first-child,
-		tr th:first-child {
-			padding-left: 16px;
-		}
-
-		tr td:last-child,
-		tr th:last-child {
-			padding-right: 16px;
-		}
-	}
-
-	&-footer {
-		padding: 16px;
+		border: 1px solid rgba(0, 0, 0, 0.1);
 	}
 }
 

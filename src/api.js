@@ -8,15 +8,21 @@ export const saveSettings = ( data ) =>
 export const testConnection = ( data = {} ) =>
 	apiFetch( { path: `${ BASE }/connection`, method: 'POST', data } );
 export const getRepos = ( page = 1, provider = 'github' ) =>
-	apiFetch( { path: `${ BASE }/repos?page=${ page }&provider=${ provider }` } );
+	apiFetch( {
+		path: `${ BASE }/repos?page=${ page }&provider=${ provider }`,
+	} );
 export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );
 
 export const getBranches = ( owner, repo, provider = 'github' ) =>
-	apiFetch( { path: `${ BASE }/repos/${ owner }/${ repo }/branches?provider=${ provider }` } );
+	apiFetch( {
+		path: `${ BASE }/repos/${ owner }/${ repo }/branches?provider=${ provider }`,
+	} );
 
 export const detectRepo = ( owner, repo, branch, provider = 'github' ) =>
 	apiFetch( {
-		path: `${ BASE }/repos/${ owner }/${ repo }/detect?branch=${ encodeURIComponent( branch ) }&provider=${ provider }`,
+		path: `${ BASE }/repos/${ owner }/${ repo }/detect?branch=${ encodeURIComponent(
+			branch
+		) }&provider=${ provider }`,
 	} );
 
 export const install = ( data ) =>

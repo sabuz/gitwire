@@ -1,5 +1,11 @@
 import { __ } from '@wordpress/i18n';
-import { useState, useEffect, useRef, useCallback, useMemo } from '@wordpress/element';
+import {
+	useState,
+	useEffect,
+	useRef,
+	useCallback,
+	useMemo,
+} from '@wordpress/element';
 import {
 	Button,
 	Spinner,
@@ -105,7 +111,12 @@ export default function BrowsePanel( {
 		) {
 			const repo = queueRef.current.shift();
 			activeRef.current++;
-			api.detectRepo( repo.owner, repo.name, repo.default_branch, providerRef.current )
+			api.detectRepo(
+				repo.owner,
+				repo.name,
+				repo.default_branch,
+				providerRef.current
+			)
 				.then( ( d ) => {
 					detectionsRef.current[ repo.full_name ] = d;
 				} )
@@ -176,7 +187,11 @@ export default function BrowsePanel( {
 	return (
 		<div className="gwp-browse">
 			{ hasGitHub && hasGitLab && (
-				<Flex gap={ 2 } justify="flex-start" style={ { marginBottom: 16 } }>
+				<Flex
+					gap={ 2 }
+					justify="flex-start"
+					style={ { marginBottom: 16 } }
+				>
 					<Button
 						isPressed={ provider === 'github' }
 						size="compact"
@@ -207,7 +222,7 @@ export default function BrowsePanel( {
 					<SearchControl
 						__nextHasNoMarginBottom
 						onChange={ setSearch }
-						placeholder={ __( 'Filter repositories…', 'git' ) }
+						placeholder={ __( 'Search repositories…', 'git' ) }
 						value={ search }
 					/>
 				</FlexBlock>
