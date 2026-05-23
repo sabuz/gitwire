@@ -224,25 +224,10 @@ class REST {
 		$gitlab_token  = sanitize_text_field( $req->get_param( 'gitlab_token' ) ?? '' );
 		$gitlab_url    = esc_url_raw( $req->get_param( 'gitlab_url' ) ?? '' );
 
-		$current        = (array) get_option( 'gwp_settings', [] );
-		$github_changed = ( ( $current['token'] ?? '' ) !== $token || ( $current['username'] ?? '' ) !== $username );
-		$gitlab_changed = ( ( $current['gitlab_token'] ?? '' ) !== $gitlab_token || ( $current['gitlab_url'] ?? '' ) !== $gitlab_url );
-
 		update_option(
 			'gwp_settings',
 			compact( 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url' )
 		);
-
-		if ( $github_changed || $gitlab_changed ) {
-			$cache = (array) get_option( 'gwp_connection_cache', [] );
-			if ( $github_changed ) {
-				$cache['github'] = null;
-			}
-			if ( $gitlab_changed ) {
-				$cache['gitlab'] = null;
-			}
-			update_option( 'gwp_connection_cache', $cache );
-		}
 
 		return [
 			'saved'         => true,
@@ -335,9 +320,7 @@ class REST {
 				'checked_at'     => time(),
 			];
 
-			if ( $cache_this ) {
-				self::set_connection_cache( 'gitlab', $data );
-			}
+			self::set_connection_cache( 'gitlab', $data );
 
 			return $data;
 		}
@@ -376,9 +359,7 @@ class REST {
 			'checked_at'     => time(),
 		];
 
-		if ( $cache_this ) {
-			self::set_connection_cache( 'github', $data );
-		}
+		self::set_connection_cache( 'github', $data );
 
 		return $data;
 	}

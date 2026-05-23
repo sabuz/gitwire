@@ -162,6 +162,11 @@ function GitHubCard( {
 		setTokenError( false );
 		setUsernameError( false );
 		try {
+			const result = await api.testConnection( {
+				provider: 'github',
+				token,
+				username,
+			} );
 			await api.saveSettings( {
 				token,
 				username,
@@ -170,38 +175,15 @@ function GitHubCard( {
 				smart_install: smartInstall,
 			} );
 			onSave( { ...settings, token, username } );
-			try {
-				const result = await api.testConnection( {
-					provider: 'github',
-					token,
-					username,
-				} );
-				onConnectionUpdate( result );
-				toast.success( __( 'GitHub connected.', 'git' ) );
-			} catch ( e ) {
-				// Revert to previous credentials so the form stays visible.
-				try {
-					await api.saveSettings( {
-						token: settings.token,
-						username: settings.username,
-						gitlab_token: settings.gitlab_token,
-						gitlab_url: settings.gitlab_url,
-						smart_install: smartInstall,
-					} );
-				} catch ( _ ) {}
-				onSave( settings );
-				onConnectionUpdate( null );
-				if ( token.trim() ) {
-					setTokenError( true );
-				} else {
-					setUsernameError( true );
-				}
-				toast.error(
-					e.message || __( 'Connection test failed.', 'git' )
-				);
-			}
+			onConnectionUpdate( result );
+			toast.success( __( 'GitHub connected.', 'git' ) );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'git' ) );
+			if ( token.trim() ) {
+				setTokenError( true );
+			} else {
+				setUsernameError( true );
+			}
+			toast.error( e.message || __( 'Connection test failed.', 'git' ) );
 		} finally {
 			setTesting( false );
 			setSaving( false );
@@ -405,6 +387,11 @@ function GitLabCard( {
 		setTesting( true );
 		setTokenError( false );
 		try {
+			const result = await api.testConnection( {
+				provider: 'gitlab',
+				gitlab_token: gitlabToken,
+				gitlab_url: gitlabUrl,
+			} );
 			await api.saveSettings( {
 				token: settings.token,
 				username: settings.username,
@@ -417,34 +404,11 @@ function GitLabCard( {
 				gitlab_token: gitlabToken,
 				gitlab_url: gitlabUrl,
 			} );
-			try {
-				const result = await api.testConnection( {
-					provider: 'gitlab',
-					gitlab_token: gitlabToken,
-					gitlab_url: gitlabUrl,
-				} );
-				onConnectionUpdate( result );
-				toast.success( __( 'GitLab connected.', 'git' ) );
-			} catch ( e ) {
-				// Revert to previous credentials so the form stays visible.
-				try {
-					await api.saveSettings( {
-						token: settings.token,
-						username: settings.username,
-						gitlab_token: settings.gitlab_token,
-						gitlab_url: settings.gitlab_url,
-						smart_install: smartInstall,
-					} );
-				} catch ( _ ) {}
-				onSave( settings );
-				onConnectionUpdate( null );
-				setTokenError( true );
-				toast.error(
-					e.message || __( 'Connection test failed.', 'git' )
-				);
-			}
+			onConnectionUpdate( result );
+			toast.success( __( 'GitLab connected.', 'git' ) );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'git' ) );
+			setTokenError( true );
+			toast.error( e.message || __( 'Connection test failed.', 'git' ) );
 		} finally {
 			setTesting( false );
 			setSaving( false );
