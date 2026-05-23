@@ -46,6 +46,7 @@ export default function InstallModal( {
 	);
 	const [ installing, setInstalling ] = useState( false );
 	const [ countdown, setCountdown ] = useState( null );
+	const [ renamedSlug, setRenamedSlug ] = useState( null );
 
 	// Filter all fetched branches by the current search term, show at most 10.
 	// Always keep the selected branch visible when no search is active.
@@ -102,6 +103,9 @@ export default function InstallModal( {
 				provider,
 			} );
 			onInstalled( result );
+			if ( result.slug_renamed ) {
+				setRenamedSlug( result.slug );
+			}
 			startCountdown();
 		} catch ( e ) {
 			toast.error( e.message || __( 'Installation failed.', 'git' ) );
@@ -171,6 +175,23 @@ export default function InstallModal( {
 					onFilterValueChange={ setBranchFilter }
 				/>
 			</div>
+
+			{ renamedSlug && (
+				<Notice
+					isDismissible={ false }
+					status="warning"
+					style={ { marginTop: 12 } }
+				>
+					{ sprintf(
+						/* translators: %s: renamed directory slug */
+						__(
+							'Installed as "%s" to avoid a directory conflict with an existing installation.',
+							'git'
+						),
+						renamedSlug
+					) }
+				</Notice>
+			) }
 
 			{ countdown !== null && (
 				<Notice

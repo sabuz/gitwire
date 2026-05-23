@@ -30,27 +30,29 @@ export const detectRepo = ( owner, repo, branch, provider = 'github' ) =>
 export const install = ( data ) =>
 	apiFetch( { path: `${ BASE }/install`, method: 'POST', data } );
 
-export const switchBranch = ( owner, repo, branch ) =>
+export const switchBranch = ( owner, repo, branch, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ owner }/${ repo }/branch`,
 		method: 'POST',
-		data: { branch },
+		data: { branch, provider },
 	} );
 
-export const activateInstalled = ( owner, repo ) =>
+export const activateInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ owner }/${ repo }/activate`,
 		method: 'POST',
+		data: { provider },
 	} );
 
-export const deactivateInstalled = ( owner, repo ) =>
+export const deactivateInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ owner }/${ repo }/deactivate`,
 		method: 'POST',
+		data: { provider },
 	} );
 
-export const removeInstalled = ( owner, repo ) =>
+export const removeInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ owner }/${ repo }`,
+		path: `${ BASE }/installed/${ owner }/${ repo }?provider=${ encodeURIComponent( provider ) }`,
 		method: 'DELETE',
 	} );

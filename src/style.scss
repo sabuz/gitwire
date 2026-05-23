@@ -307,16 +307,13 @@ body.gwp-admin-page {
 		&:hover {
 			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 		}
-
-		.components-card__body {
-			padding: 14px 16px;
-		}
 	}
 
 	&-updated {
 		display: block;
-		margin-top: 6px;
-		margin-bottom: 8px;
+		margin-top: 8px;
+		margin-bottom: 0;
+		margin-left: 1px;
 		font-size: 11px;
 		color: #8c959f;
 	}
@@ -326,6 +323,7 @@ body.gwp-admin-page {
 		flex-wrap: wrap;
 		gap: 4px;
 		align-items: center;
+		margin-top: 16px;
 	}
 
 	&-name {

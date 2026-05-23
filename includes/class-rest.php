@@ -152,6 +152,15 @@ class REST {
 			]
 		);
 
+		$provider_arg = [
+			'type'              => 'string',
+			'default'           => 'github',
+			'sanitize_callback' => static function ( $val ) {
+				$val = sanitize_key( $val );
+				return in_array( $val, [ 'github', 'gitlab' ], true ) ? $val : 'github';
+			},
+		];
+
 		register_rest_route(
 			$ns,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branch',
@@ -159,6 +168,7 @@ class REST {
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'switch_branch' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
 
@@ -169,6 +179,7 @@ class REST {
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'activate_installed' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
 
@@ -179,6 +190,7 @@ class REST {
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'deactivate_installed' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
 
@@ -189,6 +201,7 @@ class REST {
 				'methods'             => 'DELETE',
 				'callback'            => [ self::class, 'remove_installed' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
 	}
@@ -438,7 +451,7 @@ class REST {
 						'default_branch'   => $r['default_branch'] ?? 'main',
 						'updated_at'       => $r['last_activity_at'] ?? '',
 						'stargazers_count' => (int) ( $r['star_count'] ?? 0 ),
-						'installed'        => $installed[ $full_name ] ?? null,
+						'installed'        => $installed[ 'gitlab:' . $full_name ] ?? null,
 					];
 				},
 				$result
@@ -489,7 +502,7 @@ class REST {
 					'default_branch'   => $r['default_branch'] ?? 'main',
 					'updated_at'       => $r['updated_at'] ?? '',
 					'stargazers_count' => (int) ( $r['stargazers_count'] ?? 0 ),
-					'installed'        => $installed[ $full_name ] ?? null,
+					'installed'        => $installed[ 'github:' . $full_name ] ?? null,
 				];
 			},
 			$result
@@ -650,8 +663,9 @@ class REST {
 	public static function activate_installed( \WP_REST_Request $req ): array|\WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
+		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
-		$result    = Installer::activate( $full_name );
+		$result    = Installer::activate( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -670,8 +684,9 @@ class REST {
 	public static function deactivate_installed( \WP_REST_Request $req ): array|\WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
+		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
-		$result    = Installer::deactivate( $full_name );
+		$result    = Installer::deactivate( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -700,8 +715,9 @@ class REST {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
+		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
-		$result    = Installer::switch_branch( $full_name, $branch );
+		$result    = Installer::switch_branch( $provider, $full_name, $branch );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -722,8 +738,9 @@ class REST {
 	public static function remove_installed( \WP_REST_Request $req ): array|\WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
+		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
-		$result    = Installer::remove( $full_name );
+		$result    = Installer::remove( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -785,21 +802,25 @@ class REST {
 	 * @return array<string, bool> Confirmation payload.
 	 */
 	public static function clear_cache(): array {
-		self::bust_repos_cache();
+		self::bust_repos_cache( true );
 		return [ 'cleared' => true ];
 	}
 
 	/**
-	 * Deletes all cached repository and detection transients from the options table.
+	 * Deletes cached repository list transients.
+	 * When $include_detections is true (manual refresh), detection transients are also cleared.
 	 *
 	 * @since 1.0.0
+	 * @param bool $include_detections Whether to also clear detection transients.
 	 * @return void
 	 */
-	private static function bust_repos_cache(): void {
+	private static function bust_repos_cache( bool $include_detections = false ): void {
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query(
-			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gwp_repos_%' OR option_name LIKE '_transient_gwp_detect_%'"
-		);
+		$where = "option_name LIKE '_transient_gwp_repos_%'";
+		if ( $include_detections ) {
+			$where .= " OR option_name LIKE '_transient_gwp_detect_%'";
+		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE {$where}" );
 	}
 }

@@ -249,7 +249,7 @@ export default function BrowsePanel( {
 		if ( typeFilter === 'all' ) {
 			return true;
 		}
-		const installedRec = installed[ r.full_name ] || r.installed;
+		const installedRec = installed[ r.provider + ':' + r.full_name ] || r.installed;
 		const type =
 			installedRec?.type ??
 			detectionsRef.current[ detectionKey( r ) ]?.type;
@@ -346,7 +346,9 @@ export default function BrowsePanel( {
 								detectionsRef.current[ detectionKey( repo ) ]
 							}
 							installed={
-								installed[ repo.full_name ] || repo.installed
+								installed[
+									repo.provider + ':' + repo.full_name
+								] || repo.installed
 							}
 							repo={ repo }
 							showSourceBadge={ showSourceBadge }
@@ -495,12 +497,6 @@ function RepoCard( {
 						) }
 					</FlexItem>
 				</Flex>
-				{ repo.updated_at && (
-					<p className="gwp-repo-updated">
-						{ __( 'Updated', 'git' ) }{ ' ' }
-						{ timeAgo( repo.updated_at ) }
-					</p>
-				) }
 				<div className="gwp-repo-badges">
 					{ showSourceBadge &&
 						( 'github' === repo.provider ? (
@@ -528,6 +524,12 @@ function RepoCard( {
 						installed={ installed }
 					/>
 				</div>
+				{ repo.updated_at && (
+					<p className="gwp-repo-updated">
+						{ __( 'Updated', 'git' ) }{ ' ' }
+						{ timeAgo( repo.updated_at ) }
+					</p>
+				) }
 			</CardBody>
 		</Card>
 	);

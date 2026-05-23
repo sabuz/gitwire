@@ -235,7 +235,7 @@ export default function InstalledPanel( {
 				data={ shownData }
 				defaultLayouts={ { table: {} } }
 				fields={ fields }
-				getItemId={ ( item ) => item.full_name }
+				getItemId={ ( item ) => item.provider + ':' + item.full_name }
 				paginationInfo={ paginationInfo }
 				view={ view }
 				onChangeView={ setView }
@@ -253,7 +253,7 @@ export default function InstalledPanel( {
  * @return {JSX.Element} The rendered row actions.
  */
 function RowActions( { item, onRefresh } ) {
-	const { full_name, owner, repo, type, branch, active } = item;
+	const { full_name, owner, repo, type, branch, active, provider } = item;
 
 	const [ updating, setUpdating ] = useState( false );
 	const [ activating, setActivating ] = useState( false );
@@ -265,7 +265,7 @@ function RowActions( { item, onRefresh } ) {
 	const handleUpdate = async () => {
 		setUpdating( true );
 		try {
-			await api.switchBranch( owner, repo, branch );
+			await api.switchBranch( owner, repo, branch, provider );
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
@@ -284,7 +284,7 @@ function RowActions( { item, onRefresh } ) {
 	const handleActivate = async () => {
 		setActivating( true );
 		try {
-			await api.activateInstalled( owner, repo );
+			await api.activateInstalled( owner, repo, provider );
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
@@ -303,7 +303,7 @@ function RowActions( { item, onRefresh } ) {
 	const handleDeactivate = async () => {
 		setDeactivating( true );
 		try {
-			await api.deactivateInstalled( owner, repo );
+			await api.deactivateInstalled( owner, repo, provider );
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
@@ -479,7 +479,7 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 		setSwitching( true );
 		let errorMsg = null;
 		try {
-			await api.switchBranch( owner, repo, selectedBranch );
+			await api.switchBranch( owner, repo, selectedBranch, item.provider ?? 'github' );
 		} catch ( e ) {
 			errorMsg = e.message || 'Branch switch failed.';
 		}
@@ -549,7 +549,7 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 		setDeleting( true );
 		let errorMsg = null;
 		try {
-			await api.removeInstalled( item.owner, item.repo );
+			await api.removeInstalled( item.owner, item.repo, item.provider ?? 'github' );
 		} catch ( e ) {
 			errorMsg = e.message || 'Delete failed.';
 		}

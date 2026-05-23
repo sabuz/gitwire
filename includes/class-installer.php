@@ -48,9 +48,9 @@ class Installer {
 		$installed   = (array) get_option( 'gwp_installed', [] );
 		$dirty       = false;
 
-		foreach ( $installed as $full_name => $rec ) {
+		foreach ( $installed as $key => $rec ) {
 			if ( untrailingslashit( $rec['install_path'] ?? '' ) === $deleted_dir ) {
-				unset( $installed[ $full_name ] );
+				unset( $installed[ $key ] );
 				$dirty = true;
 				break;
 			}
@@ -79,9 +79,9 @@ class Installer {
 		$installed   = (array) get_option( 'gwp_installed', [] );
 		$dirty       = false;
 
-		foreach ( $installed as $full_name => $rec ) {
+		foreach ( $installed as $key => $rec ) {
 			if ( untrailingslashit( $rec['install_path'] ?? '' ) === $deleted_dir ) {
-				unset( $installed[ $full_name ] );
+				unset( $installed[ $key ] );
 				$dirty = true;
 				break;
 			}
@@ -150,23 +150,24 @@ class Installer {
 	 * Switches the active branch for an already-installed repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $full_name Repository full name (owner/repo).
+	 * @param string $provider   Git provider: 'github' or 'gitlab'.
+	 * @param string $full_name  Repository full name (owner/repo).
 	 * @param string $new_branch Branch to switch to.
 	 * @return array<string, mixed>|WP_Error Updated record on success, WP_Error on failure.
 	 */
-	public static function switch_branch( string $full_name, string $new_branch ): array|\WP_Error {
+	public static function switch_branch( string $provider, string $full_name, string $new_branch ): array|\WP_Error {
 		$installed = self::get_installed();
+		$key       = $provider . ':' . $full_name;
 
-		if ( ! isset( $installed[ $full_name ] ) ) {
+		if ( ! isset( $installed[ $key ] ) ) {
 			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
 		}
 
-		$rec      = $installed[ $full_name ];
-		$parts    = explode( '/', $full_name );
-		$owner    = $parts[0];
-		$repo     = $parts[1];
-		$provider = $rec['provider'] ?? 'github';
-		$method   = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
+		$rec    = $installed[ $key ];
+		$parts  = explode( '/', $full_name );
+		$owner  = $parts[0];
+		$repo   = $parts[1];
+		$method = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
 
 		return self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider );
 	}
@@ -176,17 +177,19 @@ class Installer {
 	 * Does NOT deactivate the plugin or theme first.
 	 *
 	 * @since 1.0.0
+	 * @param string $provider  Git provider: 'github' or 'gitlab'.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return true|WP_Error True on success, WP_Error on failure.
 	 */
-	public static function remove( string $full_name ): bool|\WP_Error {
+	public static function remove( string $provider, string $full_name ): bool|\WP_Error {
 		$installed = self::get_installed();
+		$key       = $provider . ':' . $full_name;
 
-		if ( ! isset( $installed[ $full_name ] ) ) {
+		if ( ! isset( $installed[ $key ] ) ) {
 			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
 		}
 
-		$rec  = $installed[ $full_name ];
+		$rec  = $installed[ $key ];
 		$path = $rec['install_path'];
 
 		if ( is_dir( $path ) ) {
@@ -195,7 +198,7 @@ class Installer {
 			$wp_filesystem->delete( $path, true );
 		}
 
-		unset( $installed[ $full_name ] );
+		unset( $installed[ $key ] );
 		update_option( 'gwp_installed', $installed );
 
 		return true;
@@ -205,17 +208,19 @@ class Installer {
 	 * Activates an installed plugin or switches to an installed theme.
 	 *
 	 * @since 1.0.0
+	 * @param string $provider  Git provider: 'github' or 'gitlab'.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
-	public static function activate( string $full_name ): bool|\WP_Error {
+	public static function activate( string $provider, string $full_name ): bool|\WP_Error {
 		$installed = self::get_installed();
+		$key       = $provider . ':' . $full_name;
 
-		if ( ! isset( $installed[ $full_name ] ) ) {
+		if ( ! isset( $installed[ $key ] ) ) {
 			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
 		}
 
-		$rec = $installed[ $full_name ];
+		$rec = $installed[ $key ];
 
 		if ( 'plugin' === $rec['type'] ) {
 			if ( ! function_exists( 'activate_plugin' ) ) {
@@ -229,7 +234,7 @@ class Installer {
 				if ( ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
 					$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
 					if ( $plugin_file ) {
-						$installed[ $full_name ]['plugin_file'] = $plugin_file;
+						$installed[ $key ]['plugin_file'] = $plugin_file;
 						update_option( 'gwp_installed', $installed );
 					}
 				}
@@ -258,17 +263,19 @@ class Installer {
 	 * Deactivates an installed plugin. Themes cannot be deactivated this way.
 	 *
 	 * @since 1.0.0
+	 * @param string $provider  Git provider: 'github' or 'gitlab'.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
-	public static function deactivate( string $full_name ): bool|\WP_Error {
+	public static function deactivate( string $provider, string $full_name ): bool|\WP_Error {
 		$installed = self::get_installed();
+		$key       = $provider . ':' . $full_name;
 
-		if ( ! isset( $installed[ $full_name ] ) ) {
+		if ( ! isset( $installed[ $key ] ) ) {
 			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
 		}
 
-		$rec = $installed[ $full_name ];
+		$rec = $installed[ $key ];
 
 		if ( 'plugin' !== $rec['type'] ) {
 			return new \WP_Error( 'gwp_unsupported', 'Only plugins can be deactivated this way.', [ 'status' => 400 ] );
@@ -285,7 +292,7 @@ class Installer {
 			if ( ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
 				$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
 				if ( $plugin_file ) {
-					$installed[ $full_name ]['plugin_file'] = $plugin_file;
+					$installed[ $key ]['plugin_file'] = $plugin_file;
 					update_option( 'gwp_installed', $installed );
 				}
 			}
@@ -305,25 +312,44 @@ class Installer {
 	}
 
 	/**
-	 * Returns all currently installed repository records.
+	 * Returns all currently installed repository records, keyed by provider:full_name.
+	 * Migrates legacy keys (full_name only) on first read.
 	 *
 	 * @since 1.0.0
-	 * @return array<string, mixed> Map of full_name => record.
+	 * @return array<string, mixed> Map of "provider:full_name" => record.
 	 */
 	public static function get_installed(): array {
-		return (array) get_option( 'gwp_installed', [] );
+		$raw      = (array) get_option( 'gwp_installed', [] );
+		$result   = [];
+		$migrated = false;
+
+		foreach ( $raw as $key => $rec ) {
+			if ( strpos( $key, ':' ) === false ) {
+				$provider = $rec['provider'] ?? 'github';
+				$key      = $provider . ':' . $key;
+				$migrated = true;
+			}
+			$result[ $key ] = $rec;
+		}
+
+		if ( $migrated ) {
+			update_option( 'gwp_installed', $result );
+		}
+
+		return $result;
 	}
 
 	/**
-	 * Returns a single installation record by full name.
+	 * Returns a single installation record by provider and full name.
 	 *
 	 * @since 1.0.0
+	 * @param string $provider  Git provider: 'github' or 'gitlab'.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return array<string, mixed>|null Record array, or null if not found.
 	 */
-	public static function get_record( string $full_name ): ?array {
+	public static function get_record( string $provider, string $full_name ): ?array {
 		$installed = self::get_installed();
-		return $installed[ $full_name ] ?? null;
+		return $installed[ $provider . ':' . $full_name ] ?? null;
 	}
 
 	/**
@@ -362,6 +388,33 @@ class Installer {
 			$api = new API( $settings['token'] ?? '' );
 		}
 
+		// Detect directory conflict with a differently-keyed installed record and auto-rename.
+		$current_key   = $provider . ':' . $full_name;
+		$all_installed = self::get_installed();
+		$slug_renamed  = false;
+
+		if ( is_dir( $install_path ) ) {
+			foreach ( $all_installed as $key => $rec ) {
+				if (
+					$key !== $current_key &&
+					isset( $rec['install_path'] ) &&
+					untrailingslashit( $rec['install_path'] ) === untrailingslashit( $install_path )
+				) {
+					$dir_base  = trailingslashit( dirname( $install_path ) );
+					$base_slug = $slug . '-' . $provider;
+					$new_slug  = $base_slug;
+					$counter   = 2;
+					while ( is_dir( $dir_base . $new_slug ) ) {
+						$new_slug = $base_slug . '-' . ( $counter++ );
+					}
+					$slug         = $new_slug;
+					$install_path = $dir_base . $slug;
+					$slug_renamed = true;
+					break;
+				}
+			}
+		}
+
 		// Download.
 		$zip_file = $api->download_zip( $owner, $repo, $branch );
 		if ( is_wp_error( $zip_file ) ) {
@@ -391,9 +444,10 @@ class Installer {
 
 		// Record the currently-active plugin file (if this is an update).
 		if ( 'plugin' === $type ) {
-			$installed = self::get_installed();
-			if ( isset( $installed[ $full_name ]['plugin_file'] ) ) {
-				$pending['plugin_file'] = $installed[ $full_name ]['plugin_file'];
+			$installed   = self::get_installed();
+			$install_key = $provider . ':' . $full_name;
+			if ( isset( $installed[ $install_key ]['plugin_file'] ) ) {
+				$pending['plugin_file'] = $installed[ $install_key ]['plugin_file'];
 			}
 		}
 
@@ -430,10 +484,12 @@ class Installer {
 			'plugin_file'  => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
 			'installed_at' => time(),
 			'updated_at'   => time(),
+			'slug_renamed' => $slug_renamed,
 		];
 
-		$installed               = self::get_installed();
-		$installed[ $full_name ] = $record;
+		$record_key               = $provider . ':' . $full_name;
+		$installed                = self::get_installed();
+		$installed[ $record_key ] = $record;
 		update_option( 'gwp_installed', $installed );
 
 		// Remove old backup now that everything succeeded.
