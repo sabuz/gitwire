@@ -584,7 +584,7 @@ function TypeBadge( { detection, installed } ) {
 		return (
 			<span
 				className={ `gwp-badge gwp-badge--${
-					t === 'theme' ? 'neutral' : 'info'
+					t === 'theme' ? 'theme' : 'info'
 				}` }
 			>
 				{ t === 'theme' ? __( 'Theme', 'git' ) : __( 'Plugin', 'git' ) }
@@ -608,14 +608,14 @@ function TypeBadge( { detection, installed } ) {
 	}
 	if ( type === 'theme' && subtype === 'block' ) {
 		return (
-			<span className="gwp-badge gwp-badge--neutral">
+			<span className="gwp-badge gwp-badge--block-theme">
 				{ __( 'Block Theme', 'git' ) }
 			</span>
 		);
 	}
 	if ( type === 'theme' ) {
 		return (
-			<span className="gwp-badge gwp-badge--neutral">
+			<span className="gwp-badge gwp-badge--theme">
 				{ __( 'Theme', 'git' ) }
 			</span>
 		);
