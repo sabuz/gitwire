@@ -22,7 +22,7 @@ import * as api from '../api';
  * @param {boolean}  props.smartInstall Whether smart install is enabled.
  * @param {Function} props.onClose      Callback fired when the modal is closed.
  * @param {Function} props.onInstalled  Callback fired after a successful install.
- * @param            props.provider
+ * @param {string}   props.provider     Git provider: 'github' or 'gitlab'.
  * @return {JSX.Element} The rendered install modal.
  */
 export default function InstallModal( {
