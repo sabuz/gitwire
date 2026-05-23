@@ -33,6 +33,17 @@ class GitLab_API {
 	private string $base;
 
 	/**
+	 * Rate limit data captured from the last API response headers.
+	 *
+	 * @var array<string, int>
+	 */
+	private array $last_rate = [
+		'limit'     => 0,
+		'remaining' => 0,
+		'reset'     => 0,
+	];
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 1.1.0
@@ -63,9 +74,12 @@ class GitLab_API {
 
 		if ( ! is_wp_error( $user ) ) {
 			return [
-				'login'      => $user['username'] ?? '',
-				'name'       => $user['name'] ?? '',
-				'avatar_url' => $user['avatar_url'] ?? '',
+				'login'          => $user['username'] ?? '',
+				'name'           => $user['name'] ?? '',
+				'avatar_url'     => $user['avatar_url'] ?? '',
+				'rate_limit'     => $this->last_rate['limit'],
+				'rate_remaining' => $this->last_rate['remaining'],
+				'rate_reset'     => $this->last_rate['reset'],
 			];
 		}
 
@@ -77,9 +91,12 @@ class GitLab_API {
 		}
 
 		return [
-			'login'      => '',
-			'name'       => '',
-			'avatar_url' => '',
+			'login'          => '',
+			'name'           => '',
+			'avatar_url'     => '',
+			'rate_limit'     => $this->last_rate['limit'],
+			'rate_remaining' => $this->last_rate['remaining'],
+			'rate_reset'     => $this->last_rate['reset'],
 		];
 	}
 
@@ -392,6 +409,17 @@ class GitLab_API {
 
 		if ( is_wp_error( $response ) ) {
 			return $response;
+		}
+
+		$limit     = (int) wp_remote_retrieve_header( $response, 'ratelimit-limit' );
+		$remaining = (int) wp_remote_retrieve_header( $response, 'ratelimit-remaining' );
+		$reset     = (int) wp_remote_retrieve_header( $response, 'ratelimit-reset' );
+		if ( $limit > 0 ) {
+			$this->last_rate = [
+				'limit'     => $limit,
+				'remaining' => $remaining,
+				'reset'     => $reset,
+			];
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );

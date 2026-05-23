@@ -392,12 +392,12 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 							</FlexItem>
 							<FlexItem>
 								<span
-								className={ `gwp-badge gwp-badge--${
-									repo.private ? 'warning' : 'success'
-								}` }
-							>
-								{ repo.private ? 'Private' : 'Public' }
-							</span>
+									className={ `gwp-badge gwp-badge--${
+										repo.private ? 'warning' : 'success'
+									}` }
+								>
+									{ repo.private ? 'Private' : 'Public' }
+								</span>
 							</FlexItem>
 						</Flex>
 					</FlexItem>

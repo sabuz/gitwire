@@ -215,6 +215,92 @@ function GitHubCard( {
 		}
 	};
 
+	let cardBody;
+	if ( testing ) {
+		cardBody = (
+			<div style={ { textAlign: 'center', padding: '24px 0' } }>
+				<Spinner />
+				<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+					{ __( 'Checking connection…', 'git' ) }
+				</p>
+			</div>
+		);
+	} else if ( isConnected ) {
+		cardBody = (
+			<ConnectedProfile
+				connection={ connection }
+				isBusy={ saving }
+				signOutLabel={ __( 'Sign Out', 'git' ) }
+				onSignOut={ handleSignOut }
+			/>
+		);
+	} else {
+		cardBody = (
+			<>
+				<TextControl
+					__nextHasNoMarginBottom
+					help={ __(
+						'Your GitHub username or organization. Not required when a token is set.',
+						'git'
+					) }
+					label={ __( 'GitHub Username', 'git' ) }
+					placeholder="your-github-username"
+					value={ username }
+					onChange={ setUsername }
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<TextControl
+					__nextHasNoMarginBottom
+					autoComplete="new-password"
+					help={
+						<>
+							{ __(
+								'For private repos or to raise the rate limit.',
+								'git'
+							) }{ ' ' }
+							<a
+								href="https://github.com/settings/personal-access-tokens/new"
+								rel="noopener noreferrer"
+								target="_blank"
+							>
+								{ __( 'Create token', 'git' ) }
+							</a>{ ' ' }
+							{ __(
+								'— select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
+								'git'
+							) }
+						</>
+					}
+					label={
+						<>
+							{ __( 'Fine-grained Access Token', 'git' ) }{ ' ' }
+							<span className="gwp-label-optional">
+								{ __( '(Optional)', 'git' ) }
+							</span>
+						</>
+					}
+					placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx"
+					type="password"
+					value={ token }
+					onChange={ setToken }
+				/>
+
+				<Spacer marginTop={ 5 } />
+
+				<Button
+					disabled={ saving }
+					isBusy={ saving }
+					variant="primary"
+					onClick={ handleConnect }
+				>
+					{ __( 'Connect GitHub', 'git' ) }
+				</Button>
+			</>
+		);
+	}
+
 	return (
 		<Card>
 			<CardHeader>
@@ -224,6 +310,7 @@ function GitHubCard( {
 							aria-hidden="true"
 							fill="currentColor"
 							height="20"
+							style={ { display: 'block' } }
 							viewBox="0 0 16 16"
 							width="20"
 						>
@@ -251,92 +338,7 @@ function GitHubCard( {
 					) }
 				</Flex>
 			</CardHeader>
-			<CardBody>
-				{ testing ? (
-					<div style={ { textAlign: 'center', padding: '24px 0' } }>
-						<Spinner />
-						<p
-							style={ {
-								marginTop: 8,
-								color: '#757575',
-								fontSize: 13,
-							} }
-						>
-							{ __( 'Checking connection…', 'git' ) }
-						</p>
-					</div>
-				) : isConnected ? (
-					<ConnectedProfile
-						connection={ connection }
-						isBusy={ saving }
-						signOutLabel={ __( 'Sign Out', 'git' ) }
-						onSignOut={ handleSignOut }
-					/>
-				) : (
-					<>
-						<TextControl
-							__nextHasNoMarginBottom
-							help={ __(
-								'Your GitHub username or organization. Not required when a token is set.',
-								'git'
-							) }
-							label={ __( 'GitHub Username', 'git' ) }
-							placeholder="your-github-username"
-							value={ username }
-							onChange={ setUsername }
-						/>
-
-						<Spacer marginTop={ 4 } />
-
-						<TextControl
-							__nextHasNoMarginBottom
-							autoComplete="new-password"
-							help={
-								<>
-									{ __(
-										'For private repos or to raise the rate limit.',
-										'git'
-									) }{ ' ' }
-									<a
-										href="https://github.com/settings/personal-access-tokens/new"
-										rel="noopener noreferrer"
-										target="_blank"
-									>
-										{ __( 'Create token', 'git' ) }
-									</a>{ ' ' }
-									{ __(
-										'— select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
-										'git'
-									) }
-								</>
-							}
-							label={
-								<>
-									{ __( 'Fine-grained Access Token', 'git' ) }{ ' ' }
-									<span className="gwp-label-optional">
-										{ __( '(Optional)', 'git' ) }
-									</span>
-								</>
-							}
-							placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx"
-							type="password"
-							value={ token }
-							onChange={ setToken }
-						/>
-
-						<Spacer marginTop={ 5 } />
-
-						<Button
-							disabled={ saving }
-							isBusy={ saving }
-							variant="primary"
-							onClick={ handleConnect }
-						>
-							{ __( 'Connect GitHub', 'git' ) }
-						</Button>
-					</>
-				) }
-			</CardBody>
+			<CardBody>{ cardBody }</CardBody>
 		</Card>
 	);
 }
@@ -438,6 +440,89 @@ function GitLabCard( {
 		}
 	};
 
+	let gitlabCardBody;
+	if ( testing ) {
+		gitlabCardBody = (
+			<div style={ { textAlign: 'center', padding: '24px 0' } }>
+				<Spinner />
+				<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+					{ __( 'Checking connection…', 'git' ) }
+				</p>
+			</div>
+		);
+	} else if ( isConnected ) {
+		gitlabCardBody = (
+			<ConnectedProfile
+				connection={ connection }
+				isBusy={ saving }
+				signOutLabel={ __( 'Sign Out', 'git' ) }
+				onSignOut={ handleSignOut }
+			/>
+		);
+	} else {
+		gitlabCardBody = (
+			<>
+				<TextControl
+					__nextHasNoMarginBottom
+					autoComplete="new-password"
+					help={
+						<>
+							{ __( 'Required.', 'git' ) }{ ' ' }
+							<a
+								href="https://gitlab.com/-/user_settings/personal_access_tokens"
+								rel="noopener noreferrer"
+								target="_blank"
+							>
+								{ __( 'Create token', 'git' ) }
+							</a>{ ' ' }
+							{ __(
+								'— enable read_user, read_api and read_repository.',
+								'git'
+							) }
+						</>
+					}
+					label={ __( 'Personal Access Token', 'git' ) }
+					placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
+					type="password"
+					value={ gitlabToken }
+					onChange={ setGitlabToken }
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<TextControl
+					__nextHasNoMarginBottom
+					help={ __(
+						'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab (e.g. https://gitlab.example.com).',
+						'git'
+					) }
+					label={
+						<>
+							{ __( 'GitLab Instance URL', 'git' ) }{ ' ' }
+							<span className="gwp-label-optional">
+								{ __( '(Optional)', 'git' ) }
+							</span>
+						</>
+					}
+					placeholder="https://gitlab.com"
+					value={ gitlabUrl }
+					onChange={ setGitlabUrl }
+				/>
+
+				<Spacer marginTop={ 5 } />
+
+				<Button
+					disabled={ saving }
+					isBusy={ saving }
+					variant="primary"
+					onClick={ handleConnect }
+				>
+					{ __( 'Connect GitLab', 'git' ) }
+				</Button>
+			</>
+		);
+	}
+
 	return (
 		<Card>
 			<CardHeader>
@@ -447,6 +532,7 @@ function GitLabCard( {
 							aria-hidden="true"
 							fill="#e24329"
 							height="20"
+							style={ { display: 'block' } }
 							viewBox="0 0 16 16"
 							width="20"
 						>
@@ -466,89 +552,7 @@ function GitLabCard( {
 					) }
 				</Flex>
 			</CardHeader>
-			<CardBody>
-				{ testing ? (
-					<div style={ { textAlign: 'center', padding: '24px 0' } }>
-						<Spinner />
-						<p
-							style={ {
-								marginTop: 8,
-								color: '#757575',
-								fontSize: 13,
-							} }
-						>
-							{ __( 'Checking connection…', 'git' ) }
-						</p>
-					</div>
-				) : isConnected ? (
-					<ConnectedProfile
-						connection={ connection }
-						isBusy={ saving }
-						signOutLabel={ __( 'Sign Out', 'git' ) }
-						onSignOut={ handleSignOut }
-					/>
-				) : (
-					<>
-						<TextControl
-							__nextHasNoMarginBottom
-							autoComplete="new-password"
-							help={
-								<>
-									{ __( 'Required.', 'git' ) }{ ' ' }
-									<a
-										href="https://gitlab.com/-/user_settings/personal_access_tokens"
-										rel="noopener noreferrer"
-										target="_blank"
-									>
-										{ __( 'Create token', 'git' ) }
-									</a>{ ' ' }
-									{ __(
-										'— enable read_api and read_repository.',
-										'git'
-									) }
-								</>
-							}
-							label={ __( 'Personal Access Token', 'git' ) }
-							placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
-							type="password"
-							value={ gitlabToken }
-							onChange={ setGitlabToken }
-						/>
-
-						<Spacer marginTop={ 4 } />
-
-						<TextControl
-							__nextHasNoMarginBottom
-							help={ __(
-								'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab (e.g. https://gitlab.example.com).',
-								'git'
-							) }
-							label={
-								<>
-									{ __( 'GitLab Instance URL', 'git' ) }{ ' ' }
-									<span className="gwp-label-optional">
-										{ __( '(Optional)', 'git' ) }
-									</span>
-								</>
-							}
-							placeholder="https://gitlab.com"
-							value={ gitlabUrl }
-							onChange={ setGitlabUrl }
-						/>
-
-						<Spacer marginTop={ 5 } />
-
-						<Button
-							disabled={ saving }
-							isBusy={ saving }
-							variant="primary"
-							onClick={ handleConnect }
-						>
-							{ __( 'Connect GitLab', 'git' ) }
-						</Button>
-					</>
-				) }
-			</CardBody>
+			<CardBody>{ gitlabCardBody }</CardBody>
 		</Card>
 	);
 }
@@ -618,12 +622,12 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 	}
 
 	const isGitHub = connection.provider === 'github';
-	const pct =
-		isGitHub && connection.rate_limit > 0
-			? Math.round(
-					( connection.rate_remaining / connection.rate_limit ) * 100
-			  )
-			: 0;
+	const hasRateLimit = connection.rate_limit > 0;
+	const pct = hasRateLimit
+		? Math.round(
+				( connection.rate_remaining / connection.rate_limit ) * 100
+		  )
+		: 0;
 	let barColor = '#cf222e';
 	if ( pct > 50 ) {
 		barColor = '#4ac26b';
@@ -632,21 +636,19 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 	}
 
 	let rateNote = __( 'Resets in about an hour.', 'git' );
-	if ( isGitHub ) {
-		if ( connection.rate_limit === 60 ) {
-			rateNote = __(
-				"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.",
-				'git'
+	if ( isGitHub && connection.rate_limit === 60 ) {
+		rateNote = __(
+			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.",
+			'git'
+		);
+	} else if ( connection.rate_reset ) {
+		const countdown = humanDiff( connection.rate_reset );
+		if ( countdown ) {
+			rateNote = sprintf(
+				/* translators: %s: time until reset */
+				__( 'Resets in %s.', 'git' ),
+				countdown
 			);
-		} else if ( connection.rate_reset ) {
-			const countdown = humanDiff( connection.rate_reset );
-			if ( countdown ) {
-				rateNote = sprintf(
-					/* translators: %s: time until reset */
-					__( 'Resets in %s.', 'git' ),
-					countdown
-				);
-			}
 		}
 	}
 
@@ -668,14 +670,25 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 					</FlexItem>
 				) }
 				<FlexBlock>
-					{ ( connection.name || connection.login ) && (
-						<div style={ { fontWeight: 700, fontSize: 14 } }>
-							{ connection.name || connection.login }
-						</div>
-					) }
-					{ connection.login && (
+					{ connection.name || connection.login ? (
+						<>
+							<div style={ { fontWeight: 700, fontSize: 14 } }>
+								{ connection.name || connection.login }
+							</div>
+							{ connection.login && (
+								<div
+									style={ { fontSize: 12, color: '#57606a' } }
+								>
+									@{ connection.login }
+								</div>
+							) }
+						</>
+					) : (
 						<div style={ { fontSize: 12, color: '#57606a' } }>
-							@{ connection.login }
+							{ __(
+								'Profile unavailable — add read_user scope to your token.',
+								'git'
+							) }
 						</div>
 					) }
 					{ connection.checked_at && (
@@ -688,7 +701,7 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 						>
 							{ sprintf(
 								/* translators: %s: relative time */
-								__( 'Last checked %s', 'git' ),
+								__( 'Connection verified %s', 'git' ),
 								unixTimeAgo( connection.checked_at )
 							) }
 						</div>
@@ -707,7 +720,7 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 				</FlexItem>
 			</Flex>
 
-			{ isGitHub && (
+			{ hasRateLimit && (
 				<>
 					<hr
 						className="gwp-divider"

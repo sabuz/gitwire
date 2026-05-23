@@ -324,12 +324,15 @@ class REST {
 			}
 
 			$data = [
-				'provider'      => 'gitlab',
-				'authenticated' => true,
-				'login'         => $result['login'] ?? '',
-				'name'          => $result['name'] ?? '',
-				'avatar_url'    => $result['avatar_url'] ?? '',
-				'checked_at'    => time(),
+				'provider'       => 'gitlab',
+				'authenticated'  => true,
+				'login'          => $result['login'] ?? '',
+				'name'           => $result['name'] ?? '',
+				'avatar_url'     => $result['avatar_url'] ?? '',
+				'rate_limit'     => $result['rate_limit'] ?? 0,
+				'rate_remaining' => $result['rate_remaining'] ?? 0,
+				'rate_reset'     => $result['rate_reset'] ?? 0,
+				'checked_at'     => time(),
 			];
 
 			if ( $cache_this ) {
