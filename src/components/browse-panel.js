@@ -1,9 +1,10 @@
+import { toast } from 'sonner';
+
 import { __ } from '@wordpress/i18n';
 import { useState, useEffect, useRef, useCallback } from '@wordpress/element';
 import {
 	Button,
 	Spinner,
-	Notice,
 	Flex,
 	FlexBlock,
 	FlexItem,
@@ -48,7 +49,6 @@ export default function BrowsePanel( {
 		gitlab: false,
 	} );
 	const [ loading, setLoading ] = useState( false );
-	const [ error, setError ] = useState( null );
 	const [ modal, setModal ] = useState( null );
 	const [ search, setSearch ] = useState( '' );
 	const [ typeFilter, setTypeFilter ] = useState( 'all' );
@@ -103,7 +103,6 @@ export default function BrowsePanel( {
 	const loadRepos = useCallback(
 		async ( ghPage, glPage, append = false ) => {
 			setLoading( true );
-			setError( null );
 			try {
 				const fetches = [];
 				if ( ghPage > 0 ) {
@@ -180,7 +179,13 @@ export default function BrowsePanel( {
 				} );
 
 				if ( errors.length ) {
-					setError( errors.join( ' · ' ) );
+					toast.error( errors.join( ' · ' ), {
+						duration: 6000,
+						action: {
+							label: __( 'Retry', 'git' ),
+							onClick: handleRefresh,
+						},
+					} );
 				}
 
 				newRepos.forEach( ( r ) => {
@@ -194,8 +199,15 @@ export default function BrowsePanel( {
 
 				enqueueDetections( newRepos );
 			} catch ( e ) {
-				setError(
-					e.message || __( 'Failed to load repositories.', 'git' )
+				toast.error(
+					e.message || __( 'Failed to load repositories.', 'git' ),
+					{
+						duration: 6000,
+						action: {
+							label: __( 'Retry', 'git' ),
+							onClick: handleRefresh,
+						},
+					}
 				);
 			} finally {
 				setLoading( false );
@@ -302,19 +314,6 @@ export default function BrowsePanel( {
 					/>
 				</FlexItem>
 			</Flex>
-
-			{ error && (
-				<Notice
-					isDismissible={ false }
-					status="error"
-					style={ { marginBottom: 16 } }
-				>
-					{ error }{ ' ' }
-					<Button variant="link" onClick={ handleRefresh }>
-						{ __( 'Retry', 'git' ) }
-					</Button>
-				</Notice>
-			) }
 
 			{ repos.length === 0 && loading && (
 				<div style={ { textAlign: 'center', padding: 48 } }>
