@@ -630,6 +630,10 @@ class REST {
 			} else {
 				$rec['active'] = $active_theme === $rec['slug'];
 			}
+
+			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
+				$rec['provider'] = 'github';
+			}
 		}
 		unset( $rec );
 

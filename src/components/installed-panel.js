@@ -70,9 +70,9 @@ export default function InstalledPanel( {
 			{
 				id: 'source',
 				label: __( 'Source', 'git' ),
-				getValue: ( { item } ) => item.provider ?? 'github',
+				getValue: ( { item } ) => item.provider,
 				render: ( { item } ) => {
-					const isGitLab = ( item.provider ?? 'github' ) === 'gitlab';
+					const isGitLab = item.provider === 'gitlab';
 					return (
 						<Flex align="center" gap={ 1 } justify="flex-start">
 							{ isGitLab ? (
@@ -144,9 +144,7 @@ export default function InstalledPanel( {
 				label: __( 'Branch', 'git' ),
 				getValue: ( { item } ) => item.branch,
 				render: ( { item } ) => (
-					<span className="gwp-badge gwp-badge--info">
-						{ item.branch }
-					</span>
+					<BranchCell item={ item } onRefresh={ onRefresh } />
 				),
 				enableSorting: true,
 			},
@@ -157,13 +155,16 @@ export default function InstalledPanel( {
 				render: ( { item } ) => (
 					<span style={ { fontSize: 12, color: '#57606a' } }>
 						{ item.updated_at
-							? new Date(
-									item.updated_at * 1000
-							  ).toLocaleDateString( undefined, {
-									year: 'numeric',
-									month: 'short',
-									day: 'numeric',
-							  } )
+							? new Date( item.updated_at * 1000 ).toLocaleString(
+									undefined,
+									{
+										year: 'numeric',
+										month: 'short',
+										day: 'numeric',
+										hour: 'numeric',
+										minute: '2-digit',
+									}
+							  )
 							: '—' }
 					</span>
 				),
@@ -202,7 +203,7 @@ export default function InstalledPanel( {
 				<img
 					alt=""
 					aria-hidden="true"
-					src={ window.GWP?.disconnected_url }
+					src={ window.GWP?.not_found_url }
 					style={ {
 						width: 64,
 						height: 64,
@@ -257,7 +258,6 @@ function RowActions( { item, onRefresh } ) {
 	const [ updating, setUpdating ] = useState( false );
 	const [ activating, setActivating ] = useState( false );
 	const [ deactivating, setDeactivating ] = useState( false );
-	const [ switchOpen, setSwitchOpen ] = useState( false );
 	const [ deleteOpen, setDeleteOpen ] = useState( false );
 
 	const busy = updating || activating || deactivating;
@@ -333,15 +333,6 @@ function RowActions( { item, onRefresh } ) {
 					: __( 'Pull latest', 'git' ) }
 			</Button>
 
-			<Button
-				disabled={ busy }
-				size="compact"
-				variant="secondary"
-				onClick={ () => setSwitchOpen( true ) }
-			>
-				{ __( 'Switch branch', 'git' ) }
-			</Button>
-
 			{ ! active && (
 				<Button
 					disabled={ busy }
@@ -382,24 +373,6 @@ function RowActions( { item, onRefresh } ) {
 				</Button>
 			) }
 
-			{ switchOpen && (
-				<BranchSwitcherModal
-					item={ item }
-					onClose={ () => setSwitchOpen( false ) }
-					onError={ ( msg ) => toast.error( msg ) }
-					onSwitched={ ( newBranch ) => {
-						toast.success(
-							sprintf(
-								/* translators: %s: branch name */
-								__( 'Switched to %s.', 'git' ),
-								newBranch
-							)
-						);
-						onRefresh();
-					} }
-				/>
-			) }
-
 			{ deleteOpen && (
 				<DeleteConfirmModal
 					item={ item }
@@ -418,6 +391,46 @@ function RowActions( { item, onRefresh } ) {
 				/>
 			) }
 		</Flex>
+	);
+}
+
+/**
+ * Clickable branch badge that opens the branch switcher modal inline.
+ *
+ * @param {Object}   props           Component props.
+ * @param {Object}   props.item      Installed repository record.
+ * @param {Function} props.onRefresh Callback to refresh the installed list.
+ * @return {JSX.Element} The rendered branch cell.
+ */
+function BranchCell( { item, onRefresh } ) {
+	const [ open, setOpen ] = useState( false );
+	return (
+		<>
+			<Button
+				size="small"
+				variant="secondary"
+				onClick={ () => setOpen( true ) }
+			>
+				{ item.branch }
+			</Button>
+			{ open && (
+				<BranchSwitcherModal
+					item={ item }
+					onClose={ () => setOpen( false ) }
+					onError={ ( msg ) => toast.error( msg ) }
+					onSwitched={ ( newBranch ) => {
+						toast.success(
+							sprintf(
+								/* translators: %s: branch name */
+								__( 'Switched to %s.', 'git' ),
+								newBranch
+							)
+						);
+						onRefresh();
+					} }
+				/>
+			) }
+		</>
 	);
 }
 

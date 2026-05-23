@@ -202,6 +202,7 @@ class Admin {
 					'nonce'            => wp_create_nonce( 'wp_rest' ),
 					'icon_url'         => GWP_URL . 'assets/images/icon.svg',
 					'disconnected_url' => GWP_URL . 'assets/images/disconnected.svg',
+					'not_found_url'    => GWP_URL . 'assets/images/not-found.svg',
 					'initial_tab'      => $initial_tab,
 					'settings'         => [
 						'username'      => $settings['username'] ?? '',
