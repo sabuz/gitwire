@@ -130,11 +130,14 @@ export default function InstallModal( {
 			shouldCloseOnClickOutside={ ! installing }
 			shouldCloseOnEsc={ ! installing }
 			style={ { width: 480 } }
-			title={ sprintf(
-				/* translators: %s: repository full name */
-				__( 'Install %s', 'git' ),
-				repo.full_name
-			) }
+			title={
+				<>
+					{ __( 'Install', 'git' ) }{ ' ' }
+					<span style={ { color: 'var(--gwp-color-accent)' } }>
+						{ repo.full_name }
+					</span>
+				</>
+			}
 			onRequestClose={ installing ? undefined : onClose }
 		>
 			<DetectionBadge

@@ -482,11 +482,14 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 	return (
 		<Modal
 			style={ { width: 480 } }
-			title={ sprintf(
-				/* translators: %s: repository name */
-				__( 'Switch branch — %s', 'git' ),
-				item.repo
-			) }
+			title={
+				<>
+					{ __( 'Switch branch', 'git' ) }{ ' ' }
+					<span style={ { color: 'var(--gwp-color-accent)' } }>
+						{ item.repo }
+					</span>
+				</>
+			}
 			onRequestClose={ onClose }
 		>
 			<ComboboxControl
