@@ -2,14 +2,7 @@ import { toast } from 'sonner';
 
 import { __, sprintf } from '@wordpress/i18n';
 import { useState, useEffect, useMemo } from '@wordpress/element';
-import {
-	Button,
-	Card,
-	CardBody,
-	ComboboxControl,
-	Flex,
-	Modal,
-} from '@wordpress/components';
+import { Button, ComboboxControl, Flex, Modal } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
@@ -33,6 +26,7 @@ const DEFAULT_VIEW = {
 	layout: {
 		styles: {
 			name: { minWidth: 220 },
+			actions: { textAlign: 'right' },
 		},
 	},
 };
@@ -326,7 +320,7 @@ function RowActions( { item, onRefresh } ) {
 	};
 
 	return (
-		<Flex gap={ 2 } justify="flex-start" wrap>
+		<Flex gap={ 2 } justify="flex-end" wrap>
 			<Button
 				disabled={ busy }
 				isBusy={ updating }
@@ -392,6 +386,7 @@ function RowActions( { item, onRefresh } ) {
 				<BranchSwitcherModal
 					item={ item }
 					onClose={ () => setSwitchOpen( false ) }
+					onError={ ( msg ) => toast.error( msg ) }
 					onSwitched={ ( newBranch ) => {
 						toast.success(
 							sprintf(
@@ -402,7 +397,6 @@ function RowActions( { item, onRefresh } ) {
 						);
 						onRefresh();
 					} }
-					onError={ ( msg ) => toast.error( msg ) }
 				/>
 			) }
 

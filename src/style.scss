@@ -399,8 +399,16 @@ body.gwp-admin-page {
 }
 
 // Installed panel — row action buttons rendered inside the DataViews table cell
-.gwp-installed-panel .dataviews-view-table tbody td {
-	vertical-align: middle;
+.gwp-installed-panel .dataviews-view-table {
+
+	tbody td {
+		vertical-align: middle;
+	}
+
+	thead th:last-child,
+	tbody td:last-child {
+		text-align: right;
+	}
 }
 
 

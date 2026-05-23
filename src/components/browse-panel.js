@@ -271,15 +271,6 @@ export default function BrowsePanel( {
 						value={ search }
 					/>
 				</FlexBlock>
-				<FlexItem>
-					<Button
-						disabled={ loading }
-						icon="update"
-						isBusy={ loading }
-						variant="secondary"
-						onClick={ handleRefresh }
-					/>
-				</FlexItem>
 				{ typeFilters.map( ( f ) => (
 					<FlexItem key={ f.id }>
 						<Button
@@ -291,6 +282,15 @@ export default function BrowsePanel( {
 						</Button>
 					</FlexItem>
 				) ) }
+				<FlexItem style={ { marginLeft: 'auto' } }>
+					<Button
+						disabled={ loading }
+						icon="update"
+						isBusy={ loading }
+						variant="secondary"
+						onClick={ handleRefresh }
+					/>
+				</FlexItem>
 			</Flex>
 
 			{ error && (
