@@ -183,6 +183,15 @@ export default function BrowsePanel( {
 					setError( errors.join( ' · ' ) );
 				}
 
+				newRepos.forEach( ( r ) => {
+					if ( r.detection ) {
+						const key = detectionKey( r );
+						if ( ! detectionsRef.current[ key ] ) {
+							detectionsRef.current[ key ] = r.detection;
+						}
+					}
+				} );
+
 				enqueueDetections( newRepos );
 			} catch ( e ) {
 				setError(
@@ -199,12 +208,13 @@ export default function BrowsePanel( {
 		loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0 );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const handleRefresh = () => {
+	const handleRefresh = async () => {
+		await api.clearCache();
+		detectionsRef.current = {};
+		queueRef.current = [];
 		setRepos( [] );
 		setHasMore( { github: false, gitlab: false } );
 		setPagesLoaded( { github: 0, gitlab: 0 } );
-		detectionsRef.current = {};
-		queueRef.current = [];
 		loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0 );
 	};
 

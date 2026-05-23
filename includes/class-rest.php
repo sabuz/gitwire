@@ -104,6 +104,16 @@ class REST {
 
 		register_rest_route(
 			$ns,
+			'/repos/cache',
+			[
+				'methods'             => 'DELETE',
+				'callback'            => [ self::class, 'clear_cache' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
 			'/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branches',
 			[
 				'methods'             => 'GET',
@@ -401,7 +411,7 @@ class REST {
 			$cache_key = 'gwp_repos_' . md5( 'gitlab' . ( $settings['gitlab_token'] ?? '' ) . ( $settings['gitlab_url'] ?? '' ) . $page );
 			$cached    = get_transient( $cache_key );
 			if ( false !== $cached ) {
-				return $cached;
+				return self::enrich_with_detections( $cached, 'gitlab' );
 			}
 
 			$api       = new GitLab_API( $settings['gitlab_token'] ?? '', $settings['gitlab_url'] ?? '' );
@@ -442,7 +452,7 @@ class REST {
 
 			set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
 
-			return $payload;
+			return self::enrich_with_detections( $payload, 'gitlab' );
 		}
 
 		$username = sanitize_text_field( $req->get_param( 'username' ) ?? $settings['username'] ?? '' );
@@ -454,7 +464,7 @@ class REST {
 		$cache_key = 'gwp_repos_' . md5( ( $settings['token'] ?? '' ) . $username . $page );
 		$cached    = get_transient( $cache_key );
 		if ( false !== $cached ) {
-			return $cached;
+			return self::enrich_with_detections( $cached, 'github' );
 		}
 
 		$api       = new API( $settings['token'] ?? '' );
@@ -493,7 +503,7 @@ class REST {
 
 		set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
 
-		return $payload;
+		return self::enrich_with_detections( $payload, 'github' );
 	}
 
 	/**
@@ -739,7 +749,44 @@ class REST {
 	}
 
 	/**
-	 * Deletes all cached repository transients from the options table.
+	 * Enriches a repos payload with any already-cached detection results.
+	 *
+	 * Checks each repo's detection transient and, when found, embeds the result
+	 * directly so the frontend can skip redundant detect API calls.
+	 *
+	 * @since 1.0.0
+	 * @param array  $payload  Repos payload with a 'repos' key.
+	 * @param string $provider Provider key: 'github' or 'gitlab'.
+	 * @return array The same payload with 'detection' added to each cached repo.
+	 */
+	private static function enrich_with_detections( array $payload, string $provider ): array {
+		$payload['repos'] = array_map(
+			static function ( $repo ) use ( $provider ) {
+				$cache_key = 'gwp_detect_' . md5( $provider . $repo['owner'] . $repo['name'] . $repo['default_branch'] );
+				$detection = get_transient( $cache_key );
+				if ( false !== $detection ) {
+					$repo['detection'] = $detection;
+				}
+				return $repo;
+			},
+			$payload['repos']
+		);
+		return $payload;
+	}
+
+	/**
+	 * Clears the repos and detection transient caches.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, bool> Confirmation payload.
+	 */
+	public static function clear_cache(): array {
+		self::bust_repos_cache();
+		return [ 'cleared' => true ];
+	}
+
+	/**
+	 * Deletes all cached repository and detection transients from the options table.
 	 *
 	 * @since 1.0.0
 	 * @return void
@@ -748,7 +795,7 @@ class REST {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 		$wpdb->query(
-			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gwp_repos_%'"
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_gwp_repos_%' OR option_name LIKE '_transient_gwp_detect_%'"
 		);
 	}
 }

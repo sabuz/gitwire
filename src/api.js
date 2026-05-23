@@ -11,6 +11,8 @@ export const getRepos = ( page = 1, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/repos?page=${ page }&provider=${ provider }`,
 	} );
+export const clearCache = () =>
+	apiFetch( { path: `${ BASE }/repos/cache`, method: 'DELETE' } );
 export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );
 
 export const getBranches = ( owner, repo, provider = 'github' ) =>
