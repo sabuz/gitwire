@@ -147,6 +147,7 @@ function GitHubCard( {
 	const [ username, setUsername ] = useState( settings.username || '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
+	const [ tokenError, setTokenError ] = useState( false );
 
 	const isConnected = !! ( settings.token || settings.username );
 
@@ -156,7 +157,14 @@ function GitHubCard( {
 			return;
 		}
 		setSaving( true );
+		setTesting( true );
+		setTokenError( false );
 		try {
+			const result = await api.testConnection( {
+				provider: 'github',
+				token,
+				username,
+			} );
 			await api.saveSettings( {
 				token,
 				username,
@@ -164,31 +172,16 @@ function GitHubCard( {
 				gitlab_url: settings.gitlab_url,
 				smart_install: smartInstall,
 			} );
-			const newSettings = { ...settings, token, username };
-			onSave( newSettings );
-			setTesting( true );
-			try {
-				const result = await api.testConnection( {
-					provider: 'github',
-					token,
-					username,
-				} );
-				onConnectionUpdate( result );
-				toast.success( __( 'GitHub connected.', 'git' ) );
-			} catch ( e ) {
-				onConnectionUpdate( {
-					provider: 'github',
-					error: e.message || __( 'Connection test failed.', 'git' ),
-				} );
-				toast.error(
-					e.message || __( 'Connection test failed.', 'git' )
-				);
-			} finally {
-				setTesting( false );
-			}
+			onSave( { ...settings, token, username } );
+			onConnectionUpdate( result );
+			toast.success( __( 'GitHub connected.', 'git' ) );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'git' ) );
+			if ( token.trim() ) {
+				setTokenError( true );
+			}
+			toast.error( e.message || __( 'Connection test failed.', 'git' ) );
 		} finally {
+			setTesting( false );
 			setSaving( false );
 		}
 	};
@@ -254,6 +247,7 @@ function GitHubCard( {
 				<TextControl
 					__nextHasNoMarginBottom
 					autoComplete="new-password"
+					className={ tokenError ? 'gwp-input-error' : undefined }
 					help={
 						<>
 							{ __(
@@ -284,7 +278,10 @@ function GitHubCard( {
 					placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx"
 					type="password"
 					value={ token }
-					onChange={ setToken }
+					onChange={ ( v ) => {
+						setToken( v );
+						setTokenError( false );
+					} }
 				/>
 
 				<Spacer marginTop={ 5 } />
