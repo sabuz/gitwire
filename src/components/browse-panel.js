@@ -281,21 +281,17 @@ export default function BrowsePanel( {
 						onClick={ handleRefresh }
 					/>
 				</FlexItem>
-				<FlexItem style={ { marginLeft: 'auto' } }>
-					<Flex gap={ 1 }>
-						{ typeFilters.map( ( f ) => (
-							<FlexItem key={ f.id }>
-								<Button
-									isPressed={ typeFilter === f.id }
-									size="compact"
-									onClick={ () => setTypeFilter( f.id ) }
-								>
-									{ f.label }
-								</Button>
-							</FlexItem>
-						) ) }
-					</Flex>
-				</FlexItem>
+				{ typeFilters.map( ( f ) => (
+					<FlexItem key={ f.id }>
+						<Button
+							isPressed={ typeFilter === f.id }
+							size="compact"
+							onClick={ () => setTypeFilter( f.id ) }
+						>
+							{ f.label }
+						</Button>
+					</FlexItem>
+				) ) }
 			</Flex>
 
 			{ error && (
