@@ -145,6 +145,11 @@ body.gwp-admin-page {
 	align-items: flex-start;
 }
 
+.gwp-input-error .components-text-control__input {
+	border-color: #cf222e !important;
+	box-shadow: 0 0 0 1px #cf222e !important;
+}
+
 .gwp-label-optional {
 	margin-left: 4px;
 	font-size: 11px;

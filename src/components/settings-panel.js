@@ -367,6 +367,7 @@ function GitLabCard( {
 	const [ gitlabUrl, setGitlabUrl ] = useState( settings.gitlab_url || '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
+	const [ tokenError, setTokenError ] = useState( false );
 
 	const isConnected = !! settings.gitlab_token;
 
@@ -378,7 +379,14 @@ function GitLabCard( {
 			return;
 		}
 		setSaving( true );
+		setTesting( true );
+		setTokenError( false );
 		try {
+			const result = await api.testConnection( {
+				provider: 'gitlab',
+				gitlab_token: gitlabToken,
+				gitlab_url: gitlabUrl,
+			} );
 			await api.saveSettings( {
 				token: settings.token,
 				username: settings.username,
@@ -391,29 +399,13 @@ function GitLabCard( {
 				gitlab_token: gitlabToken,
 				gitlab_url: gitlabUrl,
 			} );
-			setTesting( true );
-			try {
-				const result = await api.testConnection( {
-					provider: 'gitlab',
-					gitlab_token: gitlabToken,
-					gitlab_url: gitlabUrl,
-				} );
-				onConnectionUpdate( result );
-				toast.success( __( 'GitLab connected.', 'git' ) );
-			} catch ( e ) {
-				onConnectionUpdate( {
-					provider: 'gitlab',
-					error: e.message || __( 'Connection test failed.', 'git' ),
-				} );
-				toast.error(
-					e.message || __( 'Connection test failed.', 'git' )
-				);
-			} finally {
-				setTesting( false );
-			}
+			onConnectionUpdate( result );
+			toast.success( __( 'GitLab connected.', 'git' ) );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'git' ) );
+			setTokenError( true );
+			toast.error( e.message || __( 'Connection test failed.', 'git' ) );
 		} finally {
+			setTesting( false );
 			setSaving( false );
 		}
 	};
@@ -465,6 +457,7 @@ function GitLabCard( {
 				<TextControl
 					__nextHasNoMarginBottom
 					autoComplete="new-password"
+					className={ tokenError ? 'gwp-input-error' : undefined }
 					help={
 						<>
 							{ __( 'Required.', 'git' ) }{ ' ' }
@@ -485,7 +478,10 @@ function GitLabCard( {
 					placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
 					type="password"
 					value={ gitlabToken }
-					onChange={ setGitlabToken }
+					onChange={ ( v ) => {
+						setGitlabToken( v );
+						setTokenError( false );
+					} }
 				/>
 
 				<Spacer marginTop={ 4 } />
