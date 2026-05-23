@@ -504,10 +504,6 @@ function RepoCard( {
 								{ __( 'GitLab', 'git' ) }
 							</span>
 						) ) }
-					<TypeBadge
-						detection={ detection }
-						installed={ installed }
-					/>
 					<span
 						className={ `gwp-badge gwp-badge--${
 							repo.private ? 'warning' : 'success'
@@ -517,6 +513,10 @@ function RepoCard( {
 							? __( 'Private', 'git' )
 							: __( 'Public', 'git' ) }
 					</span>
+					<TypeBadge
+						detection={ detection }
+						installed={ installed }
+					/>
 				</div>
 			</CardBody>
 		</Card>
