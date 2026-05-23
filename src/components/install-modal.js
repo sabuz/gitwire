@@ -129,7 +129,7 @@ export default function InstallModal( {
 		<Modal
 			shouldCloseOnClickOutside={ ! installing }
 			shouldCloseOnEsc={ ! installing }
-			style={ { maxWidth: 480 } }
+			style={ { width: 480 } }
 			title={ sprintf(
 				/* translators: %s: repository full name */
 				__( 'Install %s', 'git' ),
@@ -158,6 +158,7 @@ export default function InstallModal( {
 
 			<div style={ { marginTop: 16 } }>
 				<ComboboxControl
+					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					disabled={ installing }
 					label={ __( 'Branch', 'git' ) }
