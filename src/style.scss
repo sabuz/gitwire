@@ -219,6 +219,16 @@ body.gwp-admin-page {
 		color: #8c959f;
 	}
 
+	&--github {
+		background: #f0f0f0;
+		color: #24292f;
+	}
+
+	&--gitlab {
+		background: #fce4dc;
+		color: #c24422;
+	}
+
 	&--theme {
 		background: #ede9fe;
 		color: #6d28d9;
@@ -303,12 +313,6 @@ body.gwp-admin-page {
 		}
 	}
 
-	&-name-row {
-		display: inline-flex;
-		gap: 6px;
-		align-items: flex-start;
-	}
-
 	&-updated {
 		display: block;
 		margin-top: 6px;
@@ -321,10 +325,10 @@ body.gwp-admin-page {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 4px;
+		align-items: center;
 	}
 
 	&-name {
-		margin-top: -3px;
 		font-size: 13px;
 		font-weight: 600;
 		line-height: 1.3;

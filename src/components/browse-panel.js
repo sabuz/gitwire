@@ -384,7 +384,7 @@ function GitHubIcon() {
 	return (
 		<svg
 			aria-hidden="true"
-			fill="#24292f"
+			fill="currentColor"
 			height="13"
 			style={ { display: 'block', flexShrink: 0 } }
 			viewBox="0 0 16 16"
@@ -402,7 +402,7 @@ function GitLabIcon() {
 	return (
 		<svg
 			aria-hidden="true"
-			fill="#e24329"
+			fill="currentColor"
 			height="13"
 			style={ { display: 'block', flexShrink: 0 } }
 			viewBox="0 0 16 16"
@@ -450,22 +450,14 @@ function RepoCard( {
 			<CardBody>
 				<Flex align="flex-start" gap={ 2 } justify="space-between">
 					<FlexBlock>
-						<span className="gwp-repo-name-row">
-							{ showSourceBadge &&
-								( 'github' === repo.provider ? (
-									<GitHubIcon />
-								) : (
-									<GitLabIcon />
-								) ) }
-							<a
-								className="gwp-repo-name"
-								href={ repo.html_url }
-								rel="noopener noreferrer"
-								target="_blank"
-							>
-								{ repo.full_name }
-							</a>
-						</span>
+						<a
+							className="gwp-repo-name"
+							href={ repo.html_url }
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							{ repo.full_name }
+						</a>
 					</FlexBlock>
 					<FlexItem>
 						{ isInstalled ? (
@@ -501,6 +493,18 @@ function RepoCard( {
 					</p>
 				) }
 				<div className="gwp-repo-badges">
+					{ showSourceBadge &&
+						( 'github' === repo.provider ? (
+							<span className="gwp-badge gwp-badge--github">
+								<GitHubIcon />
+								{ __( 'GitHub', 'git' ) }
+							</span>
+						) : (
+							<span className="gwp-badge gwp-badge--gitlab">
+								<GitLabIcon />
+								{ __( 'GitLab', 'git' ) }
+							</span>
+						) ) }
 					<TypeBadge
 						detection={ detection }
 						installed={ installed }
