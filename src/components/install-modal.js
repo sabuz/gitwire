@@ -7,7 +7,6 @@ import {
 	ComboboxControl,
 	Flex,
 	Modal,
-	Notice,
 	SelectControl,
 	Spinner,
 } from '@wordpress/components';
@@ -45,8 +44,6 @@ export default function InstallModal( {
 			: 'plugin'
 	);
 	const [ installing, setInstalling ] = useState( false );
-	const [ countdown, setCountdown ] = useState( null );
-	const [ renamedSlug, setRenamedSlug ] = useState( null );
 
 	// Filter all fetched branches by the current search term, show at most 10.
 	// Always keep the selected branch visible when no search is active.
@@ -102,31 +99,32 @@ export default function InstallModal( {
 				type: detection?.type !== 'unknown' ? detection.type : type,
 				provider,
 			} );
-			onInstalled( result );
 			if ( result.slug_renamed ) {
-				setRenamedSlug( result.slug );
+				toast.warning(
+					sprintf(
+						/* translators: %s: renamed directory slug */
+						__(
+							'Installed as "%s" to avoid a directory conflict with an existing installation.',
+							'git'
+						),
+						result.slug
+					),
+					{ duration: 8000 }
+				);
+			} else {
+				toast.success(
+					sprintf(
+						/* translators: %s: repository full name */
+						__( '%s installed successfully.', 'git' ),
+						repo.full_name
+					)
+				);
 			}
-			startCountdown();
+			onInstalled( result );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Installation failed.', 'git' ) );
 			setInstalling( false );
 		}
-	};
-
-	const startCountdown = () => {
-		let secs = 3;
-		setCountdown( secs );
-		const tick = () => {
-			secs--;
-			if ( secs <= 0 ) {
-				sessionStorage.setItem( 'gwp_goto_tab', 'installed' );
-				window.location.reload();
-				return;
-			}
-			setCountdown( secs );
-			setTimeout( tick, 1000 );
-		};
-		setTimeout( tick, 1000 );
 	};
 
 	return (
@@ -176,50 +174,14 @@ export default function InstallModal( {
 				/>
 			</div>
 
-			{ renamedSlug && (
-				<Notice
-					isDismissible={ false }
-					status="warning"
-					style={ { marginTop: 12 } }
-				>
-					{ sprintf(
-						/* translators: %s: renamed directory slug */
-						__(
-							'Installed as "%s" to avoid a directory conflict with an existing installation.',
-							'git'
-						),
-						renamedSlug
-					) }
-				</Notice>
-			) }
-
-			{ countdown !== null && (
-				<Notice
-					isDismissible={ false }
-					status="success"
-					style={ { marginTop: 12 } }
-				>
-					{ sprintf(
-						/* translators: %d: seconds remaining */
-						__(
-							'Installation complete — opening Installed tab in %d',
-							'git'
-						),
-						countdown
-					) }
-				</Notice>
-			) }
-
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 20 } }>
-				{ ! installing && countdown === null && (
+				{ ! installing && (
 					<Button variant="tertiary" onClick={ onClose }>
 						{ __( 'Cancel', 'git' ) }
 					</Button>
 				) }
 				<Button
-					disabled={
-						! canInstall || installing || countdown !== null
-					}
+					disabled={ ! canInstall || installing }
 					isBusy={ installing }
 					variant="primary"
 					onClick={ handleInstall }

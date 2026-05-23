@@ -407,7 +407,7 @@ function BranchCell( { item, onRefresh } ) {
 	return (
 		<>
 			<Button
-				size="small"
+				size="compact"
 				variant="secondary"
 				onClick={ () => setOpen( true ) }
 			>
