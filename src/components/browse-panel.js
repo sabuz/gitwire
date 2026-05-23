@@ -373,6 +373,7 @@ export default function BrowsePanel( {
 
 			{ modal && (
 				<InstallModal
+					detection={ detectionsRef.current[ detectionKey( modal ) ] }
 					provider={ modal.provider }
 					repo={ modal }
 					smartInstall={ smartInstall }

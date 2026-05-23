@@ -17,12 +17,13 @@ import * as api from '../api';
 /**
  * Install modal — lets the user choose a branch and confirms the install.
  *
- * @param {Object}   props              Component props.
- * @param {Object}   props.repo         Repository data object.
- * @param {boolean}  props.smartInstall Whether smart install is enabled.
- * @param {Function} props.onClose      Callback fired when the modal is closed.
- * @param {Function} props.onInstalled  Callback fired after a successful install.
- * @param {string}   props.provider     Git provider: 'github' or 'gitlab'.
+ * @param {Object}      props              Component props.
+ * @param {Object}      props.repo         Repository data object.
+ * @param {boolean}     props.smartInstall Whether smart install is enabled.
+ * @param {Function}    props.onClose      Callback fired when the modal is closed.
+ * @param {Function}    props.onInstalled  Callback fired after a successful install.
+ * @param {string}      props.provider     Git provider: 'github' or 'gitlab'.
+ * @param {Object|null} props.detection    Pre-fetched detection result, if any.
  * @return {JSX.Element} The rendered install modal.
  */
 export default function InstallModal( {
@@ -31,12 +32,18 @@ export default function InstallModal( {
 	smartInstall,
 	onClose,
 	onInstalled,
+	detection: initialDetection = null,
 } ) {
 	const [ allBranches, setAllBranches ] = useState( [] );
 	const [ branch, setBranch ] = useState( repo.default_branch || 'main' );
 	const [ branchFilter, setBranchFilter ] = useState( '' );
-	const [ detection, setDetection ] = useState( null );
-	const [ type, setType ] = useState( 'plugin' );
+	const [ detection, setDetection ] = useState( initialDetection );
+	const [ type, setType ] = useState(
+		initialDetection?.type === 'plugin' ||
+			initialDetection?.type === 'theme'
+			? initialDetection.type
+			: 'plugin'
+	);
 	const [ installing, setInstalling ] = useState( false );
 	const [ countdown, setCountdown ] = useState( null );
 
@@ -57,22 +64,28 @@ export default function InstallModal( {
 		return top.map( ( b ) => ( { label: b, value: b } ) );
 	}, [ allBranches, branchFilter, branch, repo.default_branch ] );
 
-	// Fetch branches and detect repo type in parallel on open.
 	useEffect( () => {
 		api.getBranches( repo.owner, repo.name, provider )
 			.then( ( b ) => setAllBranches( b ) )
 			.catch( () => {} );
 
-		api.detectRepo( repo.owner, repo.name, repo.default_branch, provider )
-			.then( ( d ) => {
-				setDetection( d );
-				if ( d.type === 'plugin' || d.type === 'theme' ) {
-					setType( d.type );
-				}
-			} )
-			.catch( () =>
-				setDetection( { type: 'unknown', confidence: 'none' } )
-			);
+		if ( ! initialDetection ) {
+			api.detectRepo(
+				repo.owner,
+				repo.name,
+				repo.default_branch,
+				provider
+			)
+				.then( ( d ) => {
+					setDetection( d );
+					if ( d.type === 'plugin' || d.type === 'theme' ) {
+						setType( d.type );
+					}
+				} )
+				.catch( () =>
+					setDetection( { type: 'unknown', confidence: 'none' } )
+				);
+		}
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const canInstall =
