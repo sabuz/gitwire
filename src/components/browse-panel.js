@@ -258,11 +258,11 @@ export default function BrowsePanel( {
 			<Flex
 				align="center"
 				className="gwp-browse-toolbar"
-				gap={ 3 }
+				gap={ 2 }
 				justify="flex-start"
-				style={ { marginBottom: 16 } }
+				style={ { marginBottom: 24 } }
 			>
-				<FlexBlock style={ { maxWidth: 340 } }>
+				<FlexBlock style={ { maxWidth: 280 } }>
 					<SearchControl
 						__nextHasNoMarginBottom
 						// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
@@ -279,29 +279,23 @@ export default function BrowsePanel( {
 						isBusy={ loading }
 						variant="secondary"
 						onClick={ handleRefresh }
-					>
-						{ __( 'Refresh', 'git' ) }
-					</Button>
+					/>
 				</FlexItem>
-			</Flex>
-
-			<Flex
-				className="gwp-browse-filters"
-				gap={ 2 }
-				justify="flex-start"
-				style={ { marginBottom: 24 } }
-				wrap
-			>
-				{ typeFilters.map( ( f ) => (
-					<Button
-						key={ f.id }
-						isPressed={ typeFilter === f.id }
-						size="compact"
-						onClick={ () => setTypeFilter( f.id ) }
-					>
-						{ f.label }
-					</Button>
-				) ) }
+				<FlexItem style={ { marginLeft: 'auto' } }>
+					<Flex gap={ 1 }>
+						{ typeFilters.map( ( f ) => (
+							<FlexItem key={ f.id }>
+								<Button
+									isPressed={ typeFilter === f.id }
+									size="compact"
+									onClick={ () => setTypeFilter( f.id ) }
+								>
+									{ f.label }
+								</Button>
+							</FlexItem>
+						) ) }
+					</Flex>
+				</FlexItem>
 			</Flex>
 
 			{ error && (
