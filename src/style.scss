@@ -359,35 +359,11 @@ body.gwp-admin-page {
 // Installed panel
 .gwp-installed {
 
-	&-chip {
-		display: inline-flex;
-		gap: 3px;
-		align-items: center;
-		padding: 3px 8px;
-		border-radius: 3px;
-		background: #e6f4ea;
-		font-size: 11px;
-		font-weight: 600;
-		color: #137333;
-
-		.dashicons {
-			width: 13px;
-			height: 13px;
-			font-size: 13px;
-		}
-	}
 
 	&-list {
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
-	}
-
-	&-row {
-
-		.components-card__body {
-			padding: 14px 16px;
-		}
 	}
 
 	&-name {

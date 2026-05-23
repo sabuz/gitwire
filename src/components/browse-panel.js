@@ -461,10 +461,9 @@ function RepoCard( {
 					</FlexBlock>
 					<FlexItem>
 						{ isInstalled ? (
-							<span className="gwp-installed-chip">
-								<span className="dashicons dashicons-yes-alt" />
+							<Button disabled size="compact" variant="secondary">
 								{ __( 'Installed', 'git' ) }
-							</span>
+							</Button>
 						) : (
 							<Button
 								disabled={ ! canInstall }
@@ -478,7 +477,7 @@ function RepoCard( {
 										  )
 										: undefined
 								}
-								variant="primary"
+								variant="secondary"
 								onClick={ onInstall }
 							>
 								{ __( 'Install', 'git' ) }
