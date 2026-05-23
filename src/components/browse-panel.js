@@ -8,8 +8,7 @@ import {
 	FlexBlock,
 	FlexItem,
 	Card,
-	CardHeader,
-	CardFooter,
+	CardBody,
 	SearchControl,
 } from '@wordpress/components';
 
@@ -448,8 +447,8 @@ function RepoCard( {
 
 	return (
 		<Card className="gwp-repo-card" size="small">
-			<CardHeader>
-				<Flex align="center" gap={ 2 } style={ { width: '100%' } }>
+			<CardBody>
+				<Flex align="flex-start" gap={ 2 } justify="space-between">
 					<FlexBlock>
 						<span className="gwp-repo-name-row">
 							{ showSourceBadge &&
@@ -469,63 +468,54 @@ function RepoCard( {
 						</span>
 					</FlexBlock>
 					<FlexItem>
-						<Flex align="center" gap={ 1 }>
-							<FlexItem>
-								<TypeBadge
-									detection={ detection }
-									installed={ installed }
-								/>
-							</FlexItem>
-							<FlexItem>
-								<span
-									className={ `gwp-badge gwp-badge--${
-										repo.private ? 'warning' : 'success'
-									}` }
-								>
-									{ repo.private ? 'Private' : 'Public' }
-								</span>
-							</FlexItem>
-						</Flex>
+						{ isInstalled ? (
+							<span className="gwp-installed-chip">
+								<span className="dashicons dashicons-yes-alt" />
+								{ __( 'Installed', 'git' ) }
+							</span>
+						) : (
+							<Button
+								disabled={ ! canInstall }
+								isBusy={ detecting && ! smartInstall }
+								size="compact"
+								title={
+									blockedBySmartInstall
+										? __(
+												'Smart Install is on — only verified WordPress plugins and themes can be installed.',
+												'git'
+										  )
+										: undefined
+								}
+								variant="primary"
+								onClick={ onInstall }
+							>
+								{ __( 'Install', 'git' ) }
+							</Button>
+						) }
 					</FlexItem>
 				</Flex>
-			</CardHeader>
-
-			<CardFooter>
-				<FlexBlock>
-					{ repo.updated_at && (
-						<span className="gwp-repo-updated">
-							{ __( 'Updated', 'git' ) }{ ' ' }
-							{ timeAgo( repo.updated_at ) }
-						</span>
-					) }
-				</FlexBlock>
-				<FlexItem>
-					{ isInstalled ? (
-						<span className="gwp-installed-chip">
-							<span className="dashicons dashicons-yes-alt" />
-							{ __( 'Installed', 'git' ) }
-						</span>
-					) : (
-						<Button
-							disabled={ ! canInstall }
-							isBusy={ detecting && ! smartInstall }
-							size="compact"
-							title={
-								blockedBySmartInstall
-									? __(
-											'Smart Install is on — only verified WordPress plugins and themes can be installed.',
-											'git'
-									  )
-									: undefined
-							}
-							variant="primary"
-							onClick={ onInstall }
-						>
-							{ __( 'Install', 'git' ) }
-						</Button>
-					) }
-				</FlexItem>
-			</CardFooter>
+				{ repo.updated_at && (
+					<p className="gwp-repo-updated">
+						{ __( 'Updated', 'git' ) }{ ' ' }
+						{ timeAgo( repo.updated_at ) }
+					</p>
+				) }
+				<div className="gwp-repo-badges">
+					<TypeBadge
+						detection={ detection }
+						installed={ installed }
+					/>
+					<span
+						className={ `gwp-badge gwp-badge--${
+							repo.private ? 'warning' : 'success'
+						}` }
+					>
+						{ repo.private
+							? __( 'Private', 'git' )
+							: __( 'Public', 'git' ) }
+					</span>
+				</div>
+			</CardBody>
 		</Card>
 	);
 }

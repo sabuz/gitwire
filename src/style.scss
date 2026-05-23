@@ -298,25 +298,8 @@ body.gwp-admin-page {
 			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 		}
 
-		// WP Card's inner Content div is position:relative only.
-		// Make it a flex column so the footer stays pinned.
-		> div:first-child {
-			display: flex;
-			flex-direction: column;
-			height: 100%;
-		}
-
-		.components-card__header {
-			padding: 12px 16px;
-		}
-
-		.components-card__footer {
-			padding: 8px 16px;
-		}
-
-		// No body between header and footer — suppress the duplicate border.
-		.components-card__header + .components-card__footer {
-			border-top: none;
+		.components-card__body {
+			padding: 14px 16px;
 		}
 	}
 
@@ -324,6 +307,20 @@ body.gwp-admin-page {
 		display: inline-flex;
 		gap: 6px;
 		align-items: flex-start;
+	}
+
+	&-updated {
+		display: block;
+		margin-top: 6px;
+		margin-bottom: 8px;
+		font-size: 11px;
+		color: #8c959f;
+	}
+
+	&-badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
 	}
 
 	&-name {
@@ -339,10 +336,6 @@ body.gwp-admin-page {
 		}
 	}
 
-	&-updated {
-		font-size: 11px;
-		color: #8c959f;
-	}
 }
 
 // Detecting spinner (browse cards — badges replaced with @wordpress/ui Badge)
