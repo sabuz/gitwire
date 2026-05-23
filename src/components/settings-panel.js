@@ -148,6 +148,7 @@ function GitHubCard( {
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 	const [ tokenError, setTokenError ] = useState( false );
+	const [ usernameError, setUsernameError ] = useState( false );
 
 	const isConnected = !! ( settings.token || settings.username );
 
@@ -159,12 +160,8 @@ function GitHubCard( {
 		setSaving( true );
 		setTesting( true );
 		setTokenError( false );
+		setUsernameError( false );
 		try {
-			const result = await api.testConnection( {
-				provider: 'github',
-				token,
-				username,
-			} );
 			await api.saveSettings( {
 				token,
 				username,
@@ -173,13 +170,38 @@ function GitHubCard( {
 				smart_install: smartInstall,
 			} );
 			onSave( { ...settings, token, username } );
-			onConnectionUpdate( result );
-			toast.success( __( 'GitHub connected.', 'git' ) );
-		} catch ( e ) {
-			if ( token.trim() ) {
-				setTokenError( true );
+			try {
+				const result = await api.testConnection( {
+					provider: 'github',
+					token,
+					username,
+				} );
+				onConnectionUpdate( result );
+				toast.success( __( 'GitHub connected.', 'git' ) );
+			} catch ( e ) {
+				// Revert to previous credentials so the form stays visible.
+				try {
+					await api.saveSettings( {
+						token: settings.token,
+						username: settings.username,
+						gitlab_token: settings.gitlab_token,
+						gitlab_url: settings.gitlab_url,
+						smart_install: smartInstall,
+					} );
+				} catch ( _ ) {}
+				onSave( settings );
+				onConnectionUpdate( null );
+				if ( token.trim() ) {
+					setTokenError( true );
+				} else {
+					setUsernameError( true );
+				}
+				toast.error(
+					e.message || __( 'Connection test failed.', 'git' )
+				);
 			}
-			toast.error( e.message || __( 'Connection test failed.', 'git' ) );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Save failed.', 'git' ) );
 		} finally {
 			setTesting( false );
 			setSaving( false );
@@ -232,6 +254,7 @@ function GitHubCard( {
 			<>
 				<TextControl
 					__nextHasNoMarginBottom
+					className={ usernameError ? 'gwp-input-error' : undefined }
 					help={ __(
 						'Your GitHub username or organization. Not required when a token is set.',
 						'git'
@@ -239,7 +262,10 @@ function GitHubCard( {
 					label={ __( 'GitHub Username', 'git' ) }
 					placeholder="your-github-username"
 					value={ username }
-					onChange={ setUsername }
+					onChange={ ( v ) => {
+						setUsername( v );
+						setUsernameError( false );
+					} }
 				/>
 
 				<Spacer marginTop={ 4 } />
@@ -379,11 +405,6 @@ function GitLabCard( {
 		setTesting( true );
 		setTokenError( false );
 		try {
-			const result = await api.testConnection( {
-				provider: 'gitlab',
-				gitlab_token: gitlabToken,
-				gitlab_url: gitlabUrl,
-			} );
 			await api.saveSettings( {
 				token: settings.token,
 				username: settings.username,
@@ -396,11 +417,34 @@ function GitLabCard( {
 				gitlab_token: gitlabToken,
 				gitlab_url: gitlabUrl,
 			} );
-			onConnectionUpdate( result );
-			toast.success( __( 'GitLab connected.', 'git' ) );
+			try {
+				const result = await api.testConnection( {
+					provider: 'gitlab',
+					gitlab_token: gitlabToken,
+					gitlab_url: gitlabUrl,
+				} );
+				onConnectionUpdate( result );
+				toast.success( __( 'GitLab connected.', 'git' ) );
+			} catch ( e ) {
+				// Revert to previous credentials so the form stays visible.
+				try {
+					await api.saveSettings( {
+						token: settings.token,
+						username: settings.username,
+						gitlab_token: settings.gitlab_token,
+						gitlab_url: settings.gitlab_url,
+						smart_install: smartInstall,
+					} );
+				} catch ( _ ) {}
+				onSave( settings );
+				onConnectionUpdate( null );
+				setTokenError( true );
+				toast.error(
+					e.message || __( 'Connection test failed.', 'git' )
+				);
+			}
 		} catch ( e ) {
-			setTokenError( true );
-			toast.error( e.message || __( 'Connection test failed.', 'git' ) );
+			toast.error( e.message || __( 'Save failed.', 'git' ) );
 		} finally {
 			setTesting( false );
 			setSaving( false );

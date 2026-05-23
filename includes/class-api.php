@@ -64,11 +64,16 @@ class API {
 		} elseif ( $username ) {
 			// Username-only: fetch the public profile so we can show the avatar/name.
 			$user = $this->get( '/users/' . rawurlencode( $username ) );
-			if ( ! is_wp_error( $user ) ) {
-				$result['login']      = $user['login'] ?? '';
-				$result['name']       = $user['name'] ?? '';
-				$result['avatar_url'] = $user['avatar_url'] ?? '';
+			if ( is_wp_error( $user ) ) {
+				$status = (int) ( $user->get_error_data()['status'] ?? 0 );
+				if ( 404 === $status ) {
+					return new \WP_Error( 'gwp_not_found', 'GitHub user not found.', [ 'status' => 404 ] );
+				}
+				return $user;
 			}
+			$result['login']      = $user['login'] ?? '';
+			$result['name']       = $user['name'] ?? '';
+			$result['avatar_url'] = $user['avatar_url'] ?? '';
 		}
 
 		// Rate limit — always fetch so we always have the numbers.
