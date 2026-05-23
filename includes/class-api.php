@@ -46,13 +46,14 @@ class API {
 	 * Tests the API connection and returns profile and rate-limit data.
 	 *
 	 * @since 1.0.0
+	 * @param string $username Optional GitHub username for public profile lookup when no token is set.
 	 * @return array<string, mixed>|WP_Error Connection data on success, WP_Error on failure.
 	 */
-	public function test_connection(): array|\WP_Error {
+	public function test_connection( string $username = '' ): array|\WP_Error {
 		$result = [];
 
-		// Profile info (authenticated only).
 		if ( $this->token ) {
+			// Authenticated: fetch the authed user's profile.
 			$user = $this->get( '/user' );
 			if ( is_wp_error( $user ) ) {
 				return $user;
@@ -60,6 +61,14 @@ class API {
 			$result['login']      = $user['login'] ?? '';
 			$result['name']       = $user['name'] ?? '';
 			$result['avatar_url'] = $user['avatar_url'] ?? '';
+		} elseif ( $username ) {
+			// Username-only: fetch the public profile so we can show the avatar/name.
+			$user = $this->get( '/users/' . rawurlencode( $username ) );
+			if ( ! is_wp_error( $user ) ) {
+				$result['login']      = $user['login'] ?? '';
+				$result['name']       = $user['name'] ?? '';
+				$result['avatar_url'] = $user['avatar_url'] ?? '';
+			}
 		}
 
 		// Rate limit — always fetch so we always have the numbers.

@@ -10,7 +10,6 @@ import {
 	Flex,
 	Modal,
 } from '@wordpress/components';
-import { Badge } from '@wordpress/ui';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
@@ -93,15 +92,15 @@ export default function InstalledPanel( {
 				label: __( 'Type', 'git' ),
 				getValue: ( { item } ) => item.type,
 				render: ( { item } ) => (
-					<Badge
-						intent={
-							item.type === 'theme' ? 'none' : 'informational'
-						}
+					<span
+						className={ `gwp-badge gwp-badge--${
+							item.type === 'theme' ? 'neutral' : 'info'
+						}` }
 					>
 						{ item.type === 'theme'
 							? __( 'Theme', 'git' )
 							: __( 'Plugin', 'git' ) }
-					</Badge>
+					</span>
 				),
 				enableSorting: true,
 			},
@@ -111,11 +110,15 @@ export default function InstalledPanel( {
 				getValue: ( { item } ) =>
 					item.active ? 'active' : 'inactive',
 				render: ( { item } ) => (
-					<Badge intent={ item.active ? 'stable' : 'draft' }>
+					<span
+						className={ `gwp-badge gwp-badge--${
+							item.active ? 'success' : 'draft'
+						}` }
+					>
 						{ item.active
 							? __( 'Active', 'git' )
 							: __( 'Inactive', 'git' ) }
-					</Badge>
+					</span>
 				),
 				enableSorting: true,
 			},
@@ -124,7 +127,9 @@ export default function InstalledPanel( {
 				label: __( 'Branch', 'git' ),
 				getValue: ( { item } ) => item.branch,
 				render: ( { item } ) => (
-					<Badge intent="informational">{ item.branch }</Badge>
+					<span className="gwp-badge gwp-badge--info">
+						{ item.branch }
+					</span>
 				),
 				enableSorting: true,
 			},

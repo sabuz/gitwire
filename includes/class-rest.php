@@ -346,7 +346,7 @@ class REST {
 		$cache_this     = ( $saved_token === $token && $saved_username === $username );
 
 		$api    = new API( $token );
-		$result = $api->test_connection();
+		$result = $api->test_connection( $username );
 
 		if ( is_wp_error( $result ) ) {
 			if ( $cache_this ) {
@@ -363,7 +363,7 @@ class REST {
 
 		$data = [
 			'provider'       => 'github',
-			'authenticated'  => ! empty( $result['login'] ),
+			'authenticated'  => ! empty( $token ),
 			'login'          => $result['login'] ?? '',
 			'name'           => $result['name'] ?? '',
 			'avatar_url'     => $result['avatar_url'] ?? '',

@@ -19,7 +19,6 @@ import {
 	CardFooter,
 	SearchControl,
 } from '@wordpress/components';
-import { Badge } from '@wordpress/ui';
 
 import * as api from '../api';
 import ConnectPrompt from './connect-prompt';
@@ -392,13 +391,13 @@ function RepoCard( { repo, detection, installed, smartInstall, onInstall } ) {
 								/>
 							</FlexItem>
 							<FlexItem>
-								<Badge
-									intent={
-										repo.private ? 'medium' : 'stable'
-									}
-								>
-									{ repo.private ? 'Private' : 'Public' }
-								</Badge>
+								<span
+								className={ `gwp-badge gwp-badge--${
+									repo.private ? 'warning' : 'success'
+								}` }
+							>
+								{ repo.private ? 'Private' : 'Public' }
+							</span>
 							</FlexItem>
 						</Flex>
 					</FlexItem>
@@ -492,9 +491,13 @@ function TypeBadge( { detection, installed } ) {
 	if ( installed ) {
 		const t = installed.type;
 		return (
-			<Badge intent={ t === 'theme' ? 'none' : 'informational' }>
+			<span
+				className={ `gwp-badge gwp-badge--${
+					t === 'theme' ? 'neutral' : 'info'
+				}` }
+			>
 				{ t === 'theme' ? __( 'Theme', 'git' ) : __( 'Plugin', 'git' ) }
-			</Badge>
+			</span>
 		);
 	}
 	if ( ! detection ) {
@@ -506,13 +509,29 @@ function TypeBadge( { detection, installed } ) {
 	}
 	const { type, subtype } = detection;
 	if ( type === 'plugin' ) {
-		return <Badge intent="informational">{ __( 'Plugin', 'git' ) }</Badge>;
+		return (
+			<span className="gwp-badge gwp-badge--info">
+				{ __( 'Plugin', 'git' ) }
+			</span>
+		);
 	}
 	if ( type === 'theme' && subtype === 'block' ) {
-		return <Badge intent="none">{ __( 'Block Theme', 'git' ) }</Badge>;
+		return (
+			<span className="gwp-badge gwp-badge--neutral">
+				{ __( 'Block Theme', 'git' ) }
+			</span>
+		);
 	}
 	if ( type === 'theme' ) {
-		return <Badge intent="none">{ __( 'Theme', 'git' ) }</Badge>;
+		return (
+			<span className="gwp-badge gwp-badge--neutral">
+				{ __( 'Theme', 'git' ) }
+			</span>
+		);
 	}
-	return <Badge intent="draft">{ __( 'Unknown', 'git' ) }</Badge>;
+	return (
+		<span className="gwp-badge gwp-badge--draft">
+			{ __( 'Unknown', 'git' ) }
+		</span>
+	);
 }

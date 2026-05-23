@@ -174,24 +174,40 @@ body.gwp-admin-page {
 	vertical-align: middle;
 }
 
-// Connection status card
-.gwp-conn-badge {
+.gwp-badge {
 	display: inline-flex;
 	gap: 4px;
 	align-items: center;
-	padding: 4px 10px;
+	padding: 2px 8px;
 	border-radius: 20px;
-	font-size: 12px;
+	font-size: 11px;
 	font-weight: 600;
+	line-height: 1.6;
+	white-space: nowrap;
 
-	&--ok {
+	&--success {
 		background: #d1e4dd;
 		color: #14532d;
 	}
 
-	&--warn {
+	&--warning {
 		background: #fff3cd;
 		color: #664d03;
+	}
+
+	&--info {
+		background: #dbeafe;
+		color: #1e40af;
+	}
+
+	&--neutral {
+		background: #f0f0f0;
+		color: #3c434a;
+	}
+
+	&--draft {
+		background: #f0f0f0;
+		color: #8c959f;
 	}
 
 	.dashicons {

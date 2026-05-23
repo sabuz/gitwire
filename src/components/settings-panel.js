@@ -235,7 +235,13 @@ function GitHubCard( {
 					</FlexBlock>
 					{ isConnected && connection && ! connection.error && (
 						<FlexItem>
-							<span className="gwp-conn-badge gwp-conn-badge--ok">
+							<span
+								className={ `gwp-badge gwp-badge--${
+									connection.authenticated
+										? 'success'
+										: 'warning'
+								}` }
+							>
 								<span className="dashicons dashicons-yes-alt" />
 								{ connection.authenticated
 									? __( 'Connected', 'git' )
@@ -452,7 +458,7 @@ function GitLabCard( {
 					</FlexBlock>
 					{ isConnected && connection && ! connection.error && (
 						<FlexItem>
-							<span className="gwp-conn-badge gwp-conn-badge--ok">
+							<span className="gwp-badge gwp-badge--success">
 								<span className="dashicons dashicons-yes-alt" />
 								{ __( 'Connected', 'git' ) }
 							</span>
@@ -562,7 +568,7 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 		return (
 			<Flex align="center" gap={ 3 } justify="space-between">
 				<FlexItem>
-					<span className="gwp-conn-badge gwp-conn-badge--ok">
+					<span className="gwp-badge gwp-badge--success">
 						<span className="dashicons dashicons-yes-alt" />
 						{ __( 'Credentials saved', 'git' ) }
 					</span>
