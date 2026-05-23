@@ -388,30 +388,28 @@ class Installer {
 			$api = new API( $settings['token'] ?? '' );
 		}
 
-		// Detect directory conflict with a differently-keyed installed record and auto-rename.
+		// Auto-rename if the target directory exists but doesn't belong to this exact record.
+		// Covers both conflicts with other git-managed installs and unmanaged directories
+		// (e.g. a WP.org install with the same slug).
 		$current_key   = $provider . ':' . $full_name;
 		$all_installed = self::get_installed();
 		$slug_renamed  = false;
 
 		if ( is_dir( $install_path ) ) {
-			foreach ( $all_installed as $key => $rec ) {
-				if (
-					$key !== $current_key &&
-					isset( $rec['install_path'] ) &&
-					untrailingslashit( $rec['install_path'] ) === untrailingslashit( $install_path )
-				) {
-					$dir_base  = trailingslashit( dirname( $install_path ) );
-					$base_slug = $slug . '-' . $provider;
-					$new_slug  = $base_slug;
-					$counter   = 2;
-					while ( is_dir( $dir_base . $new_slug ) ) {
-						$new_slug = $base_slug . '-' . ( $counter++ );
-					}
-					$slug         = $new_slug;
-					$install_path = $dir_base . $slug;
-					$slug_renamed = true;
-					break;
+			$is_own_update = isset( $all_installed[ $current_key ] ) &&
+				untrailingslashit( $all_installed[ $current_key ]['install_path'] ?? '' ) === untrailingslashit( $install_path );
+
+			if ( ! $is_own_update ) {
+				$dir_base  = trailingslashit( dirname( $install_path ) );
+				$base_slug = $slug . '-' . $provider;
+				$new_slug  = $base_slug;
+				$counter   = 2;
+				while ( is_dir( $dir_base . $new_slug ) ) {
+					$new_slug = $base_slug . '-' . ( $counter++ );
 				}
+				$slug         = $new_slug;
+				$install_path = $dir_base . $slug;
+				$slug_renamed = true;
 			}
 		}
 
