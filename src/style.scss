@@ -1,5 +1,11 @@
 @use "@wordpress/dataviews/build-style/style.css";
 
+body {
+	--gwp-color-accent: var(--wp-admin-theme-color, #3858e9);
+	--gwp-color-accent-darker-10: var(--wp-admin-theme-color-darker-10, #183ad6);
+	--gwp-color-accent-darker-20: var(--wp-admin-theme-color-darker-20, #132ea8);
+}
+
 // DataViews table overrides
 .dataviews {
 
@@ -105,21 +111,21 @@ body.gwp-admin-page {
 	text-decoration: none;
 
 	&:hover {
-		color: var(--wp-admin-theme-color, #3858e9);
+		color: var(--gwp-color-accent);
 		text-decoration: none;
 	}
 
 	&:focus:not(:focus-visible) {
 		outline: none;
-		box-shadow: inset 0 -2px 0 0 var(--wp-admin-theme-color, #3858e9);
+		box-shadow: inset 0 -2px 0 0 var(--gwp-color-accent);
 	}
 
 	&.is-active {
-		box-shadow: inset 0 -2px 0 0 var(--wp-admin-theme-color, #3858e9);
+		box-shadow: inset 0 -2px 0 0 var(--gwp-color-accent);
 		color: #1a1a1a;
 
 		&:hover {
-			color: var(--wp-admin-theme-color, #3858e9);
+			color: var(--gwp-color-accent);
 		}
 	}
 }
@@ -133,7 +139,7 @@ body.gwp-admin-page {
 	margin-left: 6px;
 	padding: 0 5px;
 	border-radius: 9px;
-	background: var(--wp-admin-theme-color, #3858e9);
+	background: var(--gwp-color-accent);
 	font-size: 10px;
 	font-weight: 700;
 	line-height: 1;
@@ -213,16 +219,6 @@ body.gwp-admin-page {
 	&--draft {
 		background: #f0f0f0;
 		color: #8c959f;
-	}
-
-	&--github {
-		background: #f0f0f0;
-		color: #24292f;
-	}
-
-	&--gitlab {
-		background: #fdecea;
-		color: #c1371d;
 	}
 
 	.dashicons {
@@ -308,7 +304,14 @@ body.gwp-admin-page {
 		}
 	}
 
+	&-name-row {
+		display: inline-flex;
+		gap: 6px;
+		align-items: center;
+	}
+
 	&-name {
+		margin-bottom: 1px;
 		font-size: 13px;
 		font-weight: 600;
 		line-height: 1.3;
@@ -316,7 +319,7 @@ body.gwp-admin-page {
 		text-decoration: none;
 
 		&:hover {
-			color: #3858e9;
+			color: var(--gwp-color-accent);
 		}
 	}
 
