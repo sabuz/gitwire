@@ -523,14 +523,15 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 
 	return (
 		<Modal
+			className="gwp-modal"
 			style={ { width: 480 } }
 			title={
-				<>
+				<span className="gwp-modal__title">
 					{ __( 'Switch branch', 'git' ) }{ ' ' }
 					<span style={ { color: 'var(--gwp-color-accent)' } }>
 						{ item.repo }
 					</span>
-				</>
+				</span>
 			}
 			onRequestClose={ onClose }
 		>
@@ -597,11 +598,16 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 
 	return (
 		<Modal
-			title={ sprintf(
-				/* translators: %s: repository full name */
-				__( 'Delete %s?', 'git' ),
-				item.full_name
-			) }
+			className="gwp-modal"
+			title={
+				<span className="gwp-modal__title">
+					{ sprintf(
+						/* translators: %s: repository full name */
+						__( 'Delete %s?', 'git' ),
+						item.full_name
+					) }
+				</span>
+			}
 			onRequestClose={ onClose }
 		>
 			<p>
@@ -740,13 +746,13 @@ function CommitsModal( { item, onClose, onRefresh } ) {
 
 	return (
 		<Modal
-			className="gwp-commits-modal"
+			className="gwp-modal gwp-commits-modal"
 			shouldCloseOnClickOutside={ ! pulling }
 			shouldCloseOnEsc={ ! pulling }
 			style={ { width: 560 } }
 			title={
 				<Flex align="center" justify="space-between">
-					<span className="gwp-commits-modal__title">
+					<span className="gwp-modal__title">
 						{ __( 'Commits', 'git' ) }{ ' ' }
 						<span style={ { color: 'var(--gwp-color-accent)' } }>
 							{ item.full_name }
@@ -790,6 +796,7 @@ function CommitsModal( { item, onClose, onRefresh } ) {
 						>
 							<code
 								style={ {
+									alignSelf: 'flex-start',
 									flexShrink: 0,
 									fontSize: 11,
 									fontFamily: 'monospace',

@@ -204,16 +204,17 @@ export default function InstallModal( {
 
 	return (
 		<Modal
+			className="gwp-modal"
 			shouldCloseOnClickOutside={ ! installing }
 			shouldCloseOnEsc={ ! installing }
 			style={ { width: 480 } }
 			title={
-				<>
+				<span className="gwp-modal__title">
 					{ __( 'Install', 'git' ) }{ ' ' }
 					<span style={ { color: 'var(--gwp-color-accent)' } }>
 						{ repo.full_name }
 					</span>
-				</>
+				</span>
 			}
 			onRequestClose={ installing ? undefined : onClose }
 		>
