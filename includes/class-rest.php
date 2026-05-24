@@ -511,7 +511,7 @@ class REST {
 				'page'     => $page,
 			];
 
-			set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
+			set_transient( $cache_key, $payload, 30 * MINUTE_IN_SECONDS );
 
 			return self::enrich_with_detections( $payload, 'gitlab' );
 		}
@@ -562,7 +562,7 @@ class REST {
 			'page'     => $page,
 		];
 
-		set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
+		set_transient( $cache_key, $payload, 30 * MINUTE_IN_SECONDS );
 
 		return self::enrich_with_detections( $payload, 'github' );
 	}
