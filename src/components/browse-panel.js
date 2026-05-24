@@ -22,19 +22,17 @@ import { GitHubIcon, GitLabIcon } from './provider-icons';
 /**
  * Browse panel — lists GitHub and GitLab repositories with detection and install actions.
  *
- * @param {Object}   props                 Component props.
- * @param {Object}   props.settings        Plugin settings.
- * @param {Object}   props.installed       Map of installed repositories.
- * @param {Function} props.onInstalled     Callback fired after a successful install.
- * @param {Function} props.onGoToInstalled Callback to navigate to the Installed tab.
- * @param {Function} props.onGoToSettings  Callback to navigate to the Settings tab.
+ * @param {Object}   props                Component props.
+ * @param {Object}   props.settings       Plugin settings.
+ * @param {Object}   props.installed      Map of installed repositories.
+ * @param {Function} props.onPostInstall  Switches to Installed, refreshes, then toasts.
+ * @param {Function} props.onGoToSettings Callback to navigate to the Settings tab.
  * @return {JSX.Element} The rendered browse panel.
  */
 export default function BrowsePanel( {
 	settings,
 	installed,
-	onInstalled,
-	onGoToInstalled,
+	onPostInstall,
 	onGoToSettings,
 } ) {
 	const hasGitHub = !! ( settings?.token_set || settings?.username );
@@ -330,9 +328,9 @@ export default function BrowsePanel( {
 					smartInstall={ smartInstall }
 					onClose={ () => setModal( null ) }
 					onInstalled={ ( result ) => {
+						const repoFullName = modal.full_name;
 						setModal( null );
-						onInstalled( result );
-						onGoToInstalled();
+						onPostInstall( result, repoFullName );
 					} }
 				/>
 			) }

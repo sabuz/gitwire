@@ -6,6 +6,7 @@ import { Button, Flex, Icon } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
+import { queuePendingToastAndReload } from '../pending-toast';
 import ConnectPrompt from './connect-prompt';
 import BranchCell from './installed/branch-cell';
 import BranchModal from './installed/branch-modal';
@@ -197,14 +198,13 @@ export default function InstalledPanel( {
 							item.repo,
 							item.provider ?? 'github'
 						);
-						toast.success(
+						queuePendingToastAndReload(
 							sprintf(
 								/* translators: %s: repository full name */
 								__( '%s activated.', 'git' ),
 								item.full_name
 							)
 						);
-						onRefresh();
 					} catch ( e ) {
 						toast.error(
 							e.message || __( 'Activation failed.', 'git' )
@@ -224,14 +224,13 @@ export default function InstalledPanel( {
 							item.repo,
 							item.provider ?? 'github'
 						);
-						toast.success(
+						queuePendingToastAndReload(
 							sprintf(
 								/* translators: %s: repository full name */
 								__( '%s deactivated.', 'git' ),
 								item.full_name
 							)
 						);
-						onRefresh();
 					} catch ( e ) {
 						toast.error(
 							e.message || __( 'Deactivation failed.', 'git' )

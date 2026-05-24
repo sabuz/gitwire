@@ -11,6 +11,7 @@ import {
 import { Spinner } from '@wordpress/components';
 
 import * as api from './api';
+import { showPendingToast, queuePendingToast } from './pending-toast';
 import SettingsPanel from './components/settings-panel';
 
 const BrowsePanel = lazy( () => import( './components/browse-panel' ) );
@@ -21,6 +22,29 @@ const TABS = [
 	{ name: 'browse', label: __( 'Browse', 'git' ) },
 	{ name: 'settings', label: __( 'Settings', 'git' ) },
 ];
+
+/**
+ * @param {Object} item Orphaned repository record from sync.
+ */
+function showOrphanedNotice( item ) {
+	toast.warning(
+		sprintf(
+			/* translators: %s: repository full name */
+			__(
+				'"%s" was removed from tracking — its directory no longer exists.',
+				'git'
+			),
+			item.full_name
+		),
+		{
+			duration: Infinity,
+			action: {
+				label: __( 'I understand', 'git' ),
+				onClick: () => {},
+			},
+		}
+	);
+}
 
 function tabUrl( tabName ) {
 	const url = new URL( window.location.href );
@@ -79,19 +103,14 @@ export default function App( { initialData } ) {
 	);
 
 	useEffect( () => {
-		( initialData.orphaned || [] ).forEach( ( item ) => {
-			toast.warning(
-				sprintf(
-					/* translators: %s: repository full name */
-					__(
-						'"%s" was removed from tracking — its directory no longer exists.',
-						'git'
-					),
-					item.full_name
-				),
-				{ duration: 8000 }
-			);
-		} );
+		if ( activeTab !== 'installed' ) {
+			return;
+		}
+		showPendingToast( toast );
+	}, [ activeTab ] );
+
+	useEffect( () => {
+		( initialData.orphaned || [] ).forEach( showOrphanedNotice );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect( () => {
@@ -156,19 +175,7 @@ export default function App( { initialData } ) {
 
 	const applyInstalled = useCallback( ( result ) => {
 		setInstalled( result.installed || {} );
-		( result.orphaned || [] ).forEach( ( item ) => {
-			toast.warning(
-				sprintf(
-					/* translators: %s: repository full name */
-					__(
-						'"%s" was removed from tracking — its directory no longer exists.',
-						'git'
-					),
-					item.full_name
-				),
-				{ duration: 8000 }
-			);
-		} );
+		( result.orphaned || [] ).forEach( showOrphanedNotice );
 	}, [] );
 
 	const refreshInstalled = useCallback( async () => {
@@ -176,13 +183,44 @@ export default function App( { initialData } ) {
 		applyInstalled( result );
 	}, [ applyInstalled ] );
 
-	const handleTabClick = useCallback( ( ev, tabName ) => {
-		ev.preventDefault();
+	const handleGoToTab = useCallback( ( tabName ) => {
 		setActiveTab( tabName );
 		syncUrl( tabName );
 	}, [] );
 
-	const handleGoToTab = useCallback( ( tabName ) => {
+	const handlePostInstall = useCallback(
+		( result, repoFullName ) => {
+			if ( result.slug_renamed ) {
+				queuePendingToast( {
+					message: sprintf(
+						/* translators: %s: renamed directory slug */
+						__(
+							'Installed as "%s" to avoid a directory conflict with an existing installation.',
+							'git'
+						),
+						result.slug
+					),
+					variant: 'warning',
+					duration: 8000,
+				} );
+			} else {
+				queuePendingToast( {
+					message: sprintf(
+						/* translators: %s: repository full name */
+						__( '%s installed successfully.', 'git' ),
+						repoFullName
+					),
+					variant: 'success',
+				} );
+			}
+			handleGoToTab( 'installed' );
+			refreshInstalled();
+		},
+		[ handleGoToTab, refreshInstalled ]
+	);
+
+	const handleTabClick = useCallback( ( ev, tabName ) => {
+		ev.preventDefault();
 		setActiveTab( tabName );
 		syncUrl( tabName );
 	}, [] );
@@ -273,11 +311,8 @@ export default function App( { initialData } ) {
 						<BrowsePanel
 							installed={ installed }
 							settings={ settings }
-							onGoToInstalled={ () =>
-								handleGoToTab( 'installed' )
-							}
 							onGoToSettings={ () => handleGoToTab( 'settings' ) }
-							onInstalled={ refreshInstalled }
+							onPostInstall={ handlePostInstall }
 						/>
 					</Suspense>
 				) }

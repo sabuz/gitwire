@@ -194,27 +194,6 @@ export default function InstallModal( {
 				slug: finalSlug,
 				replace,
 			} );
-			if ( result.slug_renamed ) {
-				toast.warning(
-					sprintf(
-						/* translators: %s: renamed directory slug */
-						__(
-							'Installed as "%s" to avoid a directory conflict with an existing installation.',
-							'git'
-						),
-						result.slug
-					),
-					{ duration: 8000 }
-				);
-			} else {
-				toast.success(
-					sprintf(
-						/* translators: %s: repository full name */
-						__( '%s installed successfully.', 'git' ),
-						repo.full_name
-					)
-				);
-			}
 			onInstalled( result );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Installation failed.', 'git' ) );
