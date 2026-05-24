@@ -28,7 +28,7 @@ export default function ConnectPrompt( { onConnect } ) {
 					opacity: 0.2,
 				} }
 			/>
-			<p
+			<h2
 				style={ {
 					margin: '0 0 8px',
 					fontSize: 16,
@@ -37,7 +37,7 @@ export default function ConnectPrompt( { onConnect } ) {
 				} }
 			>
 				{ __( 'Connect your Git account', 'git' ) }
-			</p>
+			</h2>
 			<p
 				style={ {
 					margin: '0 auto 20px',

@@ -301,7 +301,7 @@ export default function InstalledPanel( {
 						opacity: 0.2,
 					} }
 				/>
-				<p
+				<h2
 					style={ {
 						margin: '0 0 16px',
 						fontSize: 16,
@@ -310,7 +310,7 @@ export default function InstalledPanel( {
 					} }
 				>
 					{ __( 'No repositories installed yet.', 'git' ) }
-				</p>
+				</h2>
 				<Button variant="primary" onClick={ onGoToBrowse }>
 					{ __( 'Browse repositories', 'git' ) }
 				</Button>
