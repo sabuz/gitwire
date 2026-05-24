@@ -625,22 +625,9 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 		barColor = '#e3b341';
 	}
 
-	let rateNote = __( 'Resets in about an hour.', 'git' );
-	if ( isGitHub && connection.rate_limit === 60 ) {
-		rateNote = __(
-			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.",
-			'git'
-		);
-	} else if ( connection.rate_reset ) {
-		const countdown = humanDiff( connection.rate_reset );
-		if ( countdown ) {
-			rateNote = sprintf(
-				/* translators: %s: time until reset */
-				__( 'Resets in %s.', 'git' ),
-				countdown
-			);
-		}
-	}
+	const rateCountdown = connection.rate_reset
+		? humanDiff( connection.rate_reset )
+		: null;
 
 	return (
 		<>
@@ -738,12 +725,44 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 								} }
 							/>
 						</div>
-						<p className="gwp-rate-note">{ rateNote }</p>
+						<p className="gwp-rate-note">
+							<RateLimitNote
+								isGitHub={ isGitHub }
+								rateCountdown={ rateCountdown }
+								rateLimit={ connection.rate_limit }
+							/>
+						</p>
 					</div>
 				</>
 			) }
 		</>
 	);
+}
+
+/**
+ * Rate limit reset note shown under the API usage bar.
+ *
+ * @param {Object}      props               Component props.
+ * @param {boolean}     props.isGitHub      Whether the provider is GitHub.
+ * @param {number}      props.rateLimit     Requests allowed per hour.
+ * @param {string|null} props.rateCountdown Human-readable time until reset.
+ * @return {string} Translated rate limit note.
+ */
+function RateLimitNote( { isGitHub, rateLimit, rateCountdown } ) {
+	if ( isGitHub && rateLimit === 60 ) {
+		return __(
+			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.",
+			'git'
+		);
+	}
+	if ( rateCountdown ) {
+		return sprintf(
+			/* translators: %s: time until rate limit resets */
+			__( 'Resets in %s.', 'git' ),
+			rateCountdown
+		);
+	}
+	return __( 'Resets in about an hour.', 'git' );
 }
 
 function humanDiff( ts ) {

@@ -13,6 +13,7 @@ import CommitsModal, { clearCommitsCache } from './installed/commits-modal';
 import DeleteModal from './installed/delete-modal';
 import HeadCell from './installed/head-cell';
 import SourceCell from './installed/source-cell';
+import TypeBadge from './installed/type-badge';
 
 const DEFAULT_VIEW = {
 	type: 'table',
@@ -103,27 +104,7 @@ export default function InstalledPanel( {
 				id: 'type',
 				label: __( 'Type', 'git' ),
 				getValue: ( { item } ) => item.type,
-				render: ( { item } ) => {
-					const isBlockTheme =
-						item.type === 'theme' && item.subtype === 'block';
-					const isTheme = item.type === 'theme';
-					let badgeMod = 'info';
-					let badgeLabel = __( 'Plugin', 'git' );
-					if ( isBlockTheme ) {
-						badgeMod = 'block-theme';
-						badgeLabel = __( 'Block Theme', 'git' );
-					} else if ( isTheme ) {
-						badgeMod = 'theme';
-						badgeLabel = __( 'Theme', 'git' );
-					}
-					return (
-						<span
-							className={ `gwp-badge gwp-badge--${ badgeMod }` }
-						>
-							{ badgeLabel }
-						</span>
-					);
-				},
+				render: ( { item } ) => <TypeBadge item={ item } />,
 				enableSorting: true,
 			},
 			{

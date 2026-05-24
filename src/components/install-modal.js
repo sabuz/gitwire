@@ -71,6 +71,7 @@ export default function InstallModal( {
 	);
 	const [ slug, setSlug ] = useState( normalizeSlug( repo.name ) );
 	const [ slugConflict, setSlugConflict ] = useState( false );
+	const [ slugChecking, setSlugChecking ] = useState( true );
 	const [ replace, setReplace ] = useState( false );
 	const [ installing, setInstalling ] = useState( false );
 	const debounceRef = useRef( null );
@@ -118,12 +119,15 @@ export default function InstallModal( {
 
 	// Debounced slug conflict check.
 	useEffect( () => {
+		setSlugChecking( true );
 		setReplace( false );
 		clearTimeout( debounceRef.current );
 		if ( ! slug ) {
 			setSlugConflict( false );
+			setSlugChecking( false );
 			return;
 		}
+		let cancelled = false;
 		debounceRef.current = setTimeout( () => {
 			api.checkSlug(
 				finalizeSlug( slug ),
@@ -132,14 +136,30 @@ export default function InstallModal( {
 				repo.name,
 				provider
 			)
-				.then( ( r ) => setSlugConflict( r.conflict ) )
-				.catch( () => setSlugConflict( false ) );
+				.then( ( r ) => {
+					if ( cancelled ) {
+						return;
+					}
+					setSlugConflict( r.conflict );
+					setSlugChecking( false );
+				} )
+				.catch( () => {
+					if ( cancelled ) {
+						return;
+					}
+					setSlugConflict( false );
+					setSlugChecking( false );
+				} );
 		}, 400 );
-		return () => clearTimeout( debounceRef.current );
+		return () => {
+			cancelled = true;
+			clearTimeout( debounceRef.current );
+		};
 	}, [ slug, type ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const canInstall =
 		!! slug &&
+		! slugChecking &&
 		detection &&
 		( detection.type !== 'unknown' || ! smartInstall ) &&
 		( ! slugConflict || replace );
@@ -296,17 +316,36 @@ export default function InstallModal( {
 				) }
 				<Button
 					disabled={ ! canInstall || installing }
-					isBusy={ installing }
+					isBusy={ installing || slugChecking }
 					variant="primary"
 					onClick={ handleInstall }
 				>
-					{ installing
-						? __( 'Installing…', 'git' )
-						: __( 'Install', 'git' ) }
+					<InstallButtonLabel
+						installing={ installing }
+						slugChecking={ slugChecking }
+					/>
 				</Button>
 			</Flex>
 		</Modal>
 	);
+}
+
+/**
+ * Install modal primary button label.
+ *
+ * @param {Object}  props              Component props.
+ * @param {boolean} props.installing   Whether an install request is in flight.
+ * @param {boolean} props.slugChecking Whether the directory slug is being validated.
+ * @return {string} Translated button label.
+ */
+function InstallButtonLabel( { installing, slugChecking } ) {
+	if ( installing ) {
+		return __( 'Installing…', 'git' );
+	}
+	if ( slugChecking ) {
+		return __( 'Checking…', 'git' );
+	}
+	return __( 'Install', 'git' );
 }
 
 /**
