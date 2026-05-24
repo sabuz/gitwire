@@ -392,7 +392,7 @@ const RepoCard = memo( function RepoCard( {
 								title={
 									blockedBySmartInstall
 										? __(
-												'Smart Install is on — only verified WordPress plugins and themes can be installed.',
+												'Smart Install is on. Only verified WordPress plugins and themes can be installed.',
 												'git'
 										  )
 										: undefined

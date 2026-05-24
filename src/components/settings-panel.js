@@ -265,7 +265,7 @@ function GitHubCard( {
 								{ __( 'Create token', 'git' ) }
 							</a>{ ' ' }
 							{ __(
-								'— select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
+								'Select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
 								'git'
 							) }
 						</>
@@ -462,7 +462,7 @@ function GitLabCard( {
 								{ __( 'Create token', 'git' ) }
 							</a>{ ' ' }
 							{ __(
-								'— enable read_user, read_api and read_repository.',
+								'- enable read_user, read_api and read_repository.',
 								'git'
 							) }
 						</>
@@ -663,7 +663,7 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 					) : (
 						<div style={ { fontSize: 12, color: '#57606a' } }>
 							{ __(
-								'Profile unavailable — add read_user scope to your token.',
+								'Profile unavailable. Add read_user scope to your token.',
 								'git'
 							) }
 						</div>
@@ -751,7 +751,7 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 function RateLimitNote( { isGitHub, rateLimit, rateCountdown } ) {
 	if ( isGitHub && rateLimit === 60 ) {
 		return __(
-			"Unauthenticated limit — shared by your server's IP. Add a token for 5,000/hour.",
+			"Unauthenticated limit is shared by your server's IP. Add a token for 5,000/hour.",
 			'git'
 		);
 	}

@@ -374,12 +374,12 @@ function getActivationErrorMessage( error, type ) {
 	if ( isFatalResponse ) {
 		if ( type === 'theme' ) {
 			return __(
-				'Theme could not be activated because it triggered a fatal error.',
+				'Theme could not be activated. It triggered a fatal error.',
 				'git'
 			);
 		}
 		return __(
-			'Plugin could not be activated because it triggered a fatal error.',
+			'Plugin could not be activated. It triggered a fatal error.',
 			'git'
 		);
 	}

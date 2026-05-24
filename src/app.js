@@ -36,7 +36,7 @@ function showOrphanedNotice( item ) {
 		sprintf(
 			/* translators: %s: repository full name */
 			__(
-				'"%s" was removed from tracking — its directory no longer exists.',
+				'"%s" was removed from tracking. Its directory no longer exists.',
 				'git'
 			),
 			item.full_name
