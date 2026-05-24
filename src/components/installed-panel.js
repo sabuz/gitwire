@@ -6,6 +6,7 @@ import {
 	Button,
 	ComboboxControl,
 	Flex,
+	Icon,
 	Modal,
 	Spinner,
 } from '@wordpress/components';
@@ -27,13 +28,11 @@ const DEFAULT_VIEW = {
 		'branch',
 		'head',
 		'last_updated',
-		'actions',
 	],
 	sort: { field: 'name', direction: 'asc' },
 	layout: {
 		styles: {
 			name: { minWidth: 220 },
-			actions: { textAlign: 'right' },
 		},
 	},
 };
@@ -200,15 +199,75 @@ export default function InstalledPanel( {
 				),
 				enableSorting: true,
 			},
+		],
+		[ onRefresh ]
+	);
+
+	const actions = useMemo(
+		() => [
 			{
-				id: 'actions',
-				label: '',
-				getValue: () => '',
-				render: ( { item } ) => (
-					<RowActions item={ item } onRefresh={ onRefresh } />
+				id: 'activate',
+				label: __( 'Activate', 'git' ),
+				icon: <Icon icon="yes-alt" />,
+				isEligible: ( item ) => ! item.active,
+				callback: async ( [ item ] ) => {
+					try {
+						await api.activateInstalled(
+							item.owner,
+							item.repo,
+							item.provider ?? 'github'
+						);
+						toast.success(
+							sprintf(
+								/* translators: %s: repository full name */
+								__( '%s activated.', 'git' ),
+								item.full_name
+							)
+						);
+						onRefresh();
+					} catch ( e ) {
+						toast.error(
+							e.message || __( 'Activation failed.', 'git' )
+						);
+					}
+				},
+			},
+			{
+				id: 'deactivate',
+				label: __( 'Deactivate', 'git' ),
+				icon: <Icon icon="no-alt" />,
+				isEligible: ( item ) => item.active && item.type === 'plugin',
+				callback: async ( [ item ] ) => {
+					try {
+						await api.deactivateInstalled(
+							item.owner,
+							item.repo,
+							item.provider ?? 'github'
+						);
+						toast.success(
+							sprintf(
+								/* translators: %s: repository full name */
+								__( '%s deactivated.', 'git' ),
+								item.full_name
+							)
+						);
+						onRefresh();
+					} catch ( e ) {
+						toast.error(
+							e.message || __( 'Deactivation failed.', 'git' )
+						);
+					}
+				},
+			},
+			{
+				id: 'delete',
+				label: __( 'Delete', 'git' ),
+				icon: <Icon icon="trash" />,
+				isDestructive: true,
+				isEligible: ( item ) => ! item.active,
+				RenderModal: ( props ) => (
+					<DeleteRenderModal { ...props } onRefresh={ onRefresh } />
 				),
-				enableSorting: false,
-				enableHiding: false,
 			},
 		],
 		[ onRefresh ]
@@ -262,6 +321,7 @@ export default function InstalledPanel( {
 	return (
 		<div className="gwp-installed-panel">
 			<DataViews
+				actions={ actions }
 				data={ shownData }
 				defaultLayouts={ { table: {} } }
 				fields={ fields }
@@ -275,152 +335,69 @@ export default function InstalledPanel( {
 }
 
 /**
- * Inline action buttons rendered inside each DataViews table row.
+ * Modal body rendered by DataViews for the delete action.
  *
- * @param {Object}   props           Component props.
- * @param {Object}   props.item      Installed repository record.
- * @param {Function} props.onRefresh Callback to refresh the installed list.
- * @return {JSX.Element} The rendered row actions.
+ * @param {Object}   props            Component props supplied by DataViews.
+ * @param {Array}    props.items      Selected items (single item for this action).
+ * @param {Function} props.closeModal Callback to close the DataViews modal.
+ * @param {Function} props.onRefresh  Callback to refresh the installed list.
+ * @return {JSX.Element} The rendered delete confirmation body.
  */
-function RowActions( { item, onRefresh } ) {
-	const { full_name, owner, repo, type, branch, active, provider } = item;
+function DeleteRenderModal( { items, closeModal, onRefresh } ) {
+	const [ item ] = items;
+	const [ deleting, setDeleting ] = useState( false );
 
-	const [ updating, setUpdating ] = useState( false );
-	const [ activating, setActivating ] = useState( false );
-	const [ deactivating, setDeactivating ] = useState( false );
-	const [ deleteOpen, setDeleteOpen ] = useState( false );
-
-	const busy = updating || activating || deactivating;
-
-	const handleUpdate = async () => {
-		setUpdating( true );
+	const handleDelete = async () => {
+		setDeleting( true );
 		try {
-			await api.switchBranch( owner, repo, branch, provider );
+			await api.removeInstalled(
+				item.owner,
+				item.repo,
+				item.provider ?? 'github'
+			);
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
-					__( '%s: updated to latest commit.', 'git' ),
-					full_name
+					__( '%s deleted.', 'git' ),
+					item.full_name
 				)
 			);
 			onRefresh();
+			closeModal();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Update failed.', 'git' ) );
-		} finally {
-			setUpdating( false );
-		}
-	};
-
-	const handleActivate = async () => {
-		setActivating( true );
-		try {
-			await api.activateInstalled( owner, repo, provider );
-			toast.success(
-				sprintf(
-					/* translators: %s: repository full name */
-					__( '%s activated.', 'git' ),
-					full_name
-				)
-			);
-			onRefresh();
-		} catch ( e ) {
-			toast.error( e.message || __( 'Activation failed.', 'git' ) );
-		} finally {
-			setActivating( false );
-		}
-	};
-
-	const handleDeactivate = async () => {
-		setDeactivating( true );
-		try {
-			await api.deactivateInstalled( owner, repo, provider );
-			toast.success(
-				sprintf(
-					/* translators: %s: repository full name */
-					__( '%s deactivated.', 'git' ),
-					full_name
-				)
-			);
-			onRefresh();
-		} catch ( e ) {
-			toast.error( e.message || __( 'Deactivation failed.', 'git' ) );
-		} finally {
-			setDeactivating( false );
+			toast.error( e.message || __( 'Delete failed.', 'git' ) );
+			setDeleting( false );
 		}
 	};
 
 	return (
-		<Flex gap={ 2 } justify="flex-end" wrap>
-			<Button
-				disabled={ busy }
-				isBusy={ updating }
-				size="compact"
-				variant="secondary"
-				onClick={ handleUpdate }
-			>
-				{ updating
-					? __( 'Updating…', 'git' )
-					: __( 'Pull latest', 'git' ) }
-			</Button>
-
-			{ ! active && (
-				<Button
-					disabled={ busy }
-					isBusy={ activating }
-					size="compact"
-					variant="secondary"
-					onClick={ handleActivate }
-				>
-					{ activating
-						? __( 'Activating…', 'git' )
-						: __( 'Activate', 'git' ) }
+		<>
+			<p style={ { margin: 0 } }>
+				{ sprintf(
+					/* translators: %s: repository full name */
+					__(
+						'Permanently delete %s? This will remove all files from the server and cannot be undone.',
+						'git'
+					),
+					item.full_name
+				) }
+			</p>
+			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
+				<Button variant="tertiary" onClick={ closeModal }>
+					{ __( 'Cancel', 'git' ) }
 				</Button>
-			) }
-
-			{ active && type === 'plugin' && (
 				<Button
-					disabled={ busy }
-					isBusy={ deactivating }
-					size="compact"
-					variant="secondary"
-					onClick={ handleDeactivate }
-				>
-					{ deactivating
-						? __( 'Deactivating…', 'git' )
-						: __( 'Deactivate', 'git' ) }
-				</Button>
-			) }
-
-			{ ! active && (
-				<Button
-					disabled={ busy }
 					isDestructive
-					size="compact"
-					variant="secondary"
-					onClick={ () => setDeleteOpen( true ) }
+					isBusy={ deleting }
+					variant="primary"
+					onClick={ handleDelete }
 				>
-					{ __( 'Delete', 'git' ) }
+					{ deleting
+						? __( 'Deleting…', 'git' )
+						: __( 'Delete', 'git' ) }
 				</Button>
-			) }
-
-			{ deleteOpen && (
-				<DeleteConfirmModal
-					item={ item }
-					onClose={ () => setDeleteOpen( false ) }
-					onDeleted={ () => {
-						toast.success(
-							sprintf(
-								/* translators: %s: repository full name */
-								__( '%s deleted.', 'git' ),
-								full_name
-							)
-						);
-						onRefresh();
-					} }
-					onError={ ( msg ) => toast.error( msg ) }
-				/>
-			) }
-		</Flex>
+			</Flex>
+		</>
 	);
 }
 
@@ -572,87 +549,10 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 	);
 }
 
-/**
- * Confirmation modal for permanently deleting an installed repository.
- *
- * @param {Object}   props           Component props.
- * @param {Object}   props.item      Installed repository record.
- * @param {Function} props.onClose   Callback to close the modal.
- * @param {Function} props.onDeleted Callback fired after successful deletion.
- * @param {Function} props.onError   Callback fired with an error message on failure.
- * @return {JSX.Element} The rendered modal.
- */
-function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
-	const [ deleting, setDeleting ] = useState( false );
-
-	const handleDelete = async () => {
-		setDeleting( true );
-		let errorMsg = null;
-		try {
-			await api.removeInstalled(
-				item.owner,
-				item.repo,
-				item.provider ?? 'github'
-			);
-		} catch ( e ) {
-			errorMsg = e.message || 'Delete failed.';
-		}
-		if ( errorMsg ) {
-			setDeleting( false );
-			onError( errorMsg );
-			onClose();
-		} else {
-			onDeleted();
-		}
-	};
-
-	return (
-		<Modal
-			className="gwp-modal"
-			title={
-				<span className="gwp-modal__title">
-					{ sprintf(
-						/* translators: %s: repository full name */
-						__( 'Delete %s?', 'git' ),
-						item.full_name
-					) }
-				</span>
-			}
-			onRequestClose={ onClose }
-		>
-			<p>
-				{ sprintf(
-					/* translators: %s: repository full name */
-					__(
-						'Permanently delete %s? This will remove all files from the server and cannot be undone.',
-						'git'
-					),
-					item.full_name
-				) }
-			</p>
-			<Flex gap={ 3 } justify="flex-end">
-				<Button variant="tertiary" onClick={ onClose }>
-					{ __( 'Cancel', 'git' ) }
-				</Button>
-				<Button
-					isDestructive
-					isBusy={ deleting }
-					variant="primary"
-					onClick={ handleDelete }
-				>
-					{ deleting
-						? __( 'Deleting…', 'git' )
-						: __( 'Delete', 'git' ) }
-				</Button>
-			</Flex>
-		</Modal>
-	);
-}
-
 const commitsCache = new Map();
 
 /**
- * Table cell showing the locally installed HEAD SHA. Opens the commits modal on click.
+ * Table cell showing the locally installed HEAD SHA with a Pull Latest icon.
  * If the record pre-dates SHA tracking, falls back to a one-time API fetch.
  *
  * @param {Object}   props           Component props.
@@ -662,6 +562,7 @@ const commitsCache = new Map();
  */
 function HeadCell( { item, onRefresh } ) {
 	const [ open, setOpen ] = useState( false );
+	const [ pulling, setPulling ] = useState( false );
 	const [ fetchedSha, setFetchedSha ] = useState( null );
 	const cacheKey = ( item.provider ?? 'github' ) + ':' + item.full_name;
 
@@ -681,8 +582,33 @@ function HeadCell( { item, onRefresh } ) {
 			.catch( () => {} );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
+	const handlePull = async () => {
+		setPulling( true );
+		try {
+			await api.switchBranch(
+				item.owner,
+				item.repo,
+				item.branch,
+				item.provider ?? 'github'
+			);
+			commitsCache.delete( cacheKey );
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( '%s updated to latest.', 'git' ),
+					item.full_name
+				)
+			);
+			onRefresh();
+		} catch ( e ) {
+			toast.error( e.message || __( 'Pull failed.', 'git' ) );
+		} finally {
+			setPulling( false );
+		}
+	};
+
 	return (
-		<>
+		<Flex align="center" gap={ 1 } justify="flex-start">
 			<Button
 				size="compact"
 				variant="link"
@@ -690,32 +616,38 @@ function HeadCell( { item, onRefresh } ) {
 			>
 				{ item.head ?? fetchedSha ?? '···' }
 			</Button>
+			<Button
+				className={ pulling ? 'gwp-spin' : '' }
+				disabled={ pulling }
+				icon="update"
+				label={ __( 'Pull Latest', 'git' ) }
+				size="compact"
+				variant="tertiary"
+				onClick={ handlePull }
+			/>
 			{ open && (
 				<CommitsModal
 					item={ item }
 					onClose={ () => setOpen( false ) }
-					onRefresh={ onRefresh }
 				/>
 			) }
-		</>
+		</Flex>
 	);
 }
 
 /**
- * Modal showing the last 10 commits for an installed repository with a Pull Latest action.
+ * Read-only modal showing the last 10 commits for an installed repository.
  *
- * @param {Object}   props           Component props.
- * @param {Object}   props.item      Installed repository record.
- * @param {Function} props.onClose   Callback fired when the modal is closed.
- * @param {Function} props.onRefresh Callback to refresh the installed list after pulling.
+ * @param {Object}   props         Component props.
+ * @param {Object}   props.item    Installed repository record.
+ * @param {Function} props.onClose Callback fired when the modal is closed.
  * @return {JSX.Element} The rendered commits modal.
  */
-function CommitsModal( { item, onClose, onRefresh } ) {
+function CommitsModal( { item, onClose } ) {
 	const cacheKey = ( item.provider ?? 'github' ) + ':' + item.full_name;
 	const [ commits, setCommits ] = useState(
 		commitsCache.get( cacheKey ) ?? null
 	);
-	const [ pulling, setPulling ] = useState( false );
 
 	useEffect( () => {
 		if ( commitsCache.has( cacheKey ) ) {
@@ -729,57 +661,19 @@ function CommitsModal( { item, onClose, onRefresh } ) {
 			.catch( () => setCommits( [] ) );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const handlePull = async () => {
-		setPulling( true );
-		try {
-			await api.switchBranch(
-				item.owner,
-				item.repo,
-				item.branch,
-				item.provider ?? 'github'
-			);
-			toast.success(
-				sprintf(
-					/* translators: %s: repository full name */
-					__( '%s updated to latest.', 'git' ),
-					item.full_name
-				)
-			);
-			commitsCache.delete( cacheKey );
-			onRefresh();
-			onClose();
-		} catch ( e ) {
-			toast.error( e.message || __( 'Pull failed.', 'git' ) );
-			setPulling( false );
-		}
-	};
-
 	return (
 		<Modal
-			className="gwp-modal gwp-commits-modal"
-			shouldCloseOnClickOutside={ ! pulling }
-			shouldCloseOnEsc={ ! pulling }
+			className="gwp-modal"
 			style={ { width: 560 } }
 			title={
-				<Flex align="center" justify="space-between">
-					<span className="gwp-modal__title">
-						{ __( 'Commits', 'git' ) }{ ' ' }
-						<span style={ { color: 'var(--gwp-color-accent)' } }>
-							{ item.full_name }
-						</span>
+				<span className="gwp-modal__title">
+					{ __( 'Commits', 'git' ) }{ ' ' }
+					<span style={ { color: 'var(--gwp-color-accent)' } }>
+						{ item.full_name }
 					</span>
-					<Button
-						disabled={ commits === null }
-						icon="update"
-						isBusy={ pulling }
-						label={ __( 'Pull Latest', 'git' ) }
-						size="compact"
-						variant="tertiary"
-						onClick={ handlePull }
-					/>
-				</Flex>
+				</span>
 			}
-			onRequestClose={ pulling ? undefined : onClose }
+			onRequestClose={ onClose }
 		>
 			{ commits === null && (
 				<div className="gwp-installed-spinner-row">

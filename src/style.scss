@@ -396,17 +396,23 @@ body.gwp-admin-page {
 	}
 }
 
-// Installed panel — row action buttons rendered inside the DataViews table cell
+// Installed panel — align cells to middle for compact rows
 .gwp-installed-panel .dataviews-view-table {
 
 	tbody td {
 		vertical-align: middle;
 	}
+}
 
-	thead th:last-child,
-	tbody td:last-child {
-		text-align: right;
+// Spinning icon button (e.g. Pull Latest while in progress)
+@keyframes gwp-spin {
+	to {
+		transform: rotate( 360deg );
 	}
+}
+
+.gwp-spin .dashicon {
+	animation: gwp-spin 0.8s linear infinite;
 }
 
 // Branch button — truncate long branch names with ellipsis

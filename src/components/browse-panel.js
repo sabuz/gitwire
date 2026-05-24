@@ -312,10 +312,11 @@ export default function BrowsePanel( {
 				</FlexItem>
 				<FlexItem style={ { marginLeft: 'auto' } }>
 					<Button
+						className={ loading ? 'gwp-spin' : '' }
 						disabled={ loading }
 						icon="update"
-						isBusy={ loading }
-						variant="secondary"
+						label={ __( 'Refresh repositories', 'git' ) }
+						variant="tertiary"
 						onClick={ handleRefresh }
 					/>
 				</FlexItem>
