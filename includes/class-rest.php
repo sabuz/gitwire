@@ -742,6 +742,13 @@ class REST {
 			}
 
 			if ( 'plugin' === $rec['type'] ) {
+				if ( empty( $rec['plugin_file'] ) && ! empty( $rec['install_path'] ) ) {
+					$found = Installer::find_plugin_file( $rec['install_path'], $rec['slug'] ?? '' );
+					if ( $found ) {
+						$rec['plugin_file'] = $found;
+						$pruned             = true;
+					}
+				}
 				$rec['active']  = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
 				$rec['subtype'] = 'plugin';
 			} else {

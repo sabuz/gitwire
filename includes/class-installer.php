@@ -573,7 +573,7 @@ class Installer {
 	 * @param string $slug       Plugin slug (directory name).
 	 * @return string|null Relative plugin file path, or null if not found.
 	 */
-	private static function find_plugin_file( string $plugin_dir, string $slug ): ?string {
+	public static function find_plugin_file( string $plugin_dir, string $slug ): ?string {
 		if ( ! function_exists( 'get_plugin_data' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
