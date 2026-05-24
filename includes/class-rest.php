@@ -522,7 +522,7 @@ class REST {
 			$cache_key = 'gwp_repos_' . md5( 'gitlab' . ( $settings['gitlab_token'] ?? '' ) . ( $settings['gitlab_url'] ?? '' ) . $page );
 			$cached    = get_transient( $cache_key );
 			if ( false !== $cached ) {
-				return self::enrich_with_detections( $cached, 'gitlab' );
+				return self::enrich_repos_payload( $cached, 'gitlab' );
 			}
 
 			$api       = new GitLab_API( $settings['gitlab_token'] ?? '', $settings['gitlab_url'] ?? '' );
@@ -563,7 +563,7 @@ class REST {
 
 			set_transient( $cache_key, $payload, 30 * MINUTE_IN_SECONDS );
 
-			return self::enrich_with_detections( $payload, 'gitlab' );
+			return self::enrich_repos_payload( $payload, 'gitlab' );
 		}
 
 		$username = sanitize_text_field( $req->get_param( 'username' ) ?? $settings['username'] ?? '' );
@@ -575,7 +575,7 @@ class REST {
 		$cache_key = 'gwp_repos_' . md5( ( $settings['token'] ?? '' ) . $username . $page );
 		$cached    = get_transient( $cache_key );
 		if ( false !== $cached ) {
-			return self::enrich_with_detections( $cached, 'github' );
+			return self::enrich_repos_payload( $cached, 'github' );
 		}
 
 		$api       = new API( $settings['token'] ?? '' );
@@ -614,7 +614,7 @@ class REST {
 
 		set_transient( $cache_key, $payload, 30 * MINUTE_IN_SECONDS );
 
-		return self::enrich_with_detections( $payload, 'github' );
+		return self::enrich_repos_payload( $payload, 'github' );
 	}
 
 	/**
@@ -1178,6 +1178,42 @@ class REST {
 	 */
 	private static function make_api( array $settings, string $provider = 'github' ): Git_Provider_Interface {
 		return Provider_Factory::make( $settings, $provider );
+	}
+
+	/**
+	 * Enriches a repos payload with cached detections and live installed state.
+	 *
+	 * @since 1.2.0
+	 * @param array  $payload  Repos payload with a 'repos' key.
+	 * @param string $provider Provider key: 'github' or 'gitlab'.
+	 * @return array Enriched repos payload.
+	 */
+	private static function enrich_repos_payload( array $payload, string $provider ): array {
+		$payload = self::enrich_with_detections( $payload, $provider );
+		return self::enrich_with_installed( $payload, $provider );
+	}
+
+	/**
+	 * Attaches current installed records to each repo in a browse payload.
+	 *
+	 * @since 1.2.0
+	 * @param array  $payload  Repos payload with a 'repos' key.
+	 * @param string $provider Provider key: 'github' or 'gitlab'.
+	 * @return array The same payload with fresh 'installed' on each repo.
+	 */
+	private static function enrich_with_installed( array $payload, string $provider ): array {
+		$installed = Installer::get_installed();
+
+		$payload['repos'] = array_map(
+			static function ( $repo ) use ( $installed, $provider ) {
+				$key               = $provider . ':' . ( $repo['full_name'] ?? '' );
+				$repo['installed'] = $installed[ $key ] ?? null;
+				return $repo;
+			},
+			$payload['repos']
+		);
+
+		return $payload;
 	}
 
 	/**

@@ -39,7 +39,7 @@ function showOrphanedNotice( item ) {
 		{
 			duration: Infinity,
 			action: {
-				label: __( 'I understand', 'git' ),
+				label: __( 'Dismiss', 'git' ),
 				onClick: () => {},
 			},
 		}

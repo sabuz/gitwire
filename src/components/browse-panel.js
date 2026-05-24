@@ -20,6 +20,15 @@ import InstallModal from './install-modal';
 import { GitHubIcon, GitLabIcon } from './provider-icons';
 
 /**
+ * @param {Object} installed Installed repositories map from app state.
+ * @param {Object} repo      Browse repository record.
+ * @return {Object|null} Matching installed record, if any.
+ */
+function lookupInstalled( installed, repo ) {
+	return installed[ `${ repo.provider }:${ repo.full_name }` ] ?? null;
+}
+
+/**
  * Browse panel — lists GitHub and GitLab repositories with detection and install actions.
  *
  * @param {Object}   props                Component props.
@@ -144,7 +153,11 @@ export default function BrowsePanel( {
 				}
 
 				seedFromRepos( newRepos );
-				runBatch( newRepos );
+				runBatch(
+					newRepos.filter(
+						( repo ) => ! lookupInstalled( installed, repo )
+					)
+				);
 			} catch ( e ) {
 				toast.error(
 					e.message || __( 'Failed to load repositories.', 'git' ),
@@ -160,7 +173,7 @@ export default function BrowsePanel( {
 				setLoading( false );
 			}
 		},
-		[ runBatch, seedFromRepos ] // eslint-disable-line react-hooks/exhaustive-deps
+		[ installed, runBatch, seedFromRepos ] // eslint-disable-line react-hooks/exhaustive-deps
 	);
 
 	useEffect( () => {
@@ -195,8 +208,7 @@ export default function BrowsePanel( {
 		if ( typeFilter === 'all' ) {
 			return true;
 		}
-		const installedRec =
-			installed[ r.provider + ':' + r.full_name ] || r.installed;
+		const installedRec = lookupInstalled( installed, r );
 		const type =
 			installedRec?.type ?? detections[ detectionKey( r ) ]?.type;
 		if ( ! type ) {
@@ -293,11 +305,7 @@ export default function BrowsePanel( {
 						<RepoCard
 							key={ `${ repo.provider }:${ repo.id }` }
 							detection={ detections[ detectionKey( repo ) ] }
-							installed={
-								installed[
-									repo.provider + ':' + repo.full_name
-								] || repo.installed
-							}
+							installed={ lookupInstalled( installed, repo ) }
 							repo={ repo }
 							showSourceBadge={ showSourceBadge }
 							smartInstall={ smartInstall }
