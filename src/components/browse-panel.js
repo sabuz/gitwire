@@ -295,17 +295,20 @@ export default function BrowsePanel( {
 						value={ search }
 					/>
 				</FlexBlock>
-				{ typeFilters.map( ( f ) => (
-					<FlexItem key={ f.id }>
-						<Button
-							isPressed={ typeFilter === f.id }
-							size="compact"
-							onClick={ () => setTypeFilter( f.id ) }
-						>
-							{ f.label }
-						</Button>
-					</FlexItem>
-				) ) }
+				<FlexItem>
+					<Flex align="center" gap={ 1 }>
+						{ typeFilters.map( ( f ) => (
+							<Button
+								key={ f.id }
+								isPressed={ typeFilter === f.id }
+								size="compact"
+								onClick={ () => setTypeFilter( f.id ) }
+							>
+								{ f.label }
+							</Button>
+						) ) }
+					</Flex>
+				</FlexItem>
 				<FlexItem style={ { marginLeft: 'auto' } }>
 					<Button
 						disabled={ loading }
