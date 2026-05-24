@@ -207,7 +207,7 @@ export default function InstalledPanel( {
 						);
 					} catch ( e ) {
 						toast.error(
-							e.message || __( 'Activation failed.', 'git' )
+							getActivationErrorMessage( e, item.type )
 						);
 					}
 				},
@@ -299,4 +299,31 @@ export default function InstalledPanel( {
 			/>
 		</div>
 	);
+}
+
+/**
+ * @param {Error}  error Activation request error.
+ * @param {string} type  Installed item type: 'plugin' or 'theme'.
+ * @return {string} User-facing activation error message.
+ */
+function getActivationErrorMessage( error, type ) {
+	const message = error?.message || '';
+	const isFatalResponse =
+		error?.code === 'invalid_json' ||
+		/not a valid JSON response/i.test( message );
+
+	if ( isFatalResponse ) {
+		if ( type === 'theme' ) {
+			return __(
+				'Theme could not be activated because it triggered a fatal error.',
+				'git'
+			);
+		}
+		return __(
+			'Plugin could not be activated because it triggered a fatal error.',
+			'git'
+		);
+	}
+
+	return message || __( 'Activation failed.', 'git' );
 }
