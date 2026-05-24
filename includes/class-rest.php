@@ -305,8 +305,25 @@ class REST {
 			$ns,
 			'/activation-status',
 			[
-				'methods'             => 'GET',
-				'callback'            => [ self::class, 'get_activation_status' ],
+				[
+					'methods'             => 'GET',
+					'callback'            => [ self::class, 'get_activation_status' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+				[
+					'methods'             => 'DELETE',
+					'callback'            => [ self::class, 'abort_activation_guard' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/verify-bootstrap',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'verify_bootstrap' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 			]
 		);
@@ -375,6 +392,62 @@ class REST {
 		}
 
 		return rest_ensure_response( [ 'status' => 'idle' ] );
+	}
+
+	/**
+	 * Clears a stuck pending guard after client verification times out.
+	 *
+	 * @since 1.2.0
+	 * @return \WP_REST_Response
+	 */
+	public static function abort_activation_guard(): \WP_REST_Response {
+		return rest_ensure_response(
+			[
+				'aborted' => Error_Handler::abort_pending_guard(),
+			]
+		);
+	}
+
+	/**
+	 * Bootstraps the active theme and marks the pending guard as verified.
+	 *
+	 * @since 1.2.0
+	 * @return \WP_REST_Response
+	 */
+	public static function verify_bootstrap(): \WP_REST_Response {
+		$fatal = get_option( 'gwp_fatal_notice' );
+		if ( $fatal ) {
+			delete_option( 'gwp_fatal_notice' );
+			delete_option( 'gwp_pending_update' );
+			return rest_ensure_response(
+				[
+					'status' => 'fatal',
+					'notice' => $fatal,
+				]
+			);
+		}
+
+		$pending = get_option( 'gwp_pending_update' );
+		if (
+			! is_array( $pending )
+			|| ! in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true )
+		) {
+			return rest_ensure_response( [ 'status' => 'idle' ] );
+		}
+
+		if ( Error_Handler::is_bootstrap_verified( $pending ) ) {
+			return rest_ensure_response(
+				[
+					'status'    => 'bootstrap_verified',
+					'full_name' => $pending['full_name'] ?? '',
+					'type'      => $pending['type'] ?? '',
+				]
+			);
+		}
+
+		Error_Handler::arm_rest_bootstrap_verify();
+
+		return rest_ensure_response( [ 'status' => 'pending' ] );
 	}
 
 	/**
@@ -1207,6 +1280,11 @@ class REST {
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
+		}
+
+		$pending = get_option( 'gwp_pending_update' );
+		if ( is_array( $pending ) && ( $pending['full_name'] ?? '' ) === $full_name ) {
+			Error_Handler::abort_pending_guard();
 		}
 
 		self::bust_repos_cache();

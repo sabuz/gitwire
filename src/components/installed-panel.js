@@ -6,9 +6,8 @@ import { Button, Flex, Icon } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
-import { showFatalNotice } from '../fatal-notice';
+import { startThemeGuardVerification } from '../theme-guard-verify';
 import { queuePendingToastAndReload } from '../pending-toast';
-import { verifyThemeActivation } from '../verify-theme-activation';
 import ConnectPrompt from './connect-prompt';
 import BranchCell from './installed/branch-cell';
 import BranchModal from './installed/branch-modal';
@@ -212,36 +211,10 @@ export default function InstalledPanel( {
 							item.provider ?? 'github'
 						);
 						if ( item.type === 'theme' ) {
-							const verifyUrl = window.GWP?.verify_activation_url;
-							if ( ! verifyUrl ) {
-								window.location.reload();
-								return;
-							}
-							onRefresh();
-							verifyThemeActivation( {
-								verifyUrl,
-								onSuccess: ( result ) => {
-									queuePendingToastAndReload(
-										sprintf(
-											/* translators: %s: repository full name */
-											__( '%s activated.', 'git' ),
-											result.full_name || item.full_name
-										)
-									);
-								},
-								onFatal: ( notice ) => {
-									showFatalNotice( notice );
-									onRefresh();
-								},
-								onTimeout: () => {
-									toast.error(
-										__(
-											'Theme activation could not be verified. Please reload the page.',
-											'git'
-										)
-									);
-									onRefresh();
-								},
+							startThemeGuardVerification( {
+								item,
+								onRefresh,
+								context: 'activate',
 							} );
 							return;
 						}

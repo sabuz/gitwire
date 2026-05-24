@@ -261,9 +261,12 @@ class Installer {
 				self::clear_activation_guard();
 				return $result;
 			}
+
+			self::complete_plugin_activation_guard( $full_name, $rec['type'] ?? 'plugin' );
 		} elseif ( 'theme' === $rec['type'] ) {
 			self::begin_activation_guard( $rec, $full_name );
 			switch_theme( $rec['slug'] );
+			self::sync_theme_activation_target();
 		}
 
 		return true;
@@ -283,6 +286,8 @@ class Installer {
 			'context'             => 'activation',
 			'full_name'           => $full_name,
 			'type'                => $rec['type'],
+			'slug'                => $rec['slug'] ?? '',
+			'install_path'        => $rec['install_path'] ?? '',
 			'plugin_file'         => $plugin_file,
 			'previous_stylesheet' => get_stylesheet(),
 			'previous_template'   => get_template(),
@@ -304,6 +309,43 @@ class Installer {
 	 */
 	private static function clear_activation_guard(): void {
 		delete_option( 'gwp_pending_update' );
+	}
+
+	/**
+	 * Stores the active theme slugs on the pending activation guard record.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	private static function sync_theme_activation_target(): void {
+		$pending = get_option( 'gwp_pending_update' );
+		if ( ! is_array( $pending ) || 'theme' !== ( $pending['type'] ?? '' ) ) {
+			return;
+		}
+
+		$pending['target_stylesheet'] = get_stylesheet();
+		$pending['target_template']   = get_template();
+		update_option( 'gwp_pending_update', $pending, false );
+	}
+
+	/**
+	 * Clears the activation guard after core has sandboxed a plugin activation.
+	 *
+	 * @since 1.2.0
+	 * @param string $full_name Repository full name.
+	 * @param string $type        Item type.
+	 * @return void
+	 */
+	private static function complete_plugin_activation_guard( string $full_name, string $type ): void {
+		delete_option( 'gwp_pending_update' );
+		set_transient(
+			'gwp_activation_success',
+			[
+				'full_name' => $full_name,
+				'type'      => $type,
+			],
+			MINUTE_IN_SECONDS
+		);
 	}
 
 	/**

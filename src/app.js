@@ -17,6 +17,7 @@ import {
 	clearPendingToast,
 } from './pending-toast';
 import { showFatalNotice } from './fatal-notice';
+import { resumePendingThemeVerification } from './theme-guard-verify';
 import SettingsPanel from './components/settings-panel';
 
 const BrowsePanel = lazy( () => import( './components/browse-panel' ) );
@@ -202,6 +203,16 @@ export default function App( { initialData } ) {
 		const result = await api.syncInstalled();
 		applyInstalled( result );
 	}, [ applyInstalled ] );
+
+	useEffect( () => {
+		if ( activeTab !== 'installed' ) {
+			return;
+		}
+		resumePendingThemeVerification( {
+			installed,
+			onRefresh: refreshInstalled,
+		} );
+	}, [ activeTab, installed, refreshInstalled ] );
 
 	const handleGoToTab = useCallback( ( tabName ) => {
 		setActiveTab( tabName );

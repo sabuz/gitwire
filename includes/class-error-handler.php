@@ -33,6 +33,13 @@ class Error_Handler {
 	private static bool $registered = false;
 
 	/**
+	 * Whether the current request should mark bootstrap verification on shutdown.
+	 *
+	 * @var bool
+	 */
+	private static bool $rest_bootstrap_verify = false;
+
+	/**
 	 * Registers the PHP shutdown function (idempotent).
 	 *
 	 * @since 1.0.0
@@ -44,9 +51,9 @@ class Error_Handler {
 		}
 		self::$registered = true;
 		register_shutdown_function( [ self::class, 'handle_shutdown' ] );
-		register_shutdown_function( [ self::class, 'release_update_guard_if_clean' ] );
+		register_shutdown_function( [ self::class, 'mark_guard_verified_on_verify_request' ] );
 		register_shutdown_function( [ self::class, 'release_verified_guard_on_git_page' ] );
-		add_action( 'after_setup_theme', [ self::class, 'release_pending_guard_if_stable' ], 99999 );
+		add_action( 'template_redirect', [ self::class, 'finish_verify_bootstrap_request' ], PHP_INT_MAX );
 	}
 
 	/**
@@ -155,35 +162,12 @@ class Error_Handler {
 	}
 
 	/**
-	 * Marks an activation iframe bootstrap as verified without releasing the backup yet.
+	 * Marks a verify bootstrap as complete without releasing the backup yet.
 	 *
 	 * @since 1.2.0
 	 * @return void
 	 */
-	public static function release_pending_guard_if_stable(): void {
-		if ( ! self::is_verify_bootstrap_request() ) {
-			return;
-		}
-
-		$pending = get_option( 'gwp_pending_update' );
-		if ( ! is_array( $pending ) || 'activation' !== ( $pending['context'] ?? '' ) ) {
-			return;
-		}
-
-		if ( ! self::is_pending_target_active( $pending ) ) {
-			return;
-		}
-
-		self::mark_bootstrap_verified( $pending );
-	}
-
-	/**
-	 * Marks an update iframe bootstrap as verified without releasing the backup yet.
-	 *
-	 * @since 1.2.0
-	 * @return void
-	 */
-	public static function release_update_guard_if_clean(): void {
+	public static function mark_guard_verified_on_verify_request(): void {
 		if ( ! self::is_verify_bootstrap_request() ) {
 			return;
 		}
@@ -192,16 +176,62 @@ class Error_Handler {
 			return;
 		}
 
-		$pending = get_option( 'gwp_pending_update' );
-		if ( ! is_array( $pending ) || 'update' !== ( $pending['context'] ?? '' ) ) {
+		self::try_mark_bootstrap_verified();
+	}
+
+	/**
+	 * Defers bootstrap verification for a REST request until shutdown.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	public static function arm_rest_bootstrap_verify(): void {
+		if ( self::$rest_bootstrap_verify ) {
 			return;
 		}
 
-		if ( ! self::is_pending_target_active( $pending ) ) {
+		self::$rest_bootstrap_verify = true;
+		register_shutdown_function( [ self::class, 'mark_rest_bootstrap_verified_on_shutdown' ] );
+	}
+
+	/**
+	 * Marks bootstrap verification after a REST bootstrap request finishes cleanly.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	public static function mark_rest_bootstrap_verified_on_shutdown(): void {
+		if ( ! self::$rest_bootstrap_verify ) {
 			return;
 		}
 
-		self::mark_bootstrap_verified( $pending );
+		self::$rest_bootstrap_verify = false;
+
+		if ( self::has_fatal_shutdown_error() ) {
+			return;
+		}
+
+		self::try_mark_bootstrap_verified();
+	}
+
+	/**
+	 * Ends a frontend verify request after WordPress has bootstrapped the theme.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	public static function finish_verify_bootstrap_request(): void {
+		if ( ! self::is_verify_bootstrap_request() || is_admin() ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			status_header( 403 );
+			exit;
+		}
+
+		status_header( 204 );
+		exit;
 	}
 
 	/**
@@ -223,21 +253,39 @@ class Error_Handler {
 			return;
 		}
 
+		self::finalize_verified_guard_if_ready();
+	}
+
+	/**
+	 * Finalizes a verified guard when bootstrap checks have already passed.
+	 *
+	 * @since 1.2.0
+	 * @return array<string, string>|null Finalized record metadata, or null when not ready.
+	 */
+	public static function finalize_verified_guard_if_ready(): ?array {
 		$pending = get_option( 'gwp_pending_update' );
 		if ( ! is_array( $pending ) ) {
-			return;
+			return null;
 		}
 
 		$context = $pending['context'] ?? '';
 		if ( ! in_array( $context, [ 'activation', 'update' ], true ) ) {
-			return;
+			return null;
 		}
 
 		if ( ! self::is_bootstrap_verified( $pending ) || ! self::is_pending_target_active( $pending ) ) {
-			return;
+			return null;
 		}
 
+		$result = [
+			'full_name' => $pending['full_name'] ?? '',
+			'type'      => $pending['type'] ?? '',
+			'context'   => $context,
+		];
+
 		self::finalize_guard_success( $pending );
+
+		return $result;
 	}
 
 	/**
@@ -265,6 +313,31 @@ class Error_Handler {
 		}
 
 		delete_option( 'gwp_pending_update' );
+	}
+
+	/**
+	 * Marks bootstrap verification when the guarded target is already active.
+	 *
+	 * @since 1.2.0
+	 * @return bool True when the pending guard was marked verified.
+	 */
+	public static function try_mark_bootstrap_verified(): bool {
+		$pending = get_option( 'gwp_pending_update' );
+		if ( ! is_array( $pending ) ) {
+			return false;
+		}
+
+		if ( ! in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true ) ) {
+			return false;
+		}
+
+		if ( ! self::is_pending_target_active( $pending ) ) {
+			return false;
+		}
+
+		self::mark_bootstrap_verified( $pending );
+
+		return true;
 	}
 
 	/**
@@ -325,6 +398,51 @@ class Error_Handler {
 	}
 
 	/**
+	 * Rolls back and clears a pending guard when client verification times out.
+	 *
+	 * @since 1.2.0
+	 * @return bool True when a pending guard was cleared.
+	 */
+	public static function abort_pending_guard(): bool {
+		$pending = get_option( 'gwp_pending_update' );
+		if ( ! is_array( $pending ) ) {
+			self::clear_bootstrap_verified();
+			return false;
+		}
+
+		$context = $pending['context'] ?? '';
+		if ( ! in_array( $context, [ 'activation', 'update' ], true ) ) {
+			delete_option( 'gwp_pending_update' );
+			self::clear_bootstrap_verified();
+			return true;
+		}
+
+		$type         = $pending['type'] ?? 'plugin';
+		$install_path = $pending['install_path'] ?? '';
+		$backup_path  = $pending['backup_path'] ?? null;
+		$plugin_file  = $pending['plugin_file'] ?? null;
+
+		if ( 'update' === $context && $backup_path && $install_path ) {
+			Installer::restore_backup( $install_path, $backup_path );
+			Installer::delete_backup_path( $backup_path );
+		} elseif ( 'activation' === $context ) {
+			if ( 'theme' === $type ) {
+				self::restore_theme(
+					$pending['previous_stylesheet'] ?? null,
+					$pending['previous_template'] ?? null
+				);
+			} elseif ( 'plugin' === $type && $plugin_file ) {
+				self::deactivate_plugin( $plugin_file );
+			}
+		}
+
+		delete_option( 'gwp_pending_update' );
+		self::clear_bootstrap_verified();
+
+		return true;
+	}
+
+	/**
 	 * Returns whether the current request ended with a fatal PHP error.
 	 *
 	 * @since 1.2.0
@@ -382,7 +500,14 @@ class Error_Handler {
 
 		if ( 'theme' === $type ) {
 			$target = $pending['target_stylesheet'] ?? $pending['slug'] ?? '';
-			return $target && function_exists( 'get_stylesheet' ) && get_stylesheet() === $target;
+			if ( ! $target || ! function_exists( 'get_stylesheet' ) ) {
+				return false;
+			}
+
+			$stylesheet = get_stylesheet();
+			$template   = get_template();
+
+			return $target === $stylesheet || $target === $template;
 		}
 
 		if ( 'plugin' === $type ) {

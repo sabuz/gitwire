@@ -1,21 +1,28 @@
 import * as api from './api';
 
 const POLL_INTERVAL = 250;
-const POLL_TIMEOUT = 20000;
+const POLL_TIMEOUT = 30000;
+
+const sleep = ( ms ) =>
+	new Promise( ( resolve ) => {
+		setTimeout( resolve, ms );
+	} );
 
 /** @type {{ abort: () => void } | null} */
 let activeSession = null;
 
+export function isVerifyRunning() {
+	return activeSession !== null;
+}
+
 /**
  * @param {Object}   options
- * @param {string}   options.verifyUrl   Admin URL that bootstraps the active theme.
  * @param {Function} [options.onSuccess]
  * @param {Function} [options.onFatal]
  * @param {Function} [options.onTimeout]
  * @param {Function} [options.onSettled]
  */
 export function verifyThemeActivation( {
-	verifyUrl,
 	onSuccess,
 	onFatal,
 	onTimeout,
@@ -26,35 +33,24 @@ export function verifyThemeActivation( {
 	}
 
 	let isSettled = false;
-	let pollTimer = null;
-	const iframeEl = document.createElement( 'iframe' );
-	iframeEl.hidden = true;
-	iframeEl.setAttribute( 'aria-hidden', 'true' );
-	iframeEl.style.cssText =
-		'position:absolute;width:0;height:0;border:0;visibility:hidden';
-
-	const startedAt = Date.now();
-	let sawPending = false;
 
 	const cleanup = () => {
-		iframeEl.remove();
-		if ( pollTimer ) {
-			clearInterval( pollTimer );
-			pollTimer = null;
-		}
 		if ( activeSession === session ) {
 			activeSession = null;
 		}
 	};
 
-	const finish = ( callback, arg ) => {
+	const finish = async ( callback, arg ) => {
 		if ( isSettled ) {
 			return;
 		}
 		isSettled = true;
 		cleanup();
-		callback?.( arg );
-		onSettled?.();
+		try {
+			await callback?.( arg );
+		} finally {
+			onSettled?.();
+		}
 	};
 
 	const session = {
@@ -70,54 +66,57 @@ export function verifyThemeActivation( {
 
 	activeSession = session;
 
-	const verifyTarget = new URL( verifyUrl, window.location.origin );
-	verifyTarget.searchParams.set( '_gwp_verify', String( startedAt ) );
-	iframeEl.src = verifyTarget.toString();
-	document.body.appendChild( iframeEl );
+	const run = async () => {
+		const deadline = Date.now() + POLL_TIMEOUT;
+		let sawPending = false;
 
-	pollTimer = setInterval( async () => {
-		if ( isSettled ) {
-			return;
-		}
+		while ( Date.now() < deadline && ! isSettled ) {
+			try {
+				const verified = await api.verifyBootstrap();
 
-		if ( Date.now() - startedAt > POLL_TIMEOUT ) {
-			finish( onTimeout );
-			return;
-		}
-
-		try {
-			const result = await api.getActivationStatus();
-
-			if ( result.status === 'pending' ) {
-				sawPending = true;
-				return;
-			}
-
-			if ( result.status === 'idle' && ! sawPending ) {
-				return;
-			}
-
-			if ( result.status === 'fatal' ) {
-				finish( onFatal, result.notice );
-				return;
-			}
-
-			if (
-				result.status === 'bootstrap_verified' ||
-				result.status === 'success'
-			) {
-				if ( ! sawPending ) {
+				if ( verified.status === 'fatal' ) {
+					await finish( onFatal, verified.notice );
 					return;
 				}
-				finish( onSuccess, result );
-				return;
+
+				if ( verified.status === 'bootstrap_verified' ) {
+					await finish( onSuccess, verified );
+					return;
+				}
+
+				if ( verified.status === 'pending' ) {
+					sawPending = true;
+				}
+
+				const result = await api.getActivationStatus();
+
+				if ( result.status === 'fatal' ) {
+					await finish( onFatal, result.notice );
+					return;
+				}
+
+				if ( result.status === 'pending' ) {
+					sawPending = true;
+				}
+
+				if ( result.status === 'bootstrap_verified' ) {
+					await finish( onSuccess, result );
+					return;
+				}
+
+				if ( result.status === 'idle' && sawPending ) {
+					await finish( onTimeout );
+					return;
+				}
+			} catch ( _e ) {
+				// Keep trying until the deadline.
 			}
 
-			if ( sawPending ) {
-				finish( onTimeout );
-			}
-		} catch ( _e ) {
-			// Keep polling while the verify request is in flight.
+			await sleep( POLL_INTERVAL );
 		}
-	}, POLL_INTERVAL );
+
+		await finish( onTimeout );
+	};
+
+	run();
 }

@@ -218,7 +218,7 @@ class Admin {
 					'disconnected_url'      => GWP_URL . 'assets/images/cloud-alert.svg',
 					'not_found_url'         => GWP_URL . 'assets/images/folder-x.svg',
 					'themes_url'            => admin_url( 'themes.php' ),
-					'verify_activation_url' => admin_url( 'index.php?gwp_verify_activation=1' ),
+					'verify_activation_url' => home_url( '/?gwp_verify_activation=1' ),
 					'initial_tab'           => $initial_tab,
 					'settings'              => $settings,
 					'connection'            => $connection,
