@@ -239,6 +239,18 @@ export default function InstalledPanel( {
 				},
 			},
 			{
+				id: 'switch-theme',
+				label: __( 'Switch theme', 'git' ),
+				icon: <Icon icon="admin-appearance" />,
+				isEligible: ( item ) => item.active && item.type === 'theme',
+				callback: () => {
+					const themesUrl = window.GWP?.themes_url;
+					if ( themesUrl ) {
+						window.location.href = themesUrl;
+					}
+				},
+			},
+			{
 				id: 'delete',
 				label: __( 'Delete', 'git' ),
 				icon: <Icon icon="trash" />,

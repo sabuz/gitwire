@@ -213,6 +213,7 @@ class Admin {
 					'icon_url'         => GWP_URL . 'assets/images/icon.svg',
 					'disconnected_url' => GWP_URL . 'assets/images/cloud-alert.svg',
 					'not_found_url'    => GWP_URL . 'assets/images/folder-x.svg',
+					'themes_url'       => admin_url( 'themes.php' ),
 					'initial_tab'      => $initial_tab,
 					'settings'         => $settings,
 					'connection'       => $connection,
