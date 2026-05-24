@@ -1,8 +1,14 @@
 import { toast } from 'sonner';
 
 import { __, sprintf } from '@wordpress/i18n';
-import { useState, useEffect, useMemo } from '@wordpress/element';
-import { Button, ComboboxControl, Flex, Modal } from '@wordpress/components';
+import { useState, useEffect, useCallback, useMemo } from '@wordpress/element';
+import {
+	Button,
+	ComboboxControl,
+	Flex,
+	Modal,
+	Spinner,
+} from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
@@ -19,6 +25,7 @@ const DEFAULT_VIEW = {
 		'type',
 		'status',
 		'branch',
+		'head',
 		'last_updated',
 		'actions',
 	],
@@ -151,6 +158,15 @@ export default function InstalledPanel( {
 					<BranchCell item={ item } onRefresh={ onRefresh } />
 				),
 				enableSorting: true,
+			},
+			{
+				id: 'head',
+				label: __( 'Current Head', 'git' ),
+				getValue: () => '',
+				render: ( { item } ) => (
+					<HeadCell item={ item } onRefresh={ onRefresh } />
+				),
+				enableSorting: false,
 			},
 			{
 				id: 'last_updated',
@@ -497,6 +513,9 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 		if ( errorMsg ) {
 			onError( errorMsg );
 		} else {
+			commitsCache.delete(
+				( item.provider ?? 'github' ) + ':' + item.full_name
+			);
 			onSwitched( selectedBranch );
 		}
 		onClose();
@@ -610,6 +629,230 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 						: __( 'Delete', 'git' ) }
 				</Button>
 			</Flex>
+		</Modal>
+	);
+}
+
+const commitsCache = new Map();
+
+/**
+ * Table cell that fetches the HEAD commit SHA and opens the commits modal on click.
+ *
+ * @param {Object}   props           Component props.
+ * @param {Object}   props.item      Installed repository record.
+ * @param {Function} props.onRefresh Callback to refresh the installed list.
+ * @return {JSX.Element} The rendered head cell.
+ */
+function HeadCell( { item, onRefresh } ) {
+	const cacheKey = ( item.provider ?? 'github' ) + ':' + item.full_name;
+	const [ open, setOpen ] = useState( false );
+	const [ commits, setCommits ] = useState(
+		commitsCache.get( cacheKey ) ?? null
+	);
+
+	const loadCommits = useCallback( () => {
+		api.getCommits( item.owner, item.repo, item.provider ?? 'github' )
+			.then( ( data ) => {
+				commitsCache.set( cacheKey, data );
+				setCommits( data );
+			} )
+			.catch( () => setCommits( [] ) );
+	}, [ cacheKey, item.owner, item.repo, item.provider ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	useEffect( () => {
+		if ( ! commitsCache.has( cacheKey ) ) {
+			loadCommits();
+		}
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	const handlePulled = useCallback( () => {
+		commitsCache.delete( cacheKey );
+		setCommits( null );
+		loadCommits();
+	}, [ cacheKey, loadCommits ] );
+
+	const headSha = commits?.[ 0 ]?.sha;
+
+	return (
+		<>
+			<Button
+				size="compact"
+				variant="link"
+				onClick={ () => setOpen( true ) }
+			>
+				{ headSha ?? '···' }
+			</Button>
+			{ open && (
+				<CommitsModal
+					initialCommits={ commits }
+					item={ item }
+					onClose={ () => setOpen( false ) }
+					onPulled={ handlePulled }
+					onRefresh={ onRefresh }
+				/>
+			) }
+		</>
+	);
+}
+
+/**
+ * Modal showing the last 10 commits for an installed repository with a Pull Latest action.
+ *
+ * @param {Object}     props                Component props.
+ * @param {Object}     props.item           Installed repository record.
+ * @param {Array|null} props.initialCommits Pre-fetched commits from HeadCell, or null.
+ * @param {Function}   props.onClose        Callback fired when the modal is closed.
+ * @param {Function}   props.onPulled       Callback fired after a successful pull to refresh the SHA.
+ * @param {Function}   props.onRefresh      Callback to refresh the installed list after pulling.
+ * @return {JSX.Element} The rendered commits modal.
+ */
+function CommitsModal( {
+	item,
+	initialCommits = null,
+	onClose,
+	onPulled,
+	onRefresh,
+} ) {
+	const [ commits, setCommits ] = useState( initialCommits );
+	const [ pulling, setPulling ] = useState( false );
+
+	useEffect( () => {
+		if ( initialCommits !== null ) {
+			return;
+		}
+		const key = ( item.provider ?? 'github' ) + ':' + item.full_name;
+		if ( commitsCache.has( key ) ) {
+			setCommits( commitsCache.get( key ) );
+			return;
+		}
+		api.getCommits( item.owner, item.repo, item.provider ?? 'github' )
+			.then( ( data ) => {
+				commitsCache.set( key, data );
+				setCommits( data );
+			} )
+			.catch( () => setCommits( [] ) );
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	const handlePull = async () => {
+		setPulling( true );
+		try {
+			await api.switchBranch(
+				item.owner,
+				item.repo,
+				item.branch,
+				item.provider ?? 'github'
+			);
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( '%s updated to latest.', 'git' ),
+					item.full_name
+				)
+			);
+			onPulled();
+			onRefresh();
+			onClose();
+		} catch ( e ) {
+			toast.error( e.message || __( 'Pull failed.', 'git' ) );
+			setPulling( false );
+		}
+	};
+
+	return (
+		<Modal
+			className="gwp-commits-modal"
+			shouldCloseOnClickOutside={ ! pulling }
+			shouldCloseOnEsc={ ! pulling }
+			style={ { width: 560 } }
+			title={
+				<Flex align="center" justify="space-between">
+					<span className="gwp-commits-modal__title">
+						{ __( 'Commits', 'git' ) }{ ' ' }
+						<span style={ { color: 'var(--gwp-color-accent)' } }>
+							{ item.full_name }
+						</span>
+					</span>
+					<Button
+						disabled={ commits === null }
+						icon="update"
+						isBusy={ pulling }
+						label={ __( 'Pull Latest', 'git' ) }
+						size="compact"
+						variant="tertiary"
+						onClick={ handlePull }
+					/>
+				</Flex>
+			}
+			onRequestClose={ pulling ? undefined : onClose }
+		>
+			{ commits === null && (
+				<div className="gwp-installed-spinner-row">
+					<Spinner />
+					{ __( 'Loading commits…', 'git' ) }
+				</div>
+			) }
+			{ commits !== null && commits.length === 0 && (
+				<p style={ { color: '#57606a', fontSize: 13 } }>
+					{ __( 'No commits found.', 'git' ) }
+				</p>
+			) }
+			{ commits !== null && commits.length > 0 && (
+				<div style={ { marginBottom: 8 } }>
+					{ commits.map( ( commit ) => (
+						<div
+							key={ commit.sha }
+							style={ {
+								display: 'flex',
+								gap: 12,
+								padding: '10px 0',
+								borderBottom: '1px solid #f0f0f0',
+							} }
+						>
+							<code
+								style={ {
+									flexShrink: 0,
+									fontSize: 11,
+									fontFamily: 'monospace',
+									color: 'var(--gwp-color-accent)',
+									paddingTop: 1,
+								} }
+							>
+								{ commit.sha }
+							</code>
+							<div style={ { flex: 1, minWidth: 0 } }>
+								<p
+									style={ {
+										margin: 0,
+										fontSize: 13,
+										color: '#1d2327',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										whiteSpace: 'nowrap',
+									} }
+								>
+									{ commit.message }
+								</p>
+								<p
+									style={ {
+										margin: '2px 0 0',
+										fontSize: 11,
+										color: '#57606a',
+									} }
+								>
+									{ commit.author } ·{ ' ' }
+									{ new Date(
+										commit.date
+									).toLocaleDateString( undefined, {
+										year: 'numeric',
+										month: 'short',
+										day: 'numeric',
+									} ) }
+								</p>
+							</div>
+						</div>
+					) ) }
+				</div>
+			) }
 		</Modal>
 	);
 }

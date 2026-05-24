@@ -268,6 +268,39 @@ class API {
 	}
 
 	/**
+	 * Returns the last N commits for a branch, normalised to a flat array.
+	 *
+	 * @since 1.0.0
+	 * @param string $owner    GitHub repository owner.
+	 * @param string $repo     Repository name.
+	 * @param string $branch   Branch, tag, or SHA.
+	 * @param int    $per_page Number of commits to return (max 100).
+	 * @return array<int, array<string, string>>|\WP_Error Commit list or WP_Error on failure.
+	 */
+	public function get_commits( string $owner, string $repo, string $branch, int $per_page = 10 ): array|\WP_Error {
+		$data = $this->get(
+			'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+			. '/commits?sha=' . rawurlencode( $branch ) . '&per_page=' . $per_page
+		);
+
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
+		return array_map(
+			static function ( $c ) {
+				return [
+					'sha'     => substr( $c['sha'], 0, 7 ),
+					'message' => explode( "\n", trim( $c['commit']['message'] ) )[0],
+					'author'  => $c['commit']['author']['name'] ?? '',
+					'date'    => $c['commit']['author']['date'] ?? '',
+				];
+			},
+			$data
+		);
+	}
+
+	/**
 	 * Downloads a repository ZIP and returns the local temp-file path.
 	 *
 	 * GitHub's zipball API returns a 302 to a CDN URL that embeds an

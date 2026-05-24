@@ -477,3 +477,18 @@ body.gwp-admin-page {
 .components-modal__header .components-modal__header-heading {
 	font-size: 16px;
 }
+
+.gwp-commits-modal {
+
+	.components-modal__header-heading {
+		flex: 1;
+		min-width: 0;
+	}
+
+	&__title {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		min-width: 0;
+	}
+}

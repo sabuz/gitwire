@@ -45,6 +45,11 @@ export const checkSlug = (
 		) }&repo=${ encodeURIComponent( repo ) }&provider=${ provider }`,
 	} );
 
+export const getCommits = ( owner, repo, provider = 'github' ) =>
+	apiFetch( {
+		path: `${ BASE }/installed/${ owner }/${ repo }/commits?provider=${ provider }`,
+	} );
+
 export const switchBranch = ( owner, repo, branch, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ owner }/${ repo }/branch`,

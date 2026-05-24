@@ -264,6 +264,40 @@ class GitLab_API {
 	}
 
 	/**
+	 * Returns the last N commits for a branch, normalised to a flat array.
+	 *
+	 * @since 1.1.0
+	 * @param string $owner    GitLab namespace.
+	 * @param string $repo     Project path.
+	 * @param string $branch   Branch, tag, or SHA.
+	 * @param int    $per_page Number of commits to return (max 100).
+	 * @return array<int, array<string, string>>|\WP_Error Commit list or WP_Error on failure.
+	 */
+	public function get_commits( string $owner, string $repo, string $branch, int $per_page = 10 ): array|\WP_Error {
+		$project_id = rawurlencode( $owner . '/' . $repo );
+		$data       = $this->get(
+			'/projects/' . $project_id
+			. '/repository/commits?ref_name=' . rawurlencode( $branch ) . '&per_page=' . $per_page
+		);
+
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
+		return array_map(
+			static function ( $c ) {
+				return [
+					'sha'     => $c['short_id'] ?? substr( $c['id'], 0, 7 ),
+					'message' => $c['title'] ?? '',
+					'author'  => $c['author_name'] ?? '',
+					'date'    => $c['created_at'] ?? '',
+				];
+			},
+			$data
+		);
+	}
+
+	/**
 	 * Downloads a project archive ZIP and returns the local temp-file path.
 	 *
 	 * Unlike GitHub's zipball (which redirects), GitLab streams the archive

@@ -233,6 +233,17 @@ class REST {
 
 		register_rest_route(
 			$ns,
+			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/commits',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'get_commits' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [ 'provider' => $provider_arg ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)',
 			[
 				'methods'             => 'DELETE',
@@ -843,6 +854,30 @@ class REST {
 		self::bust_repos_cache();
 
 		return [ 'removed' => true ];
+	}
+
+	/**
+	 * Returns the last 10 commits for an installed repository's current branch.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<int, array<string, string>>|\WP_Error Commit list or WP_Error on failure.
+	 */
+	public static function get_commits( \WP_REST_Request $req ): array|\WP_Error {
+		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
+		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
+		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$full_name = $owner . '/' . $repo;
+
+		$record = Installer::get_record( $provider, $full_name );
+		if ( ! $record ) {
+			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+		}
+
+		$settings = (array) get_option( 'gwp_settings', [] );
+		$api      = self::make_api( $settings, $provider );
+
+		return $api->get_commits( $owner, $repo, $record['branch'] );
 	}
 
 	/**
