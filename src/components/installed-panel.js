@@ -119,17 +119,27 @@ export default function InstalledPanel( {
 				id: 'type',
 				label: __( 'Type', 'git' ),
 				getValue: ( { item } ) => item.type,
-				render: ( { item } ) => (
-					<span
-						className={ `gwp-badge gwp-badge--${
-							item.type === 'theme' ? 'neutral' : 'info'
-						}` }
-					>
-						{ item.type === 'theme'
-							? __( 'Theme', 'git' )
-							: __( 'Plugin', 'git' ) }
-					</span>
-				),
+				render: ( { item } ) => {
+					const isBlockTheme =
+						item.type === 'theme' && item.subtype === 'block';
+					const isTheme = item.type === 'theme';
+					let badgeMod = 'info';
+					let badgeLabel = __( 'Plugin', 'git' );
+					if ( isBlockTheme ) {
+						badgeMod = 'block-theme';
+						badgeLabel = __( 'Block Theme', 'git' );
+					} else if ( isTheme ) {
+						badgeMod = 'theme';
+						badgeLabel = __( 'Theme', 'git' );
+					}
+					return (
+						<span
+							className={ `gwp-badge gwp-badge--${ badgeMod }` }
+						>
+							{ badgeLabel }
+						</span>
+					);
+				},
 				enableSorting: true,
 			},
 			{

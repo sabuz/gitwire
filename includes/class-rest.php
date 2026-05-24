@@ -742,9 +742,11 @@ class REST {
 			}
 
 			if ( 'plugin' === $rec['type'] ) {
-				$rec['active'] = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
+				$rec['active']  = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
+				$rec['subtype'] = 'plugin';
 			} else {
-				$rec['active'] = $active_theme === $rec['slug'];
+				$rec['active']  = $active_theme === $rec['slug'];
+				$rec['subtype'] = ! empty( $rec['install_path'] ) && file_exists( $rec['install_path'] . '/theme.json' ) ? 'block' : 'classic';
 			}
 		}
 		unset( $rec );

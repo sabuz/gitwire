@@ -582,14 +582,25 @@ function timeAgo( dateStr ) {
  */
 function TypeBadge( { detection, installed } ) {
 	if ( installed ) {
-		const t = installed.type;
+		const isBlockTheme =
+			installed.type === 'theme' && installed.subtype === 'block';
+		if ( isBlockTheme ) {
+			return (
+				<span className="gwp-badge gwp-badge--block-theme">
+					{ __( 'Block Theme', 'git' ) }
+				</span>
+			);
+		}
+		if ( installed.type === 'theme' ) {
+			return (
+				<span className="gwp-badge gwp-badge--theme">
+					{ __( 'Theme', 'git' ) }
+				</span>
+			);
+		}
 		return (
-			<span
-				className={ `gwp-badge gwp-badge--${
-					t === 'theme' ? 'theme' : 'info'
-				}` }
-			>
-				{ t === 'theme' ? __( 'Theme', 'git' ) : __( 'Plugin', 'git' ) }
+			<span className="gwp-badge gwp-badge--info">
+				{ __( 'Plugin', 'git' ) }
 			</span>
 		);
 	}
