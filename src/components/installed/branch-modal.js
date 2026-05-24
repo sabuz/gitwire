@@ -1,8 +1,9 @@
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { useState, useEffect, useMemo } from '@wordpress/element';
 import { Button, ComboboxControl, Flex, Modal } from '@wordpress/components';
 
 import * as api from '../../api';
+import { verifyActiveUpdate } from '../../verify-active-update';
 
 /**
  * Modal for switching the active branch of an installed repository.
@@ -11,9 +12,15 @@ import * as api from '../../api';
  * @param {Object}   props.item       Installed repository record.
  * @param {Function} props.onClose    Callback to close the modal.
  * @param {Function} props.onSwitched Callback fired with the new branch name on success.
+ * @param {Function} props.onRefresh  Refreshes installed data after verify failures.
  * @return {JSX.Element|null} The rendered modal.
  */
-export default function BranchModal( { item, onClose, onSwitched } ) {
+export default function BranchModal( {
+	item,
+	onClose,
+	onSwitched,
+	onRefresh,
+} ) {
 	const { owner, repo, branch } = item || {};
 	const [ allBranches, setAllBranches ] = useState( [] );
 	const [ branchFilter, setBranchFilter ] = useState( '' );
@@ -59,16 +66,35 @@ export default function BranchModal( { item, onClose, onSwitched } ) {
 			return;
 		}
 		setSwitching( true );
+		let isVerifying = false;
 		try {
-			await api.switchBranch(
+			const result = await api.switchBranch(
 				owner,
 				repo,
 				selectedBranch,
 				item.provider ?? 'github'
 			);
+			if (
+				verifyActiveUpdate( {
+					needsVerify: result?.needs_verify,
+					item,
+					onRefresh,
+					successMessage: sprintf(
+						/* translators: %s: branch name */
+						__( 'Switched to %s.', 'git' ),
+						selectedBranch
+					),
+					onSettled: () => setSwitching( false ),
+				} )
+			) {
+				isVerifying = true;
+				return;
+			}
 			onSwitched( selectedBranch );
 		} finally {
-			setSwitching( false );
+			if ( ! isVerifying ) {
+				setSwitching( false );
+			}
 			onClose();
 		}
 	};

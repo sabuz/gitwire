@@ -342,13 +342,30 @@ class REST {
 		}
 
 		$pending = get_option( 'gwp_pending_update' );
-		if ( is_array( $pending ) && 'activation' === ( $pending['context'] ?? '' ) ) {
+		if (
+			is_array( $pending )
+			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true )
+		) {
+			if ( Error_Handler::is_bootstrap_verified( $pending ) ) {
+				return rest_ensure_response(
+					[
+						'status'    => 'bootstrap_verified',
+						'full_name' => $pending['full_name'] ?? '',
+						'type'      => $pending['type'] ?? '',
+					]
+				);
+			}
+
 			return rest_ensure_response( [ 'status' => 'pending' ] );
 		}
 
 		$success = get_transient( 'gwp_activation_success' );
+		if ( ! $success ) {
+			$success = get_transient( 'gwp_update_success' );
+		}
 		if ( $success ) {
 			delete_transient( 'gwp_activation_success' );
+			delete_transient( 'gwp_update_success' );
 			return rest_ensure_response(
 				array_merge(
 					[ 'status' => 'success' ],
@@ -943,9 +960,10 @@ class REST {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		$active_theme       = get_stylesheet();
-		$pending            = get_option( 'gwp_pending_update' );
-		$pending_activation = is_array( $pending ) && 'activation' === ( $pending['context'] ?? '' );
+		$active_theme  = get_stylesheet();
+		$pending       = get_option( 'gwp_pending_update' );
+		$pending_guard = is_array( $pending )
+			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
 
 		foreach ( $records as $key => &$rec ) {
 			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
@@ -958,10 +976,18 @@ class REST {
 			} else {
 				$rec['active']  = ( $rec['slug'] ?? '' ) === $active_theme;
 				$rec['subtype'] = ! empty( $rec['install_path'] ) && file_exists( $rec['install_path'] . '/theme.json' ) ? 'block' : 'classic';
+			}
 
-				if ( $pending_activation && ( $pending['target_stylesheet'] ?? '' ) === ( $rec['slug'] ?? '' ) ) {
-					$rec['activation_pending'] = true;
-					$rec['active']             = false;
+			if (
+				$pending_guard
+				&& ( $pending['full_name'] ?? '' ) === ( $rec['full_name'] ?? '' )
+			) {
+				$rec['activation_pending'] = true;
+				if (
+					'theme' === ( $rec['type'] ?? '' )
+					&& 'activation' === ( $pending['context'] ?? '' )
+				) {
+					$rec['active'] = false;
 				}
 			}
 

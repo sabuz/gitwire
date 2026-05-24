@@ -292,6 +292,7 @@ class Installer {
 			$pending['target_stylesheet'] = $rec['slug'];
 		}
 
+		self::clear_guard_feedback();
 		update_option( 'gwp_pending_update', $pending, false );
 	}
 
@@ -477,6 +478,25 @@ class Installer {
 			return $zip_file;
 		}
 
+		$plugin_file       = null;
+		$was_active_plugin = false;
+
+		if ( 'plugin' === $type ) {
+			$installed   = self::get_installed();
+			$install_key = $provider . ':' . $full_name;
+			if ( isset( $installed[ $install_key ]['plugin_file'] ) ) {
+				$plugin_file = $installed[ $install_key ]['plugin_file'];
+			}
+
+			if ( $plugin_file && self::is_active_install( $type, $slug, $plugin_file ) ) {
+				if ( ! function_exists( 'deactivate_plugins' ) ) {
+					require_once ABSPATH . 'wp-admin/includes/plugin.php';
+				}
+				deactivate_plugins( $plugin_file, true );
+				$was_active_plugin = true;
+			}
+		}
+
 		// Backup existing installation (for fatal-error rollback).
 		$backup_path = null;
 		if ( is_dir( $install_path ) ) {
@@ -490,22 +510,14 @@ class Installer {
 
 		// Register pending-update so the error handler can roll back.
 		$pending = [
-			'full_name'    => $full_name,
-			'type'         => $type,
-			'slug'         => $slug,
-			'install_path' => $install_path,
-			'backup_path'  => $backup_path,
-			'plugin_file'  => null,
+			'full_name'         => $full_name,
+			'type'              => $type,
+			'slug'              => $slug,
+			'install_path'      => $install_path,
+			'backup_path'       => $backup_path,
+			'plugin_file'       => $plugin_file,
+			'was_active_plugin' => $was_active_plugin,
 		];
-
-		// Record the currently-active plugin file (if this is an update).
-		if ( 'plugin' === $type ) {
-			$installed   = self::get_installed();
-			$install_key = $provider . ':' . $full_name;
-			if ( isset( $installed[ $install_key ]['plugin_file'] ) ) {
-				$pending['plugin_file'] = $installed[ $install_key ]['plugin_file'];
-			}
-		}
 
 		update_option( 'gwp_pending_update', $pending, false );
 
@@ -548,15 +560,135 @@ class Installer {
 		$installed[ $record_key ] = $record;
 		update_option( 'gwp_installed', $installed );
 
-		// Remove old backup now that everything succeeded.
-		if ( $backup_path && is_dir( $backup_path ) ) {
-			global $wp_filesystem;
-			$wp_filesystem->delete( $backup_path, true );
+		$plugin_file  = 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null;
+		$needs_verify = $backup_path && 'theme' === $type && self::is_active_install( $type, $slug, null );
+
+		if ( $was_active_plugin && $plugin_file ) {
+			$pending['context'] = 'update';
+			self::clear_guard_feedback();
+			update_option( 'gwp_pending_update', $pending, false );
+
+			$activated = self::reactivate_plugin_after_update( $plugin_file );
+			if ( is_wp_error( $activated ) ) {
+				self::restore_backup( $install_path, $backup_path );
+				delete_option( 'gwp_pending_update' );
+				return $activated;
+			}
+
+			self::finalize_successful_update( $backup_path );
+			return $record;
 		}
 
-		delete_option( 'gwp_pending_update' );
+		if ( $needs_verify ) {
+			$pending['context']           = 'update';
+			$pending['target_stylesheet'] = $slug;
+			self::clear_guard_feedback();
+			update_option( 'gwp_pending_update', $pending, false );
+			$record['needs_verify'] = true;
+		} else {
+			self::finalize_successful_update( $backup_path );
+		}
 
 		return $record;
+	}
+
+	/**
+	 * Reactivates a plugin using WordPress core's sandbox scrape.
+	 *
+	 * @since 1.2.0
+	 * @param string $plugin_file Plugin bootstrap file relative to wp-content/plugins.
+	 * @return true|\WP_Error True on success, WP_Error on failure.
+	 */
+	private static function reactivate_plugin_after_update( string $plugin_file ): bool|\WP_Error {
+		if ( ! function_exists( 'activate_plugin' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$result = activate_plugin( $plugin_file, '', false, false );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Clears a successful update guard and its backup copy.
+	 *
+	 * @since 1.2.0
+	 * @param string|null $backup_path Absolute backup path.
+	 * @return void
+	 */
+	private static function finalize_successful_update( ?string $backup_path ): void {
+		self::delete_backup_path( $backup_path );
+		delete_option( 'gwp_pending_update' );
+	}
+
+	/**
+	 * Clears stale guard feedback before arming a new verify cycle.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	private static function clear_guard_feedback(): void {
+		delete_option( 'gwp_fatal_notice' );
+		delete_transient( 'gwp_activation_success' );
+		delete_transient( 'gwp_update_success' );
+		Error_Handler::clear_bootstrap_verified();
+	}
+
+	/**
+	 * Returns whether the installed plugin or theme is currently active.
+	 *
+	 * @since 1.2.0
+	 * @param string      $type        Installation type: "plugin" or "theme".
+	 * @param string      $slug        Directory slug.
+	 * @param string|null $plugin_file Plugin bootstrap file relative to wp-content/plugins.
+	 * @return bool
+	 */
+	private static function is_active_install( string $type, string $slug, ?string $plugin_file ): bool {
+		if ( 'theme' === $type ) {
+			return function_exists( 'get_stylesheet' ) && get_stylesheet() === $slug;
+		}
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		if ( $plugin_file && is_plugin_active( $plugin_file ) ) {
+			return true;
+		}
+
+		$active = get_option( 'active_plugins', [] );
+		if ( ! is_array( $active ) ) {
+			return false;
+		}
+
+		foreach ( $active as $file ) {
+			if ( is_string( $file ) && 0 === strpos( $file, $slug . '/' ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Deletes a temporary backup directory created during install or update.
+	 *
+	 * @since 1.2.0
+	 * @param string|null $backup_path Absolute backup path.
+	 * @return void
+	 */
+	public static function delete_backup_path( ?string $backup_path ): void {
+		if ( ! $backup_path || ! is_dir( $backup_path ) ) {
+			return;
+		}
+
+		self::init_fs();
+		global $wp_filesystem;
+		$wp_filesystem->delete( $backup_path, true );
 	}
 
 	/**

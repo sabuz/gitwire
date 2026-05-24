@@ -9,7 +9,27 @@ export function showFatalNotice( notice ) {
 	const name = notice.full_name || __( 'Unknown', 'git' );
 	let message;
 
-	if ( notice.context === 'activation' ) {
+	if ( notice.context === 'update' ) {
+		if ( notice.type === 'theme' ) {
+			message = sprintf(
+				/* translators: %s: theme full name */
+				__(
+					'%s could not be updated. It triggered a fatal error. Your previous version has been restored.',
+					'git'
+				),
+				name
+			);
+		} else {
+			message = sprintf(
+				/* translators: %s: plugin full name */
+				__(
+					'%s could not be updated. It triggered a fatal error. Your previous version has been restored. It has been deactivated.',
+					'git'
+				),
+				name
+			);
+		}
+	} else if ( notice.context === 'activation' ) {
 		if ( notice.type === 'theme' ) {
 			message = sprintf(
 				/* translators: %s: theme full name */

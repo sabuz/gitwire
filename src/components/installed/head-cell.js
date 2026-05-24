@@ -5,6 +5,7 @@ import { useState, useCallback } from '@wordpress/element';
 import { Button, Flex } from '@wordpress/components';
 
 import * as api from '../../api';
+import { verifyActiveUpdate } from '../../verify-active-update';
 
 /**
  * Table cell showing the locally installed HEAD SHA with a Pull Latest icon.
@@ -20,13 +21,25 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 
 	const handlePull = useCallback( async () => {
 		setPulling( true );
+		let isVerifying = false;
 		try {
-			await api.switchBranch(
+			const result = await api.switchBranch(
 				item.owner,
 				item.repo,
 				item.branch,
 				item.provider ?? 'github'
 			);
+			if (
+				verifyActiveUpdate( {
+					needsVerify: result?.needs_verify,
+					item,
+					onRefresh,
+					onSettled: () => setPulling( false ),
+				} )
+			) {
+				isVerifying = true;
+				return;
+			}
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
@@ -38,7 +51,9 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 		} catch ( e ) {
 			toast.error( e.message || __( 'Pull failed.', 'git' ) );
 		} finally {
-			setPulling( false );
+			if ( ! isVerifying ) {
+				setPulling( false );
+			}
 		}
 	}, [ item, onRefresh ] );
 
@@ -55,7 +70,7 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 			</Button>
 			<Button
 				className={ pulling ? 'gwp-spin' : '' }
-				disabled={ pulling }
+				disabled={ pulling || item.activation_pending }
 				icon="update"
 				label={ __( 'Pull Latest', 'git' ) }
 				size="compact"

@@ -29,7 +29,9 @@ export function queuePendingToast( {
  */
 export function queuePendingToastAndReload( message ) {
 	queuePendingToast( { message, variant: 'success' } );
-	window.location.reload();
+	const url = new URL( window.location.href );
+	url.searchParams.set( 'page', 'git' );
+	window.location.assign( url.toString() );
 }
 
 /**

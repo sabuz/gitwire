@@ -350,6 +350,7 @@ export default function InstalledPanel( {
 			<BranchModal
 				item={ branchModalItem }
 				onClose={ () => setBranchModalItem( null ) }
+				onRefresh={ onRefresh }
 				onSwitched={ handleBranchSwitched }
 			/>
 			<CommitsModal
