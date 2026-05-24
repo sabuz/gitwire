@@ -63,7 +63,11 @@ export default function InstalledPanel( {
 				id: 'name',
 				label: __( 'Repository', 'git' ),
 				getValue: ( { item } ) => item.full_name,
-				render: ( { item } ) => <strong>{ item.full_name }</strong>,
+				render: ( { item } ) => (
+					<span style={ { color: '#1d2327', fontWeight: 500 } }>
+						{ item.full_name }
+					</span>
+				),
 				enableSorting: true,
 				enableGlobalSearch: true,
 			},
