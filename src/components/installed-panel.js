@@ -407,11 +407,12 @@ function BranchCell( { item, onRefresh } ) {
 	return (
 		<>
 			<Button
+				className="gwp-branch-btn"
 				size="compact"
-				variant="secondary"
+				variant="link"
 				onClick={ () => setOpen( true ) }
 			>
-				{ item.branch }
+				<span className="gwp-branch-btn__text">{ item.branch }</span>
 			</Button>
 			{ open && (
 				<BranchSwitcherModal

@@ -409,6 +409,17 @@ body.gwp-admin-page {
 	}
 }
 
+// Branch button — truncate long branch names with ellipsis
+.gwp-branch-btn {
+	max-width: 140px;
+
+	&__text {
+		display: block;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+}
 
 // Detection badge (inside modal)
 .gwp-detect {
