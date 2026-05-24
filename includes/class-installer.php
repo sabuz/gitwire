@@ -101,6 +101,7 @@ class Installer {
 	 * @param string $branch   Branch, tag, or SHA.
 	 * @param string $slug     Desired directory slug (defaults to sanitised repo name).
 	 * @param string $provider Git provider: 'github' or 'gitlab'.
+	 * @param bool   $replace  Whether to overwrite an existing directory instead of auto-renaming.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_plugin(
@@ -108,7 +109,8 @@ class Installer {
 		string $repo,
 		string $branch,
 		string $slug = '',
-		string $provider = 'github'
+		string $provider = 'github',
+		bool $replace = false
 	): array|\WP_Error {
 		if ( ! $slug ) {
 			$slug = sanitize_title( $repo );
@@ -116,7 +118,7 @@ class Installer {
 
 		$destination = WP_PLUGIN_DIR . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'plugin', $provider );
+		return self::run( $owner, $repo, $branch, $slug, $destination, 'plugin', $provider, $replace );
 	}
 
 	/**
@@ -128,6 +130,7 @@ class Installer {
 	 * @param string $branch   Branch, tag, or SHA.
 	 * @param string $slug     Desired directory slug (defaults to sanitised repo name).
 	 * @param string $provider Git provider: 'github' or 'gitlab'.
+	 * @param bool   $replace  Whether to overwrite an existing directory instead of auto-renaming.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_theme(
@@ -135,7 +138,8 @@ class Installer {
 		string $repo,
 		string $branch,
 		string $slug = '',
-		string $provider = 'github'
+		string $provider = 'github',
+		bool $replace = false
 	): array|\WP_Error {
 		if ( ! $slug ) {
 			$slug = sanitize_title( $repo );
@@ -143,7 +147,7 @@ class Installer {
 
 		$destination = get_theme_root() . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'theme', $provider );
+		return self::run( $owner, $repo, $branch, $slug, $destination, 'theme', $provider, $replace );
 	}
 
 	/**
@@ -363,6 +367,7 @@ class Installer {
 	 * @param string $install_path Absolute filesystem path for the installation.
 	 * @param string $type         Installation type: "plugin" or "theme".
 	 * @param string $provider     Git provider: 'github' or 'gitlab'.
+	 * @param bool   $replace      Whether to overwrite an existing directory instead of auto-renaming.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	private static function run(
@@ -372,7 +377,8 @@ class Installer {
 		string $slug,
 		string $install_path,
 		string $type,
-		string $provider = 'github'
+		string $provider = 'github',
+		bool $replace = false
 	): array|\WP_Error {
 		self::init_fs();
 
@@ -399,7 +405,7 @@ class Installer {
 			$is_own_update = isset( $all_installed[ $current_key ] ) &&
 				untrailingslashit( $all_installed[ $current_key ]['install_path'] ?? '' ) === untrailingslashit( $install_path );
 
-			if ( ! $is_own_update ) {
+			if ( ! $is_own_update && ! $replace ) {
 				$dir_base  = trailingslashit( dirname( $install_path ) );
 				$base_slug = $slug . '-' . $provider;
 				$new_slug  = $base_slug;

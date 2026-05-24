@@ -1,6 +1,6 @@
-import { Toaster } from 'sonner';
+import { toast, Toaster } from 'sonner';
 
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { useState, useEffect, useCallback } from '@wordpress/element';
 import { Spinner } from '@wordpress/components';
 
@@ -94,6 +94,23 @@ export default function App( { initialData } ) {
 		initialData.initial_tab || 'installed'
 	);
 
+	// Show toasts for repos whose directories were deleted before page load.
+	useEffect( () => {
+		( initialData.orphaned || [] ).forEach( ( item ) => {
+			toast.warning(
+				sprintf(
+					/* translators: %s: repository full name */
+					__(
+						'"%s" was removed from tracking — its directory no longer exists.',
+						'git'
+					),
+					item.full_name
+				),
+				{ duration: 8000 }
+			);
+		} );
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
+
 	// Post-install redirect via sessionStorage overrides everything.
 	useEffect( () => {
 		const tab = sessionStorage.getItem( 'gwp_goto_tab' );
@@ -148,22 +165,42 @@ export default function App( { initialData } ) {
 	useEffect( () => {
 		if ( ! initialData.settings ) {
 			Promise.all( [ api.getSettings(), api.getInstalled() ] )
-				.then( ( [ s, i ] ) => {
+				.then( ( [ s, result ] ) => {
 					setSettings( s );
-					setInstalled( i );
+					applyInstalled( result );
 				} )
 				.finally( () => setLoading( false ) );
 		}
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const refreshInstalled = useCallback( async () => {
-		const i = await api.getInstalled();
-		setInstalled( i );
+	const applyInstalled = useCallback( ( result ) => {
+		setInstalled( result.installed || {} );
+		( result.orphaned || [] ).forEach( ( item ) => {
+			toast.warning(
+				sprintf(
+					/* translators: %s: repository full name */
+					__(
+						'"%s" was removed from tracking — its directory no longer exists.',
+						'git'
+					),
+					item.full_name
+				),
+				{ duration: 8000 }
+			);
+		} );
 	}, [] );
+
+	const refreshInstalled = useCallback( async () => {
+		const result = await api.getInstalled();
+		applyInstalled( result );
+	}, [ applyInstalled ] );
 
 	const goToTab = ( tabName ) => {
 		setActiveTab( tabName );
 		syncUrl( tabName );
+		if ( tabName === 'browse' || tabName === 'installed' ) {
+			refreshInstalled();
+		}
 	};
 
 	if ( loading || ! settings ) {

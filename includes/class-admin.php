@@ -178,7 +178,9 @@ class Admin {
 			'github' => isset( $raw_cache['github'] ) ? $raw_cache['github'] : null,
 			'gitlab' => isset( $raw_cache['gitlab'] ) ? $raw_cache['gitlab'] : null,
 		];
-		$installed        = REST::get_installed();
+		$installed_result = REST::get_installed();
+		$installed        = $installed_result['installed'];
+		$orphaned         = $installed_result['orphaned'];
 		$first_activation = (bool) get_transient( 'gwp_first_activation' );
 
 		if ( $first_activation ) {
@@ -213,6 +215,7 @@ class Admin {
 					],
 					'connection'       => $connection,
 					'installed'        => $installed ? $installed : (object) [],
+					'orphaned'         => $orphaned,
 				]
 			) . ';',
 			'before'

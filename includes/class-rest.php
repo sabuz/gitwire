@@ -144,6 +144,43 @@ class REST {
 
 		register_rest_route(
 			$ns,
+			'/check-slug',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'check_slug' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'slug'     => [
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_file_name',
+					],
+					'type'     => [
+						'type'    => 'string',
+						'default' => 'plugin',
+						'enum'    => [ 'plugin', 'theme' ],
+					],
+					'owner'    => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'repo'     => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'provider' => [
+						'type'    => 'string',
+						'default' => 'github',
+						'enum'    => [ 'github', 'gitlab' ],
+					],
+				],
+			]
+		);
+
+		register_rest_route(
+			$ns,
 			'/installed',
 			[
 				'methods'             => 'GET',
@@ -588,10 +625,12 @@ class REST {
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install( \WP_REST_Request $req ): array|\WP_Error {
-		$owner  = sanitize_text_field( $req->get_param( 'owner' ) ?? '' );
-		$repo   = sanitize_text_field( $req->get_param( 'repo' ) ?? '' );
-		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? 'main' );
-		$type   = sanitize_key( $req->get_param( 'type' ) ?? 'plugin' );
+		$owner   = sanitize_text_field( $req->get_param( 'owner' ) ?? '' );
+		$repo    = sanitize_text_field( $req->get_param( 'repo' ) ?? '' );
+		$branch  = sanitize_text_field( $req->get_param( 'branch' ) ?? 'main' );
+		$type    = sanitize_key( $req->get_param( 'type' ) ?? 'plugin' );
+		$slug    = sanitize_file_name( $req->get_param( 'slug' ) ?? '' );
+		$replace = (bool) $req->get_param( 'replace' );
 
 		if ( ! in_array( $type, [ 'plugin', 'theme' ], true ) ) {
 			return new \WP_Error( 'invalid_type', 'Type must be plugin or theme.', [ 'status' => 400 ] );
@@ -610,7 +649,7 @@ class REST {
 		}
 
 		$method = 'theme' === $type ? 'install_theme' : 'install_plugin';
-		$result = Installer::$method( $owner, $repo, $branch, '', $provider );
+		$result = Installer::$method( $owner, $repo, $branch, $slug, $provider, $replace );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -619,6 +658,42 @@ class REST {
 		self::bust_repos_cache();
 
 		return $result;
+	}
+
+	/**
+	 * Checks whether a directory slug is already occupied on the filesystem.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, bool> Whether the slug conflicts with an existing directory.
+	 */
+	public static function check_slug( \WP_REST_Request $req ): array {
+		$slug     = sanitize_file_name( $req->get_param( 'slug' ) );
+		$type     = $req->get_param( 'type' ) ?? 'plugin';
+		$owner    = sanitize_text_field( $req->get_param( 'owner' ) ?? '' );
+		$repo_arg = sanitize_text_field( $req->get_param( 'repo' ) ?? '' );
+		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+
+		$path = 'theme' === $type
+			? get_theme_root() . '/' . $slug
+			: WP_PLUGIN_DIR . '/' . $slug;
+
+		if ( ! is_dir( $path ) ) {
+			return [ 'conflict' => false ];
+		}
+
+		if ( $owner && $repo_arg ) {
+			$full_name = $owner . '/' . $repo_arg;
+			$key       = $provider . ':' . $full_name;
+			$installed = Installer::get_installed();
+			$is_own    = isset( $installed[ $key ] ) &&
+				untrailingslashit( $installed[ $key ]['install_path'] ?? '' ) === untrailingslashit( $path );
+			if ( $is_own ) {
+				return [ 'conflict' => false ];
+			}
+		}
+
+		return [ 'conflict' => true ];
 	}
 
 	/**
@@ -636,21 +711,40 @@ class REST {
 		}
 
 		$active_theme = get_stylesheet();
+		$orphaned     = [];
+		$pruned       = false;
 
-		foreach ( $records as &$rec ) {
+		foreach ( $records as $key => &$rec ) {
+			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
+				$rec['provider'] = 'github';
+			}
+
+			if ( ! empty( $rec['install_path'] ) && ! is_dir( $rec['install_path'] ) ) {
+				$orphaned[] = [
+					'full_name' => $rec['full_name'],
+					'provider'  => $rec['provider'],
+				];
+				unset( $records[ $key ] );
+				$pruned = true;
+				continue;
+			}
+
 			if ( 'plugin' === $rec['type'] ) {
 				$rec['active'] = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
 			} else {
 				$rec['active'] = $active_theme === $rec['slug'];
 			}
-
-			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
-				$rec['provider'] = 'github';
-			}
 		}
 		unset( $rec );
 
-		return $records;
+		if ( $pruned ) {
+			update_option( 'gwp_installed', $records );
+		}
+
+		return [
+			'installed' => $records,
+			'orphaned'  => $orphaned,
+		];
 	}
 
 	/**

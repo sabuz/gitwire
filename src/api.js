@@ -30,6 +30,11 @@ export const detectRepo = ( owner, repo, branch, provider = 'github' ) =>
 export const install = ( data ) =>
 	apiFetch( { path: `${ BASE }/install`, method: 'POST', data } );
 
+export const checkSlug = ( slug, type = 'plugin', owner = '', repo = '', provider = 'github' ) =>
+	apiFetch( {
+		path: `${ BASE }/check-slug?slug=${ encodeURIComponent( slug ) }&type=${ type }&owner=${ encodeURIComponent( owner ) }&repo=${ encodeURIComponent( repo ) }&provider=${ provider }`,
+	} );
+
 export const switchBranch = ( owner, repo, branch, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ owner }/${ repo }/branch`,

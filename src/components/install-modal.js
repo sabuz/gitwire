@@ -1,17 +1,43 @@
 import { toast } from 'sonner';
 
 import { __, sprintf } from '@wordpress/i18n';
-import { useState, useEffect, useMemo } from '@wordpress/element';
+import { useState, useEffect, useRef, useMemo } from '@wordpress/element';
 import {
 	Button,
+	CheckboxControl,
 	ComboboxControl,
 	Flex,
 	Modal,
 	SelectControl,
 	Spinner,
+	TextControl,
 } from '@wordpress/components';
 
 import * as api from '../api';
+
+/**
+ * Normalizes a string into a safe directory slug matching WordPress conventions:
+ * lowercase, only a-z / 0-9 / hyphens / underscores, no consecutive separators,
+ * no leading or trailing separator.
+ *
+ * Both `-` and `_` are kept — WordPress plugins/themes use both. Any unsafe char
+ * (including spaces) is replaced with `-`. Mixed runs like `_-` collapse to `-`.
+ *
+ * @param {string} value Raw input.
+ * @return {string} Normalized slug.
+ */
+function normalizeSlug( value ) {
+	return value
+		.toLowerCase()
+		.replace( /[^a-z0-9_-]+/g, '-' )  // unsafe chars → hyphen
+		.replace( /[-_]*-[-_]*/g, '-' )    // any run containing a hyphen → single hyphen
+		.replace( /__+/g, '_' );           // consecutive underscores → single underscore
+	// No leading/trailing trim here — trimming while typing blocks adding separators at the end.
+}
+
+function finalizeSlug( value ) {
+	return normalizeSlug( value ).replace( /^[-_]+|[-_]+$/g, '' );
+}
 
 /**
  * Install modal — lets the user choose a branch and confirms the install.
@@ -43,7 +69,11 @@ export default function InstallModal( {
 			? initialDetection.type
 			: 'plugin'
 	);
+	const [ slug, setSlug ] = useState( normalizeSlug( repo.name ) );
+	const [ slugConflict, setSlugConflict ] = useState( false );
+	const [ replace, setReplace ] = useState( false );
 	const [ installing, setInstalling ] = useState( false );
+	const debounceRef = useRef( null );
 
 	// Filter all fetched branches by the current search term, show at most 10.
 	// Always keep the selected branch visible when no search is active.
@@ -86,18 +116,57 @@ export default function InstallModal( {
 		}
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
+	// Debounced slug conflict check.
+	useEffect( () => {
+		setReplace( false );
+		clearTimeout( debounceRef.current );
+		if ( ! slug ) {
+			setSlugConflict( false );
+			return;
+		}
+		debounceRef.current = setTimeout( () => {
+			api.checkSlug( finalizeSlug( slug ), type, repo.owner, repo.name, provider )
+				.then( ( r ) => setSlugConflict( r.conflict ) )
+				.catch( () => setSlugConflict( false ) );
+		}, 400 );
+		return () => clearTimeout( debounceRef.current );
+	}, [ slug, type ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
 	const canInstall =
-		detection && ( detection.type !== 'unknown' || ! smartInstall );
+		!! slug &&
+		detection &&
+		( detection.type !== 'unknown' || ! smartInstall ) &&
+		( ! slugConflict || replace );
 
 	const handleInstall = async () => {
 		setInstalling( true );
 		try {
+			// Re-check conflict at install time to guard against stale debounce state.
+			const installType =
+				detection?.type !== 'unknown' ? detection.type : type;
+			const finalSlug = finalizeSlug( slug );
+
+			const check = await api.checkSlug(
+				finalSlug,
+				installType,
+				repo.owner,
+				repo.name,
+				provider
+			);
+			if ( check.conflict && ! replace ) {
+				setSlugConflict( true );
+				setInstalling( false );
+				return;
+			}
+
 			const result = await api.install( {
 				owner: repo.owner,
 				repo: repo.name,
 				branch,
-				type: detection?.type !== 'unknown' ? detection.type : type,
+				type: installType,
 				provider,
+				slug: finalSlug,
+				replace,
 			} );
 			if ( result.slug_renamed ) {
 				toast.warning(
@@ -172,6 +241,38 @@ export default function InstallModal( {
 					onChange={ ( val ) => val && setBranch( val ) }
 					onFilterValueChange={ setBranchFilter }
 				/>
+			</div>
+
+			<div style={ { marginTop: 16 } }>
+				<TextControl
+					__nextHasNoMarginBottom
+					disabled={ installing }
+					label={ __( 'Directory name', 'git' ) }
+					value={ slug }
+					onChange={ ( val ) => setSlug( normalizeSlug( val ) ) }
+				/>
+				{ slugConflict && (
+					<div style={ { marginTop: 8 } }>
+						<p
+							className="gwp-detect-note gwp-detect-warn"
+							style={ { margin: '0 0 8px' } }
+						>
+							{ __(
+								'A directory with this name already exists.',
+								'git'
+							) }
+						</p>
+						<CheckboxControl
+							__nextHasNoMarginBottom
+							checked={ replace }
+							label={ __(
+								'Replace existing installation',
+								'git'
+							) }
+							onChange={ setReplace }
+						/>
+					</div>
+				) }
 			</div>
 
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 20 } }>
