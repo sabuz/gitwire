@@ -29,9 +29,9 @@ import * as api from '../api';
 function normalizeSlug( value ) {
 	return value
 		.toLowerCase()
-		.replace( /[^a-z0-9_-]+/g, '-' )  // unsafe chars → hyphen
-		.replace( /[-_]*-[-_]*/g, '-' )    // any run containing a hyphen → single hyphen
-		.replace( /__+/g, '_' );           // consecutive underscores → single underscore
+		.replace( /[^a-z0-9_-]+/g, '-' ) // unsafe chars → hyphen
+		.replace( /[-_]*-[-_]*/g, '-' ) // any run containing a hyphen → single hyphen
+		.replace( /__+/g, '_' ); // consecutive underscores → single underscore
 	// No leading/trailing trim here — trimming while typing blocks adding separators at the end.
 }
 
@@ -125,7 +125,13 @@ export default function InstallModal( {
 			return;
 		}
 		debounceRef.current = setTimeout( () => {
-			api.checkSlug( finalizeSlug( slug ), type, repo.owner, repo.name, provider )
+			api.checkSlug(
+				finalizeSlug( slug ),
+				type,
+				repo.owner,
+				repo.name,
+				provider
+			)
 				.then( ( r ) => setSlugConflict( r.conflict ) )
 				.catch( () => setSlugConflict( false ) );
 		}, 400 );
@@ -243,7 +249,10 @@ export default function InstallModal( {
 				/>
 			</div>
 
-			<div style={ { marginTop: 16 } }>
+			<div
+				className={ slugConflict ? 'gwp-input-error' : undefined }
+				style={ { marginTop: 16 } }
+			>
 				<TextControl
 					__nextHasNoMarginBottom
 					disabled={ installing }
@@ -252,10 +261,10 @@ export default function InstallModal( {
 					onChange={ ( val ) => setSlug( normalizeSlug( val ) ) }
 				/>
 				{ slugConflict && (
-					<div style={ { marginTop: 8 } }>
+					<>
 						<p
-							className="gwp-detect-note gwp-detect-warn"
-							style={ { margin: '0 0 8px' } }
+							className="gwp-detect-note gwp-detect-blocked"
+							style={ { margin: '8px 0' } }
 						>
 							{ __(
 								'A directory with this name already exists.',
@@ -271,7 +280,7 @@ export default function InstallModal( {
 							) }
 							onChange={ setReplace }
 						/>
-					</div>
+					</>
 				) }
 			</div>
 
