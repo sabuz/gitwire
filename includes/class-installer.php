@@ -357,6 +357,24 @@ class Installer {
 	}
 
 	/**
+	 * Stores the installed HEAD commit SHA for a repository record.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider: 'github' or 'gitlab'.
+	 * @param string $full_name Repository full name (owner/repo).
+	 * @param string $sha       Short commit SHA (7 characters).
+	 * @return void
+	 */
+	public static function set_head( string $provider, string $full_name, string $sha ): void {
+		$installed = (array) get_option( 'gwp_installed', [] );
+		$key       = $provider . ':' . $full_name;
+		if ( isset( $installed[ $key ] ) ) {
+			$installed[ $key ]['head'] = $sha;
+			update_option( 'gwp_installed', $installed );
+		}
+	}
+
+	/**
 	 * Core install routine: downloads, backs up, extracts, and records a repository.
 	 *
 	 * @since 1.0.0

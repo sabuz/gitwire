@@ -667,6 +667,7 @@ class REST {
 		}
 
 		self::bust_repos_cache();
+		self::store_head( $owner, $repo, $branch, $provider );
 
 		return $result;
 	}
@@ -828,7 +829,9 @@ class REST {
 			return $result;
 		}
 
+		delete_transient( 'gwp_commits_' . md5( $provider . ':' . $full_name . ':' . $branch ) );
 		self::bust_repos_cache();
+		self::store_head( $owner, $repo, $branch, $provider );
 
 		return $result;
 	}
@@ -874,10 +877,21 @@ class REST {
 			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
 
+		$cache_key = 'gwp_commits_' . md5( $provider . ':' . $full_name . ':' . $record['branch'] );
+		$cached    = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
 		$settings = (array) get_option( 'gwp_settings', [] );
 		$api      = self::make_api( $settings, $provider );
+		$commits  = $api->get_commits( $owner, $repo, $record['branch'] );
 
-		return $api->get_commits( $owner, $repo, $record['branch'] );
+		if ( ! is_wp_error( $commits ) ) {
+			set_transient( $cache_key, $commits, HOUR_IN_SECONDS );
+		}
+
+		return $commits;
 	}
 
 	/**
@@ -933,6 +947,27 @@ class REST {
 	public static function clear_cache(): array {
 		self::bust_repos_cache( true );
 		return [ 'cleared' => true ];
+	}
+
+	/**
+	 * Fetches the latest commit SHA for a branch and stores it on the installed record.
+	 * Runs fire-and-forget after install/switch — failures are silently ignored.
+	 *
+	 * @since 1.0.0
+	 * @param string $owner    Repository owner.
+	 * @param string $repo     Repository name.
+	 * @param string $branch   Branch name.
+	 * @param string $provider Git provider: 'github' or 'gitlab'.
+	 * @return void
+	 */
+	private static function store_head( string $owner, string $repo, string $branch, string $provider ): void {
+		$settings  = (array) get_option( 'gwp_settings', [] );
+		$api       = self::make_api( $settings, $provider );
+		$commits   = $api->get_commits( $owner, $repo, $branch, 1 );
+		$full_name = $owner . '/' . $repo;
+		if ( ! is_wp_error( $commits ) && ! empty( $commits ) ) {
+			Installer::set_head( $provider, $full_name, $commits[0]['sha'] );
+		}
 	}
 
 	/**

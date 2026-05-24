@@ -1,7 +1,7 @@
 import { toast } from 'sonner';
 
 import { __, sprintf } from '@wordpress/i18n';
-import { useState, useEffect, useCallback, useMemo } from '@wordpress/element';
+import { useState, useEffect, useMemo } from '@wordpress/element';
 import {
 	Button,
 	ComboboxControl,
@@ -636,7 +636,8 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 const commitsCache = new Map();
 
 /**
- * Table cell that fetches the HEAD commit SHA and opens the commits modal on click.
+ * Table cell showing the locally installed HEAD SHA. Opens the commits modal on click.
+ * If the record pre-dates SHA tracking, falls back to a one-time API fetch.
  *
  * @param {Object}   props           Component props.
  * @param {Object}   props.item      Installed repository record.
@@ -644,34 +645,25 @@ const commitsCache = new Map();
  * @return {JSX.Element} The rendered head cell.
  */
 function HeadCell( { item, onRefresh } ) {
-	const cacheKey = ( item.provider ?? 'github' ) + ':' + item.full_name;
 	const [ open, setOpen ] = useState( false );
-	const [ commits, setCommits ] = useState(
-		commitsCache.get( cacheKey ) ?? null
-	);
+	const [ fetchedSha, setFetchedSha ] = useState( null );
+	const cacheKey = ( item.provider ?? 'github' ) + ':' + item.full_name;
 
-	const loadCommits = useCallback( () => {
+	useEffect( () => {
+		if ( item.head ) {
+			return;
+		}
+		if ( commitsCache.has( cacheKey ) ) {
+			setFetchedSha( commitsCache.get( cacheKey )?.[ 0 ]?.sha ?? null );
+			return;
+		}
 		api.getCommits( item.owner, item.repo, item.provider ?? 'github' )
 			.then( ( data ) => {
 				commitsCache.set( cacheKey, data );
-				setCommits( data );
+				setFetchedSha( data?.[ 0 ]?.sha ?? null );
 			} )
-			.catch( () => setCommits( [] ) );
-	}, [ cacheKey, item.owner, item.repo, item.provider ] ); // eslint-disable-line react-hooks/exhaustive-deps
-
-	useEffect( () => {
-		if ( ! commitsCache.has( cacheKey ) ) {
-			loadCommits();
-		}
+			.catch( () => {} );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
-
-	const handlePulled = useCallback( () => {
-		commitsCache.delete( cacheKey );
-		setCommits( null );
-		loadCommits();
-	}, [ cacheKey, loadCommits ] );
-
-	const headSha = commits?.[ 0 ]?.sha;
 
 	return (
 		<>
@@ -680,14 +672,12 @@ function HeadCell( { item, onRefresh } ) {
 				variant="link"
 				onClick={ () => setOpen( true ) }
 			>
-				{ headSha ?? '···' }
+				{ item.head ?? fetchedSha ?? '···' }
 			</Button>
 			{ open && (
 				<CommitsModal
-					initialCommits={ commits }
 					item={ item }
 					onClose={ () => setOpen( false ) }
-					onPulled={ handlePulled }
 					onRefresh={ onRefresh }
 				/>
 			) }
@@ -698,36 +688,26 @@ function HeadCell( { item, onRefresh } ) {
 /**
  * Modal showing the last 10 commits for an installed repository with a Pull Latest action.
  *
- * @param {Object}     props                Component props.
- * @param {Object}     props.item           Installed repository record.
- * @param {Array|null} props.initialCommits Pre-fetched commits from HeadCell, or null.
- * @param {Function}   props.onClose        Callback fired when the modal is closed.
- * @param {Function}   props.onPulled       Callback fired after a successful pull to refresh the SHA.
- * @param {Function}   props.onRefresh      Callback to refresh the installed list after pulling.
+ * @param {Object}   props           Component props.
+ * @param {Object}   props.item      Installed repository record.
+ * @param {Function} props.onClose   Callback fired when the modal is closed.
+ * @param {Function} props.onRefresh Callback to refresh the installed list after pulling.
  * @return {JSX.Element} The rendered commits modal.
  */
-function CommitsModal( {
-	item,
-	initialCommits = null,
-	onClose,
-	onPulled,
-	onRefresh,
-} ) {
-	const [ commits, setCommits ] = useState( initialCommits );
+function CommitsModal( { item, onClose, onRefresh } ) {
+	const cacheKey = ( item.provider ?? 'github' ) + ':' + item.full_name;
+	const [ commits, setCommits ] = useState(
+		commitsCache.get( cacheKey ) ?? null
+	);
 	const [ pulling, setPulling ] = useState( false );
 
 	useEffect( () => {
-		if ( initialCommits !== null ) {
-			return;
-		}
-		const key = ( item.provider ?? 'github' ) + ':' + item.full_name;
-		if ( commitsCache.has( key ) ) {
-			setCommits( commitsCache.get( key ) );
+		if ( commitsCache.has( cacheKey ) ) {
 			return;
 		}
 		api.getCommits( item.owner, item.repo, item.provider ?? 'github' )
 			.then( ( data ) => {
-				commitsCache.set( key, data );
+				commitsCache.set( cacheKey, data );
 				setCommits( data );
 			} )
 			.catch( () => setCommits( [] ) );
@@ -749,7 +729,7 @@ function CommitsModal( {
 					item.full_name
 				)
 			);
-			onPulled();
+			commitsCache.delete( cacheKey );
 			onRefresh();
 			onClose();
 		} catch ( e ) {
