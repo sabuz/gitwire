@@ -5,7 +5,7 @@
  * Registers a PHP shutdown function that detects fatal errors introduced
  * by a plugin/theme we just installed or updated. On fatal: restores the
  * backup directory, deactivates the plugin (if it was active), and stores
- * an admin notice for the next page load.
+ * a fatal notice for the Git admin UI.
  *
  * Uses only plain PHP and raw MySQL so it works even when WordPress has
  * not finished bootstrapping.
@@ -95,7 +95,7 @@ class Error_Handler {
 			self::deactivate_plugin( $plugin_file );
 		}
 
-		// Store admin notice.
+		// Store fatal notice for the Git admin UI.
 		$notice = [
 			'full_name' => $full_name,
 			'type'      => $type,

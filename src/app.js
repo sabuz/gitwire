@@ -46,6 +46,39 @@ function showOrphanedNotice( item ) {
 	);
 }
 
+/**
+ * @param {Object} notice Fatal install/update notice from PHP.
+ */
+function showFatalNotice( notice ) {
+	const name = notice.full_name || __( 'Unknown', 'git' );
+	const message = notice.restored
+		? sprintf(
+				/* translators: %s: plugin or theme full name */
+				__(
+					'A fatal PHP error was detected after updating %s. The previous version has been automatically restored and the plugin deactivated.',
+					'git'
+				),
+				name
+		  )
+		: sprintf(
+				/* translators: %s: plugin or theme full name */
+				__(
+					'A fatal PHP error was detected after installing %s. The broken files have been removed.',
+					'git'
+				),
+				name
+		  );
+
+	toast.error( message, {
+		description: notice.error || undefined,
+		duration: Infinity,
+		action: {
+			label: __( 'Dismiss', 'git' ),
+			onClick: () => {},
+		},
+	} );
+}
+
 function tabUrl( tabName ) {
 	const url = new URL( window.location.href );
 	url.searchParams.set( 'page', 'git' );
@@ -110,6 +143,9 @@ export default function App( { initialData } ) {
 	}, [ activeTab ] );
 
 	useEffect( () => {
+		if ( initialData.fatal_notice ) {
+			showFatalNotice( initialData.fatal_notice );
+		}
 		( initialData.orphaned || [] ).forEach( showOrphanedNotice );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 

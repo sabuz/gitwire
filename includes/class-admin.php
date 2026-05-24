@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Handles all WordPress admin integration: menu pages, asset enqueueing,
- * admin notices, and page rendering.
+ * and page rendering.
  */
 class Admin {
 
@@ -34,22 +34,28 @@ class Admin {
 	public static function init(): void {
 		add_action( 'admin_menu', [ self::class, 'add_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue' ] );
-		add_action( 'admin_notices', [ self::class, 'show_fatal_notice' ] );
 		add_filter( 'admin_body_class', [ self::class, 'body_class' ] );
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
 	}
 
 	/**
-	 * Removes all admin notices on GWP pages to keep the UI clean.
+	 * Removes admin header notices on Git pages to keep the UI clean.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function hide_admin_notices(): void {
 		$screen = get_current_screen();
-		if ( ! $screen || false === strpos( $screen->id, '_page_git' ) ) {
+		if ( ! $screen || ! is_string( $screen->id ) ) {
 			return;
 		}
+
+		if ( false === strpos( $screen->id, '_page_git' ) ) {
+			return;
+		}
+
+		remove_all_actions( 'admin_notices' );
+		remove_all_actions( 'all_admin_notices' );
 		remove_all_actions( 'admin_footer_text' );
 	}
 
@@ -179,6 +185,10 @@ class Admin {
 		$installed_result = REST::sync_installed();
 		$installed        = $installed_result['installed'];
 		$orphaned         = $installed_result['orphaned'];
+		$fatal_notice     = get_option( 'gwp_fatal_notice' );
+		if ( $fatal_notice ) {
+			delete_option( 'gwp_fatal_notice' );
+		}
 		$first_activation = (bool) get_transient( 'gwp_first_activation' );
 
 		if ( $first_activation ) {
@@ -208,6 +218,7 @@ class Admin {
 					'connection'       => $connection,
 					'installed'        => $installed ? $installed : (object) [],
 					'orphaned'         => $orphaned,
+					'fatal_notice'     => $fatal_notice ? $fatal_notice : null,
 				]
 			) . ';',
 			'before'
@@ -225,41 +236,5 @@ class Admin {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'git' ) );
 		}
 		require_once GWP_DIR . 'views/admin-page.php';
-	}
-
-	/**
-	 * Displays a persistent admin notice when a fatal PHP error was caught
-	 * during plugin installation or update.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function show_fatal_notice(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-		$notice = get_option( 'gwp_fatal_notice' );
-		if ( ! $notice ) {
-			return;
-		}
-		delete_option( 'gwp_fatal_notice' );
-
-		$name     = esc_html( $notice['full_name'] ?? 'Unknown' );
-		$restored = ! empty( $notice['restored'] );
-
-		if ( $restored ) {
-			/* translators: %s: Plugin or theme full name. */
-			$msg = sprintf( __( '<strong>Git:</strong> A fatal PHP error was detected after updating <em>%s</em>. The previous version has been automatically restored and the plugin deactivated.', 'git' ), $name );
-		} else {
-			/* translators: %s: Plugin or theme full name. */
-			$msg = sprintf( __( '<strong>Git:</strong> A fatal PHP error was detected after installing <em>%s</em>. The broken files have been removed.', 'git' ), $name );
-		}
-
-		printf(
-			'<div class="notice notice-error is-dismissible"><p>%s</p><details><summary>%s</summary><pre>%s</pre></details></div>',
-			wp_kses_post( $msg ),
-			esc_html__( 'Error details', 'git' ),
-			esc_html( $notice['error'] ?? '' )
-		);
 	}
 }
