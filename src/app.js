@@ -11,7 +11,12 @@ import {
 import { Spinner } from '@wordpress/components';
 
 import * as api from './api';
-import { showPendingToast, queuePendingToast } from './pending-toast';
+import {
+	showPendingToast,
+	queuePendingToast,
+	clearPendingToast,
+} from './pending-toast';
+import { showFatalNotice } from './fatal-notice';
 import SettingsPanel from './components/settings-panel';
 
 const BrowsePanel = lazy( () => import( './components/browse-panel' ) );
@@ -44,39 +49,6 @@ function showOrphanedNotice( item ) {
 			},
 		}
 	);
-}
-
-/**
- * @param {Object} notice Fatal install/update notice from PHP.
- */
-function showFatalNotice( notice ) {
-	const name = notice.full_name || __( 'Unknown', 'git' );
-	const message = notice.restored
-		? sprintf(
-				/* translators: %s: plugin or theme full name */
-				__(
-					'A fatal PHP error was detected after updating %s. The previous version has been automatically restored and the plugin deactivated.',
-					'git'
-				),
-				name
-		  )
-		: sprintf(
-				/* translators: %s: plugin or theme full name */
-				__(
-					'A fatal PHP error was detected after installing %s. The broken files have been removed.',
-					'git'
-				),
-				name
-		  );
-
-	toast.error( message, {
-		description: notice.error || undefined,
-		duration: Infinity,
-		action: {
-			label: __( 'Dismiss', 'git' ),
-			onClick: () => {},
-		},
-	} );
 }
 
 function tabUrl( tabName ) {
@@ -139,12 +111,24 @@ export default function App( { initialData } ) {
 		if ( activeTab !== 'installed' ) {
 			return;
 		}
+		if ( initialData.fatal_notice ) {
+			return;
+		}
 		showPendingToast( toast );
-	}, [ activeTab ] );
+	}, [ activeTab ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect( () => {
 		if ( initialData.fatal_notice ) {
+			clearPendingToast();
 			showFatalNotice( initialData.fatal_notice );
+		} else if ( initialData.activation_success?.full_name ) {
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( '%s activated.', 'git' ),
+					initialData.activation_success.full_name
+				)
+			);
 		}
 		( initialData.orphaned || [] ).forEach( showOrphanedNotice );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps

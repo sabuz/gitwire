@@ -80,6 +80,9 @@ export const deactivateInstalled = ( owner, repo, provider = 'github' ) =>
 		data: { provider },
 	} );
 
+export const getActivationStatus = () =>
+	apiFetch( { path: `${ BASE }/activation-status` } );
+
 export const removeInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ owner }/${ repo }?provider=${ encodeURIComponent(

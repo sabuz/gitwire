@@ -44,6 +44,7 @@ class Error_Handler {
 		}
 		self::$registered = true;
 		register_shutdown_function( [ self::class, 'handle_shutdown' ] );
+		add_action( 'after_setup_theme', [ self::class, 'release_activation_guard_if_stable' ], 99999 );
 	}
 
 	/**
@@ -70,41 +71,134 @@ class Error_Handler {
 		}
 
 		// Immediately clear the flag so we don't loop.
-		self::db_delete_option( 'gwp_pending_update' );
+		self::clear_pending_update();
 
 		$install_path = $pending['install_path'] ?? null;
 		$backup_path  = $pending['backup_path'] ?? null;
 		$plugin_file  = $pending['plugin_file'] ?? null;
 		$full_name    = $pending['full_name'] ?? 'unknown';
 		$type         = $pending['type'] ?? 'plugin';
+		$context      = $pending['context'] ?? 'install';
 
-		// Restore backup.
-		if ( $backup_path && is_dir( $backup_path ) ) {
-			if ( $install_path && is_dir( $install_path ) ) {
+		if ( 'activation' === $context ) {
+			if ( 'plugin' === $type && $plugin_file ) {
+				self::deactivate_plugin( $plugin_file );
+			} elseif ( 'theme' === $type ) {
+				self::restore_theme(
+					$pending['previous_stylesheet'] ?? null,
+					$pending['previous_template'] ?? null
+				);
+			}
+		} else {
+			// Restore backup.
+			if ( $backup_path && is_dir( $backup_path ) ) {
+				if ( $install_path && is_dir( $install_path ) ) {
+					Installer::rmdir_recursive( $install_path );
+				}
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
+				@rename( $backup_path, $install_path );
+			} elseif ( $install_path && is_dir( $install_path ) ) {
+				// No backup means it was a fresh install — remove the broken copy.
 				Installer::rmdir_recursive( $install_path );
 			}
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
-			@rename( $backup_path, $install_path );
-		} elseif ( $install_path && is_dir( $install_path ) ) {
-			// No backup means it was a fresh install — remove the broken copy.
-			Installer::rmdir_recursive( $install_path );
-		}
 
-		// Deactivate plugin.
-		if ( 'plugin' === $type && $plugin_file ) {
-			self::deactivate_plugin( $plugin_file );
+			// Deactivate plugin.
+			if ( 'plugin' === $type && $plugin_file ) {
+				self::deactivate_plugin( $plugin_file );
+			}
 		}
 
 		// Store fatal notice for the Git admin UI.
 		$notice = [
 			'full_name' => $full_name,
 			'type'      => $type,
+			'context'   => $context,
 			'error'     => sprintf( '%s in %s on line %d', $error['message'], $error['file'], $error['line'] ),
 			'time'      => time(),
-			'restored'  => (bool) $backup_path,
+			'restored'  => 'activation' === $context ? true : (bool) $backup_path,
 		];
 
 		self::db_update_option( 'gwp_fatal_notice', $notice );
+		self::clear_pending_update();
+
+		if ( 'activation' === $context && 'theme' !== $type ) {
+			self::redirect_to_git_admin();
+		}
+	}
+
+	/**
+	 * Sends the admin back to Git after an activation fatal was recovered.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	private static function redirect_to_git_admin(): void {
+		if ( ! function_exists( 'admin_url' ) ) {
+			return;
+		}
+
+		$url = admin_url( 'admin.php?page=git' );
+
+		if ( ! headers_sent() ) {
+			wp_safe_redirect( $url );
+			exit;
+		}
+
+		echo '<meta http-equiv="refresh" content="0;url=' . esc_attr( $url ) . '">';
+		if ( function_exists( 'esc_js' ) ) {
+			echo '<script>window.location.replace("' . esc_js( $url ) . '");</script>';
+		}
+		exit;
+	}
+
+	/**
+	 * Clears a pending activation guard after the new theme or plugin loads cleanly.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	public static function release_activation_guard_if_stable(): void {
+		$pending = get_option( 'gwp_pending_update' );
+		if ( ! is_array( $pending ) || 'activation' !== ( $pending['context'] ?? '' ) ) {
+			return;
+		}
+
+		$type = $pending['type'] ?? '';
+
+		if ( 'theme' === $type ) {
+			$target = $pending['target_stylesheet'] ?? '';
+			if ( $target && get_stylesheet() === $target ) {
+				self::mark_activation_success( $pending );
+				delete_option( 'gwp_pending_update' );
+			}
+			return;
+		}
+
+		if ( 'plugin' === $type ) {
+			$plugin_file = $pending['plugin_file'] ?? '';
+			if ( $plugin_file && function_exists( 'is_plugin_active' ) && is_plugin_active( $plugin_file ) ) {
+				self::mark_activation_success( $pending );
+				delete_option( 'gwp_pending_update' );
+			}
+		}
+	}
+
+	/**
+	 * Records a verified activation for the Git admin UI toast.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, mixed> $pending Pending activation record.
+	 * @return void
+	 */
+	private static function mark_activation_success( array $pending ): void {
+		set_transient(
+			'gwp_activation_success',
+			[
+				'full_name' => $pending['full_name'] ?? '',
+				'type'      => $pending['type'] ?? '',
+			],
+			MINUTE_IN_SECONDS
+		);
 	}
 
 	/**
@@ -125,6 +219,21 @@ class Error_Handler {
 			$wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $name )
 		);
 		return $row ? maybe_unserialize( $row ) : null;
+	}
+
+	/**
+	 * Clears the pending update flag and any cached copy.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	private static function clear_pending_update(): void {
+		if ( function_exists( 'delete_option' ) ) {
+			delete_option( 'gwp_pending_update' );
+			return;
+		}
+
+		self::db_delete_option( 'gwp_pending_update' );
 	}
 
 	/**
@@ -182,6 +291,41 @@ class Error_Handler {
 					'autoload'     => 'no',
 				],
 				[ '%s', '%s', '%s' ]
+			);
+		}
+	}
+
+	/**
+	 * Restores the previous active theme directly in the database.
+	 *
+	 * @since 1.2.0
+	 * @param string|null $stylesheet Previous stylesheet slug.
+	 * @param string|null $template   Previous template slug.
+	 * @return void
+	 */
+	private static function restore_theme( ?string $stylesheet, ?string $template ): void {
+		global $wpdb;
+		if ( ! isset( $wpdb ) || ! $stylesheet ) {
+			return;
+		}
+
+		if ( ! $template ) {
+			$template = $stylesheet;
+		}
+
+		foreach (
+			[
+				'stylesheet' => $stylesheet,
+				'template'   => $template,
+			] as $option_name => $option_value
+		) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->update(
+				$wpdb->options,
+				[ 'option_value' => $option_value ],
+				[ 'option_name' => $option_name ],
+				[ '%s' ],
+				[ '%s' ]
 			);
 		}
 	}

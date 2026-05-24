@@ -189,6 +189,10 @@ class Admin {
 		if ( $fatal_notice ) {
 			delete_option( 'gwp_fatal_notice' );
 		}
+		$activation_success = get_transient( 'gwp_activation_success' );
+		if ( $activation_success ) {
+			delete_transient( 'gwp_activation_success' );
+		}
 		$first_activation = (bool) get_transient( 'gwp_first_activation' );
 
 		if ( $first_activation ) {
@@ -209,17 +213,19 @@ class Admin {
 			'gwp-app',
 			'window.GWP = ' . wp_json_encode(
 				[
-					'nonce'            => wp_create_nonce( 'wp_rest' ),
-					'icon_url'         => GWP_URL . 'assets/images/icon.svg',
-					'disconnected_url' => GWP_URL . 'assets/images/cloud-alert.svg',
-					'not_found_url'    => GWP_URL . 'assets/images/folder-x.svg',
-					'themes_url'       => admin_url( 'themes.php' ),
-					'initial_tab'      => $initial_tab,
-					'settings'         => $settings,
-					'connection'       => $connection,
-					'installed'        => $installed ? $installed : (object) [],
-					'orphaned'         => $orphaned,
-					'fatal_notice'     => $fatal_notice ? $fatal_notice : null,
+					'nonce'                 => wp_create_nonce( 'wp_rest' ),
+					'icon_url'              => GWP_URL . 'assets/images/icon.svg',
+					'disconnected_url'      => GWP_URL . 'assets/images/cloud-alert.svg',
+					'not_found_url'         => GWP_URL . 'assets/images/folder-x.svg',
+					'themes_url'            => admin_url( 'themes.php' ),
+					'verify_activation_url' => admin_url( 'index.php?gwp_verify_activation=1' ),
+					'initial_tab'           => $initial_tab,
+					'settings'              => $settings,
+					'connection'            => $connection,
+					'installed'             => $installed ? $installed : (object) [],
+					'orphaned'              => $orphaned,
+					'fatal_notice'          => $fatal_notice ? $fatal_notice : null,
+					'activation_success'    => $activation_success ? $activation_success : null,
 				]
 			) . ';',
 			'before'

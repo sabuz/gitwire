@@ -300,6 +300,16 @@ class REST {
 				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
+
+		register_rest_route(
+			$ns,
+			'/activation-status',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'get_activation_status' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
 	}
 
 	/**
@@ -310,6 +320,44 @@ class REST {
 	 */
 	public static function can_manage(): bool {
 		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * Returns whether a guarded activation finished, failed, or is still pending.
+	 *
+	 * @since 1.2.0
+	 * @return \WP_REST_Response
+	 */
+	public static function get_activation_status(): \WP_REST_Response {
+		$fatal = get_option( 'gwp_fatal_notice' );
+		if ( $fatal ) {
+			delete_option( 'gwp_fatal_notice' );
+			delete_option( 'gwp_pending_update' );
+			return rest_ensure_response(
+				[
+					'status' => 'fatal',
+					'notice' => $fatal,
+				]
+			);
+		}
+
+		$pending = get_option( 'gwp_pending_update' );
+		if ( is_array( $pending ) && 'activation' === ( $pending['context'] ?? '' ) ) {
+			return rest_ensure_response( [ 'status' => 'pending' ] );
+		}
+
+		$success = get_transient( 'gwp_activation_success' );
+		if ( $success ) {
+			delete_transient( 'gwp_activation_success' );
+			return rest_ensure_response(
+				array_merge(
+					[ 'status' => 'success' ],
+					is_array( $success ) ? $success : []
+				)
+			);
+		}
+
+		return rest_ensure_response( [ 'status' => 'idle' ] );
 	}
 
 	/**
@@ -895,7 +943,9 @@ class REST {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		$active_theme = get_stylesheet();
+		$active_theme       = get_stylesheet();
+		$pending            = get_option( 'gwp_pending_update' );
+		$pending_activation = is_array( $pending ) && 'activation' === ( $pending['context'] ?? '' );
 
 		foreach ( $records as $key => &$rec ) {
 			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
@@ -908,6 +958,11 @@ class REST {
 			} else {
 				$rec['active']  = ( $rec['slug'] ?? '' ) === $active_theme;
 				$rec['subtype'] = ! empty( $rec['install_path'] ) && file_exists( $rec['install_path'] . '/theme.json' ) ? 'block' : 'classic';
+
+				if ( $pending_activation && ( $pending['target_stylesheet'] ?? '' ) === ( $rec['slug'] ?? '' ) ) {
+					$rec['activation_pending'] = true;
+					$rec['active']             = false;
+				}
 			}
 
 			$remote_key  = 'gwp_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );

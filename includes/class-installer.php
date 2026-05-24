@@ -254,15 +254,55 @@ class Installer {
 				);
 			}
 
+			self::begin_activation_guard( $rec, $full_name, $plugin_file );
 			$result = activate_plugin( $plugin_file );
+
 			if ( is_wp_error( $result ) ) {
+				self::clear_activation_guard();
 				return $result;
 			}
 		} elseif ( 'theme' === $rec['type'] ) {
+			self::begin_activation_guard( $rec, $full_name );
 			switch_theme( $rec['slug'] );
 		}
 
 		return true;
+	}
+
+	/**
+	 * Registers a pending activation record for the fatal-error shutdown handler.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, mixed> $rec         Installed repository record.
+	 * @param string               $full_name   Repository full name.
+	 * @param string|null          $plugin_file Plugin bootstrap file, if any.
+	 * @return void
+	 */
+	private static function begin_activation_guard( array $rec, string $full_name, ?string $plugin_file = null ): void {
+		$pending = [
+			'context'             => 'activation',
+			'full_name'           => $full_name,
+			'type'                => $rec['type'],
+			'plugin_file'         => $plugin_file,
+			'previous_stylesheet' => get_stylesheet(),
+			'previous_template'   => get_template(),
+		];
+
+		if ( 'theme' === $rec['type'] ) {
+			$pending['target_stylesheet'] = $rec['slug'];
+		}
+
+		update_option( 'gwp_pending_update', $pending, false );
+	}
+
+	/**
+	 * Clears a pending activation guard when activation fails before bootstrap.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	private static function clear_activation_guard(): void {
+		delete_option( 'gwp_pending_update' );
 	}
 
 	/**

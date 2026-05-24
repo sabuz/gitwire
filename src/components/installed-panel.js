@@ -6,7 +6,9 @@ import { Button, Flex, Icon } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
+import { showFatalNotice } from '../fatal-notice';
 import { queuePendingToastAndReload } from '../pending-toast';
+import { verifyThemeActivation } from '../verify-theme-activation';
 import ConnectPrompt from './connect-prompt';
 import BranchCell from './installed/branch-cell';
 import BranchModal from './installed/branch-modal';
@@ -111,19 +113,29 @@ export default function InstalledPanel( {
 			{
 				id: 'status',
 				label: __( 'Status', 'git' ),
-				getValue: ( { item } ) =>
-					item.active ? 'active' : 'inactive',
+				getValue: ( { item } ) => {
+					if ( item.activation_pending ) {
+						return 'pending';
+					}
+					return item.active ? 'active' : 'inactive';
+				},
 				render: ( { item } ) => (
 					<Flex align="center" gap={ 1 }>
-						<span
-							className={ `gwp-badge gwp-badge--${
-								item.active ? 'success' : 'draft'
-							}` }
-						>
-							{ item.active
-								? __( 'Active', 'git' )
-								: __( 'Inactive', 'git' ) }
-						</span>
+						{ item.activation_pending ? (
+							<span className="gwp-badge gwp-badge--warning">
+								{ __( 'Verifying…', 'git' ) }
+							</span>
+						) : (
+							<span
+								className={ `gwp-badge gwp-badge--${
+									item.active ? 'success' : 'draft'
+								}` }
+							>
+								{ item.active
+									? __( 'Active', 'git' )
+									: __( 'Inactive', 'git' ) }
+							</span>
+						) }
 						{ item.update_available && (
 							<span className="gwp-badge gwp-badge--warning is-update">
 								{ __( 'Update available', 'git' ) }
@@ -190,7 +202,8 @@ export default function InstalledPanel( {
 				id: 'activate',
 				label: __( 'Activate', 'git' ),
 				icon: <Icon icon="yes-alt" />,
-				isEligible: ( item ) => ! item.active,
+				isEligible: ( item ) =>
+					! item.active && ! item.activation_pending,
 				callback: async ( [ item ] ) => {
 					try {
 						await api.activateInstalled(
@@ -198,6 +211,40 @@ export default function InstalledPanel( {
 							item.repo,
 							item.provider ?? 'github'
 						);
+						if ( item.type === 'theme' ) {
+							const verifyUrl = window.GWP?.verify_activation_url;
+							if ( ! verifyUrl ) {
+								window.location.reload();
+								return;
+							}
+							onRefresh();
+							verifyThemeActivation( {
+								verifyUrl,
+								onSuccess: ( result ) => {
+									queuePendingToastAndReload(
+										sprintf(
+											/* translators: %s: repository full name */
+											__( '%s activated.', 'git' ),
+											result.full_name || item.full_name
+										)
+									);
+								},
+								onFatal: ( notice ) => {
+									showFatalNotice( notice );
+									onRefresh();
+								},
+								onTimeout: () => {
+									toast.error(
+										__(
+											'Theme activation could not be verified. Please reload the page.',
+											'git'
+										)
+									);
+									onRefresh();
+								},
+							} );
+							return;
+						}
 						queuePendingToastAndReload(
 							sprintf(
 								/* translators: %s: repository full name */

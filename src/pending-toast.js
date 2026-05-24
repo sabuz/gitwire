@@ -1,6 +1,13 @@
 const PENDING_TOAST_KEY = 'gwp_pending_toast';
 
 /**
+ * Clears any toast queued for the next page load.
+ */
+export function clearPendingToast() {
+	sessionStorage.removeItem( PENDING_TOAST_KEY );
+}
+
+/**
  * @param {Object}              options                     Toast options.
  * @param {string}              options.message             User-facing message.
  * @param {'success'|'warning'} [options.variant='success'] Toast variant.
