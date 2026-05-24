@@ -484,7 +484,12 @@ function BranchSwitcherModal( { item, onClose, onSwitched, onError } ) {
 		setSwitching( true );
 		let errorMsg = null;
 		try {
-			await api.switchBranch( owner, repo, selectedBranch, item.provider ?? 'github' );
+			await api.switchBranch(
+				owner,
+				repo,
+				selectedBranch,
+				item.provider ?? 'github'
+			);
 		} catch ( e ) {
 			errorMsg = e.message || 'Branch switch failed.';
 		}
@@ -554,7 +559,11 @@ function DeleteConfirmModal( { item, onClose, onDeleted, onError } ) {
 		setDeleting( true );
 		let errorMsg = null;
 		try {
-			await api.removeInstalled( item.owner, item.repo, item.provider ?? 'github' );
+			await api.removeInstalled(
+				item.owner,
+				item.repo,
+				item.provider ?? 'github'
+			);
 		} catch ( e ) {
 			errorMsg = e.message || 'Delete failed.';
 		}

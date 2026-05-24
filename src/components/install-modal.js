@@ -20,7 +20,7 @@ import * as api from '../api';
  * lowercase, only a-z / 0-9 / hyphens / underscores, no consecutive separators,
  * no leading or trailing separator.
  *
- * Both `-` and `_` are kept — WordPress plugins/themes use both. Any unsafe char
+ * Both `-` and `_` are kept - WordPress plugins/themes use both. Any unsafe char
  * (including spaces) is replaced with `-`. Mixed runs like `_-` collapse to `-`.
  *
  * @param {string} value Raw input.
@@ -32,7 +32,7 @@ function normalizeSlug( value ) {
 		.replace( /[^a-z0-9_-]+/g, '-' ) // unsafe chars → hyphen
 		.replace( /[-_]*-[-_]*/g, '-' ) // any run containing a hyphen → single hyphen
 		.replace( /__+/g, '_' ); // consecutive underscores → single underscore
-	// No leading/trailing trim here — trimming while typing blocks adding separators at the end.
+	// No leading/trailing trim here - trimming while typing blocks adding separators at the end.
 }
 
 function finalizeSlug( value ) {
@@ -40,7 +40,7 @@ function finalizeSlug( value ) {
 }
 
 /**
- * Install modal — lets the user choose a branch and confirms the install.
+ * Install modal - lets the user choose a branch and confirms the install.
  *
  * @param {Object}      props              Component props.
  * @param {Object}      props.repo         Repository data object.
@@ -332,7 +332,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 				? sprintf(
 						/* translators: %s: plugin name */
 						__( 'WordPress Plugin%s', 'git' ),
-						name ? ` — ${ name }` : ''
+						name ? ` - ${ name }` : ''
 				  )
 				: __( 'Likely a WordPress Plugin', 'git' );
 	} else if ( type === 'theme' && subtype === 'block' ) {
@@ -342,7 +342,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 				? sprintf(
 						/* translators: %s: theme name */
 						__( 'Block Theme%s', 'git' ),
-						name ? ` — ${ name }` : ''
+						name ? ` - ${ name }` : ''
 				  )
 				: __( 'Likely a Block Theme', 'git' );
 	} else if ( type === 'theme' ) {
@@ -352,7 +352,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 				? sprintf(
 						/* translators: %s: theme name */
 						__( 'Classic Theme%s', 'git' ),
-						name ? ` — ${ name }` : ''
+						name ? ` - ${ name }` : ''
 				  )
 				: __( 'Likely a Classic Theme', 'git' );
 	} else {
@@ -368,7 +368,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 			{ type === 'unknown' && smartInstall && (
 				<p className="gwp-detect-note gwp-detect-blocked">
 					{ __(
-						'Smart Install is enabled — only verified plugins and themes can be installed. Disable it in Settings to override.',
+						'Smart Install is enabled - only verified plugins and themes can be installed. Disable it in Settings to override.',
 						'git'
 					) }
 				</p>
@@ -376,7 +376,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 			{ type === 'unknown' && ! smartInstall && (
 				<p className="gwp-detect-note gwp-detect-warn">
 					{ __(
-						'This repo was not recognised as a WordPress plugin or theme. You can still install it — choose a type below.',
+						'This repo was not recognised as a WordPress plugin or theme. You can still install it - choose a type below.',
 						'git'
 					) }
 				</p>

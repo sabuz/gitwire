@@ -22,12 +22,12 @@ const CONCURRENT = 3;
 /**
  * Browse panel — lists GitHub and GitLab repositories with detection and install actions.
  *
- * @param {Object}   props                  Component props.
- * @param {Object}   props.settings         Plugin settings.
- * @param {Object}   props.installed        Map of installed repositories.
- * @param {Function} props.onInstalled      Callback fired after a successful install.
- * @param {Function} props.onGoToInstalled  Callback to navigate to the Installed tab.
- * @param {Function} props.onGoToSettings   Callback to navigate to the Settings tab.
+ * @param {Object}   props                 Component props.
+ * @param {Object}   props.settings        Plugin settings.
+ * @param {Object}   props.installed       Map of installed repositories.
+ * @param {Function} props.onInstalled     Callback fired after a successful install.
+ * @param {Function} props.onGoToInstalled Callback to navigate to the Installed tab.
+ * @param {Function} props.onGoToSettings  Callback to navigate to the Settings tab.
  * @return {JSX.Element} The rendered browse panel.
  */
 export default function BrowsePanel( {
@@ -251,7 +251,8 @@ export default function BrowsePanel( {
 		if ( typeFilter === 'all' ) {
 			return true;
 		}
-		const installedRec = installed[ r.provider + ':' + r.full_name ] || r.installed;
+		const installedRec =
+			installed[ r.provider + ':' + r.full_name ] || r.installed;
 		const type =
 			installedRec?.type ??
 			detectionsRef.current[ detectionKey( r ) ]?.type;
