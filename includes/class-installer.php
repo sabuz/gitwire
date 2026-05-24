@@ -173,7 +173,9 @@ class Installer {
 		$repo   = $parts[1];
 		$method = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
 
-		return self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider );
+		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider );
+
+		return $result;
 	}
 
 	/**
