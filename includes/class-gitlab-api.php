@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Thin wrapper around the GitLab REST API v4.
  * Handles authentication, response normalisation, and ZIP streaming.
  */
-class GitLab_API {
+class GitLab_API implements Git_Provider_Interface {
 
 	/**
 	 * Personal access token for authenticated requests.
@@ -63,9 +63,10 @@ class GitLab_API {
 	 * confirm the token is valid, returning authenticated state without profile.
 	 *
 	 * @since 1.1.0
+	 * @param string $owner Unused; kept for interface compatibility.
 	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
 	 */
-	public function test_connection(): array|\WP_Error {
+	public function test_connection( string $owner = '' ): array|\WP_Error {
 		if ( ! $this->token ) {
 			return new \WP_Error( 'gwp_no_token', 'GitLab requires a Personal Access Token.' );
 		}
@@ -129,125 +130,29 @@ class GitLab_API {
 	public function detect_type( string $owner, string $repo, string $branch = 'HEAD' ): array|\WP_Error {
 		$project_id = rawurlencode( $owner . '/' . $repo );
 
-		$contents = $this->get(
-			'/projects/' . $project_id . '/repository/tree?ref=' . rawurlencode( $branch )
+		return Repo_Detector::detect(
+			$repo,
+			$branch,
+			function ( $ref ) use ( $project_id ) {
+				$contents = $this->get(
+					'/projects/' . $project_id . '/repository/tree?ref=' . rawurlencode( $ref )
+				);
+				if ( is_wp_error( $contents ) ) {
+					return $contents;
+				}
+				return array_map(
+					static function ( $item ) {
+						$type = $item['type'] ?? '';
+						return [
+							'name' => $item['name'] ?? '',
+							'type' => 'blob' === $type ? 'file' : ( 'tree' === $type ? 'dir' : $type ),
+						];
+					},
+					$contents
+				);
+			},
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref )
 		);
-
-		if ( is_wp_error( $contents ) ) {
-			return $contents;
-		}
-
-		$files = [];
-		foreach ( $contents as $item ) {
-			if ( isset( $item['name'] ) ) {
-				$files[ strtolower( $item['name'] ) ] = $item;
-			}
-		}
-
-		// 1. theme.json → block theme.
-		if ( isset( $files['theme.json'] ) ) {
-			$name = '';
-			if ( isset( $files['style.css'] ) ) {
-				$css = $this->get_raw_content( $owner, $repo, 'style.css', $branch );
-				if ( ! is_wp_error( $css ) ) {
-					$name = $this->extract_header( $css, 'Theme Name' );
-				}
-			}
-			return [
-				'type'       => 'theme',
-				'subtype'    => 'block',
-				'confidence' => 'high',
-				'name'       => $name,
-			];
-		}
-
-		// 2. style.css with "Theme Name:" → theme.
-		if ( isset( $files['style.css'] ) ) {
-			$css = $this->get_raw_content( $owner, $repo, 'style.css', $branch );
-			if ( ! is_wp_error( $css ) && $this->has_header( $css, 'Theme Name' ) ) {
-				$subtype = isset( $files['templates'] ) ? 'block' : 'classic';
-				return [
-					'type'       => 'theme',
-					'subtype'    => $subtype,
-					'confidence' => 'high',
-					'name'       => $this->extract_header( $css, 'Theme Name' ),
-				];
-			}
-		}
-
-		// 3. PHP files with "Plugin Name:" header.
-		$priority_names = [ strtolower( $repo ) . '.php', 'plugin.php', 'index.php' ];
-		$php_files      = array_filter(
-			array_keys( $files ),
-			fn( $n ) => str_ends_with( $n, '.php' ) && ( $files[ $n ]['type'] ?? '' ) === 'blob'
-		);
-		usort(
-			$php_files,
-			static function ( $a, $b ) use ( $priority_names ) {
-				$ai = array_search( $a, $priority_names, true );
-				$bi = array_search( $b, $priority_names, true );
-				if ( false === $ai && false === $bi ) {
-					return 0;
-				}
-				if ( false === $ai ) {
-					return 1;
-				}
-				if ( false === $bi ) {
-					return -1;
-				}
-				return $ai - $bi;
-			}
-		);
-
-		foreach ( array_slice( $php_files, 0, 5 ) as $lc_name ) {
-			$real_name = $files[ $lc_name ]['name'];
-			$content   = $this->get_raw_content( $owner, $repo, $real_name, $branch );
-			if ( ! is_wp_error( $content ) && $this->has_header( $content, 'Plugin Name' ) ) {
-				return [
-					'type'       => 'plugin',
-					'subtype'    => null,
-					'confidence' => 'high',
-					'name'       => $this->extract_header( $content, 'Plugin Name' ),
-				];
-			}
-		}
-
-		// 4. templates/ directory → block theme.
-		if ( isset( $files['templates'] ) && ( $files['templates']['type'] ?? '' ) === 'tree' ) {
-			return [
-				'type'       => 'theme',
-				'subtype'    => 'block',
-				'confidence' => 'medium',
-				'name'       => '',
-			];
-		}
-
-		// 5. functions.php → classic theme.
-		if ( isset( $files['functions.php'] ) ) {
-			return [
-				'type'       => 'theme',
-				'subtype'    => 'classic',
-				'confidence' => 'medium',
-				'name'       => '',
-			];
-		}
-
-		// 6. Any PHP files → probably a plugin.
-		if ( ! empty( $php_files ) ) {
-			return [
-				'type'       => 'plugin',
-				'subtype'    => null,
-				'confidence' => 'low',
-				'name'       => '',
-			];
-		}
-
-		return [
-			'type'       => 'unknown',
-			'subtype'    => null,
-			'confidence' => 'none',
-			'name'       => '',
-		];
 	}
 
 	/**
@@ -380,33 +285,6 @@ class GitLab_API {
 		}
 
 		return wp_remote_retrieve_body( $response );
-	}
-
-	/**
-	 * Checks whether a file content string contains a WordPress-style header field.
-	 *
-	 * @since 1.1.0
-	 * @param string $content File content to search.
-	 * @param string $header  Header field name (e.g. "Plugin Name").
-	 * @return bool True if the header is present.
-	 */
-	private function has_header( string $content, string $header ): bool {
-		return (bool) preg_match( '/^\s*[\/*#]?\s*' . preg_quote( $header, '/' ) . '\s*:/mi', $content );
-	}
-
-	/**
-	 * Extracts the value of a WordPress-style header field from file content.
-	 *
-	 * @since 1.1.0
-	 * @param string $content File content to search.
-	 * @param string $header  Header field name (e.g. "Theme Name").
-	 * @return string Header value, or empty string if not found.
-	 */
-	private function extract_header( string $content, string $header ): string {
-		if ( preg_match( '/^\s*[\/*#]?\s*' . preg_quote( $header, '/' ) . '\s*:\s*(.+)$/mi', $content, $m ) ) {
-			return trim( $m[1] );
-		}
-		return '';
 	}
 
 	/**

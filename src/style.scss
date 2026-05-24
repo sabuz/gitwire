@@ -366,7 +366,7 @@ body.gwp-admin-page {
 
 	&-name {
 		font-size: 14px;
-		font-weight: 600;
+		font-weight: 500;
 		color: #1d2327;
 	}
 
@@ -406,8 +406,9 @@ body.gwp-admin-page {
 
 // Spinning icon button (e.g. Pull Latest while in progress)
 @keyframes gwp-spin {
+
 	to {
-		transform: rotate( 360deg );
+		transform: rotate(360deg);
 	}
 }
 
@@ -421,9 +422,9 @@ body.gwp-admin-page {
 
 	&__text {
 		display: block;
-		overflow: hidden;
-		white-space: nowrap;
 		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
 	}
 }
 
@@ -492,9 +493,80 @@ body.gwp-admin-page {
 	}
 
 	&__title {
-		overflow: hidden;
+		min-width: 0;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		min-width: 0;
+		overflow: hidden;
 	}
+}
+
+.gwp-page-loading {
+	padding: 48px;
+	text-align: center;
+}
+
+.gwp-installed-empty {
+	padding: 72px 24px;
+	text-align: center;
+
+	img {
+		display: block;
+		width: 64px;
+		height: 64px;
+		margin: 0 auto 20px;
+		opacity: 0.2;
+	}
+
+	h2 {
+		margin: 0 0 16px;
+		font-size: 16px;
+		font-weight: 600;
+		color: #1d2327;
+	}
+}
+
+.gwp-installed-source,
+.gwp-installed-date {
+	font-size: 12px;
+	color: #57606a;
+}
+
+.gwp-badge.is-update {
+	font-size: 11px;
+}
+
+.gwp-commit-row {
+	display: flex;
+	gap: 12px;
+	padding: 10px 0;
+	border-bottom: 1px solid #f0f0f0;
+}
+
+.gwp-commit-sha {
+	flex-shrink: 0;
+	align-self: flex-start;
+	padding-top: 1px;
+	font-family: monospace;
+	font-size: 11px;
+	color: var(--gwp-color-accent);
+}
+
+.gwp-commit-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.gwp-commit-message {
+	margin: 0;
+	font-size: 13px;
+	text-overflow: ellipsis;
+	color: #1d2327;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.gwp-commit-meta {
+	margin: 2px 0 0;
+	font-size: 11px;
+	color: #57606a;
 }

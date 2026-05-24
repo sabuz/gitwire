@@ -14,7 +14,6 @@ export default [
 	{
 		languageOptions: {
 			globals: {
-				GHWP: 'readonly',
 				wp: 'readonly',
 			},
 		},

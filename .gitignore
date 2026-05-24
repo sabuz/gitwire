@@ -3,8 +3,7 @@ node_modules/
 vendor/
 
 # Lock files
-package-lock.json
-composer.lock
+# package-lock.json and composer.lock are committed for reproducible CI
 
 # Build output (compiled by wp-scripts, not committed)
 build/

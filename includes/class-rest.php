@@ -134,11 +134,49 @@ class REST {
 
 		register_rest_route(
 			$ns,
+			'/repos/detect-batch',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'detect_batch' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'repos' => [
+						'required' => true,
+						'type'     => 'array',
+					],
+				],
+			]
+		);
+
+		register_rest_route(
+			$ns,
 			'/install',
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'install' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'owner'    => [
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'repo'     => [
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'type'     => [
+						'type'    => 'string',
+						'default' => 'plugin',
+						'enum'    => [ 'plugin', 'theme' ],
+					],
+					'provider' => [
+						'type'    => 'string',
+						'default' => 'github',
+						'enum'    => [ 'github', 'gitlab' ],
+					],
+				],
 			]
 		);
 
@@ -176,6 +214,16 @@ class REST {
 						'enum'    => [ 'github', 'gitlab' ],
 					],
 				],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/installed/sync',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'sync_installed' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
 			]
 		);
 
@@ -271,14 +319,7 @@ class REST {
 	 * @return array<string, mixed> Settings array.
 	 */
 	public static function get_settings(): array {
-		$s = (array) get_option( 'gwp_settings', [] );
-		return [
-			'username'      => $s['username'] ?? '',
-			'token'         => $s['token'] ?? '',
-			'smart_install' => $s['smart_install'] ?? true,
-			'gitlab_token'  => $s['gitlab_token'] ?? '',
-			'gitlab_url'    => $s['gitlab_url'] ?? '',
-		];
+		return Settings::get_public();
 	}
 
 	/**
@@ -289,20 +330,29 @@ class REST {
 	 * @return array<string, mixed>|WP_Error Success data or WP_Error on validation failure.
 	 */
 	public static function save_settings( \WP_REST_Request $req ): array|\WP_Error {
-		$token         = sanitize_text_field( $req->get_param( 'token' ) ?? '' );
-		$username      = sanitize_text_field( $req->get_param( 'username' ) ?? '' );
-		$smart_install = (bool) $req->get_param( 'smart_install' );
-		$gitlab_token  = sanitize_text_field( $req->get_param( 'gitlab_token' ) ?? '' );
-		$gitlab_url    = esc_url_raw( $req->get_param( 'gitlab_url' ) ?? '' );
+		$incoming = [];
+		foreach ( [ 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url' ] as $key ) {
+			if ( null !== $req->get_param( $key ) ) {
+				$incoming[ $key ] = $req->get_param( $key );
+			}
+		}
 
-		update_option(
-			'gwp_settings',
-			compact( 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url' )
-		);
+		$merged = Settings::merge_save( $incoming );
+
+		if ( ! empty( $merged['gitlab_url'] ) && ! Settings::is_allowed_gitlab_url( $merged['gitlab_url'] ) ) {
+			return new \WP_Error(
+				'invalid_gitlab_url',
+				__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'git' ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		update_option( 'gwp_settings', $merged );
 
 		return [
 			'saved'         => true,
-			'smart_install' => $smart_install,
+			'smart_install' => $merged['smart_install'],
+			'settings'      => Settings::get_public(),
 		];
 	}
 
@@ -636,18 +686,62 @@ class REST {
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install( \WP_REST_Request $req ): array|\WP_Error {
-		$owner   = sanitize_text_field( $req->get_param( 'owner' ) ?? '' );
-		$repo    = sanitize_text_field( $req->get_param( 'repo' ) ?? '' );
-		$branch  = sanitize_text_field( $req->get_param( 'branch' ) ?? 'main' );
-		$type    = sanitize_key( $req->get_param( 'type' ) ?? 'plugin' );
-		$slug    = sanitize_file_name( $req->get_param( 'slug' ) ?? '' );
-		$replace = (bool) $req->get_param( 'replace' );
+		$owner      = sanitize_text_field( $req->get_param( 'owner' ) ?? '' );
+		$repo       = sanitize_text_field( $req->get_param( 'repo' ) ?? '' );
+		$branch     = sanitize_text_field( $req->get_param( 'branch' ) ?? 'main' );
+		$type       = sanitize_key( $req->get_param( 'type' ) ?? 'plugin' );
+		$slug       = sanitize_file_name( $req->get_param( 'slug' ) ?? '' );
+		$replace    = (bool) $req->get_param( 'replace' );
+		$force_type = (bool) $req->get_param( 'force_type' );
 
 		if ( ! in_array( $type, [ 'plugin', 'theme' ], true ) ) {
 			return new \WP_Error( 'invalid_type', 'Type must be plugin or theme.', [ 'status' => 400 ] );
 		}
 		if ( ! $owner || ! $repo ) {
 			return new \WP_Error( 'missing_params', 'Missing owner or repo.', [ 'status' => 400 ] );
+		}
+
+		$settings      = Settings::get_raw();
+		$smart_install = $settings['smart_install'] ?? true;
+
+		if ( $smart_install && ! $force_type ) {
+			$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+			if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+				$provider = 'github';
+			}
+
+			$api      = self::make_api( $settings, $provider );
+			$detected = $api->detect_type( $owner, $repo, $branch );
+
+			if ( is_wp_error( $detected ) ) {
+				return new \WP_Error(
+					'detect_failed',
+					__( 'Could not verify repository type. Disable Smart Install or retry.', 'git' ),
+					[ 'status' => 400 ]
+				);
+			}
+
+			$detected_type = $detected['type'] ?? 'unknown';
+			if ( 'unknown' === $detected_type ) {
+				return new \WP_Error(
+					'unknown_type',
+					__( 'This repository is not detected as a WordPress plugin or theme.', 'git' ),
+					[ 'status' => 400 ]
+				);
+			}
+
+			if ( $detected_type !== $type ) {
+				return new \WP_Error(
+					'type_mismatch',
+					sprintf(
+						/* translators: 1: detected type, 2: requested type */
+						__( 'Repository detected as %1$s, not %2$s.', 'git' ),
+						$detected_type,
+						$type
+					),
+					[ 'status' => 400 ]
+				);
+			}
 		}
 
 		if ( ! function_exists( 'unzip_file' ) ) {
@@ -709,22 +803,29 @@ class REST {
 	}
 
 	/**
-	 * Returns all currently installed repository records, each annotated with
-	 * a live `active` flag reflecting the current plugin/theme state.
+	 * Returns all currently installed repository records (read-only).
 	 *
 	 * @since 1.0.0
-	 * @return array<string, mixed> Map of full_name => record.
+	 * @return array<string, mixed> Installed records and empty orphaned list.
 	 */
 	public static function get_installed(): array {
-		$records = Installer::get_installed();
+		return [
+			'installed' => self::annotate_installed( Installer::get_installed() ),
+			'orphaned'  => [],
+		];
+	}
 
-		if ( ! function_exists( 'is_plugin_active' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-
-		$active_theme = get_stylesheet();
-		$orphaned     = [];
-		$pruned       = false;
+	/**
+	 * Prunes missing directories, heals plugin files, and refreshes remote HEADs.
+	 *
+	 * @since 1.2.0
+	 * @return array<string, mixed> Synced installed records and any orphaned entries.
+	 */
+	public static function sync_installed(): array {
+		$records  = Installer::get_installed();
+		$orphaned = [];
+		$pruned   = false;
+		$settings = Settings::get_raw();
 
 		foreach ( $records as $key => &$rec ) {
 			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
@@ -741,19 +842,33 @@ class REST {
 				continue;
 			}
 
-			if ( 'plugin' === $rec['type'] ) {
-				if ( empty( $rec['plugin_file'] ) && ! empty( $rec['install_path'] ) ) {
-					$found = Installer::find_plugin_file( $rec['install_path'], $rec['slug'] ?? '' );
-					if ( $found ) {
-						$rec['plugin_file'] = $found;
-						$pruned             = true;
-					}
+			if ( 'plugin' === ( $rec['type'] ?? '' ) && empty( $rec['plugin_file'] ) && ! empty( $rec['install_path'] ) ) {
+				$found = Installer::find_plugin_file( $rec['install_path'], $rec['slug'] ?? '' );
+				if ( $found ) {
+					$rec['plugin_file'] = $found;
+					$pruned             = true;
 				}
-				$rec['active']  = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
-				$rec['subtype'] = 'plugin';
-			} else {
-				$rec['active']  = $active_theme === $rec['slug'];
-				$rec['subtype'] = ! empty( $rec['install_path'] ) && file_exists( $rec['install_path'] . '/theme.json' ) ? 'block' : 'classic';
+			}
+
+			if ( empty( $rec['head'] ) && ! empty( $rec['owner'] ) && ! empty( $rec['repo'] ) && ! empty( $rec['branch'] ) ) {
+				$provider  = $rec['provider'] ?? 'github';
+				$api       = self::make_api( $settings, $provider );
+				$commits   = $api->get_commits( $rec['owner'], $rec['repo'], $rec['branch'], 1 );
+				$full_name = $rec['full_name'] ?? ( $rec['owner'] . '/' . $rec['repo'] );
+				if ( ! is_wp_error( $commits ) && ! empty( $commits[0]['sha'] ) ) {
+					$rec['head'] = $commits[0]['sha'];
+					Installer::set_head( $provider, $full_name, $rec['head'] );
+					$pruned = true;
+				}
+			}
+
+			$remote_head = self::fetch_remote_head( $rec, $settings );
+			if ( $remote_head ) {
+				set_transient(
+					'gwp_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) ),
+					$remote_head,
+					HOUR_IN_SECONDS
+				);
 			}
 		}
 		unset( $rec );
@@ -763,9 +878,139 @@ class REST {
 		}
 
 		return [
-			'installed' => $records,
+			'installed' => self::annotate_installed( $records ),
 			'orphaned'  => $orphaned,
 		];
+	}
+
+	/**
+	 * Annotates installed records with live active state and update availability.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, array<string, mixed>> $records Raw installed records.
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function annotate_installed( array $records ): array {
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$active_theme = get_stylesheet();
+
+		foreach ( $records as $key => &$rec ) {
+			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
+				$rec['provider'] = 'github';
+			}
+
+			if ( 'plugin' === ( $rec['type'] ?? '' ) ) {
+				$rec['active']  = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
+				$rec['subtype'] = 'plugin';
+			} else {
+				$rec['active']  = ( $rec['slug'] ?? '' ) === $active_theme;
+				$rec['subtype'] = ! empty( $rec['install_path'] ) && file_exists( $rec['install_path'] . '/theme.json' ) ? 'block' : 'classic';
+			}
+
+			$remote_key  = 'gwp_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
+			$remote_head = get_transient( $remote_key );
+			if ( false !== $remote_head ) {
+				$rec['remote_head']      = $remote_head;
+				$rec['update_available'] = ! empty( $rec['head'] ) && $remote_head !== $rec['head'];
+			}
+		}
+		unset( $rec );
+
+		return $records;
+	}
+
+	/**
+	 * Fetches the latest remote commit SHA for an installed record.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, mixed> $rec      Installed record.
+	 * @param array<string, mixed> $settings Plugin settings.
+	 * @return string|null Remote HEAD SHA or null on failure.
+	 */
+	private static function fetch_remote_head( array $rec, array $settings ): ?string {
+		if ( empty( $rec['owner'] ) || empty( $rec['repo'] ) || empty( $rec['branch'] ) ) {
+			return null;
+		}
+
+		$provider = $rec['provider'] ?? 'github';
+		$api      = self::make_api( $settings, $provider );
+		$commits  = $api->get_commits( $rec['owner'], $rec['repo'], $rec['branch'], 1 );
+
+		if ( is_wp_error( $commits ) || empty( $commits[0]['sha'] ) ) {
+			return null;
+		}
+
+		return $commits[0]['sha'];
+	}
+
+	/**
+	 * Detects repository types for a batch of repos.
+	 *
+	 * @since 1.2.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, array<string, mixed>> Map of detection keys to results.
+	 */
+	public static function detect_batch( \WP_REST_Request $req ): array {
+		$repos    = $req->get_param( 'repos' );
+		$settings = Settings::get_raw();
+		$results  = [];
+
+		if ( ! is_array( $repos ) ) {
+			return [ 'detections' => $results ];
+		}
+
+		$repos = array_slice( $repos, 0, 50 );
+
+		foreach ( $repos as $entry ) {
+			if ( ! is_array( $entry ) ) {
+				continue;
+			}
+
+			$owner    = sanitize_text_field( $entry['owner'] ?? '' );
+			$repo     = sanitize_text_field( $entry['repo'] ?? '' );
+			$branch   = sanitize_text_field( $entry['branch'] ?? 'HEAD' );
+			$provider = sanitize_key( $entry['provider'] ?? 'github' );
+
+			if ( ! $owner || ! $repo ) {
+				continue;
+			}
+
+			if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+				$provider = 'github';
+			}
+
+			$key    = $provider . ':' . $owner . '/' . $repo;
+			$cached = get_transient( 'gwp_detect_' . md5( $provider . $owner . $repo . $branch ) );
+			if ( false !== $cached ) {
+				$results[ $key ] = $cached;
+				continue;
+			}
+
+			$api    = self::make_api( $settings, $provider );
+			$result = $api->detect_type( $owner, $repo, $branch );
+
+			if ( is_wp_error( $result ) ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( 'GWP detect failed for ' . $key . ': ' . $result->get_error_message() );
+				}
+				$result = [
+					'type'       => 'unknown',
+					'subtype'    => null,
+					'confidence' => 'none',
+					'name'       => '',
+					'error_code' => $result->get_error_code(),
+				];
+			}
+
+			set_transient( 'gwp_detect_' . md5( $provider . $owner . $repo . $branch ), $result, HOUR_IN_SECONDS );
+			$results[ $key ] = $result;
+		}
+
+		return [ 'detections' => $results ];
 	}
 
 	/**
@@ -857,7 +1102,27 @@ class REST {
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
-		$result    = Installer::remove( $provider, $full_name );
+		$record    = Installer::get_record( $provider, $full_name );
+
+		if ( ! $record ) {
+			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+		}
+
+		if ( 'plugin' === ( $record['type'] ?? '' ) ) {
+			if ( ! function_exists( 'is_plugin_active' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+			$plugin_file = $record['plugin_file'] ?? '';
+			if ( $plugin_file && is_plugin_active( $plugin_file ) ) {
+				return new \WP_Error(
+					'gwp_active',
+					__( 'Deactivate the plugin before removing it.', 'git' ),
+					[ 'status' => 409 ]
+				);
+			}
+		}
+
+		$result = Installer::remove( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -911,14 +1176,8 @@ class REST {
 	 * @param string               $provider Provider key: 'github' or 'gitlab'.
 	 * @return API|GitLab_API Appropriate API client.
 	 */
-	private static function make_api( array $settings, string $provider = 'github' ): API|GitLab_API {
-		if ( 'gitlab' === $provider ) {
-			return new GitLab_API(
-				$settings['gitlab_token'] ?? '',
-				$settings['gitlab_url'] ?? ''
-			);
-		}
-		return new API( $settings['token'] ?? '' );
+	private static function make_api( array $settings, string $provider = 'github' ): Git_Provider_Interface {
+		return Provider_Factory::make( $settings, $provider );
 	}
 
 	/**

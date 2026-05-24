@@ -5,21 +5,23 @@
 	"scripts": {
 		"build": "wp-scripts build",
 		"start": "wp-scripts start",
+		"type-check": "tsc --noEmit",
 		"lint:js": "eslint src/",
 		"lint:js:fix": "eslint src/ --fix",
 		"lint:scss": "wp-scripts lint-style 'src/**/*.scss'",
 		"lint:scss:fix": "wp-scripts lint-style 'src/**/*.scss' --fix",
 		"lint:php": "composer phpcs",
 		"lint:php:fix": "composer phpcbf",
-		"lint": "npm run lint:js && npm run lint:scss && npm run lint:php"
+		"lint": "npm run lint:js && npm run lint:scss && npm run lint:php",
+		"pre-pr-check": "npm run lint && npm run type-check && npm run build"
 	},
 	"devDependencies": {
 		"@wordpress/dataviews": "^14.3.0",
 		"@wordpress/element": "^6.46.0",
 		"@wordpress/eslint-plugin": "^22.0.0",
 		"@wordpress/scripts": "^32.2.0",
-		"@wordpress/ui": "^0.13.0",
-		"stylelint-order": "^6.0.0"
+		"stylelint-order": "^6.0.0",
+		"typescript": "^5.7.0"
 	},
 	"dependencies": {
 		"sonner": "^2.0.7"

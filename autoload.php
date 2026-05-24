@@ -17,12 +17,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @var array<string, string> $class_map
  */
 $class_map = [
-	'Git_WP\Admin'         => 'includes/class-admin.php',
-	'Git_WP\API'           => 'includes/class-api.php',
-	'Git_WP\GitLab_API'    => 'includes/class-gitlab-api.php',
-	'Git_WP\Error_Handler' => 'includes/class-error-handler.php',
-	'Git_WP\Installer'     => 'includes/class-installer.php',
-	'Git_WP\REST'          => 'includes/class-rest.php',
+	'Git_WP\Admin'                  => 'includes/class-admin.php',
+	'Git_WP\API'                    => 'includes/class-api.php',
+	'Git_WP\Constants'              => 'includes/class-constants.php',
+	'Git_WP\GitLab_API'             => 'includes/class-gitlab-api.php',
+	'Git_WP\Error_Handler'          => 'includes/class-error-handler.php',
+	'Git_WP\Git_Provider_Interface' => 'includes/interface-git-provider.php',
+	'Git_WP\Installer'              => 'includes/class-installer.php',
+	'Git_WP\Plugin'                 => 'includes/class-plugin.php',
+	'Git_WP\Provider_Factory'       => 'includes/class-provider-factory.php',
+	'Git_WP\Repo_Detector'          => 'includes/class-repo-detector.php',
+	'Git_WP\REST'                   => 'includes/class-rest.php',
+	'Git_WP\Settings'               => 'includes/helper/class-settings.php',
 ];
 
 spl_autoload_register(

@@ -46,14 +46,9 @@ export default function SettingsPanel( {
 		setSmartInstall( newVal );
 		setSavingSi( true );
 		try {
-			await api.saveSettings( {
-				token: settings.token,
-				username: settings.username,
-				gitlab_token: settings.gitlab_token,
-				gitlab_url: settings.gitlab_url,
-				smart_install: newVal,
-			} );
-			onSave( { ...settings, smart_install: newVal } );
+			await api.saveSettings( { smart_install: newVal } );
+			const saved = await api.getSettings();
+			onSave( saved );
 			toast.success( __( 'Settings saved.', 'git' ) );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Save failed.', 'git' ) );
@@ -143,14 +138,14 @@ function GitHubCard( {
 	onSave,
 	onConnectionUpdate,
 } ) {
-	const [ token, setToken ] = useState( settings.token || '' );
+	const [ token, setToken ] = useState( '' );
 	const [ username, setUsername ] = useState( settings.username || '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 	const [ tokenError, setTokenError ] = useState( false );
 	const [ usernameError, setUsernameError ] = useState( false );
 
-	const isConnected = !! ( settings.token || settings.username );
+	const isConnected = !! ( settings.token_set || settings.username );
 
 	const handleConnect = async () => {
 		if ( ! token.trim() && ! username.trim() ) {
@@ -170,11 +165,10 @@ function GitHubCard( {
 			await api.saveSettings( {
 				token,
 				username,
-				gitlab_token: settings.gitlab_token,
-				gitlab_url: settings.gitlab_url,
 				smart_install: smartInstall,
 			} );
-			onSave( { ...settings, token, username } );
+			const saved = await api.getSettings();
+			onSave( saved );
 			onConnectionUpdate( result );
 			toast.success( __( 'GitHub connected.', 'git' ) );
 		} catch ( e ) {
@@ -196,13 +190,12 @@ function GitHubCard( {
 			await api.saveSettings( {
 				token: '',
 				username: '',
-				gitlab_token: settings.gitlab_token,
-				gitlab_url: settings.gitlab_url,
 				smart_install: smartInstall,
 			} );
 			setToken( '' );
 			setUsername( '' );
-			onSave( { ...settings, token: '', username: '' } );
+			const saved = await api.getSettings();
+			onSave( saved );
 			onConnectionUpdate( null );
 			toast.success( __( 'GitHub disconnected.', 'git' ) );
 		} catch ( e ) {
@@ -235,6 +228,7 @@ function GitHubCard( {
 		cardBody = (
 			<>
 				<TextControl
+					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					className={ usernameError ? 'gwp-input-error' : undefined }
 					help={ __(
@@ -253,6 +247,7 @@ function GitHubCard( {
 				<Spacer marginTop={ 4 } />
 
 				<TextControl
+					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					autoComplete="new-password"
 					className={ tokenError ? 'gwp-input-error' : undefined }
@@ -366,15 +361,13 @@ function GitLabCard( {
 	onSave,
 	onConnectionUpdate,
 } ) {
-	const [ gitlabToken, setGitlabToken ] = useState(
-		settings.gitlab_token || ''
-	);
+	const [ gitlabToken, setGitlabToken ] = useState( '' );
 	const [ gitlabUrl, setGitlabUrl ] = useState( settings.gitlab_url || '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 	const [ tokenError, setTokenError ] = useState( false );
 
-	const isConnected = !! settings.gitlab_token;
+	const isConnected = !! settings.gitlab_token_set;
 
 	const handleConnect = async () => {
 		if ( ! gitlabToken.trim() ) {
@@ -393,17 +386,12 @@ function GitLabCard( {
 				gitlab_url: gitlabUrl,
 			} );
 			await api.saveSettings( {
-				token: settings.token,
-				username: settings.username,
 				gitlab_token: gitlabToken,
 				gitlab_url: gitlabUrl,
 				smart_install: smartInstall,
 			} );
-			onSave( {
-				...settings,
-				gitlab_token: gitlabToken,
-				gitlab_url: gitlabUrl,
-			} );
+			const saved = await api.getSettings();
+			onSave( saved );
 			onConnectionUpdate( result );
 			toast.success( __( 'GitLab connected.', 'git' ) );
 		} catch ( e ) {
@@ -419,15 +407,14 @@ function GitLabCard( {
 		setSaving( true );
 		try {
 			await api.saveSettings( {
-				token: settings.token,
-				username: settings.username,
 				gitlab_token: '',
 				gitlab_url: '',
 				smart_install: smartInstall,
 			} );
 			setGitlabToken( '' );
 			setGitlabUrl( '' );
-			onSave( { ...settings, gitlab_token: '', gitlab_url: '' } );
+			const saved = await api.getSettings();
+			onSave( saved );
 			onConnectionUpdate( null );
 			toast.success( __( 'GitLab disconnected.', 'git' ) );
 		} catch ( e ) {
@@ -460,6 +447,7 @@ function GitLabCard( {
 		gitlabCardBody = (
 			<>
 				<TextControl
+					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					autoComplete="new-password"
 					className={ tokenError ? 'gwp-input-error' : undefined }
@@ -492,6 +480,7 @@ function GitLabCard( {
 				<Spacer marginTop={ 4 } />
 
 				<TextControl
+					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					help={ __(
 						'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab (e.g. https://gitlab.example.com).',

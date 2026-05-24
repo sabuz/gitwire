@@ -1,7 +1,7 @@
 import { toast } from 'sonner';
 
-import { __ } from '@wordpress/i18n';
-import { useState, useEffect, useRef, useCallback } from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
+import { useState, useEffect, useCallback, memo } from '@wordpress/element';
 import {
 	Button,
 	Spinner,
@@ -14,10 +14,10 @@ import {
 } from '@wordpress/components';
 
 import * as api from '../api';
+import { detectionKey, useRepoDetection } from '../hooks/use-repo-detection';
 import ConnectPrompt from './connect-prompt';
 import InstallModal from './install-modal';
-
-const CONCURRENT = 3;
+import { GitHubIcon, GitLabIcon } from './provider-icons';
 
 /**
  * Browse panel — lists GitHub and GitLab repositories with detection and install actions.
@@ -37,9 +37,11 @@ export default function BrowsePanel( {
 	onGoToInstalled,
 	onGoToSettings,
 } ) {
-	const hasGitHub = !! ( settings?.token || settings?.username );
-	const hasGitLab = !! settings?.gitlab_token;
+	const hasGitHub = !! ( settings?.token_set || settings?.username );
+	const hasGitLab = !! settings?.gitlab_token_set;
 	const showSourceBadge = hasGitHub && hasGitLab;
+
+	const { detections, runBatch, seedFromRepos, reset } = useRepoDetection();
 
 	const [ repos, setRepos ] = useState( [] );
 	const [ pagesLoaded, setPagesLoaded ] = useState( {
@@ -54,53 +56,6 @@ export default function BrowsePanel( {
 	const [ modal, setModal ] = useState( null );
 	const [ search, setSearch ] = useState( '' );
 	const [ typeFilter, setTypeFilter ] = useState( 'all' );
-
-	const detectionsRef = useRef( {} );
-	const queueRef = useRef( [] );
-	const activeRef = useRef( 0 );
-	const [ , forceRender ] = useState( 0 );
-
-	const detectionKey = ( repo ) => `${ repo.provider }:${ repo.full_name }`;
-
-	const drain = () => {
-		while (
-			activeRef.current < CONCURRENT &&
-			queueRef.current.length > 0
-		) {
-			const repo = queueRef.current.shift();
-			const key = detectionKey( repo );
-			activeRef.current++;
-			api.detectRepo(
-				repo.owner,
-				repo.name,
-				repo.default_branch,
-				repo.provider
-			)
-				.then( ( d ) => {
-					detectionsRef.current[ key ] = d;
-				} )
-				.catch( () => {
-					detectionsRef.current[ key ] = {
-						type: 'unknown',
-						confidence: 'none',
-					};
-				} )
-				.finally( () => {
-					activeRef.current--;
-					forceRender( ( n ) => n + 1 );
-					drain();
-				} );
-		}
-	};
-
-	const enqueueDetections = ( newRepos ) => {
-		const toDetect = newRepos.filter(
-			( r ) =>
-				! r.installed && ! detectionsRef.current[ detectionKey( r ) ]
-		);
-		queueRef.current.push( ...toDetect );
-		drain();
-	};
 
 	const loadRepos = useCallback(
 		async ( ghPage, glPage, append = false ) => {
@@ -190,16 +145,8 @@ export default function BrowsePanel( {
 					} );
 				}
 
-				newRepos.forEach( ( r ) => {
-					if ( r.detection ) {
-						const key = detectionKey( r );
-						if ( ! detectionsRef.current[ key ] ) {
-							detectionsRef.current[ key ] = r.detection;
-						}
-					}
-				} );
-
-				enqueueDetections( newRepos );
+				seedFromRepos( newRepos );
+				runBatch( newRepos );
 			} catch ( e ) {
 				toast.error(
 					e.message || __( 'Failed to load repositories.', 'git' ),
@@ -215,7 +162,7 @@ export default function BrowsePanel( {
 				setLoading( false );
 			}
 		},
-		[] // eslint-disable-line react-hooks/exhaustive-deps
+		[ runBatch, seedFromRepos ] // eslint-disable-line react-hooks/exhaustive-deps
 	);
 
 	useEffect( () => {
@@ -224,8 +171,7 @@ export default function BrowsePanel( {
 
 	const handleRefresh = async () => {
 		await api.clearCache();
-		detectionsRef.current = {};
-		queueRef.current = [];
+		reset();
 		setRepos( [] );
 		setHasMore( { github: false, gitlab: false } );
 		setPagesLoaded( { github: 0, gitlab: 0 } );
@@ -254,8 +200,7 @@ export default function BrowsePanel( {
 		const installedRec =
 			installed[ r.provider + ':' + r.full_name ] || r.installed;
 		const type =
-			installedRec?.type ??
-			detectionsRef.current[ detectionKey( r ) ]?.type;
+			installedRec?.type ?? detections[ detectionKey( r ) ]?.type;
 		if ( ! type ) {
 			return false;
 		}
@@ -349,9 +294,7 @@ export default function BrowsePanel( {
 					{ filtered.map( ( repo ) => (
 						<RepoCard
 							key={ `${ repo.provider }:${ repo.id }` }
-							detection={
-								detectionsRef.current[ detectionKey( repo ) ]
-							}
+							detection={ detections[ detectionKey( repo ) ] }
 							installed={
 								installed[
 									repo.provider + ':' + repo.full_name
@@ -381,7 +324,7 @@ export default function BrowsePanel( {
 
 			{ modal && (
 				<InstallModal
-					detection={ detectionsRef.current[ detectionKey( modal ) ] }
+					detection={ detections[ detectionKey( modal ) ] }
 					provider={ modal.provider }
 					repo={ modal }
 					smartInstall={ smartInstall }
@@ -397,55 +340,7 @@ export default function BrowsePanel( {
 	);
 }
 
-/**
- * @return {JSX.Element} GitHub mark icon.
- */
-function GitHubIcon() {
-	return (
-		<svg
-			aria-hidden="true"
-			fill="currentColor"
-			height="13"
-			style={ { display: 'block', flexShrink: 0 } }
-			viewBox="0 0 16 16"
-			width="13"
-		>
-			<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-		</svg>
-	);
-}
-
-/**
- * @return {JSX.Element} GitLab fox icon.
- */
-function GitLabIcon() {
-	return (
-		<svg
-			aria-hidden="true"
-			fill="currentColor"
-			height="13"
-			style={ { display: 'block', flexShrink: 0 } }
-			viewBox="0 0 16 16"
-			width="13"
-		>
-			<path d="M15.97 9.058l-.895-2.756L13.3.842a.382.382 0 0 0-.724 0L10.8 6.302H5.2L3.424.842a.382.382 0 0 0-.724 0L.925 6.302.03 9.058a.762.762 0 0 0 .277.852L8 15.37l7.693-5.46a.762.762 0 0 0 .277-.852z" />
-		</svg>
-	);
-}
-
-/**
- * Repository card displaying repo info, type badge, and install button.
- *
- * @param {Object}      props                 Component props.
- * @param {Object}      props.repo            Repository data object.
- * @param {Object|null} props.detection       Type detection result.
- * @param {Object|null} props.installed       Installed record, if any.
- * @param {boolean}     props.smartInstall    Whether smart install is enabled.
- * @param {boolean}     props.showSourceBadge Whether to show a GitHub/GitLab source badge.
- * @param {Function}    props.onInstall       Callback fired when Install is clicked.
- * @return {JSX.Element} The rendered repo card.
- */
-function RepoCard( {
+const RepoCard = memo( function RepoCard( {
 	repo,
 	detection,
 	installed,
@@ -486,8 +381,7 @@ function RepoCard( {
 							</Button>
 						) : (
 							<Button
-								disabled={ ! canInstall }
-								isBusy={ detecting && ! smartInstall }
+								disabled={ ! canInstall || detecting }
 								size="compact"
 								title={
 									blockedBySmartInstall
@@ -541,46 +435,52 @@ function RepoCard( {
 			</CardBody>
 		</Card>
 	);
-}
+} );
 
-/**
- * Returns a human-readable relative time string (e.g. "3d ago").
- *
- * @param {string} dateStr ISO date string.
- * @return {string} Human-readable relative time.
- */
 function timeAgo( dateStr ) {
 	const s = Math.floor( ( Date.now() - new Date( dateStr ) ) / 1000 );
 	if ( s < 60 ) {
-		return 'just now';
+		return __( 'just now', 'git' );
 	}
 	const m = Math.floor( s / 60 );
 	if ( m < 60 ) {
-		return `${ m }m ago`;
+		return sprintf(
+			/* translators: %d: number of minutes */
+			__( '%dm ago', 'git' ),
+			m
+		);
 	}
 	const h = Math.floor( m / 60 );
 	if ( h < 24 ) {
-		return `${ h }h ago`;
+		return sprintf(
+			/* translators: %d: number of hours */
+			__( '%dh ago', 'git' ),
+			h
+		);
 	}
 	const d = Math.floor( h / 24 );
 	if ( d < 30 ) {
-		return `${ d }d ago`;
+		return sprintf(
+			/* translators: %d: number of days */
+			__( '%dd ago', 'git' ),
+			d
+		);
 	}
 	const mo = Math.floor( d / 30 );
 	if ( mo < 12 ) {
-		return `${ mo }mo ago`;
+		return sprintf(
+			/* translators: %d: number of months */
+			__( '%dmo ago', 'git' ),
+			mo
+		);
 	}
-	return `${ Math.floor( mo / 12 ) }y ago`;
+	return sprintf(
+		/* translators: %d: number of years */
+		__( '%dy ago', 'git' ),
+		Math.floor( mo / 12 )
+	);
 }
 
-/**
- * Badge showing the detected or installed type of a repository.
- *
- * @param {Object}      props           Component props.
- * @param {Object|null} props.detection Type detection result.
- * @param {Object|null} props.installed Installed record, if any.
- * @return {JSX.Element} The rendered type badge.
- */
 function TypeBadge( { detection, installed } ) {
 	if ( installed ) {
 		const isBlockTheme =

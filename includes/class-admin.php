@@ -50,8 +50,6 @@ class Admin {
 		if ( ! $screen || false === strpos( $screen->id, '_page_git' ) ) {
 			return;
 		}
-		remove_all_actions( 'admin_notices' );
-		remove_all_actions( 'all_admin_notices' );
 		remove_all_actions( 'admin_footer_text' );
 	}
 
@@ -169,16 +167,16 @@ class Admin {
 
 		wp_set_script_translations( 'gwp-app', 'git', GWP_DIR . 'languages' );
 
-		$settings         = (array) get_option( 'gwp_settings', [] );
-		$has_github       = ! empty( $settings['username'] ) || ! empty( $settings['token'] );
-		$has_gitlab       = ! empty( $settings['gitlab_token'] );
+		$settings         = Settings::get_public();
+		$has_github       = ! empty( $settings['username'] ) || ! empty( $settings['token_set'] );
+		$has_gitlab       = ! empty( $settings['gitlab_token_set'] );
 		$has_config       = $has_github || $has_gitlab;
 		$raw_cache        = $has_config ? (array) get_option( 'gwp_connection_cache', [] ) : [];
 		$connection       = [
 			'github' => isset( $raw_cache['github'] ) ? $raw_cache['github'] : null,
 			'gitlab' => isset( $raw_cache['gitlab'] ) ? $raw_cache['gitlab'] : null,
 		];
-		$installed_result = REST::get_installed();
+		$installed_result = REST::sync_installed();
 		$installed        = $installed_result['installed'];
 		$orphaned         = $installed_result['orphaned'];
 		$first_activation = (bool) get_transient( 'gwp_first_activation' );
@@ -206,13 +204,7 @@ class Admin {
 					'disconnected_url' => GWP_URL . 'assets/images/cloud-alert.svg',
 					'not_found_url'    => GWP_URL . 'assets/images/folder-x.svg',
 					'initial_tab'      => $initial_tab,
-					'settings'         => [
-						'username'      => $settings['username'] ?? '',
-						'token'         => $settings['token'] ?? '',
-						'smart_install' => $settings['smart_install'] ?? true,
-						'gitlab_token'  => $settings['gitlab_token'] ?? '',
-						'gitlab_url'    => $settings['gitlab_url'] ?? '',
-					],
+					'settings'         => $settings,
 					'connection'       => $connection,
 					'installed'        => $installed ? $installed : (object) [],
 					'orphaned'         => $orphaned,

@@ -1,11 +1,13 @@
 <?xml version="1.0"?>
-<ruleset name="GitHub for WordPress">
-	<description>PHP coding standards for GitHub for WordPress plugin.</description>
+<ruleset name="Git for WordPress">
+	<description>PHP coding standards for Git for WordPress plugin.</description>
 
 	<!-- Scan these paths. -->
-	<file>github.php</file>
+	<file>git.php</file>
+	<file>uninstall.php</file>
 	<file>autoload.php</file>
 	<file>includes</file>
+	<file>tests</file>
 
 	<arg name="extensions" value="php"/>
 	<arg name="colors"/>
@@ -21,6 +23,6 @@
 	<rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
 
 	<!-- Minimum supported versions. -->
-	<config name="minimum_supported_wp_version" value="6.4"/>
+	<config name="minimum_supported_wp_version" value="6.9"/>
 	<config name="testVersion" value="8.1-"/>
 </ruleset>

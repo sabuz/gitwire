@@ -1,13 +1,20 @@
 import { toast, Toaster } from 'sonner';
 
 import { __, sprintf } from '@wordpress/i18n';
-import { useState, useEffect, useCallback } from '@wordpress/element';
+import {
+	useState,
+	useEffect,
+	useCallback,
+	lazy,
+	Suspense,
+} from '@wordpress/element';
 import { Spinner } from '@wordpress/components';
 
 import * as api from './api';
-import BrowsePanel from './components/browse-panel';
-import InstalledPanel from './components/installed-panel';
 import SettingsPanel from './components/settings-panel';
+
+const BrowsePanel = lazy( () => import( './components/browse-panel' ) );
+const InstalledPanel = lazy( () => import( './components/installed-panel' ) );
 
 const TABS = [
 	{ name: 'installed', label: __( 'Installed', 'git' ) },
@@ -15,12 +22,6 @@ const TABS = [
 	{ name: 'settings', label: __( 'Settings', 'git' ) },
 ];
 
-/**
- * Builds the URL for a given tab name.
- *
- * @param {string} tabName Tab identifier.
- * @return {string} Full URL with query parameters.
- */
 function tabUrl( tabName ) {
 	const url = new URL( window.location.href );
 	url.searchParams.set( 'page', 'git' );
@@ -32,11 +33,6 @@ function tabUrl( tabName ) {
 	return url.toString();
 }
 
-/**
- * Keeps the WP sidebar submenu .current class in sync with the active tab.
- *
- * @param {string} tabName Active tab identifier.
- */
 function updateSidebarActive( tabName ) {
 	const submenu = document.querySelector( '#toplevel_page_git .wp-submenu' );
 	if ( ! submenu ) {
@@ -59,11 +55,6 @@ function updateSidebarActive( tabName ) {
 	} );
 }
 
-/**
- * Syncs the active tab with the URL so the WP sidebar submenu stays highlighted.
- *
- * @param {string} tabName Active tab identifier.
- */
 function syncUrl( tabName ) {
 	const url = new URL( window.location.href );
 	url.searchParams.set( 'page', 'git' );
@@ -76,13 +67,6 @@ function syncUrl( tabName ) {
 	updateSidebarActive( tabName );
 }
 
-/**
- * Root application component.
- *
- * @param {Object} props             Component props.
- * @param {Object} props.initialData Server-side data injected via wp_add_inline_script.
- * @return {JSX.Element} The rendered app.
- */
 export default function App( { initialData } ) {
 	const [ settings, setSettings ] = useState( initialData.settings || null );
 	const [ connection, setConnection ] = useState(
@@ -94,7 +78,6 @@ export default function App( { initialData } ) {
 		initialData.initial_tab || 'installed'
 	);
 
-	// Show toasts for repos whose directories were deleted before page load.
 	useEffect( () => {
 		( initialData.orphaned || [] ).forEach( ( item ) => {
 			toast.warning(
@@ -111,7 +94,6 @@ export default function App( { initialData } ) {
 		} );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Post-install redirect via sessionStorage overrides everything.
 	useEffect( () => {
 		const tab = sessionStorage.getItem( 'gwp_goto_tab' );
 		if ( tab ) {
@@ -123,7 +105,6 @@ export default function App( { initialData } ) {
 		}
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Intercept WP sidebar submenu clicks so tab switches stay client-side.
 	useEffect( () => {
 		const submenu = document.querySelector(
 			'#toplevel_page_git .wp-submenu'
@@ -136,8 +117,8 @@ export default function App( { initialData } ) {
 			browse: 'browse',
 			settings: 'settings',
 		};
-		function handleClick( e ) {
-			const a = e.target.closest( 'a' );
+		function handleClick( ev ) {
+			const a = ev.target.closest( 'a' );
 			if ( ! a ) {
 				return;
 			}
@@ -150,8 +131,8 @@ export default function App( { initialData } ) {
 				if ( tab === undefined ) {
 					return;
 				}
-				e.preventDefault();
-				e.stopPropagation();
+				ev.preventDefault();
+				ev.stopPropagation();
 				setActiveTab( tab );
 				syncUrl( tab );
 			} catch ( _ ) {
@@ -160,11 +141,11 @@ export default function App( { initialData } ) {
 		}
 		submenu.addEventListener( 'click', handleClick );
 		return () => submenu.removeEventListener( 'click', handleClick );
-	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [] );
 
 	useEffect( () => {
 		if ( ! initialData.settings ) {
-			Promise.all( [ api.getSettings(), api.getInstalled() ] )
+			Promise.all( [ api.getSettings(), api.syncInstalled() ] )
 				.then( ( [ s, result ] ) => {
 					setSettings( s );
 					applyInstalled( result );
@@ -191,22 +172,36 @@ export default function App( { initialData } ) {
 	}, [] );
 
 	const refreshInstalled = useCallback( async () => {
-		const result = await api.getInstalled();
+		const result = await api.syncInstalled();
 		applyInstalled( result );
 	}, [ applyInstalled ] );
 
-	const goToTab = ( tabName ) => {
+	const handleTabClick = useCallback( ( ev, tabName ) => {
+		ev.preventDefault();
 		setActiveTab( tabName );
 		syncUrl( tabName );
-		if ( tabName === 'browse' || tabName === 'installed' ) {
-			refreshInstalled();
-		}
-	};
+	}, [] );
+
+	const handleGoToTab = useCallback( ( tabName ) => {
+		setActiveTab( tabName );
+		syncUrl( tabName );
+	}, [] );
+
+	const handleConnectionUpdate = useCallback( ( provider, data ) => {
+		setConnection( ( prev ) => ( {
+			...( prev || { github: null, gitlab: null } ),
+			[ provider ]: data,
+		} ) );
+	}, [] );
+
+	const handleSettingsSave = useCallback( ( s ) => {
+		setSettings( s );
+	}, [] );
 
 	if ( loading || ! settings ) {
 		return (
 			<div className="gwp-page">
-				<div style={ { padding: 48, textAlign: 'center' } }>
+				<div className="gwp-page-loading">
 					<Spinner />
 				</div>
 			</div>
@@ -214,6 +209,11 @@ export default function App( { initialData } ) {
 	}
 
 	const installedCount = Object.keys( installed ).length;
+	const panelFallback = (
+		<div className="gwp-page-loading">
+			<Spinner />
+		</div>
+	);
 
 	return (
 		<div className="gwp-page">
@@ -245,10 +245,7 @@ export default function App( { initialData } ) {
 								activeTab === tab.name ? ' is-active' : ''
 							}` }
 							href={ tabUrl( tab.name ) }
-							onClick={ ( e ) => {
-								e.preventDefault();
-								goToTab( tab.name );
-							} }
+							onClick={ ( ev ) => handleTabClick( ev, tab.name ) }
 						>
 							{ tab.label }
 							{ tab.name === 'installed' &&
@@ -267,32 +264,33 @@ export default function App( { initialData } ) {
 					<SettingsPanel
 						connection={ connection }
 						settings={ settings }
-						onConnectionUpdate={ ( provider, data ) =>
-							setConnection( ( prev ) => ( {
-								...( prev || { github: null, gitlab: null } ),
-								[ provider ]: data,
-							} ) )
-						}
-						onSave={ ( s ) => setSettings( s ) }
+						onConnectionUpdate={ handleConnectionUpdate }
+						onSave={ handleSettingsSave }
 					/>
 				) }
 				{ activeTab === 'browse' && (
-					<BrowsePanel
-						installed={ installed }
-						settings={ settings }
-						onGoToInstalled={ () => goToTab( 'installed' ) }
-						onGoToSettings={ () => goToTab( 'settings' ) }
-						onInstalled={ refreshInstalled }
-					/>
+					<Suspense fallback={ panelFallback }>
+						<BrowsePanel
+							installed={ installed }
+							settings={ settings }
+							onGoToInstalled={ () =>
+								handleGoToTab( 'installed' )
+							}
+							onGoToSettings={ () => handleGoToTab( 'settings' ) }
+							onInstalled={ refreshInstalled }
+						/>
+					</Suspense>
 				) }
 				{ activeTab === 'installed' && (
-					<InstalledPanel
-						installed={ installed }
-						settings={ settings }
-						onGoToBrowse={ () => goToTab( 'browse' ) }
-						onGoToSettings={ () => goToTab( 'settings' ) }
-						onRefresh={ refreshInstalled }
-					/>
+					<Suspense fallback={ panelFallback }>
+						<InstalledPanel
+							installed={ installed }
+							settings={ settings }
+							onGoToBrowse={ () => handleGoToTab( 'browse' ) }
+							onGoToSettings={ () => handleGoToTab( 'settings' ) }
+							onRefresh={ refreshInstalled }
+						/>
+					</Suspense>
 				) }
 			</div>
 		</div>

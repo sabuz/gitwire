@@ -14,6 +14,15 @@ export const getRepos = ( page = 1, provider = 'github' ) =>
 export const clearCache = () =>
 	apiFetch( { path: `${ BASE }/repos/cache`, method: 'DELETE' } );
 export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );
+export const syncInstalled = () =>
+	apiFetch( { path: `${ BASE }/installed/sync`, method: 'POST' } );
+
+export const detectBatch = ( repos ) =>
+	apiFetch( {
+		path: `${ BASE }/repos/detect-batch`,
+		method: 'POST',
+		data: { repos },
+	} );
 
 export const getBranches = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {

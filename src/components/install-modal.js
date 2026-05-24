@@ -224,17 +224,20 @@ export default function InstallModal( {
 			/>
 
 			{ detection && detection.type === 'unknown' && ! smartInstall && (
-				<SelectControl
-					__nextHasNoMarginBottom
-					label={ __( 'Install as', 'git' ) }
-					options={ [
-						{ label: __( 'Plugin', 'git' ), value: 'plugin' },
-						{ label: __( 'Theme', 'git' ), value: 'theme' },
-					] }
-					style={ { marginTop: 16 } }
-					value={ type }
-					onChange={ setType }
-				/>
+				<div style={ { marginTop: 16 } }>
+					<SelectControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+						disabled={ installing }
+						label={ __( 'Install as', 'git' ) }
+						options={ [
+							{ label: __( 'Plugin', 'git' ), value: 'plugin' },
+							{ label: __( 'Theme', 'git' ), value: 'theme' },
+						] }
+						value={ type }
+						onChange={ setType }
+					/>
+				</div>
 			) }
 
 			<div style={ { marginTop: 16 } }>

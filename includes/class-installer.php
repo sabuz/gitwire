@@ -404,15 +404,7 @@ class Installer {
 
 		$settings  = (array) get_option( 'gwp_settings', [] );
 		$full_name = $owner . '/' . $repo;
-
-		if ( 'gitlab' === $provider ) {
-			$api = new GitLab_API(
-				$settings['gitlab_token'] ?? '',
-				$settings['gitlab_url'] ?? ''
-			);
-		} else {
-			$api = new API( $settings['token'] ?? '' );
-		}
+		$api       = Provider_Factory::make( $settings, $provider );
 
 		// Auto-rename if the target directory exists but doesn't belong to this exact record.
 		// Covers both conflicts with other git-managed installs and unmanaged directories

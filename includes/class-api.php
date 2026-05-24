@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Thin wrapper around the GitHub REST API v3.
  * Handles authentication, rate limiting, and response normalisation.
  */
-class API {
+class API implements Git_Provider_Interface {
 
 	/**
 	 * Personal access token for authenticated requests.
@@ -128,129 +128,15 @@ class API {
 	 * @return array<string, mixed>|WP_Error Detection result on success, WP_Error on failure.
 	 */
 	public function detect_type( string $owner, string $repo, string $branch = 'HEAD' ): array|\WP_Error {
-		$contents = $this->get(
-			'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
-			. '/contents?ref=' . rawurlencode( $branch )
+		return Repo_Detector::detect(
+			$repo,
+			$branch,
+			fn( $ref ) => $this->get(
+				'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+				. '/contents?ref=' . rawurlencode( $ref )
+			),
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref )
 		);
-
-		if ( is_wp_error( $contents ) ) {
-			return $contents;
-		}
-
-		// Index root entries by lowercase name for quick lookup.
-		$files = [];
-		foreach ( $contents as $item ) {
-			if ( isset( $item['name'] ) ) {
-				$files[ strtolower( $item['name'] ) ] = $item;
-			}
-		}
-
-		// 1. theme.json → block theme (definitive).
-		if ( isset( $files['theme.json'] ) ) {
-			$name = '';
-			if ( isset( $files['style.css'] ) ) {
-				$css = $this->get_raw_content( $owner, $repo, 'style.css', $branch );
-				if ( ! is_wp_error( $css ) ) {
-					$name = $this->extract_header( $css, 'Theme Name' );
-				}
-			}
-			return [
-				'type'       => 'theme',
-				'subtype'    => 'block',
-				'confidence' => 'high',
-				'name'       => $name,
-			];
-		}
-
-		// 2. style.css with "Theme Name:" header → theme.
-		if ( isset( $files['style.css'] ) ) {
-			$css = $this->get_raw_content( $owner, $repo, 'style.css', $branch );
-			if ( ! is_wp_error( $css ) && $this->has_header( $css, 'Theme Name' ) ) {
-				// Has templates/ folder? → block theme that declares itself via style.css.
-				$subtype = isset( $files['templates'] ) ? 'block' : 'classic';
-				return [
-					'type'       => 'theme',
-					'subtype'    => $subtype,
-					'confidence' => 'high',
-					'name'       => $this->extract_header( $css, 'Theme Name' ),
-				];
-			}
-		}
-
-		// 3. PHP files with "Plugin Name:" header.
-		// Check the most likely main-file names first to minimise API calls.
-		$priority_names = [ strtolower( $repo ) . '.php', 'plugin.php', 'index.php' ];
-		$php_files      = array_filter(
-			array_keys( $files ),
-			fn( $n ) => str_ends_with( $n, '.php' ) && ( $files[ $n ]['type'] ?? '' ) === 'file'
-		);
-		usort(
-			$php_files,
-			static function ( $a, $b ) use ( $priority_names ) {
-				$ai = array_search( $a, $priority_names, true );
-				$bi = array_search( $b, $priority_names, true );
-				if ( false === $ai && false === $bi ) {
-					return 0;
-				}
-				if ( false === $ai ) {
-					return 1;
-				}
-				if ( false === $bi ) {
-					return -1;
-				}
-				return $ai - $bi;
-			}
-		);
-
-		foreach ( array_slice( $php_files, 0, 5 ) as $lc_name ) {
-			$real_name = $files[ $lc_name ]['name'];
-			$content   = $this->get_raw_content( $owner, $repo, $real_name, $branch );
-			if ( ! is_wp_error( $content ) && $this->has_header( $content, 'Plugin Name' ) ) {
-				return [
-					'type'       => 'plugin',
-					'subtype'    => null,
-					'confidence' => 'high',
-					'name'       => $this->extract_header( $content, 'Plugin Name' ),
-				];
-			}
-		}
-
-		// 4. templates/ directory → block theme structure without headers.
-		if ( isset( $files['templates'] ) && ( $files['templates']['type'] ?? '' ) === 'dir' ) {
-			return [
-				'type'       => 'theme',
-				'subtype'    => 'block',
-				'confidence' => 'medium',
-				'name'       => '',
-			];
-		}
-
-		// 5. functions.php → classic theme.
-		if ( isset( $files['functions.php'] ) ) {
-			return [
-				'type'       => 'theme',
-				'subtype'    => 'classic',
-				'confidence' => 'medium',
-				'name'       => '',
-			];
-		}
-
-		// 6. Any PHP files → probably a plugin.
-		if ( ! empty( $php_files ) ) {
-			return [
-				'type'       => 'plugin',
-				'subtype'    => null,
-				'confidence' => 'low',
-				'name'       => '',
-			];
-		}
-
-		return [
-			'type'       => 'unknown',
-			'subtype'    => null,
-			'confidence' => 'none',
-			'name'       => '',
-		];
 	}
 
 	/**
@@ -384,33 +270,6 @@ class API {
 		}
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 		return base64_decode( str_replace( "\n", '', $result['content'] ) );
-	}
-
-	/**
-	 * Checks whether a file content string contains a WordPress-style header field.
-	 *
-	 * @since 1.0.0
-	 * @param string $content File content to search.
-	 * @param string $header  Header field name (e.g. "Plugin Name").
-	 * @return bool True if the header is present.
-	 */
-	private function has_header( string $content, string $header ): bool {
-		return (bool) preg_match( '/^\s*[\/*#]?\s*' . preg_quote( $header, '/' ) . '\s*:/mi', $content );
-	}
-
-	/**
-	 * Extracts the value of a WordPress-style header field from file content.
-	 *
-	 * @since 1.0.0
-	 * @param string $content File content to search.
-	 * @param string $header  Header field name (e.g. "Theme Name").
-	 * @return string Header value, or empty string if not found.
-	 */
-	private function extract_header( string $content, string $header ): string {
-		if ( preg_match( '/^\s*[\/*#]?\s*' . preg_quote( $header, '/' ) . '\s*:\s*(.+)$/mi', $content, $m ) ) {
-			return trim( $m[1] );
-		}
-		return '';
 	}
 
 	/**

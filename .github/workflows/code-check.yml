@@ -32,6 +32,9 @@ jobs:
       - name: Run SCSS lint
         run: npm run lint:scss
 
+      - name: Build assets
+        run: npm run build
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
