@@ -53,11 +53,6 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 			>
 				{ displaySha }
 			</Button>
-			{ item.update_available && (
-				<span className="gwp-badge gwp-badge--warning is-update">
-					{ __( 'Update', 'git' ) }
-				</span>
-			) }
 			<Button
 				className={ pulling ? 'gwp-spin' : '' }
 				disabled={ pulling }
