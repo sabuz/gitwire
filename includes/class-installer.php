@@ -262,7 +262,7 @@ class Installer {
 				return $result;
 			}
 
-			self::complete_plugin_activation_guard( $full_name, $rec['type'] ?? 'plugin' );
+			self::complete_plugin_activation_guard();
 		} elseif ( 'theme' === $rec['type'] ) {
 			self::begin_activation_guard( $rec, $full_name );
 			switch_theme( $rec['slug'] );
@@ -332,20 +332,10 @@ class Installer {
 	 * Clears the activation guard after core has sandboxed a plugin activation.
 	 *
 	 * @since 1.2.0
-	 * @param string $full_name Repository full name.
-	 * @param string $type        Item type.
 	 * @return void
 	 */
-	private static function complete_plugin_activation_guard( string $full_name, string $type ): void {
+	private static function complete_plugin_activation_guard(): void {
 		delete_option( 'gwp_pending_update' );
-		set_transient(
-			'gwp_activation_success',
-			[
-				'full_name' => $full_name,
-				'type'      => $type,
-			],
-			MINUTE_IN_SECONDS
-		);
 	}
 
 	/**
@@ -597,8 +587,11 @@ class Installer {
 			'slug_renamed' => $slug_renamed,
 		];
 
-		$record_key               = $provider . ':' . $full_name;
-		$installed                = self::get_installed();
+		$record_key             = $provider . ':' . $full_name;
+		$installed              = self::get_installed();
+		$pending['prev_record'] = $installed[ $record_key ] ?? null;
+		$pending['provider']    = $provider;
+		update_option( 'gwp_pending_update', $pending, false );
 		$installed[ $record_key ] = $record;
 		update_option( 'gwp_installed', $installed );
 
@@ -675,8 +668,6 @@ class Installer {
 	 */
 	private static function clear_guard_feedback(): void {
 		delete_option( 'gwp_fatal_notice' );
-		delete_transient( 'gwp_activation_success' );
-		delete_transient( 'gwp_update_success' );
 		Error_Handler::clear_bootstrap_verified();
 	}
 
@@ -691,7 +682,10 @@ class Installer {
 	 */
 	private static function is_active_install( string $type, string $slug, ?string $plugin_file ): bool {
 		if ( 'theme' === $type ) {
-			return function_exists( 'get_stylesheet' ) && get_stylesheet() === $slug;
+			if ( ! function_exists( 'get_stylesheet' ) ) {
+				return false;
+			}
+			return get_stylesheet() === $slug || get_template() === $slug;
 		}
 
 		if ( ! function_exists( 'is_plugin_active' ) ) {

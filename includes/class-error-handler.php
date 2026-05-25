@@ -51,9 +51,7 @@ class Error_Handler {
 		}
 		self::$registered = true;
 		register_shutdown_function( [ self::class, 'handle_shutdown' ] );
-		register_shutdown_function( [ self::class, 'mark_guard_verified_on_verify_request' ] );
 		register_shutdown_function( [ self::class, 'release_verified_guard_on_git_page' ] );
-		add_action( 'template_redirect', [ self::class, 'finish_verify_bootstrap_request' ], PHP_INT_MAX );
 	}
 
 	/**
@@ -162,24 +160,6 @@ class Error_Handler {
 	}
 
 	/**
-	 * Marks a verify bootstrap as complete without releasing the backup yet.
-	 *
-	 * @since 1.2.0
-	 * @return void
-	 */
-	public static function mark_guard_verified_on_verify_request(): void {
-		if ( ! self::is_verify_bootstrap_request() ) {
-			return;
-		}
-
-		if ( self::has_fatal_shutdown_error() ) {
-			return;
-		}
-
-		self::try_mark_bootstrap_verified();
-	}
-
-	/**
 	 * Defers bootstrap verification for a REST request until shutdown.
 	 *
 	 * @since 1.2.0
@@ -215,26 +195,6 @@ class Error_Handler {
 	}
 
 	/**
-	 * Ends a frontend verify request after WordPress has bootstrapped the theme.
-	 *
-	 * @since 1.2.0
-	 * @return void
-	 */
-	public static function finish_verify_bootstrap_request(): void {
-		if ( ! self::is_verify_bootstrap_request() || is_admin() ) {
-			return;
-		}
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			status_header( 403 );
-			exit;
-		}
-
-		status_header( 204 );
-		exit;
-	}
-
-	/**
 	 * Finalizes a verified guard after the Git admin page reloads cleanly.
 	 *
 	 * @since 1.2.0
@@ -245,7 +205,7 @@ class Error_Handler {
 			return;
 		}
 
-		if ( self::is_verify_bootstrap_request() || ! self::is_git_admin_page() ) {
+		if ( ! self::is_git_admin_page() ) {
 			return;
 		}
 
@@ -298,20 +258,6 @@ class Error_Handler {
 	private static function finalize_guard_success( array $pending ): void {
 		Installer::delete_backup_path( $pending['backup_path'] ?? null );
 		self::clear_bootstrap_verified();
-
-		if ( 'activation' === ( $pending['context'] ?? '' ) ) {
-			self::mark_activation_success( $pending );
-		} else {
-			set_transient(
-				'gwp_update_success',
-				[
-					'full_name' => $pending['full_name'] ?? '',
-					'type'      => $pending['type'] ?? '',
-				],
-				MINUTE_IN_SECONDS
-			);
-		}
-
 		delete_option( 'gwp_pending_update' );
 	}
 
@@ -436,6 +382,18 @@ class Error_Handler {
 			}
 		}
 
+		// Restore the installed record that was overwritten before the guard was armed.
+		$provider    = $pending['provider'] ?? null;
+		$prev_record = $pending['prev_record'] ?? null;
+		$full_name   = $pending['full_name'] ?? null;
+
+		if ( $provider && $full_name && is_array( $prev_record ) ) {
+			$record_key               = $provider . ':' . $full_name;
+			$installed                = Installer::get_installed();
+			$installed[ $record_key ] = $prev_record;
+			update_option( 'gwp_installed', $installed );
+		}
+
 		delete_option( 'gwp_pending_update' );
 		self::clear_bootstrap_verified();
 
@@ -474,21 +432,6 @@ class Error_Handler {
 	}
 
 	/**
-	 * Returns whether this request is the hidden iframe bootstrap check.
-	 *
-	 * @since 1.2.0
-	 * @return bool
-	 */
-	private static function is_verify_bootstrap_request(): bool {
-		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
-			return false;
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		return ! empty( $_GET['gwp_verify_activation'] );
-	}
-
-	/**
 	 * Returns whether the guarded plugin or theme is the one currently active.
 	 *
 	 * @since 1.2.0
@@ -518,24 +461,6 @@ class Error_Handler {
 		}
 
 		return false;
-	}
-
-	/**
-	 * Records a verified activation for the Git admin UI toast.
-	 *
-	 * @since 1.2.0
-	 * @param array<string, mixed> $pending Pending activation record.
-	 * @return void
-	 */
-	private static function mark_activation_success( array $pending ): void {
-		set_transient(
-			'gwp_activation_success',
-			[
-				'full_name' => $pending['full_name'] ?? '',
-				'type'      => $pending['type'] ?? '',
-			],
-			MINUTE_IN_SECONDS
-		);
 	}
 
 	/**

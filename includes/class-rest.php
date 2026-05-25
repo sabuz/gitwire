@@ -376,21 +376,6 @@ class REST {
 			return rest_ensure_response( [ 'status' => 'pending' ] );
 		}
 
-		$success = get_transient( 'gwp_activation_success' );
-		if ( ! $success ) {
-			$success = get_transient( 'gwp_update_success' );
-		}
-		if ( $success ) {
-			delete_transient( 'gwp_activation_success' );
-			delete_transient( 'gwp_update_success' );
-			return rest_ensure_response(
-				array_merge(
-					[ 'status' => 'success' ],
-					is_array( $success ) ? $success : []
-				)
-			);
-		}
-
 		return rest_ensure_response( [ 'status' => 'idle' ] );
 	}
 
@@ -1348,31 +1333,7 @@ class REST {
 	 * @return array Enriched repos payload.
 	 */
 	private static function enrich_repos_payload( array $payload, string $provider ): array {
-		$payload = self::enrich_with_detections( $payload, $provider );
-		return self::enrich_with_installed( $payload, $provider );
-	}
-
-	/**
-	 * Attaches current installed records to each repo in a browse payload.
-	 *
-	 * @since 1.2.0
-	 * @param array  $payload  Repos payload with a 'repos' key.
-	 * @param string $provider Provider key: 'github' or 'gitlab'.
-	 * @return array The same payload with fresh 'installed' on each repo.
-	 */
-	private static function enrich_with_installed( array $payload, string $provider ): array {
-		$installed = Installer::get_installed();
-
-		$payload['repos'] = array_map(
-			static function ( $repo ) use ( $installed, $provider ) {
-				$key               = $provider . ':' . ( $repo['full_name'] ?? '' );
-				$repo['installed'] = $installed[ $key ] ?? null;
-				return $repo;
-			},
-			$payload['repos']
-		);
-
-		return $payload;
+		return self::enrich_with_detections( $payload, $provider );
 	}
 
 	/**

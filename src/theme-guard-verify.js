@@ -153,6 +153,11 @@ export async function resumePendingThemeVerification( {
 
 	try {
 		const status = await api.getActivationStatus();
+		if ( status.status === 'fatal' ) {
+			showFatalNotice( status.notice );
+			onRefresh?.();
+			return true;
+		}
 		if ( status.status === 'bootstrap_verified' ) {
 			queueVerifiedThemeGuardReload( {
 				result: status,
@@ -162,6 +167,10 @@ export async function resumePendingThemeVerification( {
 			return true;
 		}
 		if ( status.status !== 'pending' ) {
+			// Guard was already finalized server-side — refresh to clear the stale badge.
+			if ( status.status === 'idle' ) {
+				onRefresh?.();
+			}
 			return false;
 		}
 	} catch ( _e ) {

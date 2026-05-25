@@ -122,14 +122,6 @@ export default function App( { initialData } ) {
 		if ( initialData.fatal_notice ) {
 			clearPendingToast();
 			showFatalNotice( initialData.fatal_notice );
-		} else if ( initialData.activation_success?.full_name ) {
-			toast.success(
-				sprintf(
-					/* translators: %s: repository full name */
-					__( '%s activated.', 'git' ),
-					initialData.activation_success.full_name
-				)
-			);
 		}
 		( initialData.orphaned || [] ).forEach( showOrphanedNotice );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
