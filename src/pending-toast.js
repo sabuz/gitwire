@@ -35,6 +35,16 @@ export function queuePendingToastAndReload( message ) {
 }
 
 /**
+ * Reloads the Git admin page so server-side finalize can complete the guard.
+ */
+export function queueGuardFinalizeReload() {
+	clearPendingToast();
+	const url = new URL( window.location.href );
+	url.searchParams.set( 'page', 'git' );
+	window.location.assign( url.toString() );
+}
+
+/**
  * @param {import('sonner').toast} toast Sonner toast API.
  */
 export function showPendingToast( toast ) {

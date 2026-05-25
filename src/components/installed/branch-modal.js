@@ -1,9 +1,10 @@
+import { toast } from 'sonner';
+
 import { __, sprintf } from '@wordpress/i18n';
 import { useState, useEffect, useMemo } from '@wordpress/element';
 import { Button, ComboboxControl, Flex, Modal } from '@wordpress/components';
 
 import * as api from '../../api';
-import { verifyActiveUpdate } from '../../verify-active-update';
 
 /**
  * Modal for switching the active branch of an installed repository.
@@ -66,36 +67,19 @@ export default function BranchModal( {
 			return;
 		}
 		setSwitching( true );
-		let isVerifying = false;
 		try {
-			const result = await api.switchBranch(
+			await api.switchBranch(
 				owner,
 				repo,
 				selectedBranch,
 				item.provider ?? 'github'
 			);
-			if (
-				verifyActiveUpdate( {
-					needsVerify: result?.needs_verify,
-					item,
-					onRefresh,
-					successMessage: sprintf(
-						/* translators: %s: branch name */
-						__( 'Switched to %s.', 'git' ),
-						selectedBranch
-					),
-					onSettled: () => setSwitching( false ),
-				} )
-			) {
-				isVerifying = true;
-				return;
-			}
 			onSwitched( selectedBranch );
-		} finally {
-			if ( ! isVerifying ) {
-				setSwitching( false );
-			}
 			onClose();
+		} catch ( e ) {
+			toast.error( e.message || __( 'Branch switch failed.', 'git' ) );
+		} finally {
+			setSwitching( false );
 		}
 	};
 

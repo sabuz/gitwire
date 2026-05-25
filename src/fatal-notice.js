@@ -14,7 +14,7 @@ export function showFatalNotice( notice ) {
 			message = sprintf(
 				/* translators: %s: theme full name */
 				__(
-					'%s could not be updated. It triggered a fatal error. Your previous version has been restored.',
+					'%s could not be updated. The latest commit caused a fatal error, so the previous version was restored.',
 					'git'
 				),
 				name

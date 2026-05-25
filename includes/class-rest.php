@@ -349,7 +349,6 @@ class REST {
 		$fatal = get_option( 'gwp_fatal_notice' );
 		if ( $fatal ) {
 			delete_option( 'gwp_fatal_notice' );
-			delete_option( 'gwp_pending_update' );
 			return rest_ensure_response(
 				[
 					'status' => 'fatal',
@@ -403,7 +402,6 @@ class REST {
 		$fatal = get_option( 'gwp_fatal_notice' );
 		if ( $fatal ) {
 			delete_option( 'gwp_fatal_notice' );
-			delete_option( 'gwp_pending_update' );
 			return rest_ensure_response(
 				[
 					'status' => 'fatal',
@@ -429,8 +427,6 @@ class REST {
 				]
 			);
 		}
-
-		Error_Handler::arm_rest_bootstrap_verify();
 
 		return rest_ensure_response( [ 'status' => 'pending' ] );
 	}
@@ -637,15 +633,35 @@ class REST {
 		}
 		$page = max( 1, (int) ( $req->get_param( 'page' ) ?? 1 ) );
 
+		$cached = Repo_Cache::get_repos_page( $provider, $page );
+		if ( is_array( $cached ) ) {
+			return self::enrich_repos_payload( $cached, $provider );
+		}
+
+		$payload = self::build_repos_page( $settings, $provider, $page );
+		if ( is_wp_error( $payload ) ) {
+			Repo_Cache::clear_repos( $provider );
+			return $payload;
+		}
+
+		Repo_Cache::set_repos_page( $provider, $page, $payload );
+
+		return self::enrich_repos_payload( $payload, $provider );
+	}
+
+	/**
+	 * Builds a paginated repository list payload from the Git provider API.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, mixed> $settings Plugin settings.
+	 * @param string               $provider Provider key: github or gitlab.
+	 * @param int                  $page     Page number.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function build_repos_page( array $settings, string $provider, int $page ) {
 		if ( 'gitlab' === $provider ) {
 			if ( ! ( $settings['gitlab_token'] ?? '' ) ) {
 				return new \WP_Error( 'missing_config', 'Configure a GitLab token first.', [ 'status' => 400 ] );
-			}
-
-			$cache_key = 'gwp_repos_' . md5( 'gitlab' . ( $settings['gitlab_token'] ?? '' ) . ( $settings['gitlab_url'] ?? '' ) . $page );
-			$cached    = get_transient( $cache_key );
-			if ( false !== $cached ) {
-				return self::enrich_repos_payload( $cached, 'gitlab' );
 			}
 
 			$api       = new GitLab_API( $settings['gitlab_token'] ?? '', $settings['gitlab_url'] ?? '' );
@@ -678,27 +694,17 @@ class REST {
 				$result
 			);
 
-			$payload = [
+			return [
 				'repos'    => $repos,
 				'has_more' => count( $result ) === 100,
 				'page'     => $page,
 			];
-
-			set_transient( $cache_key, $payload, 30 * MINUTE_IN_SECONDS );
-
-			return self::enrich_repos_payload( $payload, 'gitlab' );
 		}
 
-		$username = sanitize_text_field( $req->get_param( 'username' ) ?? $settings['username'] ?? '' );
+		$username = sanitize_text_field( $settings['username'] ?? '' );
 
 		if ( ! $username && ! ( $settings['token'] ?? '' ) ) {
 			return new \WP_Error( 'missing_config', 'Configure a GitHub username or token first.', [ 'status' => 400 ] );
-		}
-
-		$cache_key = 'gwp_repos_' . md5( ( $settings['token'] ?? '' ) . $username . $page );
-		$cached    = get_transient( $cache_key );
-		if ( false !== $cached ) {
-			return self::enrich_repos_payload( $cached, 'github' );
 		}
 
 		$api       = new API( $settings['token'] ?? '' );
@@ -729,15 +735,33 @@ class REST {
 			$result
 		);
 
-		$payload = [
+		return [
 			'repos'    => $repos,
 			'has_more' => count( $result ) === 100,
 			'page'     => $page,
 		];
+	}
 
-		set_transient( $cache_key, $payload, 30 * MINUTE_IN_SECONDS );
+	/**
+	 * Detects repository type via the provider API.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, mixed> $settings Plugin settings.
+	 * @param string               $provider Provider key.
+	 * @param string               $owner    Repository owner.
+	 * @param string               $repo     Repository name.
+	 * @param string               $branch   Branch name.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function detect_type_for_repo( array $settings, string $provider, string $owner, string $repo, string $branch ) {
+		$api    = self::make_api( $settings, $provider );
+		$result = $api->detect_type( $owner, $repo, $branch );
 
-		return self::enrich_repos_payload( $payload, 'github' );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return $result;
 	}
 
 	/**
@@ -774,19 +798,15 @@ class REST {
 		$repo   = sanitize_text_field( $req->get_param( 'repo' ) );
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? 'HEAD' );
 
-		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		$cache_key = 'gwp_detect_' . md5( $provider . $owner . $repo . $branch );
-		$cached    = get_transient( $cache_key );
-		if ( false !== $cached ) {
+		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$cached   = Repo_Cache::get_type( $provider, $owner, $repo, $branch );
+		if ( is_array( $cached ) ) {
 			return $cached;
 		}
 
 		$settings = (array) get_option( 'gwp_settings', [] );
-		$api      = self::make_api( $settings, $provider );
-		$result   = $api->detect_type( $owner, $repo, $branch );
+		$result   = self::detect_type_for_repo( $settings, $provider, $owner, $repo, $branch );
 
-		// Absorb GitHub errors (private repo, rate-limit, network) so the
-		// frontend always gets a valid response and can render the card.
 		if ( is_wp_error( $result ) ) {
 			$result = [
 				'type'       => 'unknown',
@@ -796,7 +816,7 @@ class REST {
 			];
 		}
 
-		set_transient( $cache_key, $result, HOUR_IN_SECONDS );
+		Repo_Cache::set_type( $provider, $owner, $repo, $branch, $result );
 
 		return $result;
 	}
@@ -883,7 +903,7 @@ class REST {
 			return $result;
 		}
 
-		self::bust_repos_cache();
+		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
 
 		return $result;
@@ -950,6 +970,14 @@ class REST {
 		$pruned   = false;
 		$settings = Settings::get_raw();
 
+		$pending       = get_option( 'gwp_pending_update' );
+		$pending_key   = '';
+		$pending_guard = is_array( $pending )
+			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
+		if ( $pending_guard ) {
+			$pending_key = ( $pending['provider'] ?? 'github' ) . ':' . ( $pending['full_name'] ?? '' );
+		}
+
 		foreach ( $records as $key => &$rec ) {
 			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
 				$rec['provider'] = 'github';
@@ -974,6 +1002,11 @@ class REST {
 			}
 
 			if ( empty( $rec['head'] ) && ! empty( $rec['owner'] ) && ! empty( $rec['repo'] ) && ! empty( $rec['branch'] ) ) {
+				$record_key = ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? ( $rec['owner'] . '/' . $rec['repo'] ) );
+				if ( $pending_guard && $record_key === $pending_key ) {
+					continue;
+				}
+
 				$provider  = $rec['provider'] ?? 'github';
 				$api       = self::make_api( $settings, $provider );
 				$commits   = $api->get_commits( $rec['owner'], $rec['repo'], $rec['branch'], 1 );
@@ -985,13 +1018,16 @@ class REST {
 				}
 			}
 
-			$remote_head = self::fetch_remote_head( $rec, $settings );
-			if ( $remote_head ) {
-				set_transient(
-					'gwp_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) ),
-					$remote_head,
-					HOUR_IN_SECONDS
-				);
+			$record_key = ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' );
+			if ( ! $pending_guard || $record_key !== $pending_key ) {
+				$remote_head = self::fetch_remote_head( $rec, $settings );
+				if ( $remote_head ) {
+					set_transient(
+						'gwp_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) ),
+						$remote_head,
+						HOUR_IN_SECONDS
+					);
+				}
 			}
 		}
 		unset( $rec );
@@ -1047,6 +1083,23 @@ class REST {
 				) {
 					$rec['active'] = false;
 				}
+
+				if (
+					'update' === ( $pending['context'] ?? '' )
+					&& is_array( $pending['prev_record'] ?? null )
+				) {
+					if ( ! empty( $pending['prev_record']['head'] ) ) {
+						$rec['head'] = $pending['prev_record']['head'];
+					}
+					if ( ! empty( $pending['pending_record']['head'] ) ) {
+						$rec['pending_head'] = $pending['pending_record']['head'];
+					}
+					if ( ! empty( $pending['was_active_theme'] ) ) {
+						$rec['active'] = true;
+					}
+					$rec['update_available'] = false;
+					continue;
+				}
 			}
 
 			$remote_key  = 'gwp_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
@@ -1054,6 +1107,20 @@ class REST {
 			if ( false !== $remote_head ) {
 				$rec['remote_head']      = $remote_head;
 				$rec['update_available'] = ! empty( $rec['head'] ) && $remote_head !== $rec['head'];
+				if (
+					'theme' === ( $rec['type'] ?? '' )
+					&& ! empty( $rec['active'] )
+					&& $rec['update_available']
+				) {
+					$known = Installer::get_known_fatal_remote_head(
+						$rec['provider'] ?? 'github',
+						$rec['full_name'] ?? '',
+						$rec['branch'] ?? ''
+					);
+					if ( $known && $known === $remote_head ) {
+						$rec['known_fatal_head'] = $known;
+					}
+				}
 			}
 		}
 		unset( $rec );
@@ -1122,14 +1189,13 @@ class REST {
 			}
 
 			$key    = $provider . ':' . $owner . '/' . $repo;
-			$cached = get_transient( 'gwp_detect_' . md5( $provider . $owner . $repo . $branch ) );
-			if ( false !== $cached ) {
+			$cached = Repo_Cache::get_type( $provider, $owner, $repo, $branch );
+			if ( is_array( $cached ) ) {
 				$results[ $key ] = $cached;
 				continue;
 			}
 
-			$api    = self::make_api( $settings, $provider );
-			$result = $api->detect_type( $owner, $repo, $branch );
+			$result = self::detect_type_for_repo( $settings, $provider, $owner, $repo, $branch );
 
 			if ( is_wp_error( $result ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -1145,7 +1211,7 @@ class REST {
 				];
 			}
 
-			set_transient( 'gwp_detect_' . md5( $provider . $owner . $repo . $branch ), $result, HOUR_IN_SECONDS );
+			Repo_Cache::set_type( $provider, $owner, $repo, $branch, $result );
 			$results[ $key ] = $result;
 		}
 
@@ -1164,7 +1230,10 @@ class REST {
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
-		$result    = Installer::activate( $provider, $full_name );
+
+		Error_Handler::clear_stale_activation_guard();
+
+		$result = Installer::activate( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -1223,7 +1292,7 @@ class REST {
 		}
 
 		delete_transient( 'gwp_commits_' . md5( $provider . ':' . $full_name . ':' . $branch ) );
-		self::bust_repos_cache();
+		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
 
 		return $result;
@@ -1272,7 +1341,7 @@ class REST {
 			Error_Handler::abort_pending_guard();
 		}
 
-		self::bust_repos_cache();
+		Repo_Cache::clear_repos();
 
 		return [ 'removed' => true ];
 	}
@@ -1297,16 +1366,56 @@ class REST {
 
 		$cache_key = 'gwp_commits_' . md5( $provider . ':' . $full_name . ':' . $record['branch'] );
 		$cached    = get_transient( $cache_key );
-		if ( false !== $cached ) {
-			return $cached;
+		if ( false !== $cached && is_array( $cached ) ) {
+			return self::annotate_commits_with_fatal(
+				$cached,
+				$provider,
+				$full_name,
+				$record['branch']
+			);
 		}
 
 		$settings = (array) get_option( 'gwp_settings', [] );
 		$api      = self::make_api( $settings, $provider );
 		$commits  = $api->get_commits( $owner, $repo, $record['branch'] );
 
-		if ( ! is_wp_error( $commits ) ) {
-			set_transient( $cache_key, $commits, HOUR_IN_SECONDS );
+		if ( is_wp_error( $commits ) ) {
+			return $commits;
+		}
+
+		set_transient( $cache_key, $commits, HOUR_IN_SECONDS );
+
+		return self::annotate_commits_with_fatal(
+			$commits,
+			$provider,
+			$full_name,
+			$record['branch']
+		);
+	}
+
+	/**
+	 * Flags commits that recently failed active-theme fatal validation.
+	 *
+	 * @since 1.2.0
+	 * @param array<int, array<string, mixed>> $commits   Commit list.
+	 * @param string                           $provider  Git provider.
+	 * @param string                           $full_name Repository full name.
+	 * @param string                           $branch    Branch name.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function annotate_commits_with_fatal( array $commits, string $provider, string $full_name, string $branch ): array {
+		$known = Installer::get_known_fatal_remote_head( $provider, $full_name, $branch );
+		if ( ! $known ) {
+			return $commits;
+		}
+
+		foreach ( $commits as $i => $commit ) {
+			if ( ! is_array( $commit ) ) {
+				continue;
+			}
+			if ( ( $commit['sha'] ?? '' ) === $known ) {
+				$commits[ $i ]['has_fatal_error'] = true;
+			}
 		}
 
 		return $commits;
@@ -1350,9 +1459,13 @@ class REST {
 	private static function enrich_with_detections( array $payload, string $provider ): array {
 		$payload['repos'] = array_map(
 			static function ( $repo ) use ( $provider ) {
-				$cache_key = 'gwp_detect_' . md5( $provider . $repo['owner'] . $repo['name'] . $repo['default_branch'] );
-				$detection = get_transient( $cache_key );
-				if ( false !== $detection ) {
+				$detection = Repo_Cache::get_type(
+					$provider,
+					$repo['owner'] ?? '',
+					$repo['name'] ?? '',
+					$repo['default_branch'] ?? 'main'
+				);
+				if ( is_array( $detection ) ) {
 					$repo['detection'] = $detection;
 				}
 				return $repo;
@@ -1363,14 +1476,17 @@ class REST {
 	}
 
 	/**
-	 * Clears the repos and detection transient caches.
+	 * Clears browse repo and type caches so the next request refetches from the API.
 	 *
 	 * @since 1.0.0
 	 * @return array<string, bool> Confirmation payload.
 	 */
 	public static function clear_cache(): array {
-		self::bust_repos_cache( true );
-		return [ 'cleared' => true ];
+		Repo_Cache::clear_all();
+
+		return [
+			'cleared' => true,
+		];
 	}
 
 	/**
@@ -1395,20 +1511,30 @@ class REST {
 	}
 
 	/**
-	 * Deletes cached repository list transients.
-	 * When $include_detections is true (manual refresh), detection transients are also cleared.
+	 * Stores the remote HEAD on the pending guard until verification finishes.
 	 *
-	 * @since 1.0.0
-	 * @param bool $include_detections Whether to also clear detection transients.
+	 * @since 1.2.0
+	 * @param string $owner    Repository owner.
+	 * @param string $repo     Repository name.
+	 * @param string $branch   Branch name.
+	 * @param string $provider Git provider: 'github' or 'gitlab'.
 	 * @return void
 	 */
-	private static function bust_repos_cache( bool $include_detections = false ): void {
-		global $wpdb;
-		$where = "option_name LIKE '_transient_gwp_repos_%'";
-		if ( $include_detections ) {
-			$where .= " OR option_name LIKE '_transient_gwp_detect_%'";
+	private static function stage_pending_head( string $owner, string $repo, string $branch, string $provider ): void {
+		$pending = get_option( 'gwp_pending_update' );
+		if ( ! is_array( $pending ) || ! is_array( $pending['pending_record'] ?? null ) ) {
+			return;
 		}
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE {$where}" );
+
+		$settings = (array) get_option( 'gwp_settings', [] );
+		$api      = self::make_api( $settings, $provider );
+		$commits  = $api->get_commits( $owner, $repo, $branch, 1 );
+
+		if ( is_wp_error( $commits ) || empty( $commits ) ) {
+			return;
+		}
+
+		$pending['pending_record']['head'] = $commits[0]['sha'];
+		update_option( 'gwp_pending_update', $pending, false );
 	}
 }

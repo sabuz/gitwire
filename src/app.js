@@ -11,13 +11,12 @@ import {
 import { Spinner } from '@wordpress/components';
 
 import * as api from './api';
+import { showFatalNotice } from './fatal-notice';
 import {
 	showPendingToast,
 	queuePendingToast,
 	clearPendingToast,
 } from './pending-toast';
-import { showFatalNotice } from './fatal-notice';
-import { resumePendingThemeVerification } from './theme-guard-verify';
 import SettingsPanel from './components/settings-panel';
 
 const BrowsePanel = lazy( () => import( './components/browse-panel' ) );
@@ -115,6 +114,31 @@ export default function App( { initialData } ) {
 		if ( initialData.fatal_notice ) {
 			return;
 		}
+
+		if ( initialData.update_success?.full_name ) {
+			clearPendingToast();
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( '%s updated to latest.', 'git' ),
+					initialData.update_success.full_name
+				)
+			);
+			return;
+		}
+
+		if ( initialData.activation_success?.full_name ) {
+			clearPendingToast();
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( '%s activated.', 'git' ),
+					initialData.activation_success.full_name
+				)
+			);
+			return;
+		}
+
 		showPendingToast( toast );
 	}, [ activeTab ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -195,16 +219,6 @@ export default function App( { initialData } ) {
 		const result = await api.syncInstalled();
 		applyInstalled( result );
 	}, [ applyInstalled ] );
-
-	useEffect( () => {
-		if ( activeTab !== 'installed' ) {
-			return;
-		}
-		resumePendingThemeVerification( {
-			installed,
-			onRefresh: refreshInstalled,
-		} );
-	}, [ activeTab, installed, refreshInstalled ] );
 
 	const handleGoToTab = useCallback( ( tabName ) => {
 		setActiveTab( tabName );

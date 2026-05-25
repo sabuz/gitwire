@@ -59,6 +59,8 @@ final class Plugin {
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] );
 		add_action( 'gwp_auto_check_connection', [ $this, 'run_connection_check' ] );
 		add_action( 'gwp_maintenance', [ $this, 'run_maintenance' ] );
+		add_action( 'gwp_refresh_repos_cache', [ Repo_Cache::class, 'cron_refresh_repos' ] );
+		add_action( 'gwp_refresh_repo_types', [ Repo_Cache::class, 'cron_refresh_types' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
 
 		if ( $this->file ) {
@@ -117,6 +119,10 @@ final class Plugin {
 			'interval' => 1800,
 			'display'  => __( 'Every 30 minutes', 'git' ),
 		];
+		$schedules['gwp_daily']       = [
+			'interval' => DAY_IN_SECONDS,
+			'display'  => __( 'Once daily', 'git' ),
+		];
 		return $schedules;
 	}
 
@@ -161,6 +167,14 @@ final class Plugin {
 		if ( ! wp_next_scheduled( 'gwp_maintenance' ) ) {
 			wp_schedule_event( time(), 'gwp_half_hourly', 'gwp_maintenance' );
 		}
+
+		if ( ! wp_next_scheduled( 'gwp_refresh_repos_cache' ) ) {
+			wp_schedule_event( time(), 'gwp_half_hourly', 'gwp_refresh_repos_cache' );
+		}
+
+		if ( ! wp_next_scheduled( 'gwp_refresh_repo_types' ) ) {
+			wp_schedule_event( time(), 'gwp_daily', 'gwp_refresh_repo_types' );
+		}
 	}
 
 	/**
@@ -182,6 +196,8 @@ final class Plugin {
 		set_transient( 'gwp_first_activation', true, 60 );
 		wp_schedule_event( time(), 'gwp_half_hourly', 'gwp_auto_check_connection' );
 		wp_schedule_event( time(), 'gwp_half_hourly', 'gwp_maintenance' );
+		wp_schedule_event( time(), 'gwp_half_hourly', 'gwp_refresh_repos_cache' );
+		wp_schedule_event( time(), 'gwp_daily', 'gwp_refresh_repo_types' );
 	}
 
 	/**
@@ -190,8 +206,10 @@ final class Plugin {
 	 * @return void
 	 */
 	public function deactivate(): void {
-		delete_transient( 'gwp_repos_cache' );
+		Repo_Cache::clear_all();
 		wp_clear_scheduled_hook( 'gwp_auto_check_connection' );
 		wp_clear_scheduled_hook( 'gwp_maintenance' );
+		wp_clear_scheduled_hook( 'gwp_refresh_repos_cache' );
+		wp_clear_scheduled_hook( 'gwp_refresh_repo_types' );
 	}
 }

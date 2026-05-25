@@ -16,6 +16,8 @@ $options = [
 	'gwp_pending_update',
 	'gwp_fatal_notice',
 	'gwp_migrated_from_ghwp',
+	'gwp_repos_cache',
+	'gwp_repo_types',
 ];
 
 foreach ( $options as $option ) {
@@ -24,6 +26,8 @@ foreach ( $options as $option ) {
 
 wp_clear_scheduled_hook( 'gwp_auto_check_connection' );
 wp_clear_scheduled_hook( 'gwp_maintenance' );
+wp_clear_scheduled_hook( 'gwp_refresh_repos_cache' );
+wp_clear_scheduled_hook( 'gwp_refresh_repo_types' );
 
 global $wpdb;
 

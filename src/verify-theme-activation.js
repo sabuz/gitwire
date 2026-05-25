@@ -2,6 +2,7 @@ import * as api from './api';
 
 const POLL_INTERVAL = 250;
 const POLL_TIMEOUT = 30000;
+const BOOTSTRAP_SETTLE_MS = 100;
 
 const sleep = ( ms ) =>
 	new Promise( ( resolve ) => {
@@ -13,6 +14,42 @@ let activeSession = null;
 
 export function isVerifyRunning() {
 	return activeSession !== null;
+}
+
+/**
+ * @param {string} verifyUrl Frontend URL that bootstraps the active theme.
+ * @return {Promise<void>}
+ */
+async function triggerFrontendBootstrap( verifyUrl ) {
+	const verifyTarget = new URL( verifyUrl, window.location.origin );
+	verifyTarget.searchParams.set( '_gwp_verify', String( Date.now() ) );
+
+	await fetch( verifyTarget.toString(), {
+		credentials: 'same-origin',
+		cache: 'no-store',
+	} ).catch( () => {} );
+
+	await sleep( BOOTSTRAP_SETTLE_MS );
+}
+
+/**
+ * @param {string} verifyUrl Admin URL that bootstraps the active theme.
+ * @return {Promise<void>}
+ */
+async function triggerAdminBootstrap( verifyUrl ) {
+	if ( ! verifyUrl ) {
+		return;
+	}
+
+	const verifyTarget = new URL( verifyUrl, window.location.origin );
+	verifyTarget.searchParams.set( '_gwp_verify', String( Date.now() ) );
+
+	await fetch( verifyTarget.toString(), {
+		credentials: 'same-origin',
+		cache: 'no-store',
+	} ).catch( () => {} );
+
+	await sleep( BOOTSTRAP_SETTLE_MS );
 }
 
 /**
@@ -32,6 +69,8 @@ export function verifyThemeActivation( {
 		activeSession.abort();
 	}
 
+	const verifyUrl = window.GWP?.verify_activation_url;
+	const adminVerifyUrl = window.GWP?.verify_admin_url;
 	let isSettled = false;
 
 	const cleanup = () => {
@@ -66,46 +105,49 @@ export function verifyThemeActivation( {
 
 	activeSession = session;
 
+	const handleStatus = async ( result ) => {
+		if ( result.status === 'fatal' ) {
+			await finish( onFatal, result.notice );
+			return true;
+		}
+
+		if ( result.status === 'bootstrap_verified' ) {
+			await finish( onSuccess, result );
+			return true;
+		}
+
+		if ( result.status === 'idle' ) {
+			await finish( onTimeout );
+			return true;
+		}
+
+		return false;
+	};
+
 	const run = async () => {
+		if ( ! verifyUrl ) {
+			await finish( onTimeout );
+			return;
+		}
+
 		const deadline = Date.now() + POLL_TIMEOUT;
-		let sawPending = false;
+
+		try {
+			const initial = await api.getActivationStatus();
+			if ( await handleStatus( initial ) ) {
+				return;
+			}
+		} catch ( _e ) {
+			// Fall through to the bootstrap loop.
+		}
 
 		while ( Date.now() < deadline && ! isSettled ) {
 			try {
-				const verified = await api.verifyBootstrap();
-
-				if ( verified.status === 'fatal' ) {
-					await finish( onFatal, verified.notice );
-					return;
-				}
-
-				if ( verified.status === 'bootstrap_verified' ) {
-					await finish( onSuccess, verified );
-					return;
-				}
-
-				if ( verified.status === 'pending' ) {
-					sawPending = true;
-				}
+				await triggerFrontendBootstrap( verifyUrl );
+				await triggerAdminBootstrap( adminVerifyUrl );
 
 				const result = await api.getActivationStatus();
-
-				if ( result.status === 'fatal' ) {
-					await finish( onFatal, result.notice );
-					return;
-				}
-
-				if ( result.status === 'pending' ) {
-					sawPending = true;
-				}
-
-				if ( result.status === 'bootstrap_verified' ) {
-					await finish( onSuccess, result );
-					return;
-				}
-
-				if ( result.status === 'idle' && sawPending ) {
-					await finish( onTimeout );
+				if ( await handleStatus( result ) ) {
 					return;
 				}
 			} catch ( _e ) {

@@ -6,7 +6,6 @@ import { Button, Flex, Icon } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
-import { startThemeGuardVerification } from '../theme-guard-verify';
 import { queuePendingToastAndReload } from '../pending-toast';
 import ConnectPrompt from './connect-prompt';
 import BranchCell from './installed/branch-cell';
@@ -211,11 +210,13 @@ export default function InstalledPanel( {
 							item.provider ?? 'github'
 						);
 						if ( item.type === 'theme' ) {
-							startThemeGuardVerification( {
-								item,
-								onRefresh,
-								context: 'activate',
-							} );
+							queuePendingToastAndReload(
+								sprintf(
+									/* translators: %s: repository full name */
+									__( '%s activated.', 'git' ),
+									item.full_name
+								)
+							);
 							return;
 						}
 						queuePendingToastAndReload(

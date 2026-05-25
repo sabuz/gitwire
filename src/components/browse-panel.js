@@ -1,7 +1,13 @@
 import { toast } from 'sonner';
 
 import { __, sprintf } from '@wordpress/i18n';
-import { useState, useEffect, useCallback, memo } from '@wordpress/element';
+import {
+	useState,
+	useEffect,
+	useCallback,
+	useRef,
+	memo,
+} from '@wordpress/element';
 import {
 	Button,
 	Spinner,
@@ -63,6 +69,7 @@ export default function BrowsePanel( {
 	const [ modal, setModal ] = useState( null );
 	const [ search, setSearch ] = useState( '' );
 	const [ typeFilter, setTypeFilter ] = useState( 'all' );
+	const handleRefreshRef = useRef( null );
 
 	const loadRepos = useCallback(
 		async ( ghPage, glPage, append = false ) => {
@@ -147,7 +154,7 @@ export default function BrowsePanel( {
 						duration: 6000,
 						action: {
 							label: __( 'Retry', 'git' ),
-							onClick: handleRefresh,
+							onClick: () => handleRefreshRef.current?.(),
 						},
 					} );
 				}
@@ -165,7 +172,7 @@ export default function BrowsePanel( {
 						duration: 6000,
 						action: {
 							label: __( 'Retry', 'git' ),
-							onClick: handleRefresh,
+							onClick: () => handleRefreshRef.current?.(),
 						},
 					}
 				);
@@ -180,14 +187,24 @@ export default function BrowsePanel( {
 		loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0 );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const handleRefresh = async () => {
-		await api.clearCache();
-		reset();
+	const handleRefresh = useCallback( async () => {
+		setLoading( true );
 		setRepos( [] );
 		setHasMore( { github: false, gitlab: false } );
 		setPagesLoaded( { github: 0, gitlab: 0 } );
-		loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0 );
-	};
+		try {
+			await api.clearCache();
+			reset();
+			await loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0 );
+		} catch ( e ) {
+			toast.error(
+				e.message || __( 'Failed to refresh repositories.', 'git' )
+			);
+			setLoading( false );
+		}
+	}, [ hasGitHub, hasGitLab, loadRepos, reset ] );
+
+	handleRefreshRef.current = handleRefresh;
 
 	const handleLoadMore = () => {
 		const ghPage = hasMore.github ? pagesLoaded.github + 1 : 0;
@@ -270,6 +287,7 @@ export default function BrowsePanel( {
 						className={ loading ? 'gwp-spin' : '' }
 						disabled={ loading }
 						icon="update"
+						isBusy={ loading }
 						label={ __( 'Refresh repositories', 'git' ) }
 						variant="tertiary"
 						onClick={ handleRefresh }

@@ -173,15 +173,16 @@ class Admin {
 
 		wp_set_script_translations( 'gwp-app', 'git', GWP_DIR . 'languages' );
 
-		$settings         = Settings::get_public();
-		$has_github       = ! empty( $settings['username'] ) || ! empty( $settings['token_set'] );
-		$has_gitlab       = ! empty( $settings['gitlab_token_set'] );
-		$has_config       = $has_github || $has_gitlab;
-		$raw_cache        = $has_config ? (array) get_option( 'gwp_connection_cache', [] ) : [];
-		$connection       = [
+		$settings   = Settings::get_public();
+		$has_github = ! empty( $settings['username'] ) || ! empty( $settings['token_set'] );
+		$has_gitlab = ! empty( $settings['gitlab_token_set'] );
+		$has_config = $has_github || $has_gitlab;
+		$raw_cache  = $has_config ? (array) get_option( 'gwp_connection_cache', [] ) : [];
+		$connection = [
 			'github' => isset( $raw_cache['github'] ) ? $raw_cache['github'] : null,
 			'gitlab' => isset( $raw_cache['gitlab'] ) ? $raw_cache['gitlab'] : null,
 		];
+		Error_Handler::clear_stale_activation_guard();
 		$installed_result = REST::sync_installed();
 		$installed        = $installed_result['installed'];
 		$orphaned         = $installed_result['orphaned'];
@@ -193,6 +194,16 @@ class Admin {
 
 		if ( $first_activation ) {
 			delete_transient( 'gwp_first_activation' );
+		}
+
+		$update_success = get_transient( 'gwp_update_success' );
+		if ( $update_success ) {
+			delete_transient( 'gwp_update_success' );
+		}
+
+		$activation_success = get_transient( 'gwp_activation_success' );
+		if ( $activation_success ) {
+			delete_transient( 'gwp_activation_success' );
 		}
 
 		// Derive initial tab from path param, activation state, or setup status.
@@ -209,17 +220,21 @@ class Admin {
 			'gwp-app',
 			'window.GWP = ' . wp_json_encode(
 				[
-					'nonce'            => wp_create_nonce( 'wp_rest' ),
-					'icon_url'         => GWP_URL . 'assets/images/icon.svg',
-					'disconnected_url' => GWP_URL . 'assets/images/cloud-alert.svg',
-					'not_found_url'    => GWP_URL . 'assets/images/folder-x.svg',
-					'themes_url'       => admin_url( 'themes.php' ),
-					'initial_tab'      => $initial_tab,
-					'settings'         => $settings,
-					'connection'       => $connection,
-					'installed'        => $installed ? $installed : (object) [],
-					'orphaned'         => $orphaned,
-					'fatal_notice'     => $fatal_notice ? $fatal_notice : null,
+					'nonce'                 => wp_create_nonce( 'wp_rest' ),
+					'icon_url'              => GWP_URL . 'assets/images/icon.svg',
+					'disconnected_url'      => GWP_URL . 'assets/images/cloud-alert.svg',
+					'not_found_url'         => GWP_URL . 'assets/images/folder-x.svg',
+					'themes_url'            => admin_url( 'themes.php' ),
+					'verify_activation_url' => home_url( '/?gwp_verify_activation=1' ),
+					'verify_admin_url'      => admin_url( 'admin.php?page=git&gwp_verify_activation=1' ),
+					'initial_tab'           => $initial_tab,
+					'settings'              => $settings,
+					'connection'            => $connection,
+					'installed'             => $installed ? $installed : (object) [],
+					'orphaned'              => $orphaned,
+					'fatal_notice'          => $fatal_notice ? $fatal_notice : null,
+					'update_success'        => $update_success ? $update_success : null,
+					'activation_success'    => $activation_success ? $activation_success : null,
 				]
 			) . ';',
 			'before'

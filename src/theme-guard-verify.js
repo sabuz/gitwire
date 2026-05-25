@@ -1,43 +1,17 @@
 import { toast } from 'sonner';
 
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 
 import * as api from './api';
 import { showFatalNotice } from './fatal-notice';
-import { queuePendingToastAndReload } from './pending-toast';
+import { queueGuardFinalizeReload } from './pending-toast';
 import {
 	isVerifyRunning,
 	verifyThemeActivation,
 } from './verify-theme-activation';
 
-/**
- * @param {Object}              options
- * @param {Object}              options.result
- * @param {Object}              options.item
- * @param {string}              [options.successMessage]
- * @param {'activate'|'update'} options.context
- */
-function queueVerifiedThemeGuardReload( {
-	result,
-	item,
-	successMessage,
-	context,
-} ) {
-	const message =
-		successMessage ||
-		( context === 'activate'
-			? sprintf(
-					/* translators: %s: repository full name */
-					__( '%s activated.', 'git' ),
-					result.full_name || item.full_name
-			  )
-			: sprintf(
-					/* translators: %s: repository full name */
-					__( '%s updated to latest.', 'git' ),
-					result.full_name || item.full_name
-			  ) );
-
-	queuePendingToastAndReload( message );
+function queueVerifiedThemeGuardReload() {
+	queueGuardFinalizeReload();
 }
 
 /**
@@ -70,13 +44,8 @@ export function startThemeGuardVerification( {
 	onRefresh?.();
 
 	verifyThemeActivation( {
-		onSuccess: ( result ) => {
-			queueVerifiedThemeGuardReload( {
-				result,
-				item,
-				successMessage,
-				context,
-			} );
+		onSuccess: () => {
+			queueVerifiedThemeGuardReload();
 		},
 		onFatal: ( notice ) => {
 			showFatalNotice( notice );
@@ -159,11 +128,7 @@ export async function resumePendingThemeVerification( {
 			return true;
 		}
 		if ( status.status === 'bootstrap_verified' ) {
-			queueVerifiedThemeGuardReload( {
-				result: status,
-				item,
-				context,
-			} );
+			queueVerifiedThemeGuardReload();
 			return true;
 		}
 		if ( status.status !== 'pending' ) {

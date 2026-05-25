@@ -264,9 +264,38 @@ class Installer {
 
 			self::complete_plugin_activation_guard();
 		} elseif ( 'theme' === $rec['type'] ) {
-			self::begin_activation_guard( $rec, $full_name );
+			Error_Handler::clear_stale_activation_guard();
+			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
+
+			$ready = self::validate_theme_for_activation( $rec );
+			if ( is_wp_error( $ready ) ) {
+				return $ready;
+			}
+
+			$pending = self::begin_activation_guard( $rec, $full_name );
+
+			$requirements = validate_theme_requirements( $rec['slug'] );
+			if ( is_wp_error( $requirements ) ) {
+				self::clear_activation_guard();
+				return new \WP_Error(
+					'gwp_theme_requirements',
+					wp_strip_all_tags( $requirements->get_error_message() ),
+					[ 'status' => 400 ]
+				);
+			}
+
 			switch_theme( $rec['slug'] );
-			self::sync_theme_activation_target();
+			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
+
+			delete_option( 'gwp_pending_update' );
+
+			$scrape = Theme_Scraper::scrape_activation();
+			if ( is_wp_error( $scrape ) ) {
+				Error_Handler::revert_failed_theme_activation( $pending );
+				return $scrape;
+			}
+
+			self::clear_guard_feedback();
 		}
 
 		return true;
@@ -279,9 +308,9 @@ class Installer {
 	 * @param array<string, mixed> $rec         Installed repository record.
 	 * @param string               $full_name   Repository full name.
 	 * @param string|null          $plugin_file Plugin bootstrap file, if any.
-	 * @return void
+	 * @return array<string, mixed> Pending guard record.
 	 */
-	private static function begin_activation_guard( array $rec, string $full_name, ?string $plugin_file = null ): void {
+	private static function begin_activation_guard( array $rec, string $full_name, ?string $plugin_file = null ): array {
 		$pending = [
 			'context'             => 'activation',
 			'full_name'           => $full_name,
@@ -299,6 +328,8 @@ class Installer {
 
 		self::clear_guard_feedback();
 		update_option( 'gwp_pending_update', $pending, false );
+
+		return $pending;
 	}
 
 	/**
@@ -450,6 +481,99 @@ class Installer {
 	}
 
 	/**
+	 * Fetches the latest remote commit SHA for a branch.
+	 *
+	 * @since 1.2.0
+	 * @param Git_Provider_Interface $api    Provider API client.
+	 * @param string                 $owner  Repository owner.
+	 * @param string                 $repo   Repository name.
+	 * @param string                 $branch Branch name.
+	 * @return string|null Short SHA or null when unavailable.
+	 */
+	public static function fetch_remote_head_sha( Git_Provider_Interface $api, string $owner, string $repo, string $branch ): ?string {
+		$commits = $api->get_commits( $owner, $repo, $branch, 1 );
+		if ( is_wp_error( $commits ) || empty( $commits[0]['sha'] ) ) {
+			return null;
+		}
+
+		return (string) $commits[0]['sha'];
+	}
+
+	/**
+	 * Returns a transient key for a known-fatal remote HEAD on an active theme.
+	 *
+	 * @since 1.2.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @param string $branch    Branch name.
+	 * @return string
+	 */
+	private static function known_fatal_head_key( string $provider, string $full_name, string $branch ): string {
+		return 'gwp_fatal_head_' . md5( $provider . ':' . $full_name . ':' . $branch );
+	}
+
+	/**
+	 * Returns a remote SHA recently rejected by the active-theme fatal guard.
+	 *
+	 * @since 1.2.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @param string $branch    Branch name.
+	 * @return string|null
+	 */
+	public static function get_known_fatal_remote_head( string $provider, string $full_name, string $branch ): ?string {
+		$value = get_transient( self::known_fatal_head_key( $provider, $full_name, $branch ) );
+		return is_string( $value ) && $value ? $value : null;
+	}
+
+	/**
+	 * Remembers a remote SHA that failed active-theme bootstrap validation.
+	 *
+	 * @since 1.2.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @param string $branch    Branch name.
+	 * @param string $sha       Remote commit SHA.
+	 * @return void
+	 */
+	public static function mark_known_fatal_remote_head( string $provider, string $full_name, string $branch, string $sha ): void {
+		set_transient(
+			self::known_fatal_head_key( $provider, $full_name, $branch ),
+			$sha,
+			5 * MINUTE_IN_SECONDS
+		);
+	}
+
+	/**
+	 * Persists an installed record while preserving metadata such as head and installed_at.
+	 *
+	 * @since 1.2.0
+	 * @param string               $record_key Installed record key.
+	 * @param array<string, mixed> $record     New record payload.
+	 * @param string|null          $head_sha   Head SHA to store; null keeps the previous value.
+	 * @return array<string, mixed> Saved record.
+	 */
+	private static function save_installed_record( string $record_key, array $record, ?string $head_sha = null ): array {
+		$installed = self::get_installed();
+		$existing  = $installed[ $record_key ] ?? [];
+
+		if ( ! empty( $existing['installed_at'] ) ) {
+			$record['installed_at'] = $existing['installed_at'];
+		}
+
+		if ( $head_sha ) {
+			$record['head'] = $head_sha;
+		} elseif ( ! empty( $existing['head'] ) ) {
+			$record['head'] = $existing['head'];
+		}
+
+		$installed[ $record_key ] = $record;
+		update_option( 'gwp_installed', $installed );
+
+		return $record;
+	}
+
+	/**
 	 * Core install routine: downloads, backs up, extracts, and records a repository.
 	 *
 	 * @since 1.0.0
@@ -529,6 +653,33 @@ class Installer {
 			}
 		}
 
+		$sync_theme_guard = is_dir( $install_path )
+			&& 'theme' === $type
+			&& self::is_active_install( $type, $slug, null );
+
+		$remote_sha = null;
+		if ( $sync_theme_guard ) {
+			self::clear_guard_feedback();
+			delete_option( 'gwp_pending_update' );
+
+			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+			if ( $remote_sha ) {
+				$known_fatal = self::get_known_fatal_remote_head( $provider, $full_name, $branch );
+				if ( $known_fatal && $known_fatal === $remote_sha ) {
+					wp_delete_file( $zip_file );
+					return new \WP_Error(
+						'gwp_known_fatal_head',
+						sprintf(
+							/* translators: %s: short commit SHA */
+							__( 'The latest commit (%s) previously caused a fatal error on this active theme. Push a fix or wait a few minutes before retrying the same commit.', 'git' ),
+							substr( $remote_sha, 0, 7 )
+						),
+						[ 'status' => 409 ]
+					);
+				}
+			}
+		}
+
 		// Backup existing installation (for fatal-error rollback).
 		$backup_path = null;
 		if ( is_dir( $install_path ) ) {
@@ -551,7 +702,9 @@ class Installer {
 			'was_active_plugin' => $was_active_plugin,
 		];
 
-		update_option( 'gwp_pending_update', $pending, false );
+		if ( ! $sync_theme_guard ) {
+			update_option( 'gwp_pending_update', $pending, false );
+		}
 
 		// Extract.
 		$extracted = self::extract_zip( $zip_file, $install_path );
@@ -560,15 +713,23 @@ class Installer {
 		if ( is_wp_error( $extracted ) ) {
 			// Restore backup immediately (no fatal error needed).
 			self::restore_backup( $install_path, $backup_path );
-			delete_option( 'gwp_pending_update' );
+			if ( ! $sync_theme_guard ) {
+				delete_option( 'gwp_pending_update' );
+			}
 			return $extracted;
+		}
+
+		if ( 'theme' === $type ) {
+			self::refresh_theme_runtime( $install_path, $slug );
 		}
 
 		// Detect main plugin file.
 		if ( 'plugin' === $type ) {
 			$plugin_file            = self::find_plugin_file( $install_path, $slug );
 			$pending['plugin_file'] = $plugin_file;
-			update_option( 'gwp_pending_update', $pending, false );
+			if ( ! $sync_theme_guard ) {
+				update_option( 'gwp_pending_update', $pending, false );
+			}
 		}
 
 		// Save record.
@@ -591,14 +752,20 @@ class Installer {
 		$installed              = self::get_installed();
 		$pending['prev_record'] = $installed[ $record_key ] ?? null;
 		$pending['provider']    = $provider;
-		update_option( 'gwp_pending_update', $pending, false );
-		$installed[ $record_key ] = $record;
-		update_option( 'gwp_installed', $installed );
+		if ( ! $sync_theme_guard ) {
+			update_option( 'gwp_pending_update', $pending, false );
+		}
 
 		$plugin_file  = 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null;
-		$needs_verify = $backup_path && 'theme' === $type && self::is_active_install( $type, $slug, null );
+		$needs_verify = $sync_theme_guard && $backup_path;
 
 		if ( $was_active_plugin && $plugin_file ) {
+			$record = self::save_installed_record(
+				$record_key,
+				$record,
+				$remote_sha ?? self::fetch_remote_head_sha( $api, $owner, $repo, $branch )
+			);
+
 			$pending['context'] = 'update';
 			self::clear_guard_feedback();
 			update_option( 'gwp_pending_update', $pending, false );
@@ -617,12 +784,53 @@ class Installer {
 		if ( $needs_verify ) {
 			$pending['context']           = 'update';
 			$pending['target_stylesheet'] = $slug;
+			$pending['target_template']   = function_exists( 'get_template' ) ? get_template() : $slug;
+			$pending['was_active_theme']  = true;
+
+			$validated = self::validate_theme_for_active_pull(
+				[
+					'slug'         => $slug,
+					'install_path' => $install_path,
+					'full_name'    => $full_name,
+				]
+			);
+			if ( is_wp_error( $validated ) ) {
+				Error_Handler::rollback_theme_update( $pending );
+				return $validated;
+			}
+
+			$scrape = Theme_Scraper::scrape_bootstrap();
+			if ( is_wp_error( $scrape ) ) {
+				Error_Handler::rollback_theme_update( $pending );
+				if ( $remote_sha ) {
+					$data = $scrape->get_error_data();
+					if (
+						is_array( $data )
+						&& is_array( $data['scrape'] ?? null )
+						&& Theme_Scraper::is_php_fatal_result( $data['scrape'] )
+					) {
+						self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha );
+					}
+				}
+				return $scrape;
+			}
+
+			$record = self::save_installed_record( $record_key, $record, $remote_sha );
 			self::clear_guard_feedback();
-			update_option( 'gwp_pending_update', $pending, false );
-			$record['needs_verify'] = true;
-		} else {
 			self::finalize_successful_update( $backup_path );
+
+			return $record;
 		}
+
+		$record = self::save_installed_record(
+			$record_key,
+			$record,
+			self::fetch_remote_head_sha( $api, $owner, $repo, $branch )
+		);
+		if ( 'theme' === $type ) {
+			self::clear_guard_feedback();
+		}
+		self::finalize_successful_update( $backup_path );
 
 		return $record;
 	}
@@ -814,19 +1022,237 @@ class Installer {
 	 * @since 1.0.0
 	 * @param string      $install_path Absolute install path.
 	 * @param string|null $backup_path  Absolute backup path, or null if no backup exists.
-	 * @return void
+	 * @return bool True when the install path was restored.
 	 */
-	public static function restore_backup( string $install_path, ?string $backup_path ): void {
+	public static function restore_backup( string $install_path, ?string $backup_path ): bool {
 		if ( ! $backup_path || ! is_dir( $backup_path ) ) {
-			return;
+			return false;
 		}
 
+		$failed_path = $install_path . '--gwp-failed-' . time();
+
 		if ( is_dir( $install_path ) ) {
-			self::rmdir_recursive( $install_path );
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
+			if ( ! @rename( $install_path, $failed_path ) ) {
+				self::rmdir_recursive( $install_path );
+			}
 		}
 
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
-		@rename( $backup_path, $install_path );
+		if ( ! @rename( $backup_path, $install_path ) ) {
+			if ( is_dir( $failed_path ) && ! is_dir( $install_path ) ) {
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
+				@rename( $failed_path, $install_path );
+			}
+			return false;
+		}
+
+		if ( is_dir( $failed_path ) ) {
+			self::rmdir_recursive( $failed_path );
+		}
+
+		if ( is_dir( $install_path ) && self::is_theme_install_path( $install_path ) ) {
+			self::refresh_theme_runtime( $install_path, basename( $install_path ) );
+		}
+
+		return is_dir( $install_path );
+	}
+
+	/**
+	 * Finds the newest orphaned backup directory for an install path.
+	 *
+	 * @since 1.2.0
+	 * @param string $install_path Absolute install path.
+	 * @return string|null Backup path or null when none exist.
+	 */
+	public static function find_orphaned_backup( string $install_path ): ?string {
+		$parent = dirname( $install_path );
+		$slug   = basename( $install_path );
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$matches = glob( $parent . DIRECTORY_SEPARATOR . $slug . '--gwp-bak-*' );
+		if ( ! is_array( $matches ) || empty( $matches ) ) {
+			return null;
+		}
+
+		rsort( $matches );
+
+		return $matches[0];
+	}
+
+	/**
+	 * Returns whether a path is inside the WordPress themes directory.
+	 *
+	 * @since 1.2.0
+	 * @param string $install_path Absolute install path.
+	 * @return bool
+	 */
+	private static function is_theme_install_path( string $install_path ): bool {
+		if ( ! function_exists( 'get_theme_root' ) ) {
+			return str_contains( wp_normalize_path( $install_path ), '/themes/' );
+		}
+
+		$theme_root = wp_normalize_path( get_theme_root() );
+
+		return str_starts_with( wp_normalize_path( $install_path ), trailingslashit( $theme_root ) );
+	}
+
+	/**
+	 * Clears stale theme runtime state after files on disk change.
+	 *
+	 * @since 1.2.0
+	 * @param string $install_path Theme directory path.
+	 * @param string $slug         Theme stylesheet slug.
+	 * @return void
+	 */
+	public static function refresh_theme_runtime( string $install_path, string $slug ): void {
+		if ( ! $slug ) {
+			return;
+		}
+
+		if ( function_exists( 'wp_clean_themes_cache' ) ) {
+			wp_clean_themes_cache( false );
+		}
+
+		if ( ! function_exists( 'wp_paused_themes' ) ) {
+			require_once ABSPATH . 'wp-includes/error-protection.php';
+		}
+
+		wp_paused_themes()->delete( $slug );
+
+		if ( function_exists( 'wp_get_theme' ) ) {
+			$theme = wp_get_theme( $slug );
+			if ( $theme->exists() ) {
+				wp_paused_themes()->delete( $theme->get_template() );
+				$theme->cache_delete();
+				$theme = wp_get_theme( $slug );
+			}
+		}
+
+		if ( ! function_exists( 'wp_opcache_invalidate' ) || ! is_dir( $install_path ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$iterator = @new \RecursiveIteratorIterator(
+			new \RecursiveDirectoryIterator( $install_path, \FilesystemIterator::SKIP_DOTS )
+		);
+
+		if ( ! $iterator ) {
+			return;
+		}
+
+		foreach ( $iterator as $file ) {
+			if ( ! $file->isFile() ) {
+				continue;
+			}
+
+			if ( 'php' !== strtolower( $file->getExtension() ) ) {
+				continue;
+			}
+
+			wp_opcache_invalidate( $file->getPathname(), true );
+		}
+	}
+
+	/**
+	 * Checks whether theme files on disk are readable and error-free.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, mixed> $rec Installed theme record.
+	 * @return true|\WP_Error True when the theme can be activated.
+	 */
+	private static function validate_theme_for_activation( array $rec ): bool|\WP_Error {
+		$slug         = $rec['slug'] ?? '';
+		$install_path = $rec['install_path'] ?? '';
+		$full_name    = $rec['full_name'] ?? $slug;
+
+		if ( ! $slug || ! is_dir( $install_path ) ) {
+			return new \WP_Error(
+				'gwp_theme_missing',
+				sprintf(
+					/* translators: %s: theme full name */
+					__( '%s is not installed on disk. Try pulling the latest version first.', 'git' ),
+					$full_name
+				),
+				[ 'status' => 404 ]
+			);
+		}
+
+		if ( ! is_readable( $install_path . '/style.css' ) ) {
+			return new \WP_Error(
+				'gwp_theme_stylesheet_missing',
+				sprintf(
+					/* translators: %s: theme full name */
+					__( '%s is missing a readable style.css file.', 'git' ),
+					$full_name
+				),
+				[ 'status' => 400 ]
+			);
+		}
+
+		self::refresh_theme_runtime( $install_path, $slug );
+
+		$theme = wp_get_theme( $slug );
+		if ( ! $theme->exists() ) {
+			return new \WP_Error(
+				'gwp_theme_not_found',
+				sprintf(
+					/* translators: %s: theme full name */
+					__( 'WordPress could not find %s in the themes directory.', 'git' ),
+					$full_name
+				),
+				[ 'status' => 404 ]
+			);
+		}
+
+		if ( $theme->errors() ) {
+			return new \WP_Error(
+				'gwp_theme_invalid',
+				sprintf(
+					/* translators: 1: theme full name, 2: error detail */
+					__( '%1$s cannot be activated: %2$s', 'git' ),
+					$full_name,
+					wp_strip_all_tags( $theme->errors()->get_error_message() )
+				),
+				[ 'status' => 400 ]
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Validates an active theme pull using the same checks as theme activation.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, mixed> $rec Installed theme record.
+	 * @return true|\WP_Error True when the updated theme can stay active.
+	 */
+	private static function validate_theme_for_active_pull( array $rec ): bool|\WP_Error {
+		$ready = self::validate_theme_for_activation( $rec );
+		if ( is_wp_error( $ready ) ) {
+			return $ready;
+		}
+
+		$slug = $rec['slug'] ?? '';
+		if ( ! $slug ) {
+			return new \WP_Error(
+				'gwp_theme_missing',
+				__( 'Theme slug is missing.', 'git' ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		$requirements = validate_theme_requirements( $slug );
+		if ( is_wp_error( $requirements ) ) {
+			return new \WP_Error(
+				'gwp_theme_requirements',
+				wp_strip_all_tags( $requirements->get_error_message() ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		return true;
 	}
 
 	/**

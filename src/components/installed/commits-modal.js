@@ -1,6 +1,6 @@
 import { __ } from '@wordpress/i18n';
 import { useState, useEffect } from '@wordpress/element';
-import { Modal, Spinner } from '@wordpress/components';
+import { Modal, Spinner, Tooltip } from '@wordpress/components';
 
 import * as api from '../../api';
 
@@ -52,6 +52,8 @@ export default function CommitsModal( { item, onClose } ) {
 		return null;
 	}
 
+	const fatalSha = item.known_fatal_head || '';
+
 	return (
 		<Modal
 			className="gwp-modal"
@@ -79,28 +81,47 @@ export default function CommitsModal( { item, onClose } ) {
 			) }
 			{ commits !== null && commits.length > 0 && (
 				<div style={ { marginBottom: 8 } }>
-					{ commits.map( ( commit ) => (
-						<div key={ commit.sha } className="gwp-commit-row">
-							<code className="gwp-commit-sha">
-								{ commit.sha }
-							</code>
-							<div className="gwp-commit-body">
-								<p className="gwp-commit-message">
-									{ commit.message }
-								</p>
-								<p className="gwp-commit-meta">
-									{ commit.author } ·{ ' ' }
-									{ new Date(
-										commit.date
-									).toLocaleDateString( undefined, {
-										year: 'numeric',
-										month: 'short',
-										day: 'numeric',
-									} ) }
-								</p>
+					{ commits.map( ( commit ) => {
+						const hasFatalError =
+							commit.has_fatal_error ||
+							( fatalSha && commit.sha === fatalSha );
+
+						return (
+							<div key={ commit.sha } className="gwp-commit-row">
+								{ hasFatalError ? (
+									<Tooltip
+										text={ __(
+											'This commit caused a fatal error.',
+											'git'
+										) }
+									>
+										<code className="gwp-commit-sha is-fatal">
+											{ commit.sha }
+										</code>
+									</Tooltip>
+								) : (
+									<code className="gwp-commit-sha">
+										{ commit.sha }
+									</code>
+								) }
+								<div className="gwp-commit-body">
+									<p className="gwp-commit-message">
+										{ commit.message }
+									</p>
+									<p className="gwp-commit-meta">
+										{ commit.author } ·{ ' ' }
+										{ new Date(
+											commit.date
+										).toLocaleDateString( undefined, {
+											year: 'numeric',
+											month: 'short',
+											day: 'numeric',
+										} ) }
+									</p>
+								</div>
 							</div>
-						</div>
-					) ) }
+						);
+					} ) }
 				</div>
 			) }
 		</Modal>

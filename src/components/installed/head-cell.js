@@ -5,7 +5,7 @@ import { useState, useCallback } from '@wordpress/element';
 import { Button, Flex } from '@wordpress/components';
 
 import * as api from '../../api';
-import { verifyActiveUpdate } from '../../verify-active-update';
+import { clearCommitsCache } from './commits-modal';
 
 /**
  * Table cell showing the locally installed HEAD SHA with a Pull Latest icon.
@@ -21,25 +21,13 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 
 	const handlePull = useCallback( async () => {
 		setPulling( true );
-		let isVerifying = false;
 		try {
-			const result = await api.switchBranch(
+			await api.switchBranch(
 				item.owner,
 				item.repo,
 				item.branch,
 				item.provider ?? 'github'
 			);
-			if (
-				verifyActiveUpdate( {
-					needsVerify: result?.needs_verify,
-					item,
-					onRefresh,
-					onSettled: () => setPulling( false ),
-				} )
-			) {
-				isVerifying = true;
-				return;
-			}
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
@@ -49,15 +37,17 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 			);
 			onRefresh();
 		} catch ( e ) {
+			clearCommitsCache( item );
 			toast.error( e.message || __( 'Pull failed.', 'git' ) );
+			onRefresh();
 		} finally {
-			if ( ! isVerifying ) {
-				setPulling( false );
-			}
+			setPulling( false );
 		}
 	}, [ item, onRefresh ] );
 
-	const displaySha = item.head ?? item.remote_head ?? '···';
+	const displaySha = item.activation_pending
+		? item.head || '···'
+		: item.head || '—';
 
 	return (
 		<Flex align="center" gap={ 1 } justify="flex-start">

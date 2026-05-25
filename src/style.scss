@@ -412,7 +412,8 @@ body.gwp-admin-page {
 	}
 }
 
-.gwp-spin .dashicon {
+.gwp-spin .dashicon,
+.gwp-spin svg {
 	animation: gwp-spin 0.8s linear infinite;
 }
 
@@ -549,6 +550,11 @@ body.gwp-admin-page {
 	font-family: monospace;
 	font-size: 11px;
 	color: var(--gwp-color-accent);
+
+	&.is-fatal {
+		color: #d63638;
+		cursor: help;
+	}
 }
 
 .gwp-commit-body {
