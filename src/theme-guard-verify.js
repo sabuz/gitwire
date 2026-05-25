@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+import { toast } from './toast';
 
 import { __ } from '@wordpress/i18n';
 

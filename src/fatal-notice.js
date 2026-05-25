@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+import { toast } from './toast';
 
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -69,11 +69,5 @@ export function showFatalNotice( notice ) {
 		);
 	}
 
-	toast.error( message, {
-		duration: Infinity,
-		action: {
-			label: __( 'Dismiss', 'git' ),
-			onClick: () => {},
-		},
-	} );
+	toast.error( message );
 }

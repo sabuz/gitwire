@@ -1,3 +1,5 @@
+import { toastDuration } from './toast';
+
 const PENDING_TOAST_KEY = 'gwp_pending_toast';
 
 /**
@@ -11,7 +13,7 @@ export function clearPendingToast() {
  * @param {Object}              options                     Toast options.
  * @param {string}              options.message             User-facing message.
  * @param {'success'|'warning'} [options.variant='success'] Toast variant.
- * @param {number}              [options.duration]          Toast duration in ms (warnings only).
+ * @param {number}              [options.duration]          Optional duration override in ms.
  */
 export function queuePendingToast( {
 	message,
@@ -45,9 +47,9 @@ export function queueGuardFinalizeReload() {
 }
 
 /**
- * @param {import('sonner').toast} toast Sonner toast API.
+ * @param {import('./toast').toast} toastApi Wrapped toast API.
  */
-export function showPendingToast( toast ) {
+export function showPendingToast( toastApi ) {
 	const raw = sessionStorage.getItem( PENDING_TOAST_KEY );
 	if ( ! raw ) {
 		return;
@@ -56,11 +58,13 @@ export function showPendingToast( toast ) {
 	try {
 		const { message, variant, duration } = JSON.parse( raw );
 		if ( variant === 'warning' ) {
-			toast.warning( message, { duration: duration ?? 8000 } );
+			toastApi.warning( message, {
+				duration: duration ?? toastDuration( message, 'warning' ),
+			} );
 			return;
 		}
-		toast.success( message );
+		toastApi.success( message );
 	} catch ( _ ) {
-		toast.success( raw );
+		toastApi.success( raw );
 	}
 }

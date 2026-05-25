@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+import { toast } from '../toast';
 
 import { __, sprintf } from '@wordpress/i18n';
 import {
@@ -151,7 +151,6 @@ export default function BrowsePanel( {
 
 				if ( errors.length ) {
 					toast.error( errors.join( ' · ' ), {
-						duration: 6000,
 						action: {
 							label: __( 'Retry', 'git' ),
 							onClick: () => handleRefreshRef.current?.(),
@@ -169,7 +168,6 @@ export default function BrowsePanel( {
 				toast.error(
 					e.message || __( 'Failed to load repositories.', 'git' ),
 					{
-						duration: 6000,
 						action: {
 							label: __( 'Retry', 'git' ),
 							onClick: () => handleRefreshRef.current?.(),

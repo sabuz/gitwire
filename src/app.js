@@ -1,4 +1,4 @@
-import { toast, Toaster } from 'sonner';
+import { toast, Toaster } from './toast';
 
 import { __, sprintf } from '@wordpress/i18n';
 import {
@@ -40,14 +40,7 @@ function showOrphanedNotice( item ) {
 				'git'
 			),
 			item.full_name
-		),
-		{
-			duration: Infinity,
-			action: {
-				label: __( 'Dismiss', 'git' ),
-				onClick: () => {},
-			},
-		}
+		)
 	);
 }
 
@@ -238,7 +231,6 @@ export default function App( { initialData } ) {
 						result.slug
 					),
 					variant: 'warning',
-					duration: 8000,
 				} );
 			} else {
 				queuePendingToast( {
@@ -292,7 +284,7 @@ export default function App( { initialData } ) {
 
 	return (
 		<div className="gwp-page">
-			<Toaster richColors position="top-right" />
+			<Toaster />
 			<div className="gwp-page-header">
 				<h1 className="gwp-page-title">
 					{ initialData.icon_url && (

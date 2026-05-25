@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+import { toast } from '../../toast';
 
 import { __, sprintf } from '@wordpress/i18n';
 import { useState, useEffect, useMemo } from '@wordpress/element';
