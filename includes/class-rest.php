@@ -1108,8 +1108,7 @@ class REST {
 				$rec['remote_head']      = $remote_head;
 				$rec['update_available'] = ! empty( $rec['head'] ) && $remote_head !== $rec['head'];
 				if (
-					'theme' === ( $rec['type'] ?? '' )
-					&& ! empty( $rec['active'] )
+					! empty( $rec['active'] )
 					&& $rec['update_available']
 				) {
 					$known = Installer::get_known_fatal_remote_head(

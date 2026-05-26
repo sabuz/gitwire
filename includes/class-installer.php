@@ -259,6 +259,13 @@ class Installer {
 
 			if ( is_wp_error( $result ) ) {
 				self::clear_activation_guard();
+				self::maybe_mark_known_fatal_from_activation(
+					$provider,
+					$full_name,
+					$rec['branch'] ?? 'main',
+					$result,
+					$rec
+				);
 				return $result;
 			}
 
@@ -292,6 +299,13 @@ class Installer {
 			$scrape = Theme_Scraper::scrape_activation();
 			if ( is_wp_error( $scrape ) ) {
 				Error_Handler::revert_failed_theme_activation( $pending );
+				self::maybe_mark_known_fatal_from_scrape(
+					$provider,
+					$full_name,
+					$rec['branch'] ?? 'main',
+					$scrape,
+					$rec
+				);
 				return $scrape;
 			}
 
@@ -500,7 +514,7 @@ class Installer {
 	}
 
 	/**
-	 * Returns a transient key for a known-fatal remote HEAD on an active theme.
+	 * Returns a transient key for a known-fatal remote HEAD on an active install.
 	 *
 	 * @since 1.2.0
 	 * @param string $provider  Git provider.
@@ -513,7 +527,7 @@ class Installer {
 	}
 
 	/**
-	 * Returns a remote SHA recently rejected by the active-theme fatal guard.
+	 * Returns a remote SHA recently rejected by the active fatal guard.
 	 *
 	 * @since 1.2.0
 	 * @param string $provider  Git provider.
@@ -527,7 +541,63 @@ class Installer {
 	}
 
 	/**
-	 * Remembers a remote SHA that failed active-theme bootstrap validation.
+	 * Returns whether a remote SHA matches the known-fatal cache entry.
+	 *
+	 * @since 1.2.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @param string $branch    Branch name.
+	 * @param string $remote_sha Remote commit SHA.
+	 * @return bool
+	 */
+	public static function matches_known_fatal_remote_head( string $provider, string $full_name, string $branch, string $remote_sha ): bool {
+		$known = self::get_known_fatal_remote_head( $provider, $full_name, $branch );
+		return $known && $known === $remote_sha;
+	}
+
+	/**
+	 * User-facing message when the latest remote commit is skipped as known-fatal.
+	 *
+	 * @since 1.2.0
+	 * @param string $type       Installation type: plugin or theme.
+	 * @param string $remote_sha Remote commit SHA.
+	 * @return string
+	 */
+	public static function known_fatal_head_message( string $type, string $remote_sha ): string {
+		$short = substr( $remote_sha, 0, 7 );
+		$label = 'theme' === $type
+			? __( 'theme', 'git' )
+			: __( 'plugin', 'git' );
+
+		return sprintf(
+			/* translators: 1: short commit SHA, 2: plugin or theme */
+			__(
+				'The latest commit (%1$s) caused a fatal error on this active %2$s and was not pulled. Your current version was kept. Push a new commit or wait a few minutes to retry %1$s.',
+				'git'
+			),
+			$short,
+			$label
+		);
+	}
+
+	/**
+	 * Returns whether a plugin activation error came from core's fatal sandbox scrape.
+	 *
+	 * @since 1.2.0
+	 * @param \WP_Error $error Activation error.
+	 * @return bool
+	 */
+	public static function is_activation_fatal_error( \WP_Error $error ): bool {
+		if ( 'php_error' !== $error->get_error_code() ) {
+			return false;
+		}
+
+		$data = $error->get_error_data();
+		return is_array( $data ) && Theme_Scraper::is_php_fatal_result( $data );
+	}
+
+	/**
+	 * Remembers a remote SHA that failed active bootstrap validation.
 	 *
 	 * @since 1.2.0
 	 * @param string $provider  Git provider.
@@ -542,6 +612,83 @@ class Installer {
 			$sha,
 			5 * MINUTE_IN_SECONDS
 		);
+	}
+
+	/**
+	 * Stores a known-fatal remote SHA after a failed theme scrape.
+	 *
+	 * @since 1.2.0
+	 * @param string               $provider  Git provider.
+	 * @param string               $full_name Repository full name.
+	 * @param string               $branch    Branch name.
+	 * @param \WP_Error            $error     Scrape failure.
+	 * @param array<string, mixed> $rec       Installed record.
+	 * @return void
+	 */
+	private static function maybe_mark_known_fatal_from_scrape( string $provider, string $full_name, string $branch, \WP_Error $error, array $rec ): void {
+		$data = $error->get_error_data();
+		if (
+			! is_array( $data )
+			|| ! is_array( $data['scrape'] ?? null )
+			|| ! Theme_Scraper::is_php_fatal_result( $data['scrape'] )
+		) {
+			return;
+		}
+
+		$sha = self::resolve_remote_head_for_record( $rec, $provider, $full_name, $branch );
+		if ( $sha ) {
+			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha );
+		}
+	}
+
+	/**
+	 * Stores a known-fatal remote SHA after a failed plugin activation scrape.
+	 *
+	 * @since 1.2.0
+	 * @param string               $provider  Git provider.
+	 * @param string               $full_name Repository full name.
+	 * @param string               $branch    Branch name.
+	 * @param \WP_Error            $error     Activation failure.
+	 * @param array<string, mixed> $rec       Installed record.
+	 * @return void
+	 */
+	private static function maybe_mark_known_fatal_from_activation( string $provider, string $full_name, string $branch, \WP_Error $error, array $rec ): void {
+		if ( ! self::is_activation_fatal_error( $error ) ) {
+			return;
+		}
+
+		$sha = self::resolve_remote_head_for_record( $rec, $provider, $full_name, $branch );
+		if ( $sha ) {
+			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha );
+		}
+	}
+
+	/**
+	 * Resolves the latest remote SHA for a record, falling back to the API.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, mixed> $rec       Installed record.
+	 * @param string               $provider  Git provider.
+	 * @param string               $full_name Repository full name.
+	 * @param string               $branch    Branch name.
+	 * @return string|null
+	 */
+	private static function resolve_remote_head_for_record( array $rec, string $provider, string $full_name, string $branch ): ?string {
+		$remote_key = 'gwp_remote_' . md5( $provider . ':' . $full_name . ':' . $branch );
+		$cached     = get_transient( $remote_key );
+		if ( is_string( $cached ) && $cached ) {
+			return $cached;
+		}
+
+		$parts = explode( '/', $full_name, 2 );
+		if ( count( $parts ) < 2 ) {
+			return null;
+		}
+
+		$settings = (array) get_option( 'gwp_settings', [] );
+		$api      = Provider_Factory::make( $settings, $provider );
+
+		return self::fetch_remote_head_sha( $api, $parts[0], $parts[1], $branch );
 	}
 
 	/**
@@ -653,30 +800,26 @@ class Installer {
 			}
 		}
 
-		$sync_theme_guard = is_dir( $install_path )
-			&& 'theme' === $type
-			&& self::is_active_install( $type, $slug, null );
+		$is_active_update = is_dir( $install_path )
+			&& self::is_active_install( $type, $slug, $plugin_file );
+
+		$sync_theme_guard = $is_active_update && 'theme' === $type;
 
 		$remote_sha = null;
-		if ( $sync_theme_guard ) {
-			self::clear_guard_feedback();
-			delete_option( 'gwp_pending_update' );
+		if ( $is_active_update ) {
+			if ( 'theme' === $type ) {
+				self::clear_guard_feedback();
+				delete_option( 'gwp_pending_update' );
+			}
 
 			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
-			if ( $remote_sha ) {
-				$known_fatal = self::get_known_fatal_remote_head( $provider, $full_name, $branch );
-				if ( $known_fatal && $known_fatal === $remote_sha ) {
-					wp_delete_file( $zip_file );
-					return new \WP_Error(
-						'gwp_known_fatal_head',
-						sprintf(
-							/* translators: %s: short commit SHA */
-							__( 'The latest commit (%s) previously caused a fatal error on this active theme. Push a fix or wait a few minutes before retrying the same commit.', 'git' ),
-							substr( $remote_sha, 0, 7 )
-						),
-						[ 'status' => 409 ]
-					);
-				}
+			if ( $remote_sha && self::matches_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha ) ) {
+				wp_delete_file( $zip_file );
+				return new \WP_Error(
+					'gwp_known_fatal_head',
+					self::known_fatal_head_message( $type, $remote_sha ),
+					[ 'status' => 409 ]
+				);
 			}
 		}
 
@@ -774,6 +917,12 @@ class Installer {
 			if ( is_wp_error( $activated ) ) {
 				self::restore_backup( $install_path, $backup_path );
 				delete_option( 'gwp_pending_update' );
+				if ( ! $remote_sha ) {
+					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+				}
+				if ( $remote_sha && self::is_activation_fatal_error( $activated ) ) {
+					self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha );
+				}
 				return $activated;
 			}
 

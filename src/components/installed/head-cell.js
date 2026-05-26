@@ -1,11 +1,12 @@
 import { toast } from '../../toast';
 
 import { __, sprintf } from '@wordpress/i18n';
-import { useState, useCallback } from '@wordpress/element';
-import { Button, Flex } from '@wordpress/components';
+import { useState, useCallback, useMemo } from '@wordpress/element';
+import { Button, Flex, Tooltip } from '@wordpress/components';
 
 import * as api from '../../api';
 import { clearCommitsCache } from './commits-modal';
+import { hasKnownFatalUpdate, knownFatalTooltip } from '../../known-fatal-copy';
 
 /**
  * Table cell showing the locally installed HEAD SHA with a Pull Latest icon.
@@ -18,6 +19,17 @@ import { clearCommitsCache } from './commits-modal';
  */
 export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 	const [ pulling, setPulling ] = useState( false );
+	const isKnownFatalUpdate = useMemo(
+		() => hasKnownFatalUpdate( item ),
+		[ item ]
+	);
+	const pullTooltip = useMemo( () => {
+		if ( isKnownFatalUpdate ) {
+			return knownFatalTooltip( item );
+		}
+
+		return __( 'Pull Latest', 'git' );
+	}, [ isKnownFatalUpdate, item ] );
 
 	const handlePull = useCallback( async () => {
 		setPulling( true );
@@ -58,15 +70,17 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 			>
 				{ displaySha }
 			</Button>
-			<Button
-				className={ pulling ? 'gwp-spin' : '' }
-				disabled={ pulling || item.activation_pending }
-				icon="update"
-				label={ __( 'Pull Latest', 'git' ) }
-				size="compact"
-				variant="tertiary"
-				onClick={ handlePull }
-			/>
+			<Tooltip text={ pullTooltip }>
+				<Button
+					className={ pulling ? 'gwp-spin' : '' }
+					disabled={ pulling || item.activation_pending }
+					icon="update"
+					label={ pullTooltip }
+					size="compact"
+					variant="tertiary"
+					onClick={ handlePull }
+				/>
+			</Tooltip>
 		</Flex>
 	);
 }

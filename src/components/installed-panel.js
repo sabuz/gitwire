@@ -2,7 +2,7 @@ import { toast } from '../toast';
 
 import { __, sprintf } from '@wordpress/i18n';
 import { useState, useMemo, useCallback } from '@wordpress/element';
-import { Button, Flex, Icon } from '@wordpress/components';
+import { Button, Flex, Icon, Tooltip } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
@@ -15,6 +15,11 @@ import DeleteModal from './installed/delete-modal';
 import HeadCell from './installed/head-cell';
 import SourceCell from './installed/source-cell';
 import TypeBadge from './installed/type-badge';
+import {
+	hasKnownFatalUpdate,
+	knownFatalBadgeLabel,
+	knownFatalTooltip,
+} from '../known-fatal-copy';
 
 const DEFAULT_VIEW = {
 	type: 'table',
@@ -134,11 +139,18 @@ export default function InstalledPanel( {
 									: __( 'Inactive', 'git' ) }
 							</span>
 						) }
-						{ item.update_available && (
-							<span className="gwp-badge gwp-badge--warning is-update">
-								{ __( 'Update available', 'git' ) }
-							</span>
-						) }
+						{ item.update_available &&
+							( hasKnownFatalUpdate( item ) ? (
+								<Tooltip text={ knownFatalTooltip( item ) }>
+									<span className="gwp-badge gwp-badge--warning is-update-blocked">
+										{ knownFatalBadgeLabel( item ) }
+									</span>
+								</Tooltip>
+							) : (
+								<span className="gwp-badge gwp-badge--warning is-update">
+									{ __( 'Update available', 'git' ) }
+								</span>
+							) ) }
 					</Flex>
 				),
 				enableSorting: true,
