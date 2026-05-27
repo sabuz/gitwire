@@ -19,7 +19,7 @@ export function knownFatalTooltip( item ) {
 		/* translators: %s: short commit SHA */
 		__(
 			'Commit %s is still the latest on this branch and caused a fatal error during a recent test. Pull was skipped to keep your site running. Push a new commit or wait a few minutes to retry the same one.',
-			'git'
+			'gitwire'
 		),
 		shortSha
 	);
@@ -33,7 +33,7 @@ export function knownFatalBadgeLabel( item ) {
 
 	return sprintf(
 		/* translators: %s: short commit SHA */
-		__( 'Update blocked (%s)', 'git' ),
+		__( 'Update blocked (%s)', 'gitwire' ),
 		shortSha
 	);
 }

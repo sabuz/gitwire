@@ -5,11 +5,11 @@
  * Mirrors wp_edit_theme_plugin_file() so bad theme code is rejected and reverted
  * in the same request, like the theme file editor.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.2.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -256,7 +256,7 @@ class Theme_Scraper {
 			'code'    => 'loopback_request_failed',
 			'message' => __(
 				'Unable to communicate back with the site to check for fatal errors, so the change was reverted.',
-				'git'
+				'gitwire'
 			),
 		];
 
@@ -366,7 +366,7 @@ class Theme_Scraper {
 				'code'    => 'loopback_request_failed',
 				'message' => __(
 					'Unable to communicate back with the site to check for fatal errors, so the change was reverted.',
-					'git'
+					'gitwire'
 				),
 			];
 		}
@@ -410,7 +410,7 @@ class Theme_Scraper {
 				'code'    => 'loopback_request_failed',
 				'message' => __(
 					'Unable to communicate back with the site to check for fatal errors, so the change was reverted.',
-					'git'
+					'gitwire'
 				),
 			];
 		}
@@ -423,7 +423,7 @@ class Theme_Scraper {
 				'code'    => 'loopback_request_failed',
 				'message' => __(
 					'Unable to communicate back with the site to check for fatal errors, so the change was reverted.',
-					'git'
+					'gitwire'
 				),
 			];
 		}
@@ -468,49 +468,49 @@ class Theme_Scraper {
 			$message = 'activation' === $context
 				? sprintf(
 					/* translators: %s: PHP error detail */
-					__( 'The theme was not activated because it triggered a fatal error: %s', 'git' ),
+					__( 'The theme was not activated because it triggered a fatal error: %s', 'gitwire' ),
 					$detail
 				)
 				: sprintf(
 					/* translators: %s: PHP error detail */
-					__( 'The update was not applied because the theme triggered a fatal error: %s', 'git' ),
+					__( 'The update was not applied because the theme triggered a fatal error: %s', 'gitwire' ),
 					$detail
 				);
 		} elseif ( 'loopback_request_failed' === $code ) {
 			$message = $result['message'] ?? __(
 				'Unable to communicate back with the site to check for fatal errors, so the change was reverted.',
-				'git'
+				'gitwire'
 			);
 		} elseif ( 'scrape_nonce_failure' === $code ) {
 			$message = __(
 				'Could not verify the theme update because the loopback check failed. The change was reverted. Please try again.',
-				'git'
+				'gitwire'
 			);
 		} elseif ( 'json_parse_error' === $code ) {
 			$message = 'activation' === $context
-				? __( 'The theme was not activated because the validation response was invalid.', 'git' )
-				: __( 'The update was not applied because the validation response was invalid, so the change was reverted.', 'git' );
+				? __( 'The theme was not activated because the validation response was invalid.', 'gitwire' )
+				: __( 'The update was not applied because the validation response was invalid, so the change was reverted.', 'gitwire' );
 		} elseif ( isset( $result['message'] ) && is_string( $result['message'] ) ) {
 			$detail  = $result['message'];
 			$message = 'activation' === $context
 				? sprintf(
 					/* translators: %s: error detail */
-					__( 'The theme was not activated: %s', 'git' ),
+					__( 'The theme was not activated: %s', 'gitwire' ),
 					$detail
 				)
 				: sprintf(
 					/* translators: %s: error detail */
-					__( 'The update was not applied: %s', 'git' ),
+					__( 'The update was not applied: %s', 'gitwire' ),
 					$detail
 				);
 		} else {
 			$message = 'activation' === $context
-				? __( 'The theme was not activated because validation failed.', 'git' )
-				: __( 'The update was not applied because theme validation failed, so the change was reverted.', 'git' );
+				? __( 'The theme was not activated because validation failed.', 'gitwire' )
+				: __( 'The update was not applied because theme validation failed, so the change was reverted.', 'gitwire' );
 		}
 
 		return new \WP_Error(
-			'gwp_theme_scrape_failed',
+			'gitwire_theme_scrape_failed',
 			$message,
 			[
 				'status' => 500,

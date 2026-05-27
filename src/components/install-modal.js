@@ -196,21 +196,21 @@ export default function InstallModal( {
 			} );
 			onInstalled( result );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Installation failed.', 'git' ) );
+			toast.error( e.message || __( 'Installation failed.', 'gitwire' ) );
 			setInstalling( false );
 		}
 	};
 
 	return (
 		<Modal
-			className="gwp-modal"
+			className="gitwire-modal"
 			shouldCloseOnClickOutside={ ! installing }
 			shouldCloseOnEsc={ ! installing }
 			style={ { width: 480 } }
 			title={
-				<span className="gwp-modal__title">
-					{ __( 'Install', 'git' ) }{ ' ' }
-					<span style={ { color: 'var(--gwp-color-accent)' } }>
+				<span className="gitwire-modal__title">
+					{ __( 'Install', 'gitwire' ) }{ ' ' }
+					<span style={ { color: 'var(--gitwire-color-accent)' } }>
 						{ repo.full_name }
 					</span>
 				</span>
@@ -228,10 +228,10 @@ export default function InstallModal( {
 						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 						disabled={ installing }
-						label={ __( 'Install as', 'git' ) }
+						label={ __( 'Install as', 'gitwire' ) }
 						options={ [
-							{ label: __( 'Plugin', 'git' ), value: 'plugin' },
-							{ label: __( 'Theme', 'git' ), value: 'theme' },
+							{ label: __( 'Plugin', 'gitwire' ), value: 'plugin' },
+							{ label: __( 'Theme', 'gitwire' ), value: 'theme' },
 						] }
 						value={ type }
 						onChange={ setType }
@@ -244,7 +244,7 @@ export default function InstallModal( {
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					disabled={ installing }
-					label={ __( 'Branch', 'git' ) }
+					label={ __( 'Branch', 'gitwire' ) }
 					options={ branchOptions }
 					value={ branch }
 					onChange={ ( val ) => val && setBranch( val ) }
@@ -253,25 +253,25 @@ export default function InstallModal( {
 			</div>
 
 			<div
-				className={ slugConflict ? 'gwp-input-error' : undefined }
+				className={ slugConflict ? 'gitwire-input-error' : undefined }
 				style={ { marginTop: 16 } }
 			>
 				<TextControl
 					__nextHasNoMarginBottom
 					disabled={ installing }
-					label={ __( 'Directory name', 'git' ) }
+					label={ __( 'Directory name', 'gitwire' ) }
 					value={ slug }
 					onChange={ ( val ) => setSlug( normalizeSlug( val ) ) }
 				/>
 				{ slugConflict && (
 					<>
 						<p
-							className="gwp-detect-note gwp-detect-blocked"
+							className="gitwire-detect-note gitwire-detect-blocked"
 							style={ { margin: '8px 0' } }
 						>
 							{ __(
 								'A directory with this name already exists.',
-								'git'
+								'gitwire'
 							) }
 						</p>
 						<CheckboxControl
@@ -279,7 +279,7 @@ export default function InstallModal( {
 							checked={ replace }
 							label={ __(
 								'Replace existing installation',
-								'git'
+								'gitwire'
 							) }
 							onChange={ setReplace }
 						/>
@@ -290,7 +290,7 @@ export default function InstallModal( {
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 20 } }>
 				{ ! installing && (
 					<Button variant="tertiary" onClick={ onClose }>
-						{ __( 'Cancel', 'git' ) }
+						{ __( 'Cancel', 'gitwire' ) }
 					</Button>
 				) }
 				<Button
@@ -319,12 +319,12 @@ export default function InstallModal( {
  */
 function InstallButtonLabel( { installing, slugChecking } ) {
 	if ( installing ) {
-		return __( 'Installing…', 'git' );
+		return __( 'Installing…', 'gitwire' );
 	}
 	if ( slugChecking ) {
-		return __( 'Checking…', 'git' );
+		return __( 'Checking…', 'gitwire' );
 	}
-	return __( 'Install', 'git' );
+	return __( 'Install', 'gitwire' );
 }
 
 /**
@@ -338,8 +338,8 @@ function InstallButtonLabel( { installing, slugChecking } ) {
 function DetectionBadge( { detection, smartInstall } ) {
 	if ( ! detection ) {
 		return (
-			<div className="gwp-detect-row gwp-detect-loading">
-				<Spinner /> { __( 'Detecting project type…', 'git' ) }
+			<div className="gitwire-detect-row gitwire-detect-loading">
+				<Spinner /> { __( 'Detecting project type…', 'gitwire' ) }
 			</div>
 		);
 	}
@@ -348,58 +348,58 @@ function DetectionBadge( { detection, smartInstall } ) {
 	let badgeClass, label;
 
 	if ( type === 'plugin' ) {
-		badgeClass = 'gwp-detect-plugin';
+		badgeClass = 'gitwire-detect-plugin';
 		label =
 			confidence === 'high'
 				? sprintf(
 						/* translators: %s: plugin name */
-						__( 'WordPress Plugin%s', 'git' ),
+						__( 'WordPress Plugin%s', 'gitwire' ),
 						name ? ` - ${ name }` : ''
 				  )
-				: __( 'Likely a WordPress Plugin', 'git' );
+				: __( 'Likely a WordPress Plugin', 'gitwire' );
 	} else if ( type === 'theme' && subtype === 'block' ) {
-		badgeClass = 'gwp-detect-theme';
+		badgeClass = 'gitwire-detect-theme';
 		label =
 			confidence === 'high'
 				? sprintf(
 						/* translators: %s: theme name */
-						__( 'Block Theme%s', 'git' ),
+						__( 'Block Theme%s', 'gitwire' ),
 						name ? ` - ${ name }` : ''
 				  )
-				: __( 'Likely a Block Theme', 'git' );
+				: __( 'Likely a Block Theme', 'gitwire' );
 	} else if ( type === 'theme' ) {
-		badgeClass = 'gwp-detect-theme';
+		badgeClass = 'gitwire-detect-theme';
 		label =
 			confidence === 'high'
 				? sprintf(
 						/* translators: %s: theme name */
-						__( 'Classic Theme%s', 'git' ),
+						__( 'Classic Theme%s', 'gitwire' ),
 						name ? ` - ${ name }` : ''
 				  )
-				: __( 'Likely a Classic Theme', 'git' );
+				: __( 'Likely a Classic Theme', 'gitwire' );
 	} else {
-		badgeClass = 'gwp-detect-unknown';
-		label = __( 'Not recognised as a WordPress project', 'git' );
+		badgeClass = 'gitwire-detect-unknown';
+		label = __( 'Not recognised as a WordPress project', 'gitwire' );
 	}
 
 	return (
-		<div className="gwp-detect-row">
-			<span className={ `gwp-detect-badge ${ badgeClass }` }>
+		<div className="gitwire-detect-row">
+			<span className={ `gitwire-detect-badge ${ badgeClass }` }>
 				{ label }
 			</span>
 			{ type === 'unknown' && smartInstall && (
-				<p className="gwp-detect-note gwp-detect-blocked">
+				<p className="gitwire-detect-note gitwire-detect-blocked">
 					{ __(
 						'Smart Install is enabled - only verified plugins and themes can be installed. Disable it in Settings to override.',
-						'git'
+						'gitwire'
 					) }
 				</p>
 			) }
 			{ type === 'unknown' && ! smartInstall && (
-				<p className="gwp-detect-note gwp-detect-warn">
+				<p className="gitwire-detect-note gitwire-detect-warn">
 					{ __(
 						'This repo was not recognised as a WordPress plugin or theme. You can still install it - choose a type below.',
-						'git'
+						'gitwire'
 					) }
 				</p>
 			) }

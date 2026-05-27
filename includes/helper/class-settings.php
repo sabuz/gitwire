@@ -2,18 +2,18 @@
 /**
  * Settings helpers — token masking and merge-on-save.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.2.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Reads and writes gwp_settings without exposing secrets to the client.
+ * Reads and writes gitwire_settings without exposing secrets to the client.
  */
 class Settings {
 
@@ -24,7 +24,7 @@ class Settings {
 	 * @return array<string, mixed>
 	 */
 	public static function get_raw(): array {
-		return (array) get_option( 'gwp_settings', [] );
+		return (array) get_option( 'gitwire_settings', [] );
 	}
 
 	/**

@@ -76,7 +76,7 @@ export default function InstalledPanel( {
 			toast.success(
 				sprintf(
 					/* translators: %s: branch name */
-					__( 'Switched to %s.', 'git' ),
+					__( 'Switched to %s.', 'gitwire' ),
 					newBranch
 				)
 			);
@@ -89,10 +89,10 @@ export default function InstalledPanel( {
 		() => [
 			{
 				id: 'name',
-				label: __( 'Repository', 'git' ),
+				label: __( 'Repository', 'gitwire' ),
 				getValue: ( { item } ) => item.full_name,
 				render: ( { item } ) => (
-					<span className="gwp-installed-name">
+					<span className="gitwire-installed-name">
 						{ item.full_name }
 					</span>
 				),
@@ -101,21 +101,21 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'source',
-				label: __( 'Source', 'git' ),
+				label: __( 'Source', 'gitwire' ),
 				getValue: ( { item } ) => item.provider ?? 'github',
 				render: ( { item } ) => <SourceCell item={ item } />,
 				enableSorting: true,
 			},
 			{
 				id: 'type',
-				label: __( 'Type', 'git' ),
+				label: __( 'Type', 'gitwire' ),
 				getValue: ( { item } ) => item.type,
 				render: ( { item } ) => <TypeBadge item={ item } />,
 				enableSorting: true,
 			},
 			{
 				id: 'status',
-				label: __( 'Status', 'git' ),
+				label: __( 'Status', 'gitwire' ),
 				getValue: ( { item } ) => {
 					if ( item.activation_pending ) {
 						return 'pending';
@@ -125,30 +125,30 @@ export default function InstalledPanel( {
 				render: ( { item } ) => (
 					<Flex align="center" gap={ 1 }>
 						{ item.activation_pending ? (
-							<span className="gwp-badge gwp-badge--warning">
-								{ __( 'Verifying…', 'git' ) }
+							<span className="gitwire-badge gitwire-badge--warning">
+								{ __( 'Verifying…', 'gitwire' ) }
 							</span>
 						) : (
 							<span
-								className={ `gwp-badge gwp-badge--${
+								className={ `gitwire-badge gitwire-badge--${
 									item.active ? 'success' : 'draft'
 								}` }
 							>
 								{ item.active
-									? __( 'Active', 'git' )
-									: __( 'Inactive', 'git' ) }
+									? __( 'Active', 'gitwire' )
+									: __( 'Inactive', 'gitwire' ) }
 							</span>
 						) }
 						{ item.update_available &&
 							( hasKnownFatalUpdate( item ) ? (
 								<Tooltip text={ knownFatalTooltip( item ) }>
-									<span className="gwp-badge gwp-badge--warning is-update-blocked">
+									<span className="gitwire-badge gitwire-badge--warning is-update-blocked">
 										{ knownFatalBadgeLabel( item ) }
 									</span>
 								</Tooltip>
 							) : (
-								<span className="gwp-badge gwp-badge--warning is-update">
-									{ __( 'Update available', 'git' ) }
+								<span className="gitwire-badge gitwire-badge--warning is-update">
+									{ __( 'Update available', 'gitwire' ) }
 								</span>
 							) ) }
 					</Flex>
@@ -157,7 +157,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'branch',
-				label: __( 'Branch', 'git' ),
+				label: __( 'Branch', 'gitwire' ),
 				getValue: ( { item } ) => item.branch,
 				render: ( { item } ) => (
 					<BranchCell
@@ -169,7 +169,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'head',
-				label: __( 'Current Head', 'git' ),
+				label: __( 'Current Head', 'gitwire' ),
 				getValue: () => '',
 				render: ( { item } ) => (
 					<HeadCell
@@ -182,10 +182,10 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'last_updated',
-				label: __( 'Last Updated', 'git' ),
+				label: __( 'Last Updated', 'gitwire' ),
 				getValue: ( { item } ) => item.updated_at ?? 0,
 				render: ( { item } ) => (
-					<span className="gwp-installed-date">
+					<span className="gitwire-installed-date">
 						{ item.updated_at
 							? new Date( item.updated_at * 1000 ).toLocaleString(
 									undefined,
@@ -210,7 +210,7 @@ export default function InstalledPanel( {
 		() => [
 			{
 				id: 'activate',
-				label: __( 'Activate', 'git' ),
+				label: __( 'Activate', 'gitwire' ),
 				icon: <Icon icon="yes-alt" />,
 				isEligible: ( item ) =>
 					! item.active && ! item.activation_pending,
@@ -225,7 +225,7 @@ export default function InstalledPanel( {
 							queuePendingToastAndReload(
 								sprintf(
 									/* translators: %s: repository full name */
-									__( '%s activated.', 'git' ),
+									__( '%s activated.', 'gitwire' ),
 									item.full_name
 								)
 							);
@@ -234,7 +234,7 @@ export default function InstalledPanel( {
 						queuePendingToastAndReload(
 							sprintf(
 								/* translators: %s: repository full name */
-								__( '%s activated.', 'git' ),
+								__( '%s activated.', 'gitwire' ),
 								item.full_name
 							)
 						);
@@ -247,7 +247,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'deactivate',
-				label: __( 'Deactivate', 'git' ),
+				label: __( 'Deactivate', 'gitwire' ),
 				icon: <Icon icon="no-alt" />,
 				isEligible: ( item ) => item.active && item.type === 'plugin',
 				callback: async ( [ item ] ) => {
@@ -260,24 +260,24 @@ export default function InstalledPanel( {
 						queuePendingToastAndReload(
 							sprintf(
 								/* translators: %s: repository full name */
-								__( '%s deactivated.', 'git' ),
+								__( '%s deactivated.', 'gitwire' ),
 								item.full_name
 							)
 						);
 					} catch ( e ) {
 						toast.error(
-							e.message || __( 'Deactivation failed.', 'git' )
+							e.message || __( 'Deactivation failed.', 'gitwire' )
 						);
 					}
 				},
 			},
 			{
 				id: 'switch-theme',
-				label: __( 'Switch theme', 'git' ),
+				label: __( 'Switch theme', 'gitwire' ),
 				icon: <Icon icon="admin-appearance" />,
 				isEligible: ( item ) => item.active && item.type === 'theme',
 				callback: () => {
-					const themesUrl = window.GWP?.themes_url;
+					const themesUrl = window.Gitwire?.themes_url;
 					if ( themesUrl ) {
 						window.location.href = themesUrl;
 					}
@@ -285,7 +285,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'delete',
-				label: __( 'Delete', 'git' ),
+				label: __( 'Delete', 'gitwire' ),
 				icon: <Icon icon="trash" />,
 				isDestructive: true,
 				isEligible: ( item ) => ! item.active,
@@ -307,22 +307,22 @@ export default function InstalledPanel( {
 			return <ConnectPrompt onConnect={ onGoToSettings } />;
 		}
 		return (
-			<div className="gwp-installed-empty">
+			<div className="gitwire-installed-empty">
 				<img
 					alt=""
 					aria-hidden="true"
-					src={ window.GWP?.not_found_url }
+					src={ window.Gitwire?.not_found_url }
 				/>
-				<h2>{ __( 'No repositories installed yet.', 'git' ) }</h2>
+				<h2>{ __( 'No repositories installed yet.', 'gitwire' ) }</h2>
 				<Button variant="primary" onClick={ onGoToBrowse }>
-					{ __( 'Browse repositories', 'git' ) }
+					{ __( 'Browse repositories', 'gitwire' ) }
 				</Button>
 			</div>
 		);
 	}
 
 	return (
-		<div className="gwp-installed-panel">
+		<div className="gitwire-installed-panel">
 			<DataViews
 				actions={ actions }
 				data={ shownData }
@@ -362,14 +362,14 @@ function getActivationErrorMessage( error, type ) {
 		if ( type === 'theme' ) {
 			return __(
 				'Theme could not be activated. It triggered a fatal error.',
-				'git'
+				'gitwire'
 			);
 		}
 		return __(
 			'Plugin could not be activated. It triggered a fatal error.',
-			'git'
+			'gitwire'
 		);
 	}
 
-	return message || __( 'Activation failed.', 'git' );
+	return message || __( 'Activation failed.', 'gitwire' );
 }

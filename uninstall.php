@@ -2,7 +2,7 @@
 /**
  * Fired when the plugin is uninstalled.
  *
- * @package Git_WP
+ * @package Gitwire
  */
 
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
@@ -10,24 +10,23 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 $options = [
-	'gwp_settings',
-	'gwp_connection_cache',
-	'gwp_installed',
-	'gwp_pending_update',
-	'gwp_fatal_notice',
-	'gwp_migrated_from_ghwp',
-	'gwp_repos_cache',
-	'gwp_repo_types',
+	'gitwire_settings',
+	'gitwire_connection_cache',
+	'gitwire_installed',
+	'gitwire_pending_update',
+	'gitwire_fatal_notice',
+	'gitwire_repos_cache',
+	'gitwire_repo_types',
 ];
 
 foreach ( $options as $option ) {
 	delete_option( $option );
 }
 
-wp_clear_scheduled_hook( 'gwp_auto_check_connection' );
-wp_clear_scheduled_hook( 'gwp_maintenance' );
-wp_clear_scheduled_hook( 'gwp_refresh_repos_cache' );
-wp_clear_scheduled_hook( 'gwp_refresh_repo_types' );
+wp_clear_scheduled_hook( 'gitwire_auto_check_connection' );
+wp_clear_scheduled_hook( 'gitwire_maintenance' );
+wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
+wp_clear_scheduled_hook( 'gitwire_refresh_repo_types' );
 
 global $wpdb;
 
@@ -35,7 +34,7 @@ global $wpdb;
 $wpdb->query(
 	$wpdb->prepare(
 		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-		$wpdb->esc_like( '_transient_gwp_' ) . '%',
-		$wpdb->esc_like( '_transient_timeout_gwp_' ) . '%'
+		$wpdb->esc_like( '_transient_gitwire_' ) . '%',
+		$wpdb->esc_like( '_transient_timeout_gitwire_' ) . '%'
 	)
 );

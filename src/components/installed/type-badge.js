@@ -19,7 +19,7 @@ export default function TypeBadge( { item } ) {
 	}
 
 	return (
-		<span className={ `gwp-badge gwp-badge--${ badgeMod }` }>
+		<span className={ `gitwire-badge gitwire-badge--${ badgeMod }` }>
 			<TypeBadgeLabel isBlockTheme={ isBlockTheme } isTheme={ isTheme } />
 		</span>
 	);
@@ -33,10 +33,10 @@ export default function TypeBadge( { item } ) {
  */
 function TypeBadgeLabel( { isBlockTheme, isTheme } ) {
 	if ( isBlockTheme ) {
-		return __( 'Block Theme', 'git' );
+		return __( 'Block Theme', 'gitwire' );
 	}
 	if ( isTheme ) {
-		return __( 'Theme', 'git' );
+		return __( 'Theme', 'gitwire' );
 	}
-	return __( 'Plugin', 'git' );
+	return __( 'Plugin', 'gitwire' );
 }

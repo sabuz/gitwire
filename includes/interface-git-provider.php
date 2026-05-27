@@ -2,11 +2,11 @@
 /**
  * Git provider contract shared by GitHub and GitLab clients.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.2.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

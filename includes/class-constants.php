@@ -2,11 +2,11 @@
 /**
  * Plugin constants holder.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.2.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;

@@ -16,7 +16,7 @@ export default function SourceCell( { item } ) {
 	return (
 		<Flex
 			align="center"
-			className="gwp-installed-source"
+			className="gitwire-installed-source"
 			gap={ 1 }
 			justify="flex-start"
 		>
@@ -26,7 +26,7 @@ export default function SourceCell( { item } ) {
 				<GitHubIcon size={ 14 } variant="brand" />
 			) }
 			<span>
-				{ isGitLab ? __( 'GitLab', 'git' ) : __( 'GitHub', 'git' ) }
+				{ isGitLab ? __( 'GitLab', 'gitwire' ) : __( 'GitHub', 'gitwire' ) }
 			</span>
 		</Flex>
 	);

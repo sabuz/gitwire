@@ -19,7 +19,7 @@ export default function ConnectPrompt( { onConnect } ) {
 			<img
 				alt=""
 				aria-hidden="true"
-				src={ window.GWP?.disconnected_url }
+				src={ window.Gitwire?.disconnected_url }
 				style={ {
 					width: 64,
 					height: 64,
@@ -36,7 +36,7 @@ export default function ConnectPrompt( { onConnect } ) {
 					color: '#1d2327',
 				} }
 			>
-				{ __( 'Connect your Git account', 'git' ) }
+				{ __( 'Connect your Git account', 'gitwire' ) }
 			</h2>
 			<p
 				style={ {
@@ -48,11 +48,11 @@ export default function ConnectPrompt( { onConnect } ) {
 			>
 				{ __(
 					'Connect your GitHub or GitLab account to browse, install, and manage plugins and themes directly from your repositories.',
-					'git'
+					'gitwire'
 				) }
 			</p>
 			<Button variant="primary" onClick={ onConnect }>
-				{ __( 'Connect', 'git' ) }
+				{ __( 'Connect', 'gitwire' ) }
 			</Button>
 		</div>
 	);

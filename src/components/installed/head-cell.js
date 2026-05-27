@@ -28,7 +28,7 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 			return knownFatalTooltip( item );
 		}
 
-		return __( 'Pull Latest', 'git' );
+		return __( 'Pull Latest', 'gitwire' );
 	}, [ isKnownFatalUpdate, item ] );
 
 	const handlePull = useCallback( async () => {
@@ -43,14 +43,14 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
-					__( '%s updated to latest.', 'git' ),
+					__( '%s updated to latest.', 'gitwire' ),
 					item.full_name
 				)
 			);
 			onRefresh();
 		} catch ( e ) {
 			clearCommitsCache( item );
-			toast.error( e.message || __( 'Pull failed.', 'git' ) );
+			toast.error( e.message || __( 'Pull failed.', 'gitwire' ) );
 			onRefresh();
 		} finally {
 			setPulling( false );
@@ -72,7 +72,7 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 			</Button>
 			<Tooltip text={ pullTooltip }>
 				<Button
-					className={ pulling ? 'gwp-spin' : '' }
+					className={ pulling ? 'gitwire-spin' : '' }
 					disabled={ pulling || item.activation_pending }
 					icon="update"
 					label={ pullTooltip }

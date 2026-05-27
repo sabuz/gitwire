@@ -6,7 +6,7 @@ import { __, sprintf } from '@wordpress/i18n';
  * @param {Object} notice Fatal install/update notice from PHP.
  */
 export function showFatalNotice( notice ) {
-	const name = notice.full_name || __( 'Unknown', 'git' );
+	const name = notice.full_name || __( 'Unknown', 'gitwire' );
 	let message;
 
 	if ( notice.context === 'update' ) {
@@ -15,7 +15,7 @@ export function showFatalNotice( notice ) {
 				/* translators: %s: theme full name */
 				__(
 					'%s could not be updated. The latest commit caused a fatal error, so the previous version was restored.',
-					'git'
+					'gitwire'
 				),
 				name
 			);
@@ -24,7 +24,7 @@ export function showFatalNotice( notice ) {
 				/* translators: %s: plugin full name */
 				__(
 					'%s could not be updated. It triggered a fatal error. Your previous version has been restored. It has been deactivated.',
-					'git'
+					'gitwire'
 				),
 				name
 			);
@@ -35,7 +35,7 @@ export function showFatalNotice( notice ) {
 				/* translators: %s: theme full name */
 				__(
 					'%s could not be activated. It triggered a fatal error. Your previous theme has been restored.',
-					'git'
+					'gitwire'
 				),
 				name
 			);
@@ -44,7 +44,7 @@ export function showFatalNotice( notice ) {
 				/* translators: %s: plugin full name */
 				__(
 					'%s could not be activated. It triggered a fatal error. It has been deactivated.',
-					'git'
+					'gitwire'
 				),
 				name
 			);
@@ -54,7 +54,7 @@ export function showFatalNotice( notice ) {
 			/* translators: %s: plugin or theme full name */
 			__(
 				'A fatal PHP error was detected after updating %s. The previous version has been restored. The plugin was deactivated.',
-				'git'
+				'gitwire'
 			),
 			name
 		);
@@ -63,7 +63,7 @@ export function showFatalNotice( notice ) {
 			/* translators: %s: plugin or theme full name */
 			__(
 				'A fatal PHP error was detected after installing %s. The broken files have been removed.',
-				'git'
+				'gitwire'
 			),
 			name
 		);

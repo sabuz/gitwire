@@ -1,22 +1,22 @@
-=== Git for WordPress ===
+=== Gitwire ===
 Contributors: nazsabuz
-Tags: github, gitlab, git, plugins, themes
+Tags: github, gitlab, git, plugins, themes, deploy
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Pull GitHub and GitLab repositories directly into WordPress as plugins or themes. Switch branches and auto-recover from fatal errors.
+Wire GitHub and GitLab repositories into WordPress as plugins or themes. Switch branches and auto-recover from fatal errors.
 
 == Description ==
 
-Git for WordPress lets you install and manage plugins and themes directly from your GitHub or GitLab repositories — no manual ZIP uploads, no FTP.
+Gitwire lets you install and manage plugins and themes directly from your GitHub or GitLab repositories — no manual ZIP uploads, no FTP.
 
 **Browse and install**
 
-Connect your GitHub or GitLab account, browse every repository you own or have access to, and install any of them as a plugin or theme with one click. The plugin auto-detects the repository type (plugin, theme, or block theme) and places it in the right directory.
+Connect your GitHub or GitLab account, browse every repository you own or have access to, and install any of them as a plugin or theme with one click. Gitwire auto-detects the repository type (plugin, theme, or block theme) and places it in the right directory.
 
 **Keep up to date**
 
@@ -28,9 +28,9 @@ Manage installed items directly from the Installed panel. Activate or deactivate
 
 **Fatal-error protection**
 
-Before overwriting an existing installation the plugin backs it up. A PHP shutdown handler watches for fatal errors introduced by new code: if a fatal fires during the install request the backup is automatically restored, the plugin is deactivated, and an admin notice explains what happened — all without touching the site's public-facing pages.
+Before overwriting an existing installation Gitwire backs it up. A PHP shutdown handler watches for fatal errors introduced by new code: if a fatal fires during the install request the backup is automatically restored, the plugin is deactivated, and an admin notice explains what happened — all without touching the site's public-facing pages.
 
-For plugin activation the plugin delegates to WordPress core's `activate_plugin()`, which already sandboxes the plugin file for parse and compile errors before marking it active.
+For plugin activation Gitwire delegates to WordPress core's `activate_plugin()`, which already sandboxes the plugin file for parse and compile errors before marking it active.
 
 **Conflict resolution**
 
@@ -42,9 +42,9 @@ Repository lists are cached for 30 minutes and type-detection results for 1 hour
 
 == Installation ==
 
-1. Upload the `git` folder to `/wp-content/plugins/`.
+1. Upload the `gitwire` folder to `/wp-content/plugins/`.
 2. Activate the plugin through the **Plugins** menu in WordPress.
-3. Go to **Git** in the WordPress admin sidebar.
+3. Go to **Gitwire** in the WordPress admin sidebar.
 4. Open the **Settings** tab and connect your GitHub and/or GitLab account.
 5. Switch to the **Browse** tab to start installing repositories.
 
@@ -60,7 +60,7 @@ Yes, as long as your token has access to the repository.
 
 = Can I install a theme? =
 
-Yes. The plugin detects whether a repository is a classic theme, a block theme, or a plugin by inspecting the repository contents. You can also override the detection manually during install.
+Yes. Gitwire detects whether a repository is a classic theme, a block theme, or a plugin by inspecting the repository contents. You can also override the detection manually during install.
 
 = Can I deactivate a theme? =
 
@@ -68,7 +68,7 @@ No — WordPress does not support deactivating a theme the way it does plugins. 
 
 = What happens if the new code causes a fatal error? =
 
-If a fatal error fires during the install or update request, the plugin automatically restores the previous version from its backup, deactivates the plugin (if it was a plugin), and shows an admin notice with the error details.
+If a fatal error fires during the install or update request, Gitwire automatically restores the previous version from its backup, deactivates the plugin (if it was a plugin), and shows an admin notice with the error details.
 
 = What WordPress version is required? =
 
@@ -86,6 +86,10 @@ Yes. Enter your self-hosted GitLab instance URL in the Settings tab alongside yo
 
 == Changelog ==
 
+= 1.2.0 =
+* Rebranded to Gitwire (https://gitwire.app).
+* Renamed main plugin file to `gitwire.php` and standardized `gitwire_*` option, cron, and REST keys.
+
 = 1.1.0 =
 * Added GitLab support (cloud and self-hosted).
 * Added branch switching for installed repositories.
@@ -93,12 +97,11 @@ Yes. Enter your self-hosted GitLab instance URL in the Settings tab alongside yo
 * Added auto-discovery of plugin main file when the stored path is stale.
 * Increased repository list cache TTL to 30 minutes.
 * Fatal-error shutdown handler now restores backup and deactivates the plugin automatically.
-* Migrated option keys from `ghwp_*` prefix to `gwp_*`.
 
 = 1.0.0 =
 * Initial release — GitHub repository browser, one-click install as plugin or theme, backup and restore on failed installs.
 
 == Upgrade Notice ==
 
-= 1.1.0 =
-Adds GitLab support and branch switching. Existing GitHub installations continue to work without any manual steps.
+= 1.2.0 =
+Rebranded to Gitwire. Reactivate the plugin if WordPress lists the previous main file as missing.

@@ -22,7 +22,7 @@ export function isVerifyRunning() {
  */
 async function triggerFrontendBootstrap( verifyUrl ) {
 	const verifyTarget = new URL( verifyUrl, window.location.origin );
-	verifyTarget.searchParams.set( '_gwp_verify', String( Date.now() ) );
+	verifyTarget.searchParams.set( '_gitwire_verify', String( Date.now() ) );
 
 	await fetch( verifyTarget.toString(), {
 		credentials: 'same-origin',
@@ -42,7 +42,7 @@ async function triggerAdminBootstrap( verifyUrl ) {
 	}
 
 	const verifyTarget = new URL( verifyUrl, window.location.origin );
-	verifyTarget.searchParams.set( '_gwp_verify', String( Date.now() ) );
+	verifyTarget.searchParams.set( '_gitwire_verify', String( Date.now() ) );
 
 	await fetch( verifyTarget.toString(), {
 		credentials: 'same-origin',
@@ -69,8 +69,8 @@ export function verifyThemeActivation( {
 		activeSession.abort();
 	}
 
-	const verifyUrl = window.GWP?.verify_activation_url;
-	const adminVerifyUrl = window.GWP?.verify_admin_url;
+	const verifyUrl = window.Gitwire?.verify_activation_url;
+	const adminVerifyUrl = window.Gitwire?.verify_admin_url;
 	let isSettled = false;
 
 	const cleanup = () => {

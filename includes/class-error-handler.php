@@ -5,16 +5,16 @@
  * Registers a PHP shutdown function that detects fatal errors introduced
  * by a plugin/theme we just installed or updated. On fatal: restores the
  * backup directory, deactivates the plugin (if it was active), and stores
- * a fatal notice for the Git admin UI.
+ * a fatal notice for the Gitwire admin UI.
  *
  * Uses only plain PHP and raw MySQL so it works even when WordPress has
  * not finished bootstrapping.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.0.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -79,7 +79,7 @@ class Error_Handler {
 		}
 
 		// Read the pending-update record directly from the DB.
-		$pending = self::db_get_option( 'gwp_pending_update' );
+		$pending = self::db_get_option( 'gitwire_pending_update' );
 		if ( ! $pending ) {
 			return;
 		}
@@ -122,7 +122,7 @@ class Error_Handler {
 
 		self::restore_pending_installed_record( $pending );
 
-		// Store fatal notice for the Git admin UI.
+		// Store fatal notice for the Gitwire admin UI.
 		$notice = [
 			'full_name' => $full_name,
 			'type'      => $type,
@@ -132,27 +132,27 @@ class Error_Handler {
 			'restored'  => 'activation' === $context ? true : $restored,
 		];
 
-		self::db_update_option( 'gwp_fatal_notice', $notice );
+		self::db_update_option( 'gitwire_fatal_notice', $notice );
 		self::clear_pending_update();
 		self::clear_bootstrap_verified();
 
 		if ( 'activation' === $context && 'theme' !== $type ) {
-			self::redirect_to_git_admin();
+			self::redirect_to_gitwire_admin();
 		}
 	}
 
 	/**
-	 * Sends the admin back to Git after an activation fatal was recovered.
+	 * Sends the admin back to Gitwire after an activation fatal was recovered.
 	 *
 	 * @since 1.2.0
 	 * @return void
 	 */
-	private static function redirect_to_git_admin(): void {
+	private static function redirect_to_gitwire_admin(): void {
 		if ( ! function_exists( 'admin_url' ) ) {
 			return;
 		}
 
-		$url = admin_url( 'admin.php?page=git' );
+		$url = admin_url( 'admin.php?page=gitwire' );
 
 		if ( ! headers_sent() ) {
 			wp_safe_redirect( $url );
@@ -181,7 +181,7 @@ class Error_Handler {
 			return;
 		}
 
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if ( ! is_array( $pending ) ) {
 			return;
 		}
@@ -189,17 +189,17 @@ class Error_Handler {
 		$fingerprint = self::pending_fingerprint( $pending );
 
 		if ( is_admin() ) {
-			$frontend_ok = get_transient( 'gwp_frontend_bootstrap_ok' );
+			$frontend_ok = get_transient( 'gitwire_frontend_bootstrap_ok' );
 			if ( ! is_string( $frontend_ok ) || $frontend_ok !== $fingerprint ) {
 				return;
 			}
 
-			delete_transient( 'gwp_frontend_bootstrap_ok' );
+			delete_transient( 'gitwire_frontend_bootstrap_ok' );
 			self::try_mark_bootstrap_verified();
 			return;
 		}
 
-		set_transient( 'gwp_frontend_bootstrap_ok', $fingerprint, MINUTE_IN_SECONDS );
+		set_transient( 'gitwire_frontend_bootstrap_ok', $fingerprint, MINUTE_IN_SECONDS );
 	}
 
 	/**
@@ -244,11 +244,11 @@ class Error_Handler {
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		return ! empty( $_GET['gwp_verify_activation'] );
+		return ! empty( $_GET['gitwire_verify_activation'] );
 	}
 
 	/**
-	 * Finalizes a verified guard when the Git admin page loads after bootstrap checks.
+	 * Finalizes a verified guard when the Gitwire admin page loads after bootstrap checks.
 	 *
 	 * @since 1.2.0
 	 * @return void
@@ -258,7 +258,7 @@ class Error_Handler {
 			return;
 		}
 
-		if ( self::is_verify_bootstrap_request() || ! self::is_git_admin_page() ) {
+		if ( self::is_verify_bootstrap_request() || ! self::is_gitwire_admin_page() ) {
 			return;
 		}
 
@@ -282,7 +282,7 @@ class Error_Handler {
 	 * @return array<string, string>|null Finalized record metadata, or null when not ready.
 	 */
 	public static function finalize_verified_guard_if_ready(): ?array {
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if ( ! is_array( $pending ) ) {
 			return null;
 		}
@@ -308,7 +308,7 @@ class Error_Handler {
 	}
 
 	/**
-	 * Clears the guard after both iframe and Git admin bootstraps succeed.
+	 * Clears the guard after both iframe and Gitwire admin bootstraps succeed.
 	 *
 	 * @since 1.2.0
 	 * @param array<string, mixed> $pending Pending guard record.
@@ -321,7 +321,7 @@ class Error_Handler {
 
 		if ( 'activation' === ( $pending['context'] ?? '' ) ) {
 			set_transient(
-				'gwp_activation_success',
+				'gitwire_activation_success',
 				[
 					'full_name' => $pending['full_name'] ?? '',
 					'type'      => $pending['type'] ?? '',
@@ -330,7 +330,7 @@ class Error_Handler {
 			);
 		} else {
 			set_transient(
-				'gwp_update_success',
+				'gitwire_update_success',
 				[
 					'full_name' => $pending['full_name'] ?? '',
 					'type'      => $pending['type'] ?? '',
@@ -339,7 +339,7 @@ class Error_Handler {
 			);
 		}
 
-		delete_option( 'gwp_pending_update' );
+		delete_option( 'gitwire_pending_update' );
 	}
 
 	/**
@@ -361,7 +361,7 @@ class Error_Handler {
 		$record_key               = $provider . ':' . $full_name;
 		$installed                = Installer::get_installed();
 		$installed[ $record_key ] = $pending_record;
-		update_option( 'gwp_installed', $installed );
+		update_option( 'gitwire_installed', $installed );
 	}
 
 	/**
@@ -383,7 +383,7 @@ class Error_Handler {
 		$record_key               = $provider . ':' . $full_name;
 		$installed                = Installer::get_installed();
 		$installed[ $record_key ] = $prev_record;
-		update_option( 'gwp_installed', $installed );
+		update_option( 'gitwire_installed', $installed );
 	}
 
 	/**
@@ -393,7 +393,7 @@ class Error_Handler {
 	 * @return bool True when the pending guard was marked verified.
 	 */
 	public static function try_mark_bootstrap_verified(): bool {
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if ( ! is_array( $pending ) ) {
 			return false;
 		}
@@ -420,7 +420,7 @@ class Error_Handler {
 	 */
 	private static function mark_bootstrap_verified( array $pending ): void {
 		set_transient(
-			'gwp_bootstrap_verified',
+			'gitwire_bootstrap_verified',
 			self::pending_fingerprint( $pending ),
 			MINUTE_IN_SECONDS
 		);
@@ -434,7 +434,7 @@ class Error_Handler {
 	 * @return bool
 	 */
 	public static function is_bootstrap_verified( array $pending ): bool {
-		$stored = get_transient( 'gwp_bootstrap_verified' );
+		$stored = get_transient( 'gitwire_bootstrap_verified' );
 		return is_string( $stored ) && self::pending_fingerprint( $pending ) === $stored;
 	}
 
@@ -465,8 +465,8 @@ class Error_Handler {
 	 * @return void
 	 */
 	public static function clear_bootstrap_verified(): void {
-		delete_transient( 'gwp_bootstrap_verified' );
-		delete_transient( 'gwp_frontend_bootstrap_ok' );
+		delete_transient( 'gitwire_bootstrap_verified' );
+		delete_transient( 'gitwire_frontend_bootstrap_ok' );
 	}
 
 	/**
@@ -476,7 +476,7 @@ class Error_Handler {
 	 * @return void
 	 */
 	public static function clear_stale_update_guard(): void {
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if ( ! is_array( $pending ) || 'update' !== ( $pending['context'] ?? '' ) ) {
 			return;
 		}
@@ -486,7 +486,7 @@ class Error_Handler {
 			return;
 		}
 
-		delete_option( 'gwp_pending_update' );
+		delete_option( 'gitwire_pending_update' );
 		self::clear_bootstrap_verified();
 	}
 
@@ -497,21 +497,21 @@ class Error_Handler {
 	 * @return void
 	 */
 	public static function clear_stale_activation_guard(): void {
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if ( ! is_array( $pending ) || 'activation' !== ( $pending['context'] ?? '' ) ) {
 			return;
 		}
 
 		$slug = $pending['slug'] ?? '';
 		if ( ! $slug || ! function_exists( 'get_stylesheet' ) ) {
-			delete_option( 'gwp_pending_update' );
+			delete_option( 'gitwire_pending_update' );
 			self::clear_bootstrap_verified();
 			return;
 		}
 
 		$is_active = get_stylesheet() === $slug || get_template() === $slug;
 		if ( ! $is_active ) {
-			delete_option( 'gwp_pending_update' );
+			delete_option( 'gitwire_pending_update' );
 			self::clear_bootstrap_verified();
 		}
 	}
@@ -523,7 +523,7 @@ class Error_Handler {
 	 * @return bool True when a pending guard was cleared.
 	 */
 	public static function abort_pending_guard(): bool {
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if ( ! is_array( $pending ) ) {
 			self::clear_bootstrap_verified();
 			return false;
@@ -531,7 +531,7 @@ class Error_Handler {
 
 		$context = $pending['context'] ?? '';
 		if ( ! in_array( $context, [ 'activation', 'update' ], true ) ) {
-			delete_option( 'gwp_pending_update' );
+			delete_option( 'gitwire_pending_update' );
 			self::clear_bootstrap_verified();
 			return true;
 		}
@@ -557,7 +557,7 @@ class Error_Handler {
 		// Restore the installed record that was overwritten before the guard was armed.
 		self::restore_pending_installed_record( $pending );
 
-		delete_option( 'gwp_pending_update' );
+		delete_option( 'gitwire_pending_update' );
 		self::clear_bootstrap_verified();
 
 		return true;
@@ -583,7 +583,7 @@ class Error_Handler {
 			);
 		}
 
-		delete_option( 'gwp_pending_update' );
+		delete_option( 'gitwire_pending_update' );
 		self::clear_bootstrap_verified();
 	}
 
@@ -604,18 +604,18 @@ class Error_Handler {
 	}
 
 	/**
-	 * Returns whether the current request is the Git admin screen.
+	 * Returns whether the current request is the Gitwire admin screen.
 	 *
 	 * @since 1.2.0
 	 * @return bool
 	 */
-	private static function is_git_admin_page(): bool {
+	private static function is_gitwire_admin_page(): bool {
 		if ( ! is_admin() ) {
 			return false;
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		return isset( $_GET['page'] ) && 'git' === $_GET['page'];
+		return isset( $_GET['page'] ) && 'gitwire' === $_GET['page'];
 	}
 
 	/**
@@ -758,11 +758,11 @@ class Error_Handler {
 	 */
 	private static function clear_pending_update(): void {
 		if ( function_exists( 'delete_option' ) ) {
-			delete_option( 'gwp_pending_update' );
+			delete_option( 'gitwire_pending_update' );
 			return;
 		}
 
-		self::db_delete_option( 'gwp_pending_update' );
+		self::db_delete_option( 'gitwire_pending_update' );
 	}
 
 	/**

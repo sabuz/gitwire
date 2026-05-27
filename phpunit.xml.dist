@@ -4,7 +4,7 @@
          bootstrap="tests/bootstrap.php"
          colors="true">
 	<testsuites>
-		<testsuite name="Git Plugin">
+		<testsuite name="Gitwire">
 			<directory>tests</directory>
 		</testsuite>
 	</testsuites>

@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: Git
- * Plugin URI:  https://github.com/sabuz/gwp
+ * Plugin Name: Gitwire
+ * Plugin URI:  https://gitwire.app
  * Description: Pull GitHub and GitLab repositories directly into WordPress as plugins or themes. Switch branches and auto-recover from fatal errors.
  * Version:     1.2.0
  * Requires at least: 6.9
@@ -9,9 +9,10 @@
  * Author:      Nazmul Sabuz
  * Author URI:  https://profiles.wordpress.org/nazsabuz
  * License:     GPL-2.0-or-later
- * Text Domain: git
+ * Text Domain: gitwire
+ * Domain Path: /languages
  *
- * @package Git_WP
+ * @package Gitwire
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,15 +21,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once trailingslashit( __DIR__ ) . 'autoload.php';
 
-use Git_WP\Constants;
-use Git_WP\Plugin;
+use Gitwire\Constants;
+use Gitwire\Plugin;
 
 $constants = Constants::instance( __FILE__ );
 
-define( 'GWP_VERSION', $constants->version );
-define( 'GWP_FILE', $constants->file );
-define( 'GWP_DIR', $constants->dir );
-define( 'GWP_URL', $constants->url );
-define( 'GWP_BASENAME', $constants->basename );
+define( 'GITWIRE_VERSION', $constants->version );
+define( 'GITWIRE_FILE', $constants->file );
+define( 'GITWIRE_DIR', $constants->dir );
+define( 'GITWIRE_URL', $constants->url );
+define( 'GITWIRE_BASENAME', $constants->basename );
 
 Plugin::instance( __FILE__ );

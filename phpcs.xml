@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
-<ruleset name="Git for WordPress">
-	<description>PHP coding standards for Git for WordPress plugin.</description>
+<ruleset name="Gitwire">
+	<description>PHP coding standards for the Gitwire plugin.</description>
 
 	<!-- Scan these paths. -->
-	<file>git.php</file>
+	<file>gitwire.php</file>
 	<file>uninstall.php</file>
 	<file>autoload.php</file>
 	<file>includes</file>

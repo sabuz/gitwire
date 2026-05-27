@@ -23,9 +23,9 @@ const BrowsePanel = lazy( () => import( './components/browse-panel' ) );
 const InstalledPanel = lazy( () => import( './components/installed-panel' ) );
 
 const TABS = [
-	{ name: 'installed', label: __( 'Installed', 'git' ) },
-	{ name: 'browse', label: __( 'Browse', 'git' ) },
-	{ name: 'settings', label: __( 'Settings', 'git' ) },
+	{ name: 'installed', label: __( 'Installed', 'gitwire' ) },
+	{ name: 'browse', label: __( 'Browse', 'gitwire' ) },
+	{ name: 'settings', label: __( 'Settings', 'gitwire' ) },
 ];
 
 /**
@@ -37,7 +37,7 @@ function showOrphanedNotice( item ) {
 			/* translators: %s: repository full name */
 			__(
 				'"%s" was removed from tracking. Its directory no longer exists.',
-				'git'
+				'gitwire'
 			),
 			item.full_name
 		)
@@ -46,7 +46,7 @@ function showOrphanedNotice( item ) {
 
 function tabUrl( tabName ) {
 	const url = new URL( window.location.href );
-	url.searchParams.set( 'page', 'git' );
+	url.searchParams.set( 'page', 'gitwire' );
 	if ( tabName === 'installed' ) {
 		url.searchParams.delete( 'path' );
 	} else {
@@ -79,7 +79,7 @@ function updateSidebarActive( tabName ) {
 
 function syncUrl( tabName ) {
 	const url = new URL( window.location.href );
-	url.searchParams.set( 'page', 'git' );
+	url.searchParams.set( 'page', 'gitwire' );
 	if ( tabName === 'installed' ) {
 		url.searchParams.delete( 'path' );
 	} else {
@@ -113,7 +113,7 @@ export default function App( { initialData } ) {
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
-					__( '%s updated to latest.', 'git' ),
+					__( '%s updated to latest.', 'gitwire' ),
 					initialData.update_success.full_name
 				)
 			);
@@ -125,7 +125,7 @@ export default function App( { initialData } ) {
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
-					__( '%s activated.', 'git' ),
+					__( '%s activated.', 'gitwire' ),
 					initialData.activation_success.full_name
 				)
 			);
@@ -144,9 +144,9 @@ export default function App( { initialData } ) {
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect( () => {
-		const tab = sessionStorage.getItem( 'gwp_goto_tab' );
+		const tab = sessionStorage.getItem( 'gitwire_goto_tab' );
 		if ( tab ) {
-			sessionStorage.removeItem( 'gwp_goto_tab' );
+			sessionStorage.removeItem( 'gitwire_goto_tab' );
 			setActiveTab( tab );
 			syncUrl( tab );
 		} else {
@@ -173,7 +173,7 @@ export default function App( { initialData } ) {
 			}
 			try {
 				const params = new URL( a.href ).searchParams;
-				if ( params.get( 'page' ) !== 'git' ) {
+				if ( params.get( 'page' ) !== 'gitwire' ) {
 					return;
 				}
 				const tab = PATH_TO_TAB[ params.get( 'path' ) || '' ];
@@ -226,7 +226,7 @@ export default function App( { initialData } ) {
 						/* translators: %s: renamed directory slug */
 						__(
 							'Installed as "%s" to avoid a directory conflict with an existing installation.',
-							'git'
+							'gitwire'
 						),
 						result.slug
 					),
@@ -236,7 +236,7 @@ export default function App( { initialData } ) {
 				queuePendingToast( {
 					message: sprintf(
 						/* translators: %s: repository full name */
-						__( '%s installed successfully.', 'git' ),
+						__( '%s installed successfully.', 'gitwire' ),
 						repoFullName
 					),
 					variant: 'success',
@@ -267,8 +267,8 @@ export default function App( { initialData } ) {
 
 	if ( loading || ! settings ) {
 		return (
-			<div className="gwp-page">
-				<div className="gwp-page-loading">
+			<div className="gitwire-page">
+				<div className="gitwire-page-loading">
 					<Spinner />
 				</div>
 			</div>
@@ -277,30 +277,30 @@ export default function App( { initialData } ) {
 
 	const installedCount = Object.keys( installed ).length;
 	const panelFallback = (
-		<div className="gwp-page-loading">
+		<div className="gitwire-page-loading">
 			<Spinner />
 		</div>
 	);
 
 	return (
-		<div className="gwp-page">
+		<div className="gitwire-page">
 			<Toaster />
-			<div className="gwp-page-header">
-				<h1 className="gwp-page-title">
+			<div className="gitwire-page-header">
+				<h1 className="gitwire-page-title">
 					{ initialData.icon_url && (
 						<img
 							alt=""
 							aria-hidden="true"
-							className="gwp-page-title__icon"
+							className="gitwire-page-title__icon"
 							src={ initialData.icon_url }
 						/>
 					) }
-					{ __( 'Git', 'git' ) }
+					{ __( 'Gitwire', 'gitwire' ) }
 				</h1>
 
 				<nav
-					aria-label={ __( 'Plugin navigation', 'git' ) }
-					className="gwp-page-nav"
+					aria-label={ __( 'Plugin navigation', 'gitwire' ) }
+					className="gitwire-page-nav"
 				>
 					{ TABS.map( ( tab ) => (
 						<a
@@ -308,7 +308,7 @@ export default function App( { initialData } ) {
 							aria-current={
 								activeTab === tab.name ? 'page' : undefined
 							}
-							className={ `gwp-nav-tab${
+							className={ `gitwire-nav-tab${
 								activeTab === tab.name ? ' is-active' : ''
 							}` }
 							href={ tabUrl( tab.name ) }
@@ -317,7 +317,7 @@ export default function App( { initialData } ) {
 							{ tab.label }
 							{ tab.name === 'installed' &&
 								installedCount > 0 && (
-									<span className="gwp-nav-badge">
+									<span className="gitwire-nav-badge">
 										{ installedCount }
 									</span>
 								) }
@@ -326,7 +326,7 @@ export default function App( { initialData } ) {
 				</nav>
 			</div>
 
-			<div className="gwp-page-content">
+			<div className="gitwire-page-content">
 				{ activeTab === 'settings' && (
 					<SettingsPanel
 						connection={ connection }

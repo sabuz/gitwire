@@ -77,7 +77,7 @@ export default function BranchModal( {
 			onSwitched( selectedBranch );
 			onClose();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Branch switch failed.', 'git' ) );
+			toast.error( e.message || __( 'Branch switch failed.', 'gitwire' ) );
 		} finally {
 			setSwitching( false );
 		}
@@ -85,12 +85,12 @@ export default function BranchModal( {
 
 	return (
 		<Modal
-			className="gwp-modal"
+			className="gitwire-modal"
 			style={ { width: 480 } }
 			title={
-				<span className="gwp-modal__title">
-					{ __( 'Switch branch', 'git' ) }{ ' ' }
-					<span style={ { color: 'var(--gwp-color-accent)' } }>
+				<span className="gitwire-modal__title">
+					{ __( 'Switch branch', 'gitwire' ) }{ ' ' }
+					<span style={ { color: 'var(--gitwire-color-accent)' } }>
 						{ item.repo }
 					</span>
 				</span>
@@ -100,7 +100,7 @@ export default function BranchModal( {
 			<ComboboxControl
 				__next40pxDefaultSize
 				__nextHasNoMarginBottom
-				label={ __( 'Branch', 'git' ) }
+				label={ __( 'Branch', 'gitwire' ) }
 				options={ branchOptions }
 				value={ selectedBranch }
 				onChange={ ( val ) => val && setSelectedBranch( val ) }
@@ -108,7 +108,7 @@ export default function BranchModal( {
 			/>
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
 				<Button variant="tertiary" onClick={ onClose }>
-					{ __( 'Cancel', 'git' ) }
+					{ __( 'Cancel', 'gitwire' ) }
 				</Button>
 				<Button
 					disabled={ switching }
@@ -117,8 +117,8 @@ export default function BranchModal( {
 					onClick={ handleSwitch }
 				>
 					{ switching
-						? __( 'Switching…', 'git' )
-						: __( 'Switch', 'git' ) }
+						? __( 'Switching…', 'gitwire' )
+						: __( 'Switch', 'gitwire' ) }
 				</Button>
 			</Flex>
 		</Modal>

@@ -2,11 +2,11 @@
 /**
  * Installer — downloads and extracts GitHub repositories as plugins or themes.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.0.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -45,7 +45,7 @@ class Installer {
 
 		// Build the absolute path of the deleted plugin's directory.
 		$deleted_dir = untrailingslashit( WP_PLUGIN_DIR ) . '/' . dirname( $plugin_file );
-		$installed   = (array) get_option( 'gwp_installed', [] );
+		$installed   = (array) get_option( 'gitwire_installed', [] );
 		$dirty       = false;
 
 		foreach ( $installed as $key => $rec ) {
@@ -57,7 +57,7 @@ class Installer {
 		}
 
 		if ( $dirty ) {
-			update_option( 'gwp_installed', $installed );
+			update_option( 'gitwire_installed', $installed );
 		}
 	}
 
@@ -76,7 +76,7 @@ class Installer {
 
 		// Build the absolute path of the deleted theme's directory.
 		$deleted_dir = untrailingslashit( get_theme_root() ) . '/' . $stylesheet;
-		$installed   = (array) get_option( 'gwp_installed', [] );
+		$installed   = (array) get_option( 'gitwire_installed', [] );
 		$dirty       = false;
 
 		foreach ( $installed as $key => $rec ) {
@@ -88,7 +88,7 @@ class Installer {
 		}
 
 		if ( $dirty ) {
-			update_option( 'gwp_installed', $installed );
+			update_option( 'gitwire_installed', $installed );
 		}
 	}
 
@@ -164,7 +164,7 @@ class Installer {
 		$key       = $provider . ':' . $full_name;
 
 		if ( ! isset( $installed[ $key ] ) ) {
-			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
 		$rec    = $installed[ $key ];
@@ -192,7 +192,7 @@ class Installer {
 		$key       = $provider . ':' . $full_name;
 
 		if ( ! isset( $installed[ $key ] ) ) {
-			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
 		$rec  = $installed[ $key ];
@@ -205,7 +205,7 @@ class Installer {
 		}
 
 		unset( $installed[ $key ] );
-		update_option( 'gwp_installed', $installed );
+		update_option( 'gitwire_installed', $installed );
 
 		return true;
 	}
@@ -223,7 +223,7 @@ class Installer {
 		$key       = $provider . ':' . $full_name;
 
 		if ( ! isset( $installed[ $key ] ) ) {
-			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
 		$rec = $installed[ $key ];
@@ -241,14 +241,14 @@ class Installer {
 					$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
 					if ( $plugin_file ) {
 						$installed[ $key ]['plugin_file'] = $plugin_file;
-						update_option( 'gwp_installed', $installed );
+						update_option( 'gitwire_installed', $installed );
 					}
 				}
 			}
 
 			if ( ! $plugin_file ) {
 				return new \WP_Error(
-					'gwp_no_plugin_file',
+					'gitwire_no_plugin_file',
 					'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.',
 					[ 'status' => 500 ]
 				);
@@ -285,7 +285,7 @@ class Installer {
 			if ( is_wp_error( $requirements ) ) {
 				self::clear_activation_guard();
 				return new \WP_Error(
-					'gwp_theme_requirements',
+					'gitwire_theme_requirements',
 					wp_strip_all_tags( $requirements->get_error_message() ),
 					[ 'status' => 400 ]
 				);
@@ -294,7 +294,7 @@ class Installer {
 			switch_theme( $rec['slug'] );
 			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
 
-			delete_option( 'gwp_pending_update' );
+			delete_option( 'gitwire_pending_update' );
 
 			$scrape = Theme_Scraper::scrape_activation();
 			if ( is_wp_error( $scrape ) ) {
@@ -341,7 +341,7 @@ class Installer {
 		}
 
 		self::clear_guard_feedback();
-		update_option( 'gwp_pending_update', $pending, false );
+		update_option( 'gitwire_pending_update', $pending, false );
 
 		return $pending;
 	}
@@ -353,7 +353,7 @@ class Installer {
 	 * @return void
 	 */
 	private static function clear_activation_guard(): void {
-		delete_option( 'gwp_pending_update' );
+		delete_option( 'gitwire_pending_update' );
 	}
 
 	/**
@@ -363,14 +363,14 @@ class Installer {
 	 * @return void
 	 */
 	private static function sync_theme_activation_target(): void {
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if ( ! is_array( $pending ) || 'theme' !== ( $pending['type'] ?? '' ) ) {
 			return;
 		}
 
 		$pending['target_stylesheet'] = get_stylesheet();
 		$pending['target_template']   = get_template();
-		update_option( 'gwp_pending_update', $pending, false );
+		update_option( 'gitwire_pending_update', $pending, false );
 	}
 
 	/**
@@ -380,7 +380,7 @@ class Installer {
 	 * @return void
 	 */
 	private static function complete_plugin_activation_guard(): void {
-		delete_option( 'gwp_pending_update' );
+		delete_option( 'gitwire_pending_update' );
 	}
 
 	/**
@@ -396,13 +396,13 @@ class Installer {
 		$key       = $provider . ':' . $full_name;
 
 		if ( ! isset( $installed[ $key ] ) ) {
-			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
 		$rec = $installed[ $key ];
 
 		if ( 'plugin' !== $rec['type'] ) {
-			return new \WP_Error( 'gwp_unsupported', 'Only plugins can be deactivated this way.', [ 'status' => 400 ] );
+			return new \WP_Error( 'gitwire_unsupported', 'Only plugins can be deactivated this way.', [ 'status' => 400 ] );
 		}
 
 		if ( ! function_exists( 'deactivate_plugins' ) ) {
@@ -417,14 +417,14 @@ class Installer {
 				$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
 				if ( $plugin_file ) {
 					$installed[ $key ]['plugin_file'] = $plugin_file;
-					update_option( 'gwp_installed', $installed );
+					update_option( 'gitwire_installed', $installed );
 				}
 			}
 		}
 
 		if ( ! $plugin_file ) {
 			return new \WP_Error(
-				'gwp_no_plugin_file',
+				'gitwire_no_plugin_file',
 				'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.',
 				[ 'status' => 500 ]
 			);
@@ -443,7 +443,7 @@ class Installer {
 	 * @return array<string, mixed> Map of "provider:full_name" => record.
 	 */
 	public static function get_installed(): array {
-		$raw      = (array) get_option( 'gwp_installed', [] );
+		$raw      = (array) get_option( 'gitwire_installed', [] );
 		$result   = [];
 		$migrated = false;
 
@@ -457,7 +457,7 @@ class Installer {
 		}
 
 		if ( $migrated ) {
-			update_option( 'gwp_installed', $result );
+			update_option( 'gitwire_installed', $result );
 		}
 
 		return $result;
@@ -486,11 +486,11 @@ class Installer {
 	 * @return void
 	 */
 	public static function set_head( string $provider, string $full_name, string $sha ): void {
-		$installed = (array) get_option( 'gwp_installed', [] );
+		$installed = (array) get_option( 'gitwire_installed', [] );
 		$key       = $provider . ':' . $full_name;
 		if ( isset( $installed[ $key ] ) ) {
 			$installed[ $key ]['head'] = $sha;
-			update_option( 'gwp_installed', $installed );
+			update_option( 'gitwire_installed', $installed );
 		}
 	}
 
@@ -523,7 +523,7 @@ class Installer {
 	 * @return string
 	 */
 	private static function known_fatal_head_key( string $provider, string $full_name, string $branch ): string {
-		return 'gwp_fatal_head_' . md5( $provider . ':' . $full_name . ':' . $branch );
+		return 'gitwire_fatal_head_' . md5( $provider . ':' . $full_name . ':' . $branch );
 	}
 
 	/**
@@ -566,14 +566,14 @@ class Installer {
 	public static function known_fatal_head_message( string $type, string $remote_sha ): string {
 		$short = substr( $remote_sha, 0, 7 );
 		$label = 'theme' === $type
-			? __( 'theme', 'git' )
-			: __( 'plugin', 'git' );
+			? __( 'theme', 'gitwire' )
+			: __( 'plugin', 'gitwire' );
 
 		return sprintf(
 			/* translators: 1: short commit SHA, 2: plugin or theme */
 			__(
 				'The latest commit (%1$s) caused a fatal error on this active %2$s and was not pulled. Your current version was kept. Push a new commit or wait a few minutes to retry %1$s.',
-				'git'
+				'gitwire'
 			),
 			$short,
 			$label
@@ -674,7 +674,7 @@ class Installer {
 	 * @return string|null
 	 */
 	private static function resolve_remote_head_for_record( array $rec, string $provider, string $full_name, string $branch ): ?string {
-		$remote_key = 'gwp_remote_' . md5( $provider . ':' . $full_name . ':' . $branch );
+		$remote_key = 'gitwire_remote_' . md5( $provider . ':' . $full_name . ':' . $branch );
 		$cached     = get_transient( $remote_key );
 		if ( is_string( $cached ) && $cached ) {
 			return $cached;
@@ -685,7 +685,7 @@ class Installer {
 			return null;
 		}
 
-		$settings = (array) get_option( 'gwp_settings', [] );
+		$settings = (array) get_option( 'gitwire_settings', [] );
 		$api      = Provider_Factory::make( $settings, $provider );
 
 		return self::fetch_remote_head_sha( $api, $parts[0], $parts[1], $branch );
@@ -715,7 +715,7 @@ class Installer {
 		}
 
 		$installed[ $record_key ] = $record;
-		update_option( 'gwp_installed', $installed );
+		update_option( 'gitwire_installed', $installed );
 
 		return $record;
 	}
@@ -746,7 +746,7 @@ class Installer {
 	): array|\WP_Error {
 		self::init_fs();
 
-		$settings  = (array) get_option( 'gwp_settings', [] );
+		$settings  = (array) get_option( 'gitwire_settings', [] );
 		$full_name = $owner . '/' . $repo;
 		$api       = Provider_Factory::make( $settings, $provider );
 
@@ -809,14 +809,14 @@ class Installer {
 		if ( $is_active_update ) {
 			if ( 'theme' === $type ) {
 				self::clear_guard_feedback();
-				delete_option( 'gwp_pending_update' );
+				delete_option( 'gitwire_pending_update' );
 			}
 
 			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
 			if ( $remote_sha && self::matches_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha ) ) {
 				wp_delete_file( $zip_file );
 				return new \WP_Error(
-					'gwp_known_fatal_head',
+					'gitwire_known_fatal_head',
 					self::known_fatal_head_message( $type, $remote_sha ),
 					[ 'status' => 409 ]
 				);
@@ -826,11 +826,11 @@ class Installer {
 		// Backup existing installation (for fatal-error rollback).
 		$backup_path = null;
 		if ( is_dir( $install_path ) ) {
-			$backup_path = $install_path . '--gwp-bak-' . time();
+			$backup_path = $install_path . '--gitwire-bak-' . time();
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
 			if ( ! rename( $install_path, $backup_path ) ) {
 				wp_delete_file( $zip_file );
-				return new \WP_Error( 'gwp_backup_failed', 'Could not create backup of existing installation.' );
+				return new \WP_Error( 'gitwire_backup_failed', 'Could not create backup of existing installation.' );
 			}
 		}
 
@@ -846,7 +846,7 @@ class Installer {
 		];
 
 		if ( ! $sync_theme_guard ) {
-			update_option( 'gwp_pending_update', $pending, false );
+			update_option( 'gitwire_pending_update', $pending, false );
 		}
 
 		// Extract.
@@ -857,7 +857,7 @@ class Installer {
 			// Restore backup immediately (no fatal error needed).
 			self::restore_backup( $install_path, $backup_path );
 			if ( ! $sync_theme_guard ) {
-				delete_option( 'gwp_pending_update' );
+				delete_option( 'gitwire_pending_update' );
 			}
 			return $extracted;
 		}
@@ -871,7 +871,7 @@ class Installer {
 			$plugin_file            = self::find_plugin_file( $install_path, $slug );
 			$pending['plugin_file'] = $plugin_file;
 			if ( ! $sync_theme_guard ) {
-				update_option( 'gwp_pending_update', $pending, false );
+				update_option( 'gitwire_pending_update', $pending, false );
 			}
 		}
 
@@ -896,7 +896,7 @@ class Installer {
 		$pending['prev_record'] = $installed[ $record_key ] ?? null;
 		$pending['provider']    = $provider;
 		if ( ! $sync_theme_guard ) {
-			update_option( 'gwp_pending_update', $pending, false );
+			update_option( 'gitwire_pending_update', $pending, false );
 		}
 
 		$plugin_file  = 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null;
@@ -911,12 +911,12 @@ class Installer {
 
 			$pending['context'] = 'update';
 			self::clear_guard_feedback();
-			update_option( 'gwp_pending_update', $pending, false );
+			update_option( 'gitwire_pending_update', $pending, false );
 
 			$activated = self::reactivate_plugin_after_update( $plugin_file );
 			if ( is_wp_error( $activated ) ) {
 				self::restore_backup( $install_path, $backup_path );
-				delete_option( 'gwp_pending_update' );
+				delete_option( 'gitwire_pending_update' );
 				if ( ! $remote_sha ) {
 					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
 				}
@@ -1014,7 +1014,7 @@ class Installer {
 	 */
 	private static function finalize_successful_update( ?string $backup_path ): void {
 		self::delete_backup_path( $backup_path );
-		delete_option( 'gwp_pending_update' );
+		delete_option( 'gitwire_pending_update' );
 	}
 
 	/**
@@ -1024,7 +1024,7 @@ class Installer {
 	 * @return void
 	 */
 	private static function clear_guard_feedback(): void {
-		delete_option( 'gwp_fatal_notice' );
+		delete_option( 'gitwire_fatal_notice' );
 		Error_Handler::clear_bootstrap_verified();
 	}
 
@@ -1096,7 +1096,7 @@ class Installer {
 		global $wp_filesystem;
 
 		// Unzip to a temp directory first.
-		$tmp_dir = get_temp_dir() . 'gwp-extract-' . uniqid( '', true );
+		$tmp_dir = get_temp_dir() . 'gitwire-extract-' . uniqid( '', true );
 
 		$result = unzip_file( $zip_path, $tmp_dir );
 		if ( is_wp_error( $result ) ) {
@@ -1107,7 +1107,7 @@ class Installer {
 		$subdirs = glob( trailingslashit( $tmp_dir ) . '*', GLOB_ONLYDIR );
 		if ( empty( $subdirs ) ) {
 			$wp_filesystem->delete( $tmp_dir, true );
-			return new \WP_Error( 'gwp_empty_zip', 'The downloaded ZIP contained no directory.' );
+			return new \WP_Error( 'gitwire_empty_zip', 'The downloaded ZIP contained no directory.' );
 		}
 
 		$extracted_folder = $subdirs[0];
@@ -1115,7 +1115,7 @@ class Installer {
 		// Move to final destination.
 		if ( ! $wp_filesystem->move( $extracted_folder, $destination, true ) ) {
 			$wp_filesystem->delete( $tmp_dir, true );
-			return new \WP_Error( 'gwp_move_failed', 'Could not move extracted files to destination.' );
+			return new \WP_Error( 'gitwire_move_failed', 'Could not move extracted files to destination.' );
 		}
 
 		$wp_filesystem->delete( $tmp_dir, true );
@@ -1178,7 +1178,7 @@ class Installer {
 			return false;
 		}
 
-		$failed_path = $install_path . '--gwp-failed-' . time();
+		$failed_path = $install_path . '--gitwire-failed-' . time();
 
 		if ( is_dir( $install_path ) ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
@@ -1218,7 +1218,7 @@ class Installer {
 		$parent = dirname( $install_path );
 		$slug   = basename( $install_path );
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		$matches = glob( $parent . DIRECTORY_SEPARATOR . $slug . '--gwp-bak-*' );
+		$matches = glob( $parent . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
 		if ( ! is_array( $matches ) || empty( $matches ) ) {
 			return null;
 		}
@@ -1317,10 +1317,10 @@ class Installer {
 
 		if ( ! $slug || ! is_dir( $install_path ) ) {
 			return new \WP_Error(
-				'gwp_theme_missing',
+				'gitwire_theme_missing',
 				sprintf(
 					/* translators: %s: theme full name */
-					__( '%s is not installed on disk. Try pulling the latest version first.', 'git' ),
+					__( '%s is not installed on disk. Try pulling the latest version first.', 'gitwire' ),
 					$full_name
 				),
 				[ 'status' => 404 ]
@@ -1329,10 +1329,10 @@ class Installer {
 
 		if ( ! is_readable( $install_path . '/style.css' ) ) {
 			return new \WP_Error(
-				'gwp_theme_stylesheet_missing',
+				'gitwire_theme_stylesheet_missing',
 				sprintf(
 					/* translators: %s: theme full name */
-					__( '%s is missing a readable style.css file.', 'git' ),
+					__( '%s is missing a readable style.css file.', 'gitwire' ),
 					$full_name
 				),
 				[ 'status' => 400 ]
@@ -1344,10 +1344,10 @@ class Installer {
 		$theme = wp_get_theme( $slug );
 		if ( ! $theme->exists() ) {
 			return new \WP_Error(
-				'gwp_theme_not_found',
+				'gitwire_theme_not_found',
 				sprintf(
 					/* translators: %s: theme full name */
-					__( 'WordPress could not find %s in the themes directory.', 'git' ),
+					__( 'WordPress could not find %s in the themes directory.', 'gitwire' ),
 					$full_name
 				),
 				[ 'status' => 404 ]
@@ -1356,10 +1356,10 @@ class Installer {
 
 		if ( $theme->errors() ) {
 			return new \WP_Error(
-				'gwp_theme_invalid',
+				'gitwire_theme_invalid',
 				sprintf(
 					/* translators: 1: theme full name, 2: error detail */
-					__( '%1$s cannot be activated: %2$s', 'git' ),
+					__( '%1$s cannot be activated: %2$s', 'gitwire' ),
 					$full_name,
 					wp_strip_all_tags( $theme->errors()->get_error_message() )
 				),
@@ -1386,8 +1386,8 @@ class Installer {
 		$slug = $rec['slug'] ?? '';
 		if ( ! $slug ) {
 			return new \WP_Error(
-				'gwp_theme_missing',
-				__( 'Theme slug is missing.', 'git' ),
+				'gitwire_theme_missing',
+				__( 'Theme slug is missing.', 'gitwire' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -1395,7 +1395,7 @@ class Installer {
 		$requirements = validate_theme_requirements( $slug );
 		if ( is_wp_error( $requirements ) ) {
 			return new \WP_Error(
-				'gwp_theme_requirements',
+				'gitwire_theme_requirements',
 				wp_strip_all_tags( $requirements->get_error_message() ),
 				[ 'status' => 400 ]
 			);

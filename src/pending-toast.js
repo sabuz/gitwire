@@ -1,6 +1,6 @@
 import { toastDuration } from './toast';
 
-const PENDING_TOAST_KEY = 'gwp_pending_toast';
+const PENDING_TOAST_KEY = 'gitwire_pending_toast';
 
 /**
  * Clears any toast queued for the next page load.
@@ -32,17 +32,17 @@ export function queuePendingToast( {
 export function queuePendingToastAndReload( message ) {
 	queuePendingToast( { message, variant: 'success' } );
 	const url = new URL( window.location.href );
-	url.searchParams.set( 'page', 'git' );
+	url.searchParams.set( 'page', 'gitwire' );
 	window.location.assign( url.toString() );
 }
 
 /**
- * Reloads the Git admin page so server-side finalize can complete the guard.
+ * Reloads the Gitwire admin page so server-side finalize can complete the guard.
  */
 export function queueGuardFinalizeReload() {
 	clearPendingToast();
 	const url = new URL( window.location.href );
-	url.searchParams.set( 'page', 'git' );
+	url.searchParams.set( 'page', 'gitwire' );
 	window.location.assign( url.toString() );
 }
 

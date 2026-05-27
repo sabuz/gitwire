@@ -49,9 +49,9 @@ export default function SettingsPanel( {
 			await api.saveSettings( { smart_install: newVal } );
 			const saved = await api.getSettings();
 			onSave( saved );
-			toast.success( __( 'Settings saved.', 'git' ) );
+			toast.success( __( 'Settings saved.', 'gitwire' ) );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'git' ) );
+			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
 			setSmartInstall( ! newVal );
 		} finally {
 			setSavingSi( false );
@@ -60,7 +60,7 @@ export default function SettingsPanel( {
 
 	return (
 		<div
-			className="gwp-settings-panels"
+			className="gitwire-settings-panels"
 			style={ { maxWidth: 540, margin: '0 auto' } }
 		>
 			<GitHubCard
@@ -90,7 +90,7 @@ export default function SettingsPanel( {
 			<Card>
 				<CardHeader>
 					<Heading level={ 4 }>
-						{ __( 'Miscellaneous', 'git' ) }
+						{ __( 'Miscellaneous', 'gitwire' ) }
 					</Heading>
 				</CardHeader>
 				<CardBody>
@@ -100,15 +100,15 @@ export default function SettingsPanel( {
 						disabled={ savingSi }
 						help={ __(
 							'Only allow installing repositories detected as a WordPress plugin or theme.',
-							'git'
+							'gitwire'
 						) }
 						label={
 							<>
 								<strong>
-									{ __( 'Smart Install', 'git' ) }
+									{ __( 'Smart Install', 'gitwire' ) }
 								</strong>{ ' ' }
-								<span className="gwp-badge-recommended">
-									{ __( 'Recommended', 'git' ) }
+								<span className="gitwire-badge-recommended">
+									{ __( 'Recommended', 'gitwire' ) }
 								</span>
 							</>
 						}
@@ -149,7 +149,7 @@ function GitHubCard( {
 
 	const handleConnect = async () => {
 		if ( ! token.trim() && ! username.trim() ) {
-			toast.error( __( 'Enter a username or access token.', 'git' ) );
+			toast.error( __( 'Enter a username or access token.', 'gitwire' ) );
 			return;
 		}
 		setSaving( true );
@@ -170,14 +170,14 @@ function GitHubCard( {
 			const saved = await api.getSettings();
 			onSave( saved );
 			onConnectionUpdate( result );
-			toast.success( __( 'GitHub connected.', 'git' ) );
+			toast.success( __( 'GitHub connected.', 'gitwire' ) );
 		} catch ( e ) {
 			if ( token.trim() ) {
 				setTokenError( true );
 			} else {
 				setUsernameError( true );
 			}
-			toast.error( e.message || __( 'Connection test failed.', 'git' ) );
+			toast.error( e.message || __( 'Connection test failed.', 'gitwire' ) );
 		} finally {
 			setTesting( false );
 			setSaving( false );
@@ -197,9 +197,9 @@ function GitHubCard( {
 			const saved = await api.getSettings();
 			onSave( saved );
 			onConnectionUpdate( null );
-			toast.success( __( 'GitHub disconnected.', 'git' ) );
+			toast.success( __( 'GitHub disconnected.', 'gitwire' ) );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Disconnect failed.', 'git' ) );
+			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
 		} finally {
 			setSaving( false );
 		}
@@ -211,7 +211,7 @@ function GitHubCard( {
 			<div style={ { textAlign: 'center', padding: '24px 0' } }>
 				<Spinner />
 				<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
-					{ __( 'Checking connection…', 'git' ) }
+					{ __( 'Checking connection…', 'gitwire' ) }
 				</p>
 			</div>
 		);
@@ -220,7 +220,7 @@ function GitHubCard( {
 			<ConnectedProfile
 				connection={ connection }
 				isBusy={ saving }
-				signOutLabel={ __( 'Sign Out', 'git' ) }
+				signOutLabel={ __( 'Sign Out', 'gitwire' ) }
 				onSignOut={ handleSignOut }
 			/>
 		);
@@ -230,12 +230,12 @@ function GitHubCard( {
 				<TextControl
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
-					className={ usernameError ? 'gwp-input-error' : undefined }
+					className={ usernameError ? 'gitwire-input-error' : undefined }
 					help={ __(
 						'Your GitHub username or organization. Not required when a token is set.',
-						'git'
+						'gitwire'
 					) }
-					label={ __( 'GitHub Username', 'git' ) }
+					label={ __( 'GitHub Username', 'gitwire' ) }
 					placeholder="your-github-username"
 					value={ username }
 					onChange={ ( v ) => {
@@ -250,31 +250,31 @@ function GitHubCard( {
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					autoComplete="new-password"
-					className={ tokenError ? 'gwp-input-error' : undefined }
+					className={ tokenError ? 'gitwire-input-error' : undefined }
 					help={
 						<>
 							{ __(
 								'For private repos or to raise the rate limit.',
-								'git'
+								'gitwire'
 							) }{ ' ' }
 							<a
 								href="https://github.com/settings/personal-access-tokens/new"
 								rel="noopener noreferrer"
 								target="_blank"
 							>
-								{ __( 'Create token', 'git' ) }
+								{ __( 'Create token', 'gitwire' ) }
 							</a>{ ' ' }
 							{ __(
 								'Select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
-								'git'
+								'gitwire'
 							) }
 						</>
 					}
 					label={
 						<>
-							{ __( 'Fine-grained Access Token', 'git' ) }{ ' ' }
-							<span className="gwp-label-optional">
-								{ __( '(Optional)', 'git' ) }
+							{ __( 'Fine-grained Access Token', 'gitwire' ) }{ ' ' }
+							<span className="gitwire-label-optional">
+								{ __( '(Optional)', 'gitwire' ) }
 							</span>
 						</>
 					}
@@ -295,7 +295,7 @@ function GitHubCard( {
 					variant="primary"
 					onClick={ handleConnect }
 				>
-					{ __( 'Connect GitHub', 'git' ) }
+					{ __( 'Connect GitHub', 'gitwire' ) }
 				</Button>
 			</>
 		);
@@ -318,12 +318,12 @@ function GitHubCard( {
 						</svg>
 					</FlexItem>
 					<FlexBlock>
-						<Heading level={ 4 }>{ __( 'GitHub', 'git' ) }</Heading>
+						<Heading level={ 4 }>{ __( 'GitHub', 'gitwire' ) }</Heading>
 					</FlexBlock>
 					{ isConnected && connection && ! connection.error && (
 						<FlexItem>
 							<span
-								className={ `gwp-badge gwp-badge--${
+								className={ `gitwire-badge gitwire-badge--${
 									connection.authenticated
 										? 'success'
 										: 'warning'
@@ -331,8 +331,8 @@ function GitHubCard( {
 							>
 								<span className="dashicons dashicons-yes-alt" />
 								{ connection.authenticated
-									? __( 'Connected', 'git' )
-									: __( 'Public only', 'git' ) }
+									? __( 'Connected', 'gitwire' )
+									: __( 'Public only', 'gitwire' ) }
 							</span>
 						</FlexItem>
 					) }
@@ -372,7 +372,7 @@ function GitLabCard( {
 	const handleConnect = async () => {
 		if ( ! gitlabToken.trim() ) {
 			toast.error(
-				__( 'A GitLab Personal Access Token is required.', 'git' )
+				__( 'A GitLab Personal Access Token is required.', 'gitwire' )
 			);
 			return;
 		}
@@ -393,10 +393,10 @@ function GitLabCard( {
 			const saved = await api.getSettings();
 			onSave( saved );
 			onConnectionUpdate( result );
-			toast.success( __( 'GitLab connected.', 'git' ) );
+			toast.success( __( 'GitLab connected.', 'gitwire' ) );
 		} catch ( e ) {
 			setTokenError( true );
-			toast.error( e.message || __( 'Connection test failed.', 'git' ) );
+			toast.error( e.message || __( 'Connection test failed.', 'gitwire' ) );
 		} finally {
 			setTesting( false );
 			setSaving( false );
@@ -416,9 +416,9 @@ function GitLabCard( {
 			const saved = await api.getSettings();
 			onSave( saved );
 			onConnectionUpdate( null );
-			toast.success( __( 'GitLab disconnected.', 'git' ) );
+			toast.success( __( 'GitLab disconnected.', 'gitwire' ) );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Disconnect failed.', 'git' ) );
+			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
 		} finally {
 			setSaving( false );
 		}
@@ -430,7 +430,7 @@ function GitLabCard( {
 			<div style={ { textAlign: 'center', padding: '24px 0' } }>
 				<Spinner />
 				<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
-					{ __( 'Checking connection…', 'git' ) }
+					{ __( 'Checking connection…', 'gitwire' ) }
 				</p>
 			</div>
 		);
@@ -439,7 +439,7 @@ function GitLabCard( {
 			<ConnectedProfile
 				connection={ connection }
 				isBusy={ saving }
-				signOutLabel={ __( 'Sign Out', 'git' ) }
+				signOutLabel={ __( 'Sign Out', 'gitwire' ) }
 				onSignOut={ handleSignOut }
 			/>
 		);
@@ -450,24 +450,24 @@ function GitLabCard( {
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					autoComplete="new-password"
-					className={ tokenError ? 'gwp-input-error' : undefined }
+					className={ tokenError ? 'gitwire-input-error' : undefined }
 					help={
 						<>
-							{ __( 'Required.', 'git' ) }{ ' ' }
+							{ __( 'Required.', 'gitwire' ) }{ ' ' }
 							<a
 								href="https://gitlab.com/-/user_settings/personal_access_tokens"
 								rel="noopener noreferrer"
 								target="_blank"
 							>
-								{ __( 'Create token', 'git' ) }
+								{ __( 'Create token', 'gitwire' ) }
 							</a>{ ' ' }
 							{ __(
 								'- enable read_user, read_api and read_repository.',
-								'git'
+								'gitwire'
 							) }
 						</>
 					}
-					label={ __( 'Personal Access Token', 'git' ) }
+					label={ __( 'Personal Access Token', 'gitwire' ) }
 					placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
 					type="password"
 					value={ gitlabToken }
@@ -484,13 +484,13 @@ function GitLabCard( {
 					__nextHasNoMarginBottom
 					help={ __(
 						'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab (e.g. https://gitlab.example.com).',
-						'git'
+						'gitwire'
 					) }
 					label={
 						<>
-							{ __( 'GitLab Instance URL', 'git' ) }{ ' ' }
-							<span className="gwp-label-optional">
-								{ __( '(Optional)', 'git' ) }
+							{ __( 'GitLab Instance URL', 'gitwire' ) }{ ' ' }
+							<span className="gitwire-label-optional">
+								{ __( '(Optional)', 'gitwire' ) }
 							</span>
 						</>
 					}
@@ -507,7 +507,7 @@ function GitLabCard( {
 					variant="primary"
 					onClick={ handleConnect }
 				>
-					{ __( 'Connect GitLab', 'git' ) }
+					{ __( 'Connect GitLab', 'gitwire' ) }
 				</Button>
 			</>
 		);
@@ -530,13 +530,13 @@ function GitLabCard( {
 						</svg>
 					</FlexItem>
 					<FlexBlock>
-						<Heading level={ 4 }>{ __( 'GitLab', 'git' ) }</Heading>
+						<Heading level={ 4 }>{ __( 'GitLab', 'gitwire' ) }</Heading>
 					</FlexBlock>
 					{ isConnected && connection && ! connection.error && (
 						<FlexItem>
-							<span className="gwp-badge gwp-badge--success">
+							<span className="gitwire-badge gitwire-badge--success">
 								<span className="dashicons dashicons-yes-alt" />
-								{ __( 'Connected', 'git' ) }
+								{ __( 'Connected', 'gitwire' ) }
 							</span>
 						</FlexItem>
 					) }
@@ -562,9 +562,9 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 		return (
 			<Flex align="center" gap={ 3 } justify="space-between">
 				<FlexItem>
-					<span className="gwp-badge gwp-badge--success">
+					<span className="gitwire-badge gitwire-badge--success">
 						<span className="dashicons dashicons-yes-alt" />
-						{ __( 'Credentials saved', 'git' ) }
+						{ __( 'Credentials saved', 'gitwire' ) }
 					</span>
 				</FlexItem>
 				<FlexItem>
@@ -664,7 +664,7 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 						<div style={ { fontSize: 12, color: '#57606a' } }>
 							{ __(
 								'Profile unavailable. Add read_user scope to your token.',
-								'git'
+								'gitwire'
 							) }
 						</div>
 					) }
@@ -678,7 +678,7 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 						>
 							{ sprintf(
 								/* translators: %s: relative time */
-								__( 'Connection verified %s', 'git' ),
+								__( 'Connection verified %s', 'gitwire' ),
 								unixTimeAgo( connection.checked_at )
 							) }
 						</div>
@@ -700,7 +700,7 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 			{ hasRateLimit && (
 				<>
 					<hr
-						className="gwp-divider"
+						className="gitwire-divider"
 						style={ { margin: '12px 0' } }
 					/>
 					<div style={ { fontSize: 12 } }>
@@ -709,23 +709,23 @@ function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
 							style={ { marginBottom: 6 } }
 						>
 							<span style={ { color: '#24292f' } }>
-								{ __( 'API Usage', 'git' ) }
+								{ __( 'API Usage', 'gitwire' ) }
 							</span>
 							<strong>
 								{ connection.rate_remaining?.toLocaleString() }{ ' ' }
 								/ { connection.rate_limit?.toLocaleString() }
 							</strong>
 						</Flex>
-						<div className="gwp-rate-track">
+						<div className="gitwire-rate-track">
 							<div
-								className="gwp-rate-fill"
+								className="gitwire-rate-fill"
 								style={ {
 									width: `${ pct }%`,
 									background: barColor,
 								} }
 							/>
 						</div>
-						<p className="gwp-rate-note">
+						<p className="gitwire-rate-note">
 							<RateLimitNote
 								isGitHub={ isGitHub }
 								rateCountdown={ rateCountdown }
@@ -752,17 +752,17 @@ function RateLimitNote( { isGitHub, rateLimit, rateCountdown } ) {
 	if ( isGitHub && rateLimit === 60 ) {
 		return __(
 			"Unauthenticated limit is shared by your server's IP. Add a token for 5,000/hour.",
-			'git'
+			'gitwire'
 		);
 	}
 	if ( rateCountdown ) {
 		return sprintf(
 			/* translators: %s: time until rate limit resets */
-			__( 'Resets in %s.', 'git' ),
+			__( 'Resets in %s.', 'gitwire' ),
 			rateCountdown
 		);
 	}
-	return __( 'Resets in about an hour.', 'git' );
+	return __( 'Resets in about an hour.', 'gitwire' );
 }
 
 function humanDiff( ts ) {

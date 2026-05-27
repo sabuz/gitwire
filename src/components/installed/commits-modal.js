@@ -56,12 +56,12 @@ export default function CommitsModal( { item, onClose } ) {
 
 	return (
 		<Modal
-			className="gwp-modal"
+			className="gitwire-modal"
 			style={ { width: 560 } }
 			title={
-				<span className="gwp-modal__title">
-					{ __( 'Commits', 'git' ) }{ ' ' }
-					<span style={ { color: 'var(--gwp-color-accent)' } }>
+				<span className="gitwire-modal__title">
+					{ __( 'Commits', 'gitwire' ) }{ ' ' }
+					<span style={ { color: 'var(--gitwire-color-accent)' } }>
 						{ item.full_name }
 					</span>
 				</span>
@@ -69,14 +69,14 @@ export default function CommitsModal( { item, onClose } ) {
 			onRequestClose={ onClose }
 		>
 			{ commits === null && (
-				<div className="gwp-installed-spinner-row">
+				<div className="gitwire-installed-spinner-row">
 					<Spinner />
-					{ __( 'Loading commits…', 'git' ) }
+					{ __( 'Loading commits…', 'gitwire' ) }
 				</div>
 			) }
 			{ commits !== null && commits.length === 0 && (
 				<p style={ { color: '#57606a', fontSize: 13 } }>
-					{ __( 'No commits found.', 'git' ) }
+					{ __( 'No commits found.', 'gitwire' ) }
 				</p>
 			) }
 			{ commits !== null && commits.length > 0 && (
@@ -87,28 +87,28 @@ export default function CommitsModal( { item, onClose } ) {
 							( fatalSha && commit.sha === fatalSha );
 
 						return (
-							<div key={ commit.sha } className="gwp-commit-row">
+							<div key={ commit.sha } className="gitwire-commit-row">
 								{ hasFatalError ? (
 									<Tooltip
 										text={ __(
 											'This commit caused a fatal error.',
-											'git'
+											'gitwire'
 										) }
 									>
-										<code className="gwp-commit-sha is-fatal">
+										<code className="gitwire-commit-sha is-fatal">
 											{ commit.sha }
 										</code>
 									</Tooltip>
 								) : (
-									<code className="gwp-commit-sha">
+									<code className="gitwire-commit-sha">
 										{ commit.sha }
 									</code>
 								) }
-								<div className="gwp-commit-body">
-									<p className="gwp-commit-message">
+								<div className="gitwire-commit-body">
+									<p className="gitwire-commit-message">
 										{ commit.message }
 									</p>
-									<p className="gwp-commit-meta">
+									<p className="gitwire-commit-meta">
 										{ commit.author } ·{ ' ' }
 										{ new Date(
 											commit.date

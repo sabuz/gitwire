@@ -1,19 +1,19 @@
 <?php
 /**
- * REST API endpoints for the Git for WordPress plugin.
+ * REST API endpoints for the Gitwire plugin.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.0.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Registers and handles all REST API routes under the gwp/v1 namespace.
+ * Registers and handles all REST API routes under the gitwire/v1 namespace.
  */
 class REST {
 
@@ -22,7 +22,7 @@ class REST {
 	 *
 	 * @var string
 	 */
-	private const NS = 'gwp/v1';
+	private const NS = 'gitwire/v1';
 
 	/**
 	 * Registers the rest_api_init hook.
@@ -346,9 +346,9 @@ class REST {
 	 * @return \WP_REST_Response
 	 */
 	public static function get_activation_status(): \WP_REST_Response {
-		$fatal = get_option( 'gwp_fatal_notice' );
+		$fatal = get_option( 'gitwire_fatal_notice' );
 		if ( $fatal ) {
-			delete_option( 'gwp_fatal_notice' );
+			delete_option( 'gitwire_fatal_notice' );
 			return rest_ensure_response(
 				[
 					'status' => 'fatal',
@@ -357,7 +357,7 @@ class REST {
 			);
 		}
 
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if (
 			is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true )
@@ -399,9 +399,9 @@ class REST {
 	 * @return \WP_REST_Response
 	 */
 	public static function verify_bootstrap(): \WP_REST_Response {
-		$fatal = get_option( 'gwp_fatal_notice' );
+		$fatal = get_option( 'gitwire_fatal_notice' );
 		if ( $fatal ) {
-			delete_option( 'gwp_fatal_notice' );
+			delete_option( 'gitwire_fatal_notice' );
 			return rest_ensure_response(
 				[
 					'status' => 'fatal',
@@ -410,7 +410,7 @@ class REST {
 			);
 		}
 
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if (
 			! is_array( $pending )
 			|| ! in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true )
@@ -461,12 +461,12 @@ class REST {
 		if ( ! empty( $merged['gitlab_url'] ) && ! Settings::is_allowed_gitlab_url( $merged['gitlab_url'] ) ) {
 			return new \WP_Error(
 				'invalid_gitlab_url',
-				__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'git' ),
+				__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'gitwire' ),
 				[ 'status' => 400 ]
 			);
 		}
 
-		update_option( 'gwp_settings', $merged );
+		update_option( 'gitwire_settings', $merged );
 
 		return [
 			'saved'         => true,
@@ -484,7 +484,7 @@ class REST {
 	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
 	 */
 	public static function test_connection( ?\WP_REST_Request $req = null ): array|\WP_Error {
-		$settings = (array) get_option( 'gwp_settings', [] );
+		$settings = (array) get_option( 'gitwire_settings', [] );
 
 		if ( null === $req ) {
 			// Cron path — test every provider that has saved credentials.
@@ -613,9 +613,9 @@ class REST {
 	 * @return void
 	 */
 	private static function set_connection_cache( string $provider, ?array $data ): void {
-		$cache              = (array) get_option( 'gwp_connection_cache', [] );
+		$cache              = (array) get_option( 'gitwire_connection_cache', [] );
 		$cache[ $provider ] = $data;
-		update_option( 'gwp_connection_cache', $cache, false );
+		update_option( 'gitwire_connection_cache', $cache, false );
 	}
 
 	/**
@@ -626,7 +626,7 @@ class REST {
 	 * @return array<string, mixed>|\WP_Error Repository payload on success, WP_Error on failure.
 	 */
 	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
-		$settings = (array) get_option( 'gwp_settings', [] );
+		$settings = (array) get_option( 'gitwire_settings', [] );
 		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
 			$provider = 'github';
@@ -775,7 +775,7 @@ class REST {
 		$owner    = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo     = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		$settings = (array) get_option( 'gwp_settings', [] );
+		$settings = (array) get_option( 'gitwire_settings', [] );
 		$api      = self::make_api( $settings, $provider );
 		$result   = $api->get_branches( $owner, $repo );
 
@@ -804,7 +804,7 @@ class REST {
 			return $cached;
 		}
 
-		$settings = (array) get_option( 'gwp_settings', [] );
+		$settings = (array) get_option( 'gitwire_settings', [] );
 		$result   = self::detect_type_for_repo( $settings, $provider, $owner, $repo, $branch );
 
 		if ( is_wp_error( $result ) ) {
@@ -859,7 +859,7 @@ class REST {
 			if ( is_wp_error( $detected ) ) {
 				return new \WP_Error(
 					'detect_failed',
-					__( 'Could not verify repository type. Disable Smart Install or retry.', 'git' ),
+					__( 'Could not verify repository type. Disable Smart Install or retry.', 'gitwire' ),
 					[ 'status' => 400 ]
 				);
 			}
@@ -868,7 +868,7 @@ class REST {
 			if ( 'unknown' === $detected_type ) {
 				return new \WP_Error(
 					'unknown_type',
-					__( 'This repository is not detected as a WordPress plugin or theme.', 'git' ),
+					__( 'This repository is not detected as a WordPress plugin or theme.', 'gitwire' ),
 					[ 'status' => 400 ]
 				);
 			}
@@ -878,7 +878,7 @@ class REST {
 					'type_mismatch',
 					sprintf(
 						/* translators: 1: detected type, 2: requested type */
-						__( 'Repository detected as %1$s, not %2$s.', 'git' ),
+						__( 'Repository detected as %1$s, not %2$s.', 'gitwire' ),
 						$detected_type,
 						$type
 					),
@@ -970,7 +970,7 @@ class REST {
 		$pruned   = false;
 		$settings = Settings::get_raw();
 
-		$pending       = get_option( 'gwp_pending_update' );
+		$pending       = get_option( 'gitwire_pending_update' );
 		$pending_key   = '';
 		$pending_guard = is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
@@ -1023,7 +1023,7 @@ class REST {
 				$remote_head = self::fetch_remote_head( $rec, $settings );
 				if ( $remote_head ) {
 					set_transient(
-						'gwp_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) ),
+						'gitwire_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) ),
 						$remote_head,
 						HOUR_IN_SECONDS
 					);
@@ -1033,7 +1033,7 @@ class REST {
 		unset( $rec );
 
 		if ( $pruned ) {
-			update_option( 'gwp_installed', $records );
+			update_option( 'gitwire_installed', $records );
 		}
 
 		return [
@@ -1055,7 +1055,7 @@ class REST {
 		}
 
 		$active_theme  = get_stylesheet();
-		$pending       = get_option( 'gwp_pending_update' );
+		$pending       = get_option( 'gitwire_pending_update' );
 		$pending_guard = is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
 
@@ -1102,7 +1102,7 @@ class REST {
 				}
 			}
 
-			$remote_key  = 'gwp_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
+			$remote_key  = 'gitwire_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
 			$remote_head = get_transient( $remote_key );
 			if ( false !== $remote_head ) {
 				$rec['remote_head']      = $remote_head;
@@ -1290,7 +1290,7 @@ class REST {
 			return $result;
 		}
 
-		delete_transient( 'gwp_commits_' . md5( $provider . ':' . $full_name . ':' . $branch ) );
+		delete_transient( 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $branch ) );
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
 
@@ -1312,7 +1312,7 @@ class REST {
 		$record    = Installer::get_record( $provider, $full_name );
 
 		if ( ! $record ) {
-			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
 
 		if ( 'plugin' === ( $record['type'] ?? '' ) ) {
@@ -1322,8 +1322,8 @@ class REST {
 			$plugin_file = $record['plugin_file'] ?? '';
 			if ( $plugin_file && is_plugin_active( $plugin_file ) ) {
 				return new \WP_Error(
-					'gwp_active',
-					__( 'Deactivate the plugin before removing it.', 'git' ),
+					'gitwire_active',
+					__( 'Deactivate the plugin before removing it.', 'gitwire' ),
 					[ 'status' => 409 ]
 				);
 			}
@@ -1335,7 +1335,7 @@ class REST {
 			return $result;
 		}
 
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if ( is_array( $pending ) && ( $pending['full_name'] ?? '' ) === $full_name ) {
 			Error_Handler::abort_pending_guard();
 		}
@@ -1360,10 +1360,10 @@ class REST {
 
 		$record = Installer::get_record( $provider, $full_name );
 		if ( ! $record ) {
-			return new \WP_Error( 'gwp_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
 
-		$cache_key = 'gwp_commits_' . md5( $provider . ':' . $full_name . ':' . $record['branch'] );
+		$cache_key = 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $record['branch'] );
 		$cached    = get_transient( $cache_key );
 		if ( false !== $cached && is_array( $cached ) ) {
 			return self::annotate_commits_with_fatal(
@@ -1374,7 +1374,7 @@ class REST {
 			);
 		}
 
-		$settings = (array) get_option( 'gwp_settings', [] );
+		$settings = (array) get_option( 'gitwire_settings', [] );
 		$api      = self::make_api( $settings, $provider );
 		$commits  = $api->get_commits( $owner, $repo, $record['branch'] );
 
@@ -1500,7 +1500,7 @@ class REST {
 	 * @return void
 	 */
 	private static function store_head( string $owner, string $repo, string $branch, string $provider ): void {
-		$settings  = (array) get_option( 'gwp_settings', [] );
+		$settings  = (array) get_option( 'gitwire_settings', [] );
 		$api       = self::make_api( $settings, $provider );
 		$commits   = $api->get_commits( $owner, $repo, $branch, 1 );
 		$full_name = $owner . '/' . $repo;
@@ -1520,12 +1520,12 @@ class REST {
 	 * @return void
 	 */
 	private static function stage_pending_head( string $owner, string $repo, string $branch, string $provider ): void {
-		$pending = get_option( 'gwp_pending_update' );
+		$pending = get_option( 'gitwire_pending_update' );
 		if ( ! is_array( $pending ) || ! is_array( $pending['pending_record'] ?? null ) ) {
 			return;
 		}
 
-		$settings = (array) get_option( 'gwp_settings', [] );
+		$settings = (array) get_option( 'gitwire_settings', [] );
 		$api      = self::make_api( $settings, $provider );
 		$commits  = $api->get_commits( $owner, $repo, $branch, 1 );
 
@@ -1534,6 +1534,6 @@ class REST {
 		}
 
 		$pending['pending_record']['head'] = $commits[0]['sha'];
-		update_option( 'gwp_pending_update', $pending, false );
+		update_option( 'gitwire_pending_update', $pending, false );
 	}
 }

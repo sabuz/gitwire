@@ -34,11 +34,11 @@ export function startThemeGuardVerification( {
 		context === 'activate'
 			? __(
 					'Theme activation could not be verified. The previous theme was restored.',
-					'git'
+					'gitwire'
 			  )
 			: __(
 					'Update could not be verified. The previous version was restored.',
-					'git'
+					'gitwire'
 			  );
 
 	onRefresh?.();

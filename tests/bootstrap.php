@@ -1,8 +1,8 @@
 <?php
 /**
- * PHPUnit bootstrap for Git plugin unit tests.
+ * PHPUnit bootstrap for Gitwire unit tests.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since   1.2.0
  */
 

@@ -12,12 +12,12 @@ import { Button } from '@wordpress/components';
 export default function BranchCell( { item, onOpenBranch } ) {
 	return (
 		<Button
-			className="gwp-branch-btn"
+			className="gitwire-branch-btn"
 			size="compact"
 			variant="link"
 			onClick={ () => onOpenBranch( item ) }
 		>
-			<span className="gwp-branch-btn__text">{ item.branch }</span>
+			<span className="gitwire-branch-btn__text">{ item.branch }</span>
 		</Button>
 	);
 }

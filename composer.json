@@ -1,5 +1,5 @@
 {
-	"name": "sabuz/git-for-wordpress",
+	"name": "sabuz/gitwire",
 	"description": "Pull GitHub and GitLab repositories directly into WordPress as plugins or themes.",
 	"license": "GPL-2.0-or-later",
 	"require-dev": {
@@ -9,8 +9,8 @@
 		"phpunit/phpunit": "^10.5"
 	},
 	"scripts": {
-		"phpcs": "./vendor/bin/phpcs --standard=phpcs.xml --extensions=php ./includes ./tests autoload.php git.php uninstall.php",
-		"phpcbf": "./vendor/bin/phpcbf --standard=phpcs.xml --extensions=php ./includes ./tests autoload.php git.php uninstall.php",
+		"phpcs": "./vendor/bin/phpcs --standard=phpcs.xml --extensions=php ./includes ./tests autoload.php gitwire.php uninstall.php",
+		"phpcbf": "./vendor/bin/phpcbf --standard=phpcs.xml --extensions=php ./includes ./tests autoload.php gitwire.php uninstall.php",
 		"phpunit": "./vendor/bin/phpunit -c phpunit.xml.dist",
 		"update-deps": "composer update --with-dependencies",
 		"check-updates": "composer outdated"

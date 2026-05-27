@@ -30,14 +30,14 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
-					__( '%s deleted.', 'git' ),
+					__( '%s deleted.', 'gitwire' ),
 					item.full_name
 				)
 			);
 			onRefresh();
 			closeModal();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Delete failed.', 'git' ) );
+			toast.error( e.message || __( 'Delete failed.', 'gitwire' ) );
 			setDeleting( false );
 		}
 	};
@@ -49,14 +49,14 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 					/* translators: %s: repository full name */
 					__(
 						'Permanently delete %s? This will remove all files from the server and cannot be undone.',
-						'git'
+						'gitwire'
 					),
 					item.full_name
 				) }
 			</p>
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
 				<Button variant="tertiary" onClick={ closeModal }>
-					{ __( 'Cancel', 'git' ) }
+					{ __( 'Cancel', 'gitwire' ) }
 				</Button>
 				<Button
 					disabled={ deleting }
@@ -66,8 +66,8 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 					onClick={ handleDelete }
 				>
 					{ deleting
-						? __( 'Deleting…', 'git' )
-						: __( 'Delete', 'git' ) }
+						? __( 'Deleting…', 'gitwire' )
+						: __( 'Delete', 'gitwire' ) }
 				</Button>
 			</Flex>
 		</>

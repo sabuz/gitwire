@@ -1,9 +1,9 @@
 @use "@wordpress/dataviews/build-style/style.css";
 
 body {
-	--gwp-color-accent: var(--wp-admin-theme-color, #3858e9);
-	--gwp-color-accent-darker-10: var(--wp-admin-theme-color-darker-10, #183ad6);
-	--gwp-color-accent-darker-20: var(--wp-admin-theme-color-darker-20, #132ea8);
+	--gitwire-color-accent: var(--wp-admin-theme-color, #3858e9);
+	--gitwire-color-accent-darker-10: var(--wp-admin-theme-color-darker-10, #183ad6);
+	--gitwire-color-accent-darker-20: var(--wp-admin-theme-color-darker-20, #132ea8);
 }
 
 // DataViews table overrides
@@ -37,7 +37,7 @@ body {
 	}
 }
 
-body.gwp-admin-page {
+body.gitwire-admin-page {
 	background: #fff;
 
 	#wpcontent {
@@ -49,7 +49,7 @@ body.gwp-admin-page {
 	}
 }
 
-.gwp-page {
+.gitwire-page {
 
 	&-header {
 		position: sticky;
@@ -89,7 +89,7 @@ body.gwp-admin-page {
 	}
 }
 
-.gwp-nav-tab {
+.gitwire-nav-tab {
 	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
@@ -109,26 +109,26 @@ body.gwp-admin-page {
 	text-decoration: none;
 
 	&:hover {
-		color: var(--gwp-color-accent);
+		color: var(--gitwire-color-accent);
 		text-decoration: none;
 	}
 
 	&:focus:not(:focus-visible) {
 		outline: none;
-		box-shadow: inset 0 -2px 0 0 var(--gwp-color-accent);
+		box-shadow: inset 0 -2px 0 0 var(--gitwire-color-accent);
 	}
 
 	&.is-active {
-		box-shadow: inset 0 -2px 0 0 var(--gwp-color-accent);
+		box-shadow: inset 0 -2px 0 0 var(--gitwire-color-accent);
 		color: #1a1a1a;
 
 		&:hover {
-			color: var(--gwp-color-accent);
+			color: var(--gitwire-color-accent);
 		}
 	}
 }
 
-.gwp-nav-badge {
+.gitwire-nav-badge {
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
@@ -137,7 +137,7 @@ body.gwp-admin-page {
 	margin-left: 6px;
 	padding: 0 5px;
 	border-radius: 9px;
-	background: var(--gwp-color-accent);
+	background: var(--gitwire-color-accent);
 	font-size: 10px;
 	font-weight: 700;
 	line-height: 1;
@@ -145,30 +145,30 @@ body.gwp-admin-page {
 }
 
 // Settings layout
-.gwp-settings-row {
+.gitwire-settings-row {
 	align-items: flex-start;
 }
 
-.gwp-input-error .components-text-control__input {
+.gitwire-input-error .components-text-control__input {
 	border-color: #cf222e !important;
 	box-shadow: 0 0 0 1px #cf222e !important;
 }
 
-.gwp-label-optional {
+.gitwire-label-optional {
 	margin-left: 4px;
 	font-size: 11px;
 	font-weight: 400;
 	color: #757575;
 }
 
-.gwp-smart-install-wrap {
+.gitwire-smart-install-wrap {
 	padding: 12px 14px;
 	border: 1px solid #dcdcde;
 	border-radius: 4px;
 	background: #f6f7f7;
 }
 
-.gwp-badge-recommended {
+.gitwire-badge-recommended {
 	display: inline-block;
 	margin-left: 6px;
 	padding: 2px 6px;
@@ -183,7 +183,7 @@ body.gwp-admin-page {
 	vertical-align: middle;
 }
 
-.gwp-badge {
+.gitwire-badge {
 	display: inline-flex;
 	gap: 4px;
 	align-items: center;
@@ -246,13 +246,13 @@ body.gwp-admin-page {
 	}
 }
 
-.gwp-divider {
+.gitwire-divider {
 	margin: 12px 0;
 	border: none;
 	border-top: 1px solid #dcdcde;
 }
 
-.gwp-rate {
+.gitwire-rate {
 
 	&-track {
 		height: 6px;
@@ -281,11 +281,11 @@ body.gwp-admin-page {
 }
 
 // Browse panel
-.gwp-browse {
+.gitwire-browse {
 	min-height: 200px;
 }
 
-.gwp-repo {
+.gitwire-repo {
 
 	&-grid {
 		display: grid;
@@ -334,14 +334,14 @@ body.gwp-admin-page {
 		text-decoration: none;
 
 		&:hover {
-			color: var(--gwp-color-accent);
+			color: var(--gitwire-color-accent);
 		}
 	}
 
 }
 
 // Detecting spinner (browse cards — badges replaced with @wordpress/ui Badge)
-.gwp-type-detecting {
+.gitwire-type-detecting {
 	display: inline-flex;
 	gap: 4px;
 	align-items: center;
@@ -355,7 +355,7 @@ body.gwp-admin-page {
 }
 
 // Installed panel
-.gwp-installed {
+.gitwire-installed {
 
 
 	&-list {
@@ -397,7 +397,7 @@ body.gwp-admin-page {
 }
 
 // Installed panel — align cells to middle for compact rows
-.gwp-installed-panel .dataviews-view-table {
+.gitwire-installed-panel .dataviews-view-table {
 
 	tbody td {
 		vertical-align: middle;
@@ -405,20 +405,20 @@ body.gwp-admin-page {
 }
 
 // Spinning icon button (e.g. Pull Latest while in progress)
-@keyframes gwp-spin {
+@keyframes gitwire-spin {
 
 	to {
 		transform: rotate(360deg);
 	}
 }
 
-.gwp-spin .dashicon,
-.gwp-spin svg {
-	animation: gwp-spin 0.8s linear infinite;
+.gitwire-spin .dashicon,
+.gitwire-spin svg {
+	animation: gitwire-spin 0.8s linear infinite;
 }
 
 // Branch button — truncate long branch names with ellipsis
-.gwp-branch-btn {
+.gitwire-branch-btn {
 	max-width: 140px;
 
 	&__text {
@@ -430,12 +430,12 @@ body.gwp-admin-page {
 }
 
 // Detection badge (inside modal)
-.gwp-detect {
+.gitwire-detect {
 
 	&-row {
 		margin-bottom: 4px;
 
-		&.gwp-detect-loading {
+		&.gitwire-detect-loading {
 			display: flex;
 			gap: 8px;
 			align-items: center;
@@ -451,17 +451,17 @@ body.gwp-admin-page {
 		font-size: 12px;
 		font-weight: 600;
 
-		&.gwp-detect-plugin {
+		&.gitwire-detect-plugin {
 			background: #dbeafe;
 			color: #1e40af;
 		}
 
-		&.gwp-detect-theme {
+		&.gitwire-detect-theme {
 			background: #ede9fe;
 			color: #5b21b6;
 		}
 
-		&.gwp-detect-unknown {
+		&.gitwire-detect-unknown {
 			background: #f3f4f6;
 			color: #6b7280;
 		}
@@ -472,11 +472,11 @@ body.gwp-admin-page {
 		font-size: 12px;
 		line-height: 1.5;
 
-		&.gwp-detect-blocked {
+		&.gitwire-detect-blocked {
 			color: #cf222e;
 		}
 
-		&.gwp-detect-warn {
+		&.gitwire-detect-warn {
 			color: #9a6700;
 		}
 	}
@@ -486,7 +486,7 @@ body.gwp-admin-page {
 	font-size: 16px;
 }
 
-.gwp-modal {
+.gitwire-modal {
 
 	.components-modal__header-heading {
 		flex: 1;
@@ -501,12 +501,12 @@ body.gwp-admin-page {
 	}
 }
 
-.gwp-page-loading {
+.gitwire-page-loading {
 	padding: 48px;
 	text-align: center;
 }
 
-.gwp-installed-empty {
+.gitwire-installed-empty {
 	padding: 72px 24px;
 	text-align: center;
 
@@ -526,30 +526,30 @@ body.gwp-admin-page {
 	}
 }
 
-.gwp-installed-source,
-.gwp-installed-date {
+.gitwire-installed-source,
+.gitwire-installed-date {
 	font-size: 12px;
 	color: #57606a;
 }
 
-.gwp-badge.is-update {
+.gitwire-badge.is-update {
 	font-size: 11px;
 }
 
-.gwp-commit-row {
+.gitwire-commit-row {
 	display: flex;
 	gap: 12px;
 	padding: 10px 0;
 	border-bottom: 1px solid #f0f0f0;
 }
 
-.gwp-commit-sha {
+.gitwire-commit-sha {
 	flex-shrink: 0;
 	align-self: flex-start;
 	padding-top: 1px;
 	font-family: monospace;
 	font-size: 11px;
-	color: var(--gwp-color-accent);
+	color: var(--gitwire-color-accent);
 
 	&.is-fatal {
 		color: #d63638;
@@ -557,12 +557,12 @@ body.gwp-admin-page {
 	}
 }
 
-.gwp-commit-body {
+.gitwire-commit-body {
 	flex: 1;
 	min-width: 0;
 }
 
-.gwp-commit-message {
+.gitwire-commit-message {
 	margin: 0;
 	font-size: 13px;
 	text-overflow: ellipsis;
@@ -571,7 +571,7 @@ body.gwp-admin-page {
 	overflow: hidden;
 }
 
-.gwp-commit-meta {
+.gitwire-commit-meta {
 	margin: 2px 0 0;
 	font-size: 11px;
 	color: #57606a;

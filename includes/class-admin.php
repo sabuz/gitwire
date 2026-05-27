@@ -2,11 +2,11 @@
 /**
  * Admin class — registers menus, enqueues assets, and renders the admin page.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.0.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -23,7 +23,7 @@ class Admin {
 	 *
 	 * @var string
 	 */
-	private const PAGE_SLUG = 'git';
+	private const PAGE_SLUG = 'gitwire';
 
 	/**
 	 * Registers all admin hooks.
@@ -39,7 +39,7 @@ class Admin {
 	}
 
 	/**
-	 * Removes admin header notices on Git pages to keep the UI clean.
+	 * Removes admin header notices on Gitwire pages to keep the UI clean.
 	 *
 	 * @since 1.0.0
 	 * @return void
@@ -50,7 +50,7 @@ class Admin {
 			return;
 		}
 
-		if ( false === strpos( $screen->id, '_page_git' ) ) {
+		if ( false === strpos( $screen->id, '_page_gitwire' ) ) {
 			return;
 		}
 
@@ -60,7 +60,7 @@ class Admin {
 	}
 
 	/**
-	 * Appends a CSS class to the body element on GWP admin pages.
+	 * Appends a CSS class to the body element on Gitwire admin pages.
 	 *
 	 * @since 1.0.0
 	 * @param string $classes Space-separated list of body classes.
@@ -68,8 +68,8 @@ class Admin {
 	 */
 	public static function body_class( string $classes ): string {
 		$screen = get_current_screen();
-		if ( $screen && false !== strpos( $screen->id, '_page_git' ) ) {
-			$classes .= ' gwp-admin-page';
+		if ( $screen && false !== strpos( $screen->id, '_page_gitwire' ) ) {
+			$classes .= ' gitwire-admin-page';
 		}
 		return $classes;
 	}
@@ -82,7 +82,7 @@ class Admin {
 	 */
 	public static function add_menu(): void {
 		$menu_icon = 'none';
-		$icon_path = GWP_DIR . 'assets/images/icon.svg';
+		$icon_path = GITWIRE_DIR . 'assets/images/icon.svg';
 		if ( file_exists( $icon_path ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 			$svg_raw = (string) file_get_contents( $icon_path );
@@ -94,8 +94,8 @@ class Admin {
 		}
 
 		add_menu_page(
-			__( 'Git', 'git' ),
-			__( 'Git', 'git' ),
+			__( 'Gitwire', 'gitwire' ),
+			__( 'Gitwire', 'gitwire' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			[ self::class, 'render_page' ],
@@ -106,8 +106,8 @@ class Admin {
 		// First submenu replaces the auto-generated duplicate of the parent.
 		add_submenu_page(
 			self::PAGE_SLUG,
-			__( 'Installed', 'git' ),
-			__( 'Installed', 'git' ),
+			__( 'Installed', 'gitwire' ),
+			__( 'Installed', 'gitwire' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			[ self::class, 'render_page' ],
@@ -115,8 +115,8 @@ class Admin {
 
 		add_submenu_page(
 			self::PAGE_SLUG,
-			__( 'Browse', 'git' ),
-			__( 'Browse', 'git' ),
+			__( 'Browse', 'gitwire' ),
+			__( 'Browse', 'gitwire' ),
 			'manage_options',
 			self::PAGE_SLUG . '&path=browse',
 			[ self::class, 'render_page' ],
@@ -124,8 +124,8 @@ class Admin {
 
 		add_submenu_page(
 			self::PAGE_SLUG,
-			__( 'Settings', 'git' ),
-			__( 'Settings', 'git' ),
+			__( 'Settings', 'gitwire' ),
+			__( 'Settings', 'gitwire' ),
 			'manage_options',
 			self::PAGE_SLUG . '&path=settings',
 			[ self::class, 'render_page' ],
@@ -133,51 +133,51 @@ class Admin {
 	}
 
 	/**
-	 * Enqueues admin scripts and styles for GWP pages.
+	 * Enqueues admin scripts and styles for Gitwire pages.
 	 *
 	 * @since 1.0.0
 	 * @param string $hook Current admin page hook suffix.
 	 * @return void
 	 */
 	public static function enqueue( string $hook ): void {
-		// Match toplevel_page_git and git_page_git-{browse,settings}.
-		if ( false === strpos( $hook, '_page_git' ) ) {
+		// Match toplevel_page_gitwire and gitwire_page_gitwire-{browse,settings}.
+		if ( false === strpos( $hook, '_page_gitwire' ) ) {
 			return;
 		}
 
-		$asset_file = GWP_DIR . 'build/index.asset.php';
+		$asset_file = GITWIRE_DIR . 'build/index.asset.php';
 		$asset      = file_exists( $asset_file ) ? require $asset_file : [
 			'dependencies' => [],
-			'version'      => GWP_VERSION,
+			'version'      => GITWIRE_VERSION,
 		];
 
 		// wp-scripts outputs styles imported in JS to style-index.css.
-		$css_file = file_exists( GWP_DIR . 'build/index.css' )
-			? GWP_URL . 'build/index.css'
-			: GWP_URL . 'build/style-index.css';
+		$css_file = file_exists( GITWIRE_DIR . 'build/index.css' )
+			? GITWIRE_URL . 'build/index.css'
+			: GITWIRE_URL . 'build/style-index.css';
 
 		wp_enqueue_style(
-			'gwp-app',
+			'gitwire-app',
 			$css_file,
 			[ 'wp-components' ],
 			$asset['version']
 		);
 
 		wp_enqueue_script(
-			'gwp-app',
-			GWP_URL . 'build/index.js',
+			'gitwire-app',
+			GITWIRE_URL . 'build/index.js',
 			$asset['dependencies'],
 			$asset['version'],
 			true
 		);
 
-		wp_set_script_translations( 'gwp-app', 'git', GWP_DIR . 'languages' );
+		wp_set_script_translations( 'gitwire-app', 'gitwire', GITWIRE_DIR . 'languages' );
 
 		$settings   = Settings::get_public();
 		$has_github = ! empty( $settings['username'] ) || ! empty( $settings['token_set'] );
 		$has_gitlab = ! empty( $settings['gitlab_token_set'] );
 		$has_config = $has_github || $has_gitlab;
-		$raw_cache  = $has_config ? (array) get_option( 'gwp_connection_cache', [] ) : [];
+		$raw_cache  = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
 		$connection = [
 			'github' => isset( $raw_cache['github'] ) ? $raw_cache['github'] : null,
 			'gitlab' => isset( $raw_cache['gitlab'] ) ? $raw_cache['gitlab'] : null,
@@ -186,24 +186,24 @@ class Admin {
 		$installed_result = REST::sync_installed();
 		$installed        = $installed_result['installed'];
 		$orphaned         = $installed_result['orphaned'];
-		$fatal_notice     = get_option( 'gwp_fatal_notice' );
+		$fatal_notice     = get_option( 'gitwire_fatal_notice' );
 		if ( $fatal_notice ) {
-			delete_option( 'gwp_fatal_notice' );
+			delete_option( 'gitwire_fatal_notice' );
 		}
-		$first_activation = (bool) get_transient( 'gwp_first_activation' );
+		$first_activation = (bool) get_transient( 'gitwire_first_activation' );
 
 		if ( $first_activation ) {
-			delete_transient( 'gwp_first_activation' );
+			delete_transient( 'gitwire_first_activation' );
 		}
 
-		$update_success = get_transient( 'gwp_update_success' );
+		$update_success = get_transient( 'gitwire_update_success' );
 		if ( $update_success ) {
-			delete_transient( 'gwp_update_success' );
+			delete_transient( 'gitwire_update_success' );
 		}
 
-		$activation_success = get_transient( 'gwp_activation_success' );
+		$activation_success = get_transient( 'gitwire_activation_success' );
 		if ( $activation_success ) {
-			delete_transient( 'gwp_activation_success' );
+			delete_transient( 'gitwire_activation_success' );
 		}
 
 		// Derive initial tab from path param, activation state, or setup status.
@@ -217,16 +217,16 @@ class Admin {
 		}
 
 		wp_add_inline_script(
-			'gwp-app',
-			'window.GWP = ' . wp_json_encode(
+			'gitwire-app',
+			'window.Gitwire = ' . wp_json_encode(
 				[
 					'nonce'                 => wp_create_nonce( 'wp_rest' ),
-					'icon_url'              => GWP_URL . 'assets/images/icon.svg',
-					'disconnected_url'      => GWP_URL . 'assets/images/cloud-alert.svg',
-					'not_found_url'         => GWP_URL . 'assets/images/folder-x.svg',
+					'icon_url'              => GITWIRE_URL . 'assets/images/icon.svg',
+					'disconnected_url'      => GITWIRE_URL . 'assets/images/cloud-alert.svg',
+					'not_found_url'         => GITWIRE_URL . 'assets/images/folder-x.svg',
 					'themes_url'            => admin_url( 'themes.php' ),
-					'verify_activation_url' => home_url( '/?gwp_verify_activation=1' ),
-					'verify_admin_url'      => admin_url( 'admin.php?page=git&gwp_verify_activation=1' ),
+					'verify_activation_url' => home_url( '/?gitwire_verify_activation=1' ),
+					'verify_admin_url'      => admin_url( 'admin.php?page=gitwire&gitwire_verify_activation=1' ),
 					'initial_tab'           => $initial_tab,
 					'settings'              => $settings,
 					'connection'            => $connection,
@@ -249,8 +249,8 @@ class Admin {
 	 */
 	public static function render_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'git' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'gitwire' ) );
 		}
-		require_once GWP_DIR . 'views/admin-page.php';
+		require_once GITWIRE_DIR . 'views/admin-page.php';
 	}
 }

@@ -2,11 +2,11 @@
 /**
  * Persistent option-based cache for repository lists and type detections.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.2.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -17,8 +17,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Repo_Cache {
 
-	public const REPOS_OPTION = 'gwp_repos_cache';
-	public const TYPES_OPTION = 'gwp_repo_types';
+	public const REPOS_OPTION = 'gitwire_repos_cache';
+	public const TYPES_OPTION = 'gitwire_repo_types';
 	public const REPOS_TTL    = 1800;
 	public const TYPES_TTL    = DAY_IN_SECONDS;
 
@@ -187,7 +187,7 @@ class Repo_Cache {
 	 * @return array<string, mixed>|\WP_Error Stored payload on success.
 	 */
 	public static function fetch_repos_page( string $provider, int $page ) {
-		$settings = (array) get_option( 'gwp_settings', [] );
+		$settings = (array) get_option( 'gitwire_settings', [] );
 		$payload  = REST::build_repos_page( $settings, $provider, $page );
 
 		if ( is_wp_error( $payload ) ) {
@@ -207,7 +207,7 @@ class Repo_Cache {
 	 * @return true|\WP_Error True on success, WP_Error when all configured providers fail.
 	 */
 	public static function cron_refresh_repos() {
-		$settings = (array) get_option( 'gwp_settings', [] );
+		$settings = (array) get_option( 'gitwire_settings', [] );
 		$ran      = false;
 		$last_err = null;
 

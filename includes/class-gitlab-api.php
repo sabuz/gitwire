@@ -2,11 +2,11 @@
 /**
  * GitLab API client — wraps the GitLab REST API v4.
  *
- * @package Git_WP
+ * @package Gitwire
  * @since 1.1.0
  */
 
-namespace Git_WP;
+namespace Gitwire;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -68,7 +68,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 */
 	public function test_connection( string $owner = '' ): array|\WP_Error {
 		if ( ! $this->token ) {
-			return new \WP_Error( 'gwp_no_token', 'GitLab requires a Personal Access Token.' );
+			return new \WP_Error( 'gitwire_no_token', 'GitLab requires a Personal Access Token.' );
 		}
 
 		$user = $this->get( '/user' );
@@ -220,7 +220,7 @@ class GitLab_API implements Git_Provider_Interface {
 		$url        = $this->base . '/projects/' . $project_id
 			. '/repository/archive.zip?sha=' . rawurlencode( $branch );
 
-		$tmp_file = wp_tempnam( 'gwp-gitlab-' );
+		$tmp_file = wp_tempnam( 'gitwire-gitlab-' );
 
 		$response = wp_remote_get(
 			$url,
@@ -244,7 +244,7 @@ class GitLab_API implements Git_Provider_Interface {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 			@unlink( $tmp_file );
 			return new \WP_Error(
-				'gwp_api_error',
+				'gitwire_api_error',
 				sprintf( 'GitLab archive download failed (HTTP %d).', $code ),
 				[ 'status' => $code ]
 			);
@@ -281,7 +281,7 @@ class GitLab_API implements Git_Provider_Interface {
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( $code >= 400 ) {
-			return new \WP_Error( 'gwp_api_error', 'Could not fetch file.', [ 'status' => $code ] );
+			return new \WP_Error( 'gitwire_api_error', 'Could not fetch file.', [ 'status' => $code ] );
 		}
 
 		return wp_remote_retrieve_body( $response );
@@ -295,7 +295,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 */
 	private function headers(): array {
 		$h = [
-			'User-Agent' => 'GitHub-for-WordPress/' . GWP_VERSION,
+			'User-Agent' => 'GitHub-for-WordPress/' . GITWIRE_VERSION,
 		];
 		if ( $this->token ) {
 			$h['Authorization'] = 'Bearer ' . $this->token;
@@ -340,7 +340,7 @@ class GitLab_API implements Git_Provider_Interface {
 		if ( $code >= 400 ) {
 			$message = $body['message'] ?? ( $body['error'] ?? sprintf( 'GitLab API error (HTTP %d)', $code ) );
 			return new \WP_Error(
-				'gwp_api_error',
+				'gitwire_api_error',
 				is_string( $message ) ? $message : sprintf( 'GitLab API error (HTTP %d)', $code ),
 				[ 'status' => $code ]
 			);

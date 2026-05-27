@@ -4,11 +4,11 @@ import { createRoot } from '@wordpress/element';
 import App from './app';
 import './style.scss';
 
-if ( window.GWP?.nonce ) {
-	apiFetch.use( apiFetch.createNonceMiddleware( window.GWP.nonce ) );
+if ( window.Gitwire?.nonce ) {
+	apiFetch.use( apiFetch.createNonceMiddleware( window.Gitwire.nonce ) );
 }
 
-const container = document.getElementById( 'gwp-app' );
+const container = document.getElementById( 'gitwire-app' );
 if ( container ) {
-	createRoot( container ).render( <App initialData={ window.GWP || {} } /> );
+	createRoot( container ).render( <App initialData={ window.Gitwire || {} } /> );
 }

@@ -152,7 +152,7 @@ export default function BrowsePanel( {
 				if ( errors.length ) {
 					toast.error( errors.join( ' · ' ), {
 						action: {
-							label: __( 'Retry', 'git' ),
+							label: __( 'Retry', 'gitwire' ),
 							onClick: () => handleRefreshRef.current?.(),
 						},
 					} );
@@ -166,10 +166,10 @@ export default function BrowsePanel( {
 				);
 			} catch ( e ) {
 				toast.error(
-					e.message || __( 'Failed to load repositories.', 'git' ),
+					e.message || __( 'Failed to load repositories.', 'gitwire' ),
 					{
 						action: {
-							label: __( 'Retry', 'git' ),
+							label: __( 'Retry', 'gitwire' ),
 							onClick: () => handleRefreshRef.current?.(),
 						},
 					}
@@ -196,7 +196,7 @@ export default function BrowsePanel( {
 			await loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0 );
 		} catch ( e ) {
 			toast.error(
-				e.message || __( 'Failed to refresh repositories.', 'git' )
+				e.message || __( 'Failed to refresh repositories.', 'gitwire' )
 			);
 			setLoading( false );
 		}
@@ -237,10 +237,10 @@ export default function BrowsePanel( {
 	);
 
 	const typeFilters = [
-		{ id: 'all', label: __( 'All', 'git' ) },
-		{ id: 'plugin', label: __( 'Plugin', 'git' ) },
-		{ id: 'theme', label: __( 'Theme', 'git' ) },
-		{ id: 'unknown', label: __( 'Unknown', 'git' ) },
+		{ id: 'all', label: __( 'All', 'gitwire' ) },
+		{ id: 'plugin', label: __( 'Plugin', 'gitwire' ) },
+		{ id: 'theme', label: __( 'Theme', 'gitwire' ) },
+		{ id: 'unknown', label: __( 'Unknown', 'gitwire' ) },
 	];
 
 	if ( ! hasGitHub && ! hasGitLab ) {
@@ -248,10 +248,10 @@ export default function BrowsePanel( {
 	}
 
 	return (
-		<div className="gwp-browse">
+		<div className="gitwire-browse">
 			<Flex
 				align="center"
-				className="gwp-browse-toolbar"
+				className="gitwire-browse-toolbar"
 				gap={ 2 }
 				justify="flex-start"
 				style={ { marginBottom: 24 } }
@@ -262,7 +262,7 @@ export default function BrowsePanel( {
 						// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 						size="__unstable-large"
 						onChange={ setSearch }
-						placeholder={ __( 'Search repositories…', 'git' ) }
+						placeholder={ __( 'Search repositories…', 'gitwire' ) }
 						value={ search }
 					/>
 				</FlexBlock>
@@ -282,11 +282,11 @@ export default function BrowsePanel( {
 				</FlexItem>
 				<FlexItem style={ { marginLeft: 'auto' } }>
 					<Button
-						className={ loading ? 'gwp-spin' : '' }
+						className={ loading ? 'gitwire-spin' : '' }
 						disabled={ loading }
 						icon="update"
 						isBusy={ loading }
-						label={ __( 'Refresh repositories', 'git' ) }
+						label={ __( 'Refresh repositories', 'gitwire' ) }
 						variant="tertiary"
 						onClick={ handleRefresh }
 					/>
@@ -303,20 +303,20 @@ export default function BrowsePanel( {
 				<p style={ { color: '#57606a', marginTop: 8 } }>
 					{ search.trim() ? (
 						<>
-							{ __( 'No repositories match', 'git' ) }{ ' ' }
+							{ __( 'No repositories match', 'gitwire' ) }{ ' ' }
 							<strong>{ search }</strong>.
 						</>
 					) : (
 						__(
 							'No repositories match the selected filter.',
-							'git'
+							'gitwire'
 						)
 					) }
 				</p>
 			) }
 
 			{ filtered.length > 0 && (
-				<div className="gwp-repo-grid">
+				<div className="gitwire-repo-grid">
 					{ filtered.map( ( repo ) => (
 						<RepoCard
 							key={ `${ repo.provider }:${ repo.id }` }
@@ -339,7 +339,7 @@ export default function BrowsePanel( {
 						variant="secondary"
 						onClick={ handleLoadMore }
 					>
-						{ __( 'Load more', 'git' ) }
+						{ __( 'Load more', 'gitwire' ) }
 					</Button>
 				</div>
 			) }
@@ -383,12 +383,12 @@ const RepoCard = memo( function RepoCard( {
 		! isInstalled && detection?.type === 'unknown' && smartInstall;
 
 	return (
-		<Card className="gwp-repo-card" size="small">
+		<Card className="gitwire-repo-card" size="small">
 			<CardBody>
 				<Flex align="flex-start" gap={ 2 } justify="space-between">
 					<FlexBlock>
 						<a
-							className="gwp-repo-name"
+							className="gitwire-repo-name"
 							href={ repo.html_url }
 							rel="noopener noreferrer"
 							target="_blank"
@@ -399,7 +399,7 @@ const RepoCard = memo( function RepoCard( {
 					<FlexItem>
 						{ isInstalled ? (
 							<Button disabled size="compact" variant="secondary">
-								{ __( 'Installed', 'git' ) }
+								{ __( 'Installed', 'gitwire' ) }
 							</Button>
 						) : (
 							<Button
@@ -409,39 +409,39 @@ const RepoCard = memo( function RepoCard( {
 									blockedBySmartInstall
 										? __(
 												'Smart Install is on. Only verified WordPress plugins and themes can be installed.',
-												'git'
+												'gitwire'
 										  )
 										: undefined
 								}
 								variant="secondary"
 								onClick={ onInstall }
 							>
-								{ __( 'Install', 'git' ) }
+								{ __( 'Install', 'gitwire' ) }
 							</Button>
 						) }
 					</FlexItem>
 				</Flex>
-				<div className="gwp-repo-badges">
+				<div className="gitwire-repo-badges">
 					{ showSourceBadge &&
 						( 'github' === repo.provider ? (
-							<span className="gwp-badge gwp-badge--github">
+							<span className="gitwire-badge gitwire-badge--github">
 								<GitHubIcon />
-								{ __( 'GitHub', 'git' ) }
+								{ __( 'GitHub', 'gitwire' ) }
 							</span>
 						) : (
-							<span className="gwp-badge gwp-badge--gitlab">
+							<span className="gitwire-badge gitwire-badge--gitlab">
 								<GitLabIcon />
-								{ __( 'GitLab', 'git' ) }
+								{ __( 'GitLab', 'gitwire' ) }
 							</span>
 						) ) }
 					<span
-						className={ `gwp-badge gwp-badge--${
+						className={ `gitwire-badge gitwire-badge--${
 							repo.private ? 'warning' : 'success'
 						}` }
 					>
 						{ repo.private
-							? __( 'Private', 'git' )
-							: __( 'Public', 'git' ) }
+							? __( 'Private', 'gitwire' )
+							: __( 'Public', 'gitwire' ) }
 					</span>
 					<TypeBadge
 						detection={ detection }
@@ -449,8 +449,8 @@ const RepoCard = memo( function RepoCard( {
 					/>
 				</div>
 				{ repo.updated_at && (
-					<p className="gwp-repo-updated">
-						{ __( 'Updated', 'git' ) }{ ' ' }
+					<p className="gitwire-repo-updated">
+						{ __( 'Updated', 'gitwire' ) }{ ' ' }
 						{ timeAgo( repo.updated_at ) }
 					</p>
 				) }
@@ -462,13 +462,13 @@ const RepoCard = memo( function RepoCard( {
 function timeAgo( dateStr ) {
 	const s = Math.floor( ( Date.now() - new Date( dateStr ) ) / 1000 );
 	if ( s < 60 ) {
-		return __( 'just now', 'git' );
+		return __( 'just now', 'gitwire' );
 	}
 	const m = Math.floor( s / 60 );
 	if ( m < 60 ) {
 		return sprintf(
 			/* translators: %d: number of minutes */
-			__( '%dm ago', 'git' ),
+			__( '%dm ago', 'gitwire' ),
 			m
 		);
 	}
@@ -476,7 +476,7 @@ function timeAgo( dateStr ) {
 	if ( h < 24 ) {
 		return sprintf(
 			/* translators: %d: number of hours */
-			__( '%dh ago', 'git' ),
+			__( '%dh ago', 'gitwire' ),
 			h
 		);
 	}
@@ -484,7 +484,7 @@ function timeAgo( dateStr ) {
 	if ( d < 30 ) {
 		return sprintf(
 			/* translators: %d: number of days */
-			__( '%dd ago', 'git' ),
+			__( '%dd ago', 'gitwire' ),
 			d
 		);
 	}
@@ -492,13 +492,13 @@ function timeAgo( dateStr ) {
 	if ( mo < 12 ) {
 		return sprintf(
 			/* translators: %d: number of months */
-			__( '%dmo ago', 'git' ),
+			__( '%dmo ago', 'gitwire' ),
 			mo
 		);
 	}
 	return sprintf(
 		/* translators: %d: number of years */
-		__( '%dy ago', 'git' ),
+		__( '%dy ago', 'gitwire' ),
 		Math.floor( mo / 12 )
 	);
 }
@@ -509,56 +509,56 @@ function TypeBadge( { detection, installed } ) {
 			installed.type === 'theme' && installed.subtype === 'block';
 		if ( isBlockTheme ) {
 			return (
-				<span className="gwp-badge gwp-badge--block-theme">
-					{ __( 'Block Theme', 'git' ) }
+				<span className="gitwire-badge gitwire-badge--block-theme">
+					{ __( 'Block Theme', 'gitwire' ) }
 				</span>
 			);
 		}
 		if ( installed.type === 'theme' ) {
 			return (
-				<span className="gwp-badge gwp-badge--theme">
-					{ __( 'Theme', 'git' ) }
+				<span className="gitwire-badge gitwire-badge--theme">
+					{ __( 'Theme', 'gitwire' ) }
 				</span>
 			);
 		}
 		return (
-			<span className="gwp-badge gwp-badge--info">
-				{ __( 'Plugin', 'git' ) }
+			<span className="gitwire-badge gitwire-badge--info">
+				{ __( 'Plugin', 'gitwire' ) }
 			</span>
 		);
 	}
 	if ( ! detection ) {
 		return (
-			<span className="gwp-type-detecting">
-				<Spinner /> { __( 'Detecting…', 'git' ) }
+			<span className="gitwire-type-detecting">
+				<Spinner /> { __( 'Detecting…', 'gitwire' ) }
 			</span>
 		);
 	}
 	const { type, subtype } = detection;
 	if ( type === 'plugin' ) {
 		return (
-			<span className="gwp-badge gwp-badge--info">
-				{ __( 'Plugin', 'git' ) }
+			<span className="gitwire-badge gitwire-badge--info">
+				{ __( 'Plugin', 'gitwire' ) }
 			</span>
 		);
 	}
 	if ( type === 'theme' && subtype === 'block' ) {
 		return (
-			<span className="gwp-badge gwp-badge--block-theme">
-				{ __( 'Block Theme', 'git' ) }
+			<span className="gitwire-badge gitwire-badge--block-theme">
+				{ __( 'Block Theme', 'gitwire' ) }
 			</span>
 		);
 	}
 	if ( type === 'theme' ) {
 		return (
-			<span className="gwp-badge gwp-badge--theme">
-				{ __( 'Theme', 'git' ) }
+			<span className="gitwire-badge gitwire-badge--theme">
+				{ __( 'Theme', 'gitwire' ) }
 			</span>
 		);
 	}
 	return (
-		<span className="gwp-badge gwp-badge--draft">
-			{ __( 'Unknown', 'git' ) }
+		<span className="gitwire-badge gitwire-badge--draft">
+			{ __( 'Unknown', 'gitwire' ) }
 		</span>
 	);
 }

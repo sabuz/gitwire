@@ -2,18 +2,18 @@
 /**
  * Unit tests for shared plugin helpers.
  *
- * @package Git_WP
+ * @package Gitwire
  */
 
-use Git_WP\Repo_Detector;
-use Git_WP\Settings;
+use Gitwire\Repo_Detector;
+use Gitwire\Settings;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Tests for Repo_Detector and Settings helpers.
  *
- * @covers Git_WP\Repo_Detector
- * @covers Git_WP\Settings
+ * @covers Gitwire\Repo_Detector
+ * @covers Gitwire\Settings
  */
 class PluginHelpersTest extends TestCase {
 
