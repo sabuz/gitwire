@@ -20,7 +20,7 @@
 		"@wordpress/element": "^6.46.0",
 		"@wordpress/eslint-plugin": "^22.0.0",
 		"@wordpress/scripts": "^32.2.0",
-		"stylelint-order": "^6.0.0",
+		"stylelint-order": "^8.1.1",
 		"typescript": "^5.7.0"
 	},
 	"dependencies": {
