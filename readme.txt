@@ -1,4 +1,4 @@
-=== Gitwire ===
+=== Gitwire - Deploy WordPress Plugins & Themes from Git ===
 Contributors: nazsabuz
 Tags: github, gitlab, git, plugins, themes, deploy
 Requires at least: 6.9
@@ -8,7 +8,7 @@ Stable tag: 1.2.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Wire GitHub and GitLab repositories into WordPress as plugins or themes. Switch branches and auto-recover from fatal errors.
+Install and manage plugins and themes from any Git repository. Switch branches and auto-recover from fatal errors.
 
 == Description ==
 
