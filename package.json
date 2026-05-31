@@ -16,12 +16,12 @@
 		"pre-pr-check": "npm run lint && npm run type-check && npm run build"
 	},
 	"devDependencies": {
-		"@wordpress/dataviews": "^14.3.0",
-		"@wordpress/element": "^6.46.0",
-		"@wordpress/eslint-plugin": "^22.0.0",
-		"@wordpress/scripts": "^32.2.0",
+		"@wordpress/dataviews": "^15.0.0",
+		"@wordpress/element": "^7.0.0",
+		"@wordpress/eslint-plugin": "^25.3.0",
+		"@wordpress/scripts": "^32.3.0",
 		"stylelint-order": "^8.1.1",
-		"typescript": "^5.7.0"
+		"typescript": "^6.0.3"
 	},
 	"dependencies": {
 		"sonner": "^2.0.7"
