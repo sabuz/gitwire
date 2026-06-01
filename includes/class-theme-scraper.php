@@ -469,7 +469,7 @@ class Theme_Scraper {
 				? __( 'Theme could not be activated because it triggered a fatal error.', 'gitwire' )
 				: sprintf(
 					/* translators: %s: PHP error detail */
-					__( 'The update was not applied because the theme triggered a fatal error: %s', 'gitwire' ),
+					__( 'Theme could not be updated because it triggered a fatal error: %s', 'gitwire' ),
 					$detail
 				);
 		} elseif ( 'loopback_request_failed' === $code ) {
