@@ -466,11 +466,7 @@ class Theme_Scraper {
 		if ( self::is_php_fatal_result( $result ) ) {
 			$detail  = $result['message'];
 			$message = 'activation' === $context
-				? sprintf(
-					/* translators: %s: PHP error detail */
-					__( 'The theme was not activated because it triggered a fatal error: %s', 'gitwire' ),
-					$detail
-				)
+				? __( 'Theme could not be activated because it triggered a fatal error.', 'gitwire' )
 				: sprintf(
 					/* translators: %s: PHP error detail */
 					__( 'The update was not applied because the theme triggered a fatal error: %s', 'gitwire' ),
