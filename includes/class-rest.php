@@ -1199,7 +1199,7 @@ class REST {
 			if ( is_wp_error( $result ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'GWP detect failed for ' . $key . ': ' . $result->get_error_message() );
+					error_log( '[Gitwire] Could not detect repository type for ' . $key . ': ' . $result->get_error_message() );
 				}
 				$result = [
 					'type'       => 'unknown',
