@@ -123,7 +123,7 @@ export default function InstalledPanel( {
 					return item.active ? 'active' : 'inactive';
 				},
 				render: ( { item } ) => (
-					<Flex align="center" gap={ 1 }>
+					<Flex align="center" justify="flex-start" gap={ 1 }>
 						{ item.activation_pending ? (
 							<span className="gitwire-badge gitwire-badge--warning">
 								{ __( 'Verifying…', 'gitwire' ) }
