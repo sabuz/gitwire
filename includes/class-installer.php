@@ -581,6 +581,42 @@ class Installer {
 	}
 
 	/**
+	 * Builds the user-facing error for a failed active-install update scrape.
+	 *
+	 * A genuine fatal is reported with the same friendly "kept your current
+	 * version" message used when a known-fatal commit is skipped, so first
+	 * attempts and retries read consistently across plugins and themes.
+	 * Infrastructure failures keep the scrape message that explains the revert.
+	 *
+	 * @since 1.2.0
+	 * @param \WP_Error   $scrape     Scrape failure error.
+	 * @param string      $type       Installation type: plugin or theme.
+	 * @param string|null $remote_sha Remote commit SHA, if known.
+	 * @param string      $provider   Git provider.
+	 * @param string      $full_name  Repository full name.
+	 * @param string      $branch     Branch name.
+	 * @return \WP_Error
+	 */
+	private static function update_fatal_error( \WP_Error $scrape, string $type, ?string $remote_sha, string $provider, string $full_name, string $branch ): \WP_Error {
+		$data     = $scrape->get_error_data();
+		$is_fatal = is_array( $data )
+			&& is_array( $data['scrape'] ?? null )
+			&& Theme_Scraper::is_php_fatal_result( $data['scrape'] );
+
+		if ( ! $is_fatal || ! $remote_sha ) {
+			return $scrape;
+		}
+
+		self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha );
+
+		return new \WP_Error(
+			'gitwire_known_fatal_head',
+			self::known_fatal_head_message( $type, $remote_sha ),
+			[ 'status' => 409 ]
+		);
+	}
+
+	/**
 	 * Returns whether a plugin activation error came from core's fatal sandbox scrape.
 	 *
 	 * @since 1.2.0
@@ -940,18 +976,8 @@ class Installer {
 				if ( ! $remote_sha ) {
 					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
 				}
-				if ( $remote_sha ) {
-					$data = $scrape->get_error_data();
-					if (
-						is_array( $data )
-						&& is_array( $data['scrape'] ?? null )
-						&& Theme_Scraper::is_php_fatal_result( $data['scrape'] )
-					) {
-						self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha );
-					}
-				}
 
-				return $scrape;
+				return self::update_fatal_error( $scrape, $type, $remote_sha, $provider, $full_name, $branch );
 			}
 
 			self::finalize_successful_update( $backup_path );
@@ -979,17 +1005,7 @@ class Installer {
 			$scrape = Theme_Scraper::scrape_bootstrap();
 			if ( is_wp_error( $scrape ) ) {
 				Error_Handler::rollback_theme_update( $pending );
-				if ( $remote_sha ) {
-					$data = $scrape->get_error_data();
-					if (
-						is_array( $data )
-						&& is_array( $data['scrape'] ?? null )
-						&& Theme_Scraper::is_php_fatal_result( $data['scrape'] )
-					) {
-						self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha );
-					}
-				}
-				return $scrape;
+				return self::update_fatal_error( $scrape, $type, $remote_sha, $provider, $full_name, $branch );
 			}
 
 			$record = self::save_installed_record( $record_key, $record, $remote_sha );
