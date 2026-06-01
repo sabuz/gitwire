@@ -63,6 +63,31 @@ class Theme_Scraper {
 	}
 
 	/**
+	 * Bootstraps the active plugin in wp-admin, then on the frontend.
+	 *
+	 * Active plugins are already loaded in the current request, so core's
+	 * include_once sandbox cannot re-run replaced code. A fresh loopback
+	 * request loads the new code and surfaces any fatal it introduces.
+	 *
+	 * @since 1.2.0
+	 * @return true|\WP_Error True when both loopbacks succeed, WP_Error when rejected.
+	 */
+	public static function scrape_plugin_bootstrap(): bool|\WP_Error {
+		$result = self::run_scrape_requests(
+			[
+				admin_url( 'plugins.php' ),
+				home_url( '/' ),
+			]
+		);
+
+		if ( true === $result ) {
+			return true;
+		}
+
+		return self::to_wp_error( $result, 'update', 'plugin' );
+	}
+
+	/**
 	 * Returns whether a scrape payload reports a PHP fatal from the sandbox.
 	 *
 	 * @since 1.2.0
@@ -458,50 +483,77 @@ class Theme_Scraper {
 	 * @since 1.2.0
 	 * @param array<string, mixed> $result  Scrape failure payload.
 	 * @param string               $context Guard context: activation or update.
+	 * @param string               $subject Installation subject: theme or plugin.
 	 * @return \WP_Error
 	 */
-	private static function to_wp_error( array $result, string $context ): \WP_Error {
-		$code = $result['code'] ?? '';
+	private static function to_wp_error( array $result, string $context, string $subject = 'theme' ): \WP_Error {
+		$code      = $result['code'] ?? '';
+		$is_plugin = 'plugin' === $subject;
 
 		if ( self::is_php_fatal_result( $result ) ) {
-			$detail  = $result['message'];
-			$message = 'activation' === $context
-				? __( 'Theme could not be activated because it triggered a fatal error.', 'gitwire' )
-				: sprintf(
-					/* translators: %s: PHP error detail */
-					__( 'Theme could not be updated because it triggered a fatal error: %s', 'gitwire' ),
-					$detail
-				);
+			$detail = $result['message'];
+			if ( 'activation' === $context ) {
+				$message = $is_plugin
+					? __( 'Plugin could not be activated because it triggered a fatal error.', 'gitwire' )
+					: __( 'Theme could not be activated because it triggered a fatal error.', 'gitwire' );
+			} else {
+				$message = $is_plugin
+					? sprintf(
+						/* translators: %s: PHP error detail */
+						__( 'Plugin could not be updated because it triggered a fatal error: %s', 'gitwire' ),
+						$detail
+					)
+					: sprintf(
+						/* translators: %s: PHP error detail */
+						__( 'Theme could not be updated because it triggered a fatal error: %s', 'gitwire' ),
+						$detail
+					);
+			}
 		} elseif ( 'loopback_request_failed' === $code ) {
 			$message = $result['message'] ?? __(
 				'Unable to communicate back with the site to check for fatal errors, so the change was reverted.',
 				'gitwire'
 			);
 		} elseif ( 'scrape_nonce_failure' === $code ) {
-			$message = __(
-				'Could not verify the theme update because the loopback check failed. The change was reverted. Please try again.',
-				'gitwire'
-			);
+			$message = $is_plugin
+				? __( 'Could not verify the plugin update because the loopback check failed. The change was reverted. Please try again.', 'gitwire' )
+				: __( 'Could not verify the theme update because the loopback check failed. The change was reverted. Please try again.', 'gitwire' );
 		} elseif ( 'json_parse_error' === $code ) {
-			$message = 'activation' === $context
-				? __( 'The theme was not activated because the validation response was invalid.', 'gitwire' )
-				: __( 'The update was not applied because the validation response was invalid, so the change was reverted.', 'gitwire' );
+			if ( 'activation' === $context ) {
+				$message = $is_plugin
+					? __( 'The plugin was not activated because the validation response was invalid.', 'gitwire' )
+					: __( 'The theme was not activated because the validation response was invalid.', 'gitwire' );
+			} else {
+				$message = __( 'The update was not applied because the validation response was invalid, so the change was reverted.', 'gitwire' );
+			}
 		} elseif ( isset( $result['message'] ) && is_string( $result['message'] ) ) {
-			$detail  = $result['message'];
-			$message = 'activation' === $context
-				? sprintf(
-					/* translators: %s: error detail */
-					__( 'The theme was not activated: %s', 'gitwire' ),
-					$detail
-				)
-				: sprintf(
+			$detail = $result['message'];
+			if ( 'activation' === $context ) {
+				$message = $is_plugin
+					? sprintf(
+						/* translators: %s: error detail */
+						__( 'The plugin was not activated: %s', 'gitwire' ),
+						$detail
+					)
+					: sprintf(
+						/* translators: %s: error detail */
+						__( 'The theme was not activated: %s', 'gitwire' ),
+						$detail
+					);
+			} else {
+				$message = sprintf(
 					/* translators: %s: error detail */
 					__( 'The update was not applied: %s', 'gitwire' ),
 					$detail
 				);
+			}
+		} elseif ( 'activation' === $context ) {
+			$message = $is_plugin
+				? __( 'The plugin was not activated because validation failed.', 'gitwire' )
+				: __( 'The theme was not activated because validation failed.', 'gitwire' );
 		} else {
-			$message = 'activation' === $context
-				? __( 'The theme was not activated because validation failed.', 'gitwire' )
+			$message = $is_plugin
+				? __( 'The update was not applied because plugin validation failed, so the change was reverted.', 'gitwire' )
 				: __( 'The update was not applied because theme validation failed, so the change was reverted.', 'gitwire' );
 		}
 

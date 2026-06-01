@@ -913,6 +913,8 @@ class Installer {
 			self::clear_guard_feedback();
 			update_option( 'gitwire_pending_update', $pending, false );
 
+			self::refresh_plugin_runtime( $install_path, $slug );
+
 			$activated = self::reactivate_plugin_after_update( $plugin_file );
 			if ( is_wp_error( $activated ) ) {
 				self::restore_backup( $install_path, $backup_path );
@@ -924,6 +926,32 @@ class Installer {
 					self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha );
 				}
 				return $activated;
+			}
+
+			$scrape = Theme_Scraper::scrape_plugin_bootstrap();
+			if ( is_wp_error( $scrape ) ) {
+				// Restoring the backup returns the working version to disk while the
+				// plugin stays active, preserving the user's current install.
+				self::restore_backup( $install_path, $backup_path );
+				self::refresh_plugin_runtime( $install_path, $slug );
+				Error_Handler::restore_pending_installed_record( $pending );
+				delete_option( 'gitwire_pending_update' );
+
+				if ( ! $remote_sha ) {
+					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+				}
+				if ( $remote_sha ) {
+					$data = $scrape->get_error_data();
+					if (
+						is_array( $data )
+						&& is_array( $data['scrape'] ?? null )
+						&& Theme_Scraper::is_php_fatal_result( $data['scrape'] )
+					) {
+						self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha );
+					}
+				}
+
+				return $scrape;
 			}
 
 			self::finalize_successful_update( $backup_path );
@@ -1275,6 +1303,52 @@ class Installer {
 				$theme->cache_delete();
 				$theme = wp_get_theme( $slug );
 			}
+		}
+
+		if ( ! function_exists( 'wp_opcache_invalidate' ) || ! is_dir( $install_path ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$iterator = @new \RecursiveIteratorIterator(
+			new \RecursiveDirectoryIterator( $install_path, \FilesystemIterator::SKIP_DOTS )
+		);
+
+		if ( ! $iterator ) {
+			return;
+		}
+
+		foreach ( $iterator as $file ) {
+			if ( ! $file->isFile() ) {
+				continue;
+			}
+
+			if ( 'php' !== strtolower( $file->getExtension() ) ) {
+				continue;
+			}
+
+			wp_opcache_invalidate( $file->getPathname(), true );
+		}
+	}
+
+	/**
+	 * Clears stale plugin runtime state so a fresh loopback compiles new code.
+	 *
+	 * The current request already loaded the active plugin, so opcache and the
+	 * paused-plugins list must be cleared for the loopback scrape to execute the
+	 * replaced files instead of the cached, still-working version.
+	 *
+	 * @since 1.2.0
+	 * @param string $install_path Plugin directory path.
+	 * @param string $slug         Plugin directory slug.
+	 * @return void
+	 */
+	public static function refresh_plugin_runtime( string $install_path, string $slug ): void {
+		if ( $slug ) {
+			if ( ! function_exists( 'wp_paused_plugins' ) ) {
+				require_once ABSPATH . 'wp-includes/error-protection.php';
+			}
+			wp_paused_plugins()->delete( $slug );
 		}
 
 		if ( ! function_exists( 'wp_opcache_invalidate' ) || ! is_dir( $install_path ) ) {
