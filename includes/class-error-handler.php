@@ -33,6 +33,41 @@ class Error_Handler {
 	private static bool $registered = false;
 
 	/**
+	 * Set when our exception handler fires, so handle_shutdown can treat it as fatal.
+	 *
+	 * @var bool
+	 */
+	private static bool $had_uncaught_exception = false;
+
+	/**
+	 * Message from the uncaught exception, used for the fatal notice.
+	 *
+	 * @var string
+	 */
+	private static string $exception_message = '';
+
+	/**
+	 * File where the uncaught exception was thrown.
+	 *
+	 * @var string
+	 */
+	private static string $exception_file = '';
+
+	/**
+	 * Line number where the uncaught exception was thrown.
+	 *
+	 * @var int
+	 */
+	private static int $exception_line = 0;
+
+	/**
+	 * The exception handler that was active when Gitwire registered its own.
+	 *
+	 * @var callable|null
+	 */
+	private static $previous_exception_handler = null;
+
+	/**
 	 * Registers the PHP shutdown function (idempotent).
 	 *
 	 * @since 1.0.0
@@ -50,6 +85,47 @@ class Error_Handler {
 		add_action( 'admin_init', [ self::class, 'clear_stale_update_guard' ], 6 );
 		add_action( 'admin_init', [ self::class, 'finalize_verified_guard_on_git_page' ], 99999 );
 		add_action( 'template_redirect', [ self::class, 'finish_verify_bootstrap_request' ], PHP_INT_MAX );
+
+		// late registration puts us above debug plugins (e.g. QM) in the exception-handler chain
+		add_action( 'plugins_loaded', [ self::class, 'register_exception_handler' ], PHP_INT_MAX );
+	}
+
+	/**
+	 * Registers Gitwire's exception handler after all plugins have set theirs.
+	 *
+	 * @since 1.2.1
+	 * @return void
+	 */
+	public static function register_exception_handler(): void {
+		self::$previous_exception_handler = set_exception_handler( [ self::class, 'handle_uncaught_exception' ] );
+	}
+
+	/**
+	 * Flags an uncaught exception before delegating to the next handler in the chain.
+	 *
+	 * @since 1.2.1
+	 * @param \Throwable $e The uncaught exception or error.
+	 * @return void
+	 */
+	public static function handle_uncaught_exception( \Throwable $e ): void {
+		self::$had_uncaught_exception = true;
+		self::$exception_message      = get_class( $e ) . ': ' . $e->getMessage();
+		self::$exception_file         = $e->getFile();
+		self::$exception_line         = $e->getLine();
+
+		// scrape requests need WP's own error markers — don't let debug plugins intercept
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! empty( $_REQUEST['wp_scrape_key'] ) ) {
+			throw $e;
+		}
+
+		if ( self::$previous_exception_handler ) {
+			call_user_func( self::$previous_exception_handler, $e );
+		} else {
+			throw $e;
+		}
+
+		exit( 1 );
 	}
 
 	/**
@@ -68,13 +144,12 @@ class Error_Handler {
 			return;
 		}
 
-		$error = error_get_last();
-		if ( ! $error ) {
-			return;
-		}
-
+		$error       = error_get_last();
 		$fatal_types = [ E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR ];
-		if ( ! in_array( $error['type'], $fatal_types, true ) ) {
+		$is_fatal    = $error && in_array( $error['type'], $fatal_types, true );
+
+		// debug plugins (e.g. QM) call exit() before error_get_last() is populated, so check the flag too
+		if ( ! $is_fatal && ! self::$had_uncaught_exception ) {
 			return;
 		}
 
@@ -122,12 +197,18 @@ class Error_Handler {
 
 		self::restore_pending_installed_record( $pending );
 
+		if ( $is_fatal ) {
+			$error_string = sprintf( '%s in %s on line %d', $error['message'], $error['file'], $error['line'] );
+		} else {
+			$error_string = sprintf( '%s in %s on line %d', self::$exception_message, self::$exception_file, self::$exception_line );
+		}
+
 		// Store fatal notice for the Gitwire admin UI.
 		$notice = [
 			'full_name' => $full_name,
 			'type'      => $type,
 			'context'   => $context,
-			'error'     => sprintf( '%s in %s on line %d', $error['message'], $error['file'], $error['line'] ),
+			'error'     => $error_string,
 			'time'      => time(),
 			'restored'  => 'activation' === $context ? true : $restored,
 		];
@@ -588,12 +669,16 @@ class Error_Handler {
 	}
 
 	/**
-	 * Returns whether the current request ended with a fatal PHP error.
+	 * Returns whether the current request ended with a fatal PHP error or uncaught exception.
 	 *
 	 * @since 1.2.0
 	 * @return bool
 	 */
 	private static function has_fatal_shutdown_error(): bool {
+		if ( self::$had_uncaught_exception ) {
+			return true;
+		}
+
 		$error = error_get_last();
 		if ( ! $error ) {
 			return false;

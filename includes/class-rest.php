@@ -1232,7 +1232,17 @@ class REST {
 
 		Error_Handler::clear_stale_activation_guard();
 
-		$result = Installer::activate( $provider, $full_name );
+		try {
+			$result = Installer::activate( $provider, $full_name );
+		} catch ( \Throwable $e ) {
+			// guard was armed before activation — clean up before returning
+			Error_Handler::abort_pending_guard();
+			return new \WP_Error(
+				'gitwire_activation_fatal',
+				__( 'Plugin could not be activated because it triggered a fatal error.', 'gitwire' ),
+				[ 'status' => 500 ]
+			);
+		}
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
