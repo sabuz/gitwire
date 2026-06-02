@@ -1235,7 +1235,7 @@ class REST {
 		try {
 			$result = Installer::activate( $provider, $full_name );
 		} catch ( \Throwable $e ) {
-			// guard was armed before activation — clean up before returning
+			// guard was armed before activation — clean up before returning.
 			Error_Handler::abort_pending_guard();
 			return new \WP_Error(
 				'gitwire_activation_fatal',

@@ -86,7 +86,7 @@ class Error_Handler {
 		add_action( 'admin_init', [ self::class, 'finalize_verified_guard_on_git_page' ], 99999 );
 		add_action( 'template_redirect', [ self::class, 'finish_verify_bootstrap_request' ], PHP_INT_MAX );
 
-		// late registration puts us above debug plugins (e.g. QM) in the exception-handler chain
+		// late registration puts us above debug plugins (e.g. QM) in the exception-handler chain.
 		add_action( 'plugins_loaded', [ self::class, 'register_exception_handler' ], PHP_INT_MAX );
 	}
 
@@ -105,6 +105,7 @@ class Error_Handler {
 	 *
 	 * @since 1.2.1
 	 * @param \Throwable $e The uncaught exception or error.
+	 * @throws \Throwable When WordPress core scraping flow expects native fatal markers.
 	 * @return void
 	 */
 	public static function handle_uncaught_exception( \Throwable $e ): void {
@@ -113,7 +114,7 @@ class Error_Handler {
 		self::$exception_file         = $e->getFile();
 		self::$exception_line         = $e->getLine();
 
-		// scrape requests need WP's own error markers — don't let debug plugins intercept
+		// scrape requests need WP's own error markers — don't let debug plugins intercept.
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! empty( $_REQUEST['wp_scrape_key'] ) ) {
 			throw $e;
@@ -148,7 +149,7 @@ class Error_Handler {
 		$fatal_types = [ E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR ];
 		$is_fatal    = $error && in_array( $error['type'], $fatal_types, true );
 
-		// debug plugins (e.g. QM) call exit() before error_get_last() is populated, so check the flag too
+		// debug plugins (e.g. QM) call exit() before error_get_last() is populated, so check the flag too.
 		if ( ! $is_fatal && ! self::$had_uncaught_exception ) {
 			return;
 		}

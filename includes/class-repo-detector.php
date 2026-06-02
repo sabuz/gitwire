@@ -40,7 +40,7 @@ class Repo_Detector {
 	 * @var string[]
 	 */
 	private const IGNORED_EXTENSIONS = [
-		// Config / manifests
+		// Config / manifests.
 		'json',
 		'lock',
 		'xml',
@@ -48,12 +48,12 @@ class Repo_Detector {
 		'yaml',
 		'toml',
 		'ini',
-		// Docs / meta
+		// Docs / meta.
 		'md',
 		'txt',
 		'rst',
 		'dist',
-		// Web assets (not WP template files)
+		// Web assets (not WP template files).
 		'js',
 		'ts',
 		'jsx',
@@ -62,14 +62,14 @@ class Repo_Detector {
 		'sass',
 		'less',
 		'svg',
-		// Images
+		// Images.
 		'png',
 		'jpg',
 		'jpeg',
 		'gif',
 		'ico',
 		'webp',
-		// Misc
+		// Misc.
 		'map',
 		'log',
 		'sh',
@@ -114,7 +114,7 @@ class Repo_Detector {
 			$files[ $lc ] = $item;
 		}
 
-		// theme.json alone isn't enough — plugins ship it too; style.css + Theme Name is the real gate
+		// theme.json alone isn't enough — plugins ship it too; style.css + Theme Name is the real gate.
 		if ( isset( $files['style.css'] ) ) {
 			$css = $get_file_content( 'style.css', $branch );
 			if ( ! is_wp_error( $css ) && self::has_header( $css, 'Theme Name' ) ) {
