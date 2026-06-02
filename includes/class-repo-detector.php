@@ -23,9 +23,15 @@ class Repo_Detector {
 	 * @var string[]
 	 */
 	private const IGNORED_DIRS = [
-		'.git', '.github', '.wordpress-org',
-		'node_modules', 'vendor',
-		'tests', 'docs', 'tools', 'prompts',
+		'.git',
+		'.github',
+		'.wordpress-org',
+		'node_modules',
+		'vendor',
+		'tests',
+		'docs',
+		'tools',
+		'prompts',
 	];
 
 	/**
@@ -35,15 +41,39 @@ class Repo_Detector {
 	 */
 	private const IGNORED_EXTENSIONS = [
 		// Config / manifests
-		'json', 'lock', 'xml', 'yml', 'yaml', 'toml', 'ini',
+		'json',
+		'lock',
+		'xml',
+		'yml',
+		'yaml',
+		'toml',
+		'ini',
 		// Docs / meta
-		'md', 'txt', 'rst', 'dist',
+		'md',
+		'txt',
+		'rst',
+		'dist',
 		// Web assets (not WP template files)
-		'js', 'ts', 'jsx', 'tsx', 'scss', 'sass', 'less', 'svg',
+		'js',
+		'ts',
+		'jsx',
+		'tsx',
+		'scss',
+		'sass',
+		'less',
+		'svg',
 		// Images
-		'png', 'jpg', 'jpeg', 'gif', 'ico', 'webp',
+		'png',
+		'jpg',
+		'jpeg',
+		'gif',
+		'ico',
+		'webp',
 		// Misc
-		'map', 'log', 'sh', 'bash',
+		'map',
+		'log',
+		'sh',
+		'bash',
 	];
 
 	/**
