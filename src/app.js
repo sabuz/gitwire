@@ -92,7 +92,11 @@ function syncUrl( tabName ) {
 export default function App( { initialData } ) {
 	const [ settings, setSettings ] = useState( initialData.settings || null );
 	const [ connection, setConnection ] = useState(
-		initialData.connection || { github: null, gitlab: null }
+		initialData.connection || {
+			github: null,
+			gitlab: null,
+			bitbucket: null,
+		}
 	);
 	const [ installed, setInstalled ] = useState( initialData.installed || {} );
 	const [ loading, setLoading ] = useState( ! initialData.settings );
@@ -256,7 +260,7 @@ export default function App( { initialData } ) {
 
 	const handleConnectionUpdate = useCallback( ( provider, data ) => {
 		setConnection( ( prev ) => ( {
-			...( prev || { github: null, gitlab: null } ),
+			...( prev || { github: null, gitlab: null, bitbucket: null } ),
 			[ provider ]: data,
 		} ) );
 	}, [] );

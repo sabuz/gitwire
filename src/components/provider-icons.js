@@ -25,6 +25,29 @@ export function GitHubIcon( { size = 13, variant = 'inherit' } ) {
  * @param {Object} props           Component props.
  * @param {number} [props.size]    Icon width/height in px.
  * @param {string} [props.variant] 'brand' uses provider colors; default inherits currentColor.
+ * @return {JSX.Element} Bitbucket mark.
+ */
+export function BitbucketIcon( { size = 13, variant = 'inherit' } ) {
+	const fill = variant === 'brand' ? '#0052cc' : 'currentColor';
+
+	return (
+		<svg
+			aria-hidden="true"
+			fill={ fill }
+			height={ size }
+			style={ { display: 'block', flexShrink: 0 } }
+			viewBox="0 0 16 16"
+			width={ size }
+		>
+			<path d="M.778 1.213a.768.768 0 00-.768.892l2.04 12.58a1.044 1.044 0 001.028.87h9.925a.768.768 0 00.766-.646l2.04-12.81a.768.768 0 00-.768-.892L.778 1.213zM9.6 10.27H6.4l-.862-4.53h4.932L9.6 10.27z" />
+		</svg>
+	);
+}
+
+/**
+ * @param {Object} props           Component props.
+ * @param {number} [props.size]    Icon width/height in px.
+ * @param {string} [props.variant] 'brand' uses provider colors; default inherits currentColor.
  * @return {JSX.Element} GitLab mark.
  */
 export function GitLabIcon( { size = 13, variant = 'inherit' } ) {

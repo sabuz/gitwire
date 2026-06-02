@@ -68,23 +68,31 @@ class REST {
 				'callback'            => [ self::class, 'test_connection' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [
-					'provider'     => [
+					'provider'            => [
 						'type'    => 'string',
 						'default' => '',
 					],
-					'username'     => [
+					'username'            => [
 						'type'    => 'string',
 						'default' => '',
 					],
-					'token'        => [
+					'token'               => [
 						'type'    => 'string',
 						'default' => '',
 					],
-					'gitlab_token' => [
+					'gitlab_token'        => [
 						'type'    => 'string',
 						'default' => '',
 					],
-					'gitlab_url'   => [
+					'gitlab_url'          => [
+						'type'    => 'string',
+						'default' => '',
+					],
+					'bitbucket_email'     => [
+						'type'    => 'string',
+						'default' => '',
+					],
+					'bitbucket_api_token' => [
 						'type'    => 'string',
 						'default' => '',
 					],
@@ -174,7 +182,7 @@ class REST {
 					'provider' => [
 						'type'    => 'string',
 						'default' => 'github',
-						'enum'    => [ 'github', 'gitlab' ],
+						'enum'    => [ 'github', 'gitlab', 'bitbucket' ],
 					],
 				],
 			]
@@ -211,7 +219,7 @@ class REST {
 					'provider' => [
 						'type'    => 'string',
 						'default' => 'github',
-						'enum'    => [ 'github', 'gitlab' ],
+						'enum'    => [ 'github', 'gitlab', 'bitbucket' ],
 					],
 				],
 			]
@@ -242,7 +250,7 @@ class REST {
 			'default'           => 'github',
 			'sanitize_callback' => static function ( $val ) {
 				$val = sanitize_key( $val );
-				return in_array( $val, [ 'github', 'gitlab' ], true ) ? $val : 'github';
+				return in_array( $val, [ 'github', 'gitlab', 'bitbucket' ], true ) ? $val : 'github';
 			},
 		];
 
@@ -450,7 +458,7 @@ class REST {
 	 */
 	public static function save_settings( \WP_REST_Request $req ): array|\WP_Error {
 		$incoming = [];
-		foreach ( [ 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url' ] as $key ) {
+		foreach ( [ 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url', 'bitbucket_email', 'bitbucket_api_token' ] as $key ) {
 			if ( null !== $req->get_param( $key ) ) {
 				$incoming[ $key ] = $req->get_param( $key );
 			}
@@ -494,23 +502,33 @@ class REST {
 			if ( ! empty( $settings['gitlab_token'] ) ) {
 				self::run_provider_test( 'gitlab', $settings );
 			}
+			if ( ! empty( $settings['bitbucket_email'] ) && ! empty( $settings['bitbucket_api_token'] ) ) {
+				self::run_provider_test( 'bitbucket', $settings );
+			}
 			return [];
 		}
 
 		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 			$provider = 'github';
 		}
 
-		$overrides = 'gitlab' === $provider
-			? [
+		if ( 'bitbucket' === $provider ) {
+			$overrides = [
+				'bitbucket_email'     => $req->get_param( 'bitbucket_email' ),
+				'bitbucket_api_token' => $req->get_param( 'bitbucket_api_token' ),
+			];
+		} elseif ( 'gitlab' === $provider ) {
+			$overrides = [
 				'gitlab_token' => $req->get_param( 'gitlab_token' ),
 				'gitlab_url'   => $req->get_param( 'gitlab_url' ),
-			]
-			: [
+			];
+		} else {
+			$overrides = [
 				'token'    => $req->get_param( 'token' ),
 				'username' => $req->get_param( 'username' ),
 			];
+		}
 
 		return self::run_provider_test( $provider, $settings, $overrides );
 	}
@@ -519,12 +537,52 @@ class REST {
 	 * Runs a connection test for a single provider and updates the cache slot.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider  Provider key: 'github' or 'gitlab'.
+	 * @param string $provider  Provider key: 'github', 'gitlab', or 'bitbucket'.
 	 * @param array  $settings  Saved plugin settings.
 	 * @param array  $overrides Optional credential overrides from the request.
 	 * @return array<string, mixed>|\WP_Error Connection data, or WP_Error on failure.
 	 */
 	private static function run_provider_test( string $provider, array $settings, array $overrides = [] ): array|\WP_Error {
+		if ( 'bitbucket' === $provider ) {
+			$saved_email     = $settings['bitbucket_email'] ?? '';
+			$saved_api_token = $settings['bitbucket_api_token'] ?? '';
+			$bb_email        = sanitize_email( $overrides['bitbucket_email'] ?? $saved_email );
+			$bb_api_token    = sanitize_text_field( $overrides['bitbucket_api_token'] ?? $saved_api_token );
+			$cache_this      = ( $saved_email === $bb_email && $saved_api_token === $bb_api_token );
+
+			$api    = new Bitbucket_API( $bb_email, $bb_api_token );
+			$result = $api->test_connection();
+
+			if ( is_wp_error( $result ) ) {
+				if ( $cache_this ) {
+					self::set_connection_cache(
+						'bitbucket',
+						[
+							'provider' => 'bitbucket',
+							'error'    => $result->get_error_message(),
+						]
+					);
+				}
+				return $result;
+			}
+
+			$data = [
+				'provider'       => 'bitbucket',
+				'authenticated'  => true,
+				'login'          => $result['login'] ?? '',
+				'name'           => $result['name'] ?? '',
+				'avatar_url'     => $result['avatar_url'] ?? '',
+				'rate_limit'     => 0,
+				'rate_remaining' => 0,
+				'rate_reset'     => 0,
+				'checked_at'     => time(),
+			];
+
+			self::set_connection_cache( 'bitbucket', $data );
+
+			return $data;
+		}
+
 		if ( 'gitlab' === $provider ) {
 			$saved_token = $settings['gitlab_token'] ?? '';
 			$saved_url   = $settings['gitlab_url'] ?? '';
@@ -628,7 +686,7 @@ class REST {
 	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
 		$settings = (array) get_option( 'gitwire_settings', [] );
 		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 			$provider = 'github';
 		}
 		$page = max( 1, (int) ( $req->get_param( 'page' ) ?? 1 ) );
@@ -659,6 +717,50 @@ class REST {
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function build_repos_page( array $settings, string $provider, int $page ) {
+		if ( 'bitbucket' === $provider ) {
+			$bb_email     = sanitize_email( $settings['bitbucket_email'] ?? '' );
+			$bb_api_token = $settings['bitbucket_api_token'] ?? '';
+
+			if ( ! $bb_email || ! $bb_api_token ) {
+				return new \WP_Error( 'missing_config', 'Configure Bitbucket credentials first.', [ 'status' => 400 ] );
+			}
+
+			$api       = new Bitbucket_API( $bb_email, $bb_api_token );
+			$result    = $api->get_repos( '', $page );
+			$installed = Installer::get_installed();
+
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			$repos = array_map(
+				static function ( $r ) use ( $installed ) {
+					$full_name = $r['full_name'] ?? '';
+					$parts     = explode( '/', $full_name );
+					return [
+						'id'               => $r['uuid'] ?? $full_name,
+						'name'             => $r['slug'] ?? '',
+						'full_name'        => $full_name,
+						'owner'            => $parts[0] ?? '',
+						'description'      => $r['description'] ?? '',
+						'private'          => (bool) ( $r['is_private'] ?? false ),
+						'html_url'         => $r['links']['html']['href'] ?? '',
+						'default_branch'   => $r['mainbranch']['name'] ?? 'main',
+						'updated_at'       => $r['updated_on'] ?? '',
+						'stargazers_count' => 0,
+						'installed'        => $installed[ 'bitbucket:' . $full_name ] ?? null,
+					];
+				},
+				$result
+			);
+
+			return [
+				'repos'    => $repos,
+				'has_more' => count( $result ) === 100,
+				'page'     => $page,
+			];
+		}
+
 		if ( 'gitlab' === $provider ) {
 			if ( ! ( $settings['gitlab_token'] ?? '' ) ) {
 				return new \WP_Error( 'missing_config', 'Configure a GitLab token first.', [ 'status' => 400 ] );
@@ -849,7 +951,7 @@ class REST {
 
 		if ( $smart_install && ! $force_type ) {
 			$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-			if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+			if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 				$provider = 'github';
 			}
 
@@ -892,7 +994,7 @@ class REST {
 		}
 
 		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 			$provider = 'github';
 		}
 
@@ -979,7 +1081,7 @@ class REST {
 		}
 
 		foreach ( $records as $key => &$rec ) {
-			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
+			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 				$rec['provider'] = 'github';
 			}
 
@@ -1060,7 +1162,7 @@ class REST {
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
 
 		foreach ( $records as $key => &$rec ) {
-			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab' ], true ) ) {
+			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 				$rec['provider'] = 'github';
 			}
 
@@ -1183,7 +1285,7 @@ class REST {
 				continue;
 			}
 
-			if ( ! in_array( $provider, [ 'github', 'gitlab' ], true ) ) {
+			if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 				$provider = 'github';
 			}
 
@@ -1436,7 +1538,7 @@ class REST {
 	 * @since 1.1.0
 	 * @param array<string, mixed> $settings Plugin settings array.
 	 * @param string               $provider Provider key: 'github' or 'gitlab'.
-	 * @return API|GitLab_API Appropriate API client.
+	 * @return API|GitLab_API|Bitbucket_API Appropriate API client.
 	 */
 	private static function make_api( array $settings, string $provider = 'github' ): Git_Provider_Interface {
 		return Provider_Factory::make( $settings, $provider );

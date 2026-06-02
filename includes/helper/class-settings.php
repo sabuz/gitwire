@@ -37,13 +37,16 @@ class Settings {
 		$s = self::get_raw();
 
 		return [
-			'username'             => $s['username'] ?? '',
-			'token_set'            => ! empty( $s['token'] ),
-			'token_preview'        => self::mask_token( $s['token'] ?? '' ),
-			'smart_install'        => $s['smart_install'] ?? true,
-			'gitlab_token_set'     => ! empty( $s['gitlab_token'] ),
-			'gitlab_token_preview' => self::mask_token( $s['gitlab_token'] ?? '' ),
-			'gitlab_url'           => $s['gitlab_url'] ?? '',
+			'username'                    => $s['username'] ?? '',
+			'token_set'                   => ! empty( $s['token'] ),
+			'token_preview'               => self::mask_token( $s['token'] ?? '' ),
+			'smart_install'               => $s['smart_install'] ?? true,
+			'gitlab_token_set'            => ! empty( $s['gitlab_token'] ),
+			'gitlab_token_preview'        => self::mask_token( $s['gitlab_token'] ?? '' ),
+			'gitlab_url'                  => $s['gitlab_url'] ?? '',
+			'bitbucket_email'             => $s['bitbucket_email'] ?? '',
+			'bitbucket_api_token_set'     => ! empty( $s['bitbucket_api_token'] ),
+			'bitbucket_api_token_preview' => self::mask_token( $s['bitbucket_api_token'] ?? '' ),
 		];
 	}
 
@@ -77,12 +80,22 @@ class Settings {
 			$gitlab_url = esc_url_raw( (string) $incoming['gitlab_url'] );
 		}
 
+		$bitbucket_email = $current['bitbucket_email'] ?? '';
+		if ( array_key_exists( 'bitbucket_email', $incoming ) && null !== $incoming['bitbucket_email'] ) {
+			$bitbucket_email = sanitize_email( (string) $incoming['bitbucket_email'] );
+		}
+
+		$bitbucket_api_token = $current['bitbucket_api_token'] ?? '';
+		if ( array_key_exists( 'bitbucket_api_token', $incoming ) && null !== $incoming['bitbucket_api_token'] ) {
+			$bitbucket_api_token = sanitize_text_field( (string) $incoming['bitbucket_api_token'] );
+		}
+
 		$smart_install = $current['smart_install'] ?? true;
 		if ( array_key_exists( 'smart_install', $incoming ) && null !== $incoming['smart_install'] ) {
 			$smart_install = (bool) $incoming['smart_install'];
 		}
 
-		return compact( 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url' );
+		return compact( 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url', 'bitbucket_email', 'bitbucket_api_token' );
 	}
 
 	/**

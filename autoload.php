@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 $class_map = [
 	'Gitwire\Admin'                  => 'includes/class-admin.php',
 	'Gitwire\API'                    => 'includes/class-api.php',
+	'Gitwire\Bitbucket_API'          => 'includes/class-bitbucket-api.php',
 	'Gitwire\Constants'              => 'includes/class-constants.php',
 	'Gitwire\GitLab_API'             => 'includes/class-gitlab-api.php',
 	'Gitwire\Error_Handler'          => 'includes/class-error-handler.php',

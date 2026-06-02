@@ -32,6 +32,13 @@ class Provider_Factory {
 			);
 		}
 
+		if ( 'bitbucket' === $provider ) {
+			return new Bitbucket_API(
+				$settings['bitbucket_email'] ?? '',
+				$settings['bitbucket_api_token'] ?? ''
+			);
+		}
+
 		return new API( $settings['token'] ?? '' );
 	}
 }

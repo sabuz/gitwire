@@ -23,7 +23,7 @@ import * as api from '../api';
 import { detectionKey, useRepoDetection } from '../hooks/use-repo-detection';
 import ConnectPrompt from './connect-prompt';
 import InstallModal from './install-modal';
-import { GitHubIcon, GitLabIcon } from './provider-icons';
+import { GitHubIcon, GitLabIcon, BitbucketIcon } from './provider-icons';
 
 /**
  * @param {Object} installed Installed repositories map from app state.
@@ -52,7 +52,9 @@ export default function BrowsePanel( {
 } ) {
 	const hasGitHub = !! ( settings?.token_set || settings?.username );
 	const hasGitLab = !! settings?.gitlab_token_set;
-	const showSourceBadge = hasGitHub && hasGitLab;
+	const hasBitbucket = !! settings?.bitbucket_api_token_set;
+	const showSourceBadge =
+		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 
 	const { detections, runBatch, seedFromRepos, reset } = useRepoDetection();
 
@@ -60,10 +62,12 @@ export default function BrowsePanel( {
 	const [ pagesLoaded, setPagesLoaded ] = useState( {
 		github: 0,
 		gitlab: 0,
+		bitbucket: 0,
 	} );
 	const [ hasMore, setHasMore ] = useState( {
 		github: false,
 		gitlab: false,
+		bitbucket: false,
 	} );
 	const [ loading, setLoading ] = useState( false );
 	const [ modal, setModal ] = useState( null );
@@ -72,7 +76,7 @@ export default function BrowsePanel( {
 	const handleRefreshRef = useRef( null );
 
 	const loadRepos = useCallback(
-		async ( ghPage, glPage, append = false ) => {
+		async ( ghPage, glPage, bbPage, append = false ) => {
 			setLoading( true );
 			try {
 				const fetches = [];
@@ -103,6 +107,21 @@ export default function BrowsePanel( {
 							.catch( ( e ) => ( {
 								error: e.message,
 								provider: 'gitlab',
+							} ) )
+					);
+				}
+				if ( bbPage > 0 ) {
+					fetches.push(
+						api
+							.getRepos( bbPage, 'bitbucket' )
+							.then( ( d ) => ( {
+								...d,
+								provider: 'bitbucket',
+								page: bbPage,
+							} ) )
+							.catch( ( e ) => ( {
+								error: e.message,
+								provider: 'bitbucket',
 							} ) )
 					);
 				}
@@ -183,32 +202,37 @@ export default function BrowsePanel( {
 	);
 
 	useEffect( () => {
-		loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0 );
+		loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0, hasBitbucket ? 1 : 0 );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleRefresh = useCallback( async () => {
 		setLoading( true );
 		setRepos( [] );
-		setHasMore( { github: false, gitlab: false } );
-		setPagesLoaded( { github: 0, gitlab: 0 } );
+		setHasMore( { github: false, gitlab: false, bitbucket: false } );
+		setPagesLoaded( { github: 0, gitlab: 0, bitbucket: 0 } );
 		try {
 			await api.clearCache();
 			reset();
-			await loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0 );
+			await loadRepos(
+				hasGitHub ? 1 : 0,
+				hasGitLab ? 1 : 0,
+				hasBitbucket ? 1 : 0
+			);
 		} catch ( e ) {
 			toast.error(
 				e.message || __( 'Failed to refresh repositories.', 'gitwire' )
 			);
 			setLoading( false );
 		}
-	}, [ hasGitHub, hasGitLab, loadRepos, reset ] );
+	}, [ hasGitHub, hasGitLab, hasBitbucket, loadRepos, reset ] );
 
 	handleRefreshRef.current = handleRefresh;
 
 	const handleLoadMore = () => {
 		const ghPage = hasMore.github ? pagesLoaded.github + 1 : 0;
 		const glPage = hasMore.gitlab ? pagesLoaded.gitlab + 1 : 0;
-		loadRepos( ghPage, glPage, true );
+		const bbPage = hasMore.bitbucket ? pagesLoaded.bitbucket + 1 : 0;
+		loadRepos( ghPage, glPage, bbPage, true );
 	};
 
 	const smartInstall = settings?.smart_install !== false;
@@ -244,7 +268,7 @@ export default function BrowsePanel( {
 		{ id: 'unknown', label: __( 'Unknown', 'gitwire' ) },
 	];
 
-	if ( ! hasGitHub && ! hasGitLab ) {
+	if ( ! hasGitHub && ! hasGitLab && ! hasBitbucket ) {
 		return <ConnectPrompt onConnect={ onGoToSettings } />;
 	}
 
@@ -422,18 +446,24 @@ const RepoCard = memo( function RepoCard( {
 					</FlexItem>
 				</Flex>
 				<div className="gitwire-repo-badges">
-					{ showSourceBadge &&
-						( 'github' === repo.provider ? (
-							<span className="gitwire-badge gitwire-badge--github">
-								<GitHubIcon />
-								{ __( 'GitHub', 'gitwire' ) }
-							</span>
-						) : (
-							<span className="gitwire-badge gitwire-badge--gitlab">
-								<GitLabIcon />
-								{ __( 'GitLab', 'gitwire' ) }
-							</span>
-						) ) }
+					{ showSourceBadge && 'gitlab' === repo.provider && (
+						<span className="gitwire-badge gitwire-badge--gitlab">
+							<GitLabIcon />
+							{ __( 'GitLab', 'gitwire' ) }
+						</span>
+					) }
+					{ showSourceBadge && 'bitbucket' === repo.provider && (
+						<span className="gitwire-badge gitwire-badge--bitbucket">
+							<BitbucketIcon />
+							{ __( 'Bitbucket', 'gitwire' ) }
+						</span>
+					) }
+					{ showSourceBadge && 'github' === repo.provider && (
+						<span className="gitwire-badge gitwire-badge--github">
+							<GitHubIcon />
+							{ __( 'GitHub', 'gitwire' ) }
+						</span>
+					) }
 					<span
 						className={ `gitwire-badge gitwire-badge--${
 							repo.private ? 'warning' : 'success'

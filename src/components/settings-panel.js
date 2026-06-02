@@ -20,13 +20,14 @@ import {
 } from '@wordpress/components';
 
 import * as api from '../api';
+import { BitbucketIcon } from './provider-icons';
 
 /**
  * Settings panel — one card per provider plus a Smart Install card.
  *
  * @param {Object}   props                    Component props.
  * @param {Object}   props.settings           Saved plugin settings.
- * @param {Object}   props.connection         Per-provider connection cache: { github, gitlab }.
+ * @param {Object}   props.connection         Per-provider connection cache: { github, gitlab, bitbucket }.
  * @param {Function} props.onSave             Called with updated settings after save.
  * @param {Function} props.onConnectionUpdate Called with (provider, data) after a test/disconnect.
  * @return {JSX.Element} The rendered settings panel.
@@ -81,6 +82,18 @@ export default function SettingsPanel( {
 				smartInstall={ smartInstall }
 				onConnectionUpdate={ ( data ) =>
 					onConnectionUpdate( 'gitlab', data )
+				}
+				onSave={ onSave }
+			/>
+
+			<Spacer marginTop={ 4 } />
+
+			<BitbucketCard
+				connection={ connection?.bitbucket ?? null }
+				settings={ settings }
+				smartInstall={ smartInstall }
+				onConnectionUpdate={ ( data ) =>
+					onConnectionUpdate( 'bitbucket', data )
 				}
 				onSave={ onSave }
 			/>
@@ -553,6 +566,206 @@ function GitLabCard( {
 				</Flex>
 			</CardHeader>
 			<CardBody>{ gitlabCardBody }</CardBody>
+		</Card>
+	);
+}
+
+/**
+ * Bitbucket provider card — shows a connect form when disconnected, profile when connected.
+ *
+ * @param {Object}   props                    Component props.
+ * @param {Object}   props.settings           Saved plugin settings.
+ * @param {Object}   props.connection         Cached Bitbucket connection data, or null.
+ * @param {boolean}  props.smartInstall       Current smart install value (preserved on save).
+ * @param {Function} props.onSave             Called with updated settings after save.
+ * @param {Function} props.onConnectionUpdate Called with connection data (or null) after test.
+ * @return {JSX.Element} The rendered card.
+ */
+function BitbucketCard( {
+	settings,
+	connection,
+	smartInstall,
+	onSave,
+	onConnectionUpdate,
+} ) {
+	const [ bbEmail, setBbEmail ] = useState( settings.bitbucket_email || '' );
+	const [ bbApiToken, setBbApiToken ] = useState( '' );
+	const [ saving, setSaving ] = useState( false );
+	const [ testing, setTesting ] = useState( false );
+	const [ credError, setCredError ] = useState( false );
+
+	const isConnected = !! settings.bitbucket_api_token_set;
+
+	const handleConnect = async () => {
+		if ( ! bbEmail.trim() || ! bbApiToken.trim() ) {
+			toast.error(
+				__(
+					'An Atlassian email and API token are required.',
+					'gitwire'
+				)
+			);
+			return;
+		}
+		setSaving( true );
+		setTesting( true );
+		setCredError( false );
+		try {
+			const result = await api.testConnection( {
+				provider: 'bitbucket',
+				bitbucket_email: bbEmail,
+				bitbucket_api_token: bbApiToken,
+			} );
+			await api.saveSettings( {
+				bitbucket_email: bbEmail,
+				bitbucket_api_token: bbApiToken,
+				smart_install: smartInstall,
+			} );
+			const saved = await api.getSettings();
+			onSave( saved );
+			onConnectionUpdate( result );
+			toast.success( __( 'Bitbucket connected.', 'gitwire' ) );
+		} catch ( e ) {
+			setCredError( true );
+			toast.error(
+				e.message || __( 'Connection test failed.', 'gitwire' )
+			);
+		} finally {
+			setTesting( false );
+			setSaving( false );
+		}
+	};
+
+	const handleSignOut = async () => {
+		setSaving( true );
+		try {
+			await api.saveSettings( {
+				bitbucket_email: '',
+				bitbucket_api_token: '',
+				smart_install: smartInstall,
+			} );
+			setBbEmail( '' );
+			setBbApiToken( '' );
+			const saved = await api.getSettings();
+			onSave( saved );
+			onConnectionUpdate( null );
+			toast.success( __( 'Bitbucket disconnected.', 'gitwire' ) );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
+		} finally {
+			setSaving( false );
+		}
+	};
+
+	let cardBody;
+	if ( testing ) {
+		cardBody = (
+			<div style={ { textAlign: 'center', padding: '24px 0' } }>
+				<Spinner />
+				<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+					{ __( 'Checking connection…', 'gitwire' ) }
+				</p>
+			</div>
+		);
+	} else if ( isConnected ) {
+		cardBody = (
+			<ConnectedProfile
+				connection={ connection }
+				isBusy={ saving }
+				signOutLabel={ __( 'Sign Out', 'gitwire' ) }
+				onSignOut={ handleSignOut }
+			/>
+		);
+	} else {
+		cardBody = (
+			<>
+				<TextControl
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
+					className={ credError ? 'gitwire-input-error' : undefined }
+					help={ __(
+						'The email address for your Atlassian account.',
+						'gitwire'
+					) }
+					label={ __( 'Atlassian Email', 'gitwire' ) }
+					placeholder="you@example.com"
+					type="email"
+					value={ bbEmail }
+					onChange={ ( v ) => {
+						setBbEmail( v );
+						setCredError( false );
+					} }
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<TextControl
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
+					autoComplete="new-password"
+					className={ credError ? 'gitwire-input-error' : undefined }
+					help={
+						<>
+							{ __( 'Required.', 'gitwire' ) }{ ' ' }
+							<a
+								href="https://id.atlassian.com/manage-profile/security/api-tokens"
+								rel="noopener noreferrer"
+								target="_blank"
+							>
+								{ __( 'Create API token', 'gitwire' ) }
+							</a>{ ' ' }
+							{ __(
+								'at id.atlassian.com → Security → API tokens.',
+								'gitwire'
+							) }
+						</>
+					}
+					label={ __( 'API Token', 'gitwire' ) }
+					placeholder="ATATxxxxxxxxxxxxxxxxxxxxxxxx"
+					type="password"
+					value={ bbApiToken }
+					onChange={ ( v ) => {
+						setBbApiToken( v );
+						setCredError( false );
+					} }
+				/>
+
+				<Spacer marginTop={ 5 } />
+
+				<Button
+					disabled={ saving }
+					isBusy={ saving }
+					variant="primary"
+					onClick={ handleConnect }
+				>
+					{ __( 'Connect Bitbucket', 'gitwire' ) }
+				</Button>
+			</>
+		);
+	}
+
+	return (
+		<Card>
+			<CardHeader>
+				<Flex align="center" gap={ 2 }>
+					<FlexItem>
+						<BitbucketIcon size={ 20 } variant="brand" />
+					</FlexItem>
+					<FlexBlock>
+						<Heading level={ 4 }>
+							{ __( 'Bitbucket', 'gitwire' ) }
+						</Heading>
+					</FlexBlock>
+					{ isConnected && connection && ! connection.error && (
+						<FlexItem>
+							<span className="gitwire-badge gitwire-badge--success">
+								<span className="dashicons dashicons-yes-alt" />
+								{ __( 'Connected', 'gitwire' ) }
+							</span>
+						</FlexItem>
+					) }
+				</Flex>
+			</CardHeader>
+			<CardBody>{ cardBody }</CardBody>
 		</Card>
 	);
 }

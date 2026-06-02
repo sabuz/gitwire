@@ -173,14 +173,16 @@ class Admin {
 
 		wp_set_script_translations( 'gitwire-app', 'gitwire', GITWIRE_DIR . 'languages' );
 
-		$settings   = Settings::get_public();
-		$has_github = ! empty( $settings['username'] ) || ! empty( $settings['token_set'] );
-		$has_gitlab = ! empty( $settings['gitlab_token_set'] );
-		$has_config = $has_github || $has_gitlab;
-		$raw_cache  = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
-		$connection = [
-			'github' => isset( $raw_cache['github'] ) ? $raw_cache['github'] : null,
-			'gitlab' => isset( $raw_cache['gitlab'] ) ? $raw_cache['gitlab'] : null,
+		$settings      = Settings::get_public();
+		$has_github    = ! empty( $settings['username'] ) || ! empty( $settings['token_set'] );
+		$has_gitlab    = ! empty( $settings['gitlab_token_set'] );
+		$has_bitbucket = ! empty( $settings['bitbucket_api_token_set'] );
+		$has_config    = $has_github || $has_gitlab || $has_bitbucket;
+		$raw_cache     = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
+		$connection    = [
+			'github'    => isset( $raw_cache['github'] ) ? $raw_cache['github'] : null,
+			'gitlab'    => isset( $raw_cache['gitlab'] ) ? $raw_cache['gitlab'] : null,
+			'bitbucket' => isset( $raw_cache['bitbucket'] ) ? $raw_cache['bitbucket'] : null,
 		];
 		Error_Handler::clear_stale_activation_guard();
 		$installed_result = REST::sync_installed();
