@@ -230,7 +230,10 @@ export default function InstallModal( {
 						disabled={ installing }
 						label={ __( 'Install as', 'gitwire' ) }
 						options={ [
-							{ label: __( 'Plugin', 'gitwire' ), value: 'plugin' },
+							{
+								label: __( 'Plugin', 'gitwire' ),
+								value: 'plugin',
+							},
 							{ label: __( 'Theme', 'gitwire' ), value: 'theme' },
 						] }
 						value={ type }

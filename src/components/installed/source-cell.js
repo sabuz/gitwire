@@ -26,7 +26,9 @@ export default function SourceCell( { item } ) {
 				<GitHubIcon size={ 14 } variant="brand" />
 			) }
 			<span>
-				{ isGitLab ? __( 'GitLab', 'gitwire' ) : __( 'GitHub', 'gitwire' ) }
+				{ isGitLab
+					? __( 'GitLab', 'gitwire' )
+					: __( 'GitHub', 'gitwire' ) }
 			</span>
 		</Flex>
 	);

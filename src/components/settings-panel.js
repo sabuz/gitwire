@@ -177,7 +177,9 @@ function GitHubCard( {
 			} else {
 				setUsernameError( true );
 			}
-			toast.error( e.message || __( 'Connection test failed.', 'gitwire' ) );
+			toast.error(
+				e.message || __( 'Connection test failed.', 'gitwire' )
+			);
 		} finally {
 			setTesting( false );
 			setSaving( false );
@@ -230,7 +232,9 @@ function GitHubCard( {
 				<TextControl
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
-					className={ usernameError ? 'gitwire-input-error' : undefined }
+					className={
+						usernameError ? 'gitwire-input-error' : undefined
+					}
 					help={ __(
 						'Your GitHub username or organization. Not required when a token is set.',
 						'gitwire'
@@ -318,7 +322,9 @@ function GitHubCard( {
 						</svg>
 					</FlexItem>
 					<FlexBlock>
-						<Heading level={ 4 }>{ __( 'GitHub', 'gitwire' ) }</Heading>
+						<Heading level={ 4 }>
+							{ __( 'GitHub', 'gitwire' ) }
+						</Heading>
 					</FlexBlock>
 					{ isConnected && connection && ! connection.error && (
 						<FlexItem>
@@ -396,7 +402,9 @@ function GitLabCard( {
 			toast.success( __( 'GitLab connected.', 'gitwire' ) );
 		} catch ( e ) {
 			setTokenError( true );
-			toast.error( e.message || __( 'Connection test failed.', 'gitwire' ) );
+			toast.error(
+				e.message || __( 'Connection test failed.', 'gitwire' )
+			);
 		} finally {
 			setTesting( false );
 			setSaving( false );
@@ -530,7 +538,9 @@ function GitLabCard( {
 						</svg>
 					</FlexItem>
 					<FlexBlock>
-						<Heading level={ 4 }>{ __( 'GitLab', 'gitwire' ) }</Heading>
+						<Heading level={ 4 }>
+							{ __( 'GitLab', 'gitwire' ) }
+						</Heading>
 					</FlexBlock>
 					{ isConnected && connection && ! connection.error && (
 						<FlexItem>

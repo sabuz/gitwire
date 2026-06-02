@@ -1,16 +1,7 @@
-import { FlatCompat } from '@eslint/eslintrc';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath( import.meta.url );
-const __dirname = path.dirname( __filename );
-
-const compat = new FlatCompat( {
-	baseDirectory: __dirname,
-} );
+import wordpress from '@wordpress/eslint-plugin';
 
 export default [
-	...compat.extends( 'plugin:@wordpress/eslint-plugin/recommended' ),
+	...wordpress.configs.recommended,
 	{
 		languageOptions: {
 			globals: {
@@ -19,6 +10,7 @@ export default [
 		},
 		rules: {
 			camelcase: 'off',
+			'import/no-extraneous-dependencies': 'off',
 			'jsdoc/no-undefined-types': 'off',
 			'no-duplicate-imports': 'off',
 			'no-undef': 'off',

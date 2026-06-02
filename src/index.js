@@ -10,5 +10,7 @@ if ( window.Gitwire?.nonce ) {
 
 const container = document.getElementById( 'gitwire-app' );
 if ( container ) {
-	createRoot( container ).render( <App initialData={ window.Gitwire || {} } /> );
+	createRoot( container ).render(
+		<App initialData={ window.Gitwire || {} } />
+	);
 }

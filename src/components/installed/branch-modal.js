@@ -77,7 +77,9 @@ export default function BranchModal( {
 			onSwitched( selectedBranch );
 			onClose();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Branch switch failed.', 'gitwire' ) );
+			toast.error(
+				e.message || __( 'Branch switch failed.', 'gitwire' )
+			);
 		} finally {
 			setSwitching( false );
 		}

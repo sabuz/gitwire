@@ -166,7 +166,8 @@ export default function BrowsePanel( {
 				);
 			} catch ( e ) {
 				toast.error(
-					e.message || __( 'Failed to load repositories.', 'gitwire' ),
+					e.message ||
+						__( 'Failed to load repositories.', 'gitwire' ),
 					{
 						action: {
 							label: __( 'Retry', 'gitwire' ),
@@ -178,7 +179,7 @@ export default function BrowsePanel( {
 				setLoading( false );
 			}
 		},
-		[ installed, runBatch, seedFromRepos ] // eslint-disable-line react-hooks/exhaustive-deps
+		[ installed, runBatch, seedFromRepos ]
 	);
 
 	useEffect( () => {
@@ -259,7 +260,6 @@ export default function BrowsePanel( {
 				<FlexBlock style={ { maxWidth: 280 } }>
 					<SearchControl
 						__nextHasNoMarginBottom
-						// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 						size="__unstable-large"
 						onChange={ setSearch }
 						placeholder={ __( 'Search repositories…', 'gitwire' ) }

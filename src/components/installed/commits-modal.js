@@ -87,7 +87,10 @@ export default function CommitsModal( { item, onClose } ) {
 							( fatalSha && commit.sha === fatalSha );
 
 						return (
-							<div key={ commit.sha } className="gitwire-commit-row">
+							<div
+								key={ commit.sha }
+								className="gitwire-commit-row"
+							>
 								{ hasFatalError ? (
 									<Tooltip
 										text={ __(
