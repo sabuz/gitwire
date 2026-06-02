@@ -725,7 +725,8 @@ class REST {
 				return new \WP_Error( 'missing_config', 'Configure Bitbucket credentials first.', [ 'status' => 400 ] );
 			}
 
-			$api       = new Bitbucket_API( $bb_email, $bb_api_token );
+			$api = new Bitbucket_API( $bb_email, $bb_api_token );
+			// Pass empty string — get_repos auto-discovers workspaces via /user/workspaces.
 			$result    = $api->get_repos( '', $page );
 			$installed = Installer::get_installed();
 

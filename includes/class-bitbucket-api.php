@@ -77,9 +77,9 @@ class Bitbucket_API implements Git_Provider_Interface {
 		}
 
 		// /user requires the account scope — some API tokens lack it.
-		// Fall back to listing repos to confirm the token is at least valid for repo access.
-		$repos = $this->get( '/repositories?role=member&pagelen=1' );
-		if ( is_wp_error( $repos ) ) {
+		// Fall back to /workspaces to confirm the token is valid without hitting the deprecated global repos endpoint.
+		$workspaces = $this->get( '/workspaces?pagelen=1' );
+		if ( is_wp_error( $workspaces ) ) {
 			return $user;
 		}
 
@@ -102,17 +102,62 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * @return array<int, mixed>|\WP_Error Repository list on success, WP_Error on failure.
 	 */
 	public function get_repos( string $username, int $page = 1 ): array|\WP_Error {
-		// /user/repositories lists every repo accessible to the authenticated user.
-		$result = $this->get(
-			'/repositories?role=member&pagelen=100&page=' . $page
-			. '&sort=-updated_on'
+		$slugs = $username ? [ $username ] : $this->get_workspace_slugs();
+		if ( is_wp_error( $slugs ) ) {
+			return $slugs;
+		}
+
+		$all      = [];
+		$last_err = null;
+		foreach ( $slugs as $slug ) {
+			$result = $this->get(
+				'/repositories/' . rawurlencode( $slug )
+				. '?pagelen=100&page=' . $page . '&sort=-updated_on'
+			);
+			if ( is_wp_error( $result ) ) {
+				$last_err = $result;
+				continue;
+			}
+			$all = array_merge( $all, $result['values'] ?? [] );
+		}
+
+		if ( empty( $all ) && $last_err ) {
+			return $last_err;
+		}
+
+		usort(
+			$all,
+			static function ( $a, $b ) {
+				return strcmp( $b['updated_on'] ?? '', $a['updated_on'] ?? '' );
+			}
 		);
 
+		return $all;
+	}
+
+	/**
+	 * Returns all workspace slugs for the authenticated user via the non-deprecated endpoint.
+	 *
+	 * @since 1.3.0
+	 * @return array<int, string>|\WP_Error Workspace slugs on success, WP_Error on failure.
+	 */
+	private function get_workspace_slugs(): array|\WP_Error {
+		$result = $this->get( '/user/workspaces?pagelen=100' );
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-
-		return $result['values'] ?? [];
+		$slugs = array_filter(
+			array_map(
+				static function ( $m ) {
+					return $m['workspace']['slug'] ?? '';
+				},
+				$result['values'] ?? []
+			)
+		);
+		if ( empty( $slugs ) ) {
+			return new \WP_Error( 'gitwire_api_error', 'No Bitbucket workspaces found for this account.' );
+		}
+		return array_values( $slugs );
 	}
 
 	/**
@@ -328,11 +373,16 @@ class Bitbucket_API implements Git_Provider_Interface {
 
 		if ( $code >= 400 ) {
 			$message = $body['error']['message'] ?? sprintf( 'Bitbucket API error (HTTP %d)', $code );
-			return new \WP_Error(
-				'gitwire_api_error',
-				is_string( $message ) ? $message : sprintf( 'Bitbucket API error (HTTP %d)', $code ),
-				[ 'status' => $code ]
-			);
+			if ( ! is_string( $message ) ) {
+				$message = sprintf( 'Bitbucket API error (HTTP %d)', $code );
+			}
+			// Scope errors mean the API token was created without Bitbucket access.
+			if ( 403 === $code && str_contains( $message, 'privilege scopes' ) ) {
+				$message = 'Your API token lacks Bitbucket access. When creating the token at id.atlassian.com, choose Scopes → Bitbucket → Read (or use a Classic API token).';
+			}
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[Gitwire Bitbucket] HTTP ' . $code . ' on ' . $this->base . $endpoint . ' — ' . $message );
+			return new \WP_Error( 'gitwire_api_error', $message, [ 'status' => $code ] );
 		}
 
 		return is_array( $body ) ? $body : [];
