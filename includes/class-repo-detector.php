@@ -46,31 +46,37 @@ class Repo_Detector {
 			}
 		}
 
-		if ( isset( $files['theme.json'] ) ) {
-			$name = '';
-			if ( isset( $files['style.css'] ) ) {
-				$css = $get_file_content( 'style.css', $branch );
-				if ( ! is_wp_error( $css ) ) {
-					$name = self::extract_header( $css, 'Theme Name' );
-				}
-			}
-			return [
-				'type'       => 'theme',
-				'subtype'    => 'block',
-				'confidence' => 'high',
-				'name'       => $name,
-			];
-		}
-
+		// style.css with Theme Name is the only canonical WordPress indicator that a repo is a theme.
+		// theme.json alone is not sufficient — plugins routinely ship one for block styling.
 		if ( isset( $files['style.css'] ) ) {
 			$css = $get_file_content( 'style.css', $branch );
 			if ( ! is_wp_error( $css ) && self::has_header( $css, 'Theme Name' ) ) {
-				$subtype = isset( $files['templates'] ) ? 'block' : 'classic';
+				$name = self::extract_header( $css, 'Theme Name' );
+
+				// Block theme: theme.json is the strongest signal (required for FSE).
+				if ( isset( $files['theme.json'] ) ) {
+					return [
+						'type'       => 'theme',
+						'subtype'    => 'block',
+						'confidence' => 'high',
+						'name'       => $name,
+					];
+				}
+
+				if ( isset( $files['templates'] ) && ( $files['templates']['type'] ?? '' ) === 'dir' ) {
+					return [
+						'type'       => 'theme',
+						'subtype'    => 'block',
+						'confidence' => 'high',
+						'name'       => $name,
+					];
+				}
+
 				return [
 					'type'       => 'theme',
-					'subtype'    => $subtype,
-					'confidence' => 'high',
-					'name'       => self::extract_header( $css, 'Theme Name' ),
+					'subtype'    => 'classic',
+					'confidence' => isset( $files['functions.php'] ) ? 'high' : 'medium',
+					'name'       => $name,
 				];
 			}
 		}
@@ -109,15 +115,6 @@ class Repo_Detector {
 					'name'       => self::extract_header( $content, 'Plugin Name' ),
 				];
 			}
-		}
-
-		if ( isset( $files['templates'] ) && ( $files['templates']['type'] ?? '' ) === 'dir' ) {
-			return [
-				'type'       => 'theme',
-				'subtype'    => 'block',
-				'confidence' => 'medium',
-				'name'       => '',
-			];
 		}
 
 		if ( isset( $files['functions.php'] ) ) {
