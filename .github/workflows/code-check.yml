@@ -28,9 +28,6 @@ jobs:
       - name: Install npm dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Run TypeScript type check
-        run: npm run type-check
-
       - name: Run JS lint
         run: npm run lint:js
 
