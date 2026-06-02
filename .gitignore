@@ -9,6 +9,9 @@ composer.lock
 # Build output (compiled by wp-scripts, not committed)
 build/
 
+# PHPUnit
+.phpunit.result.cache
+
 # macOS
 .DS_Store
 
