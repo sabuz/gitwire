@@ -135,7 +135,7 @@ class GitLab_API implements Git_Provider_Interface {
 			$branch,
 			function ( $ref ) use ( $project_id ) {
 				$contents = $this->get(
-					'/projects/' . $project_id . '/repository/tree?ref=' . rawurlencode( $ref )
+					'/projects/' . $project_id . '/repository/tree?per_page=100&ref=' . rawurlencode( $ref )
 				);
 				if ( is_wp_error( $contents ) ) {
 					return $contents;
