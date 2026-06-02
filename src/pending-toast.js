@@ -61,9 +61,9 @@ export function showPendingToast( toastApi ) {
 			toastApi.warning( message, {
 				duration: duration ?? toastDuration( message, 'warning' ),
 			} );
-			return;
+		} else {
+			toastApi.success( message );
 		}
-		toastApi.success( message );
 	} catch ( _ ) {
 		toastApi.success( raw );
 	}

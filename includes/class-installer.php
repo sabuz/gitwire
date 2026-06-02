@@ -751,7 +751,28 @@ class Installer {
 		}
 
 		$installed[ $record_key ] = $record;
+
+		// drop any other record that claimed the same directory (replace-install).
+		$new_path = untrailingslashit( $record['install_path'] ?? '' );
+		$evicted  = [];
+		if ( $new_path ) {
+			foreach ( array_keys( $installed ) as $key ) {
+				if ( $key === $record_key ) {
+					continue;
+				}
+				$other_path = untrailingslashit( $installed[ $key ]['install_path'] ?? '' );
+				if ( $other_path && $other_path === $new_path ) {
+					$evicted[] = $installed[ $key ];
+					unset( $installed[ $key ] );
+				}
+			}
+		}
+
 		update_option( 'gitwire_installed', $installed );
+
+		if ( ! empty( $evicted ) ) {
+			$record['_evicted'] = $evicted;
+		}
 
 		return $record;
 	}

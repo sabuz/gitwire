@@ -480,12 +480,16 @@ const RepoCard = memo( function RepoCard( {
 					/>
 					{ repo.updated_at && (
 						<Tooltip
-							text={ `${ __( 'Last Updated', 'gitwire' ) }: ${ new Date(
-								repo.updated_at
-							).toLocaleString( undefined, {
-								dateStyle: 'medium',
-								timeStyle: 'short',
-							} ) }` }
+							text={ `${ __(
+								'Last Updated',
+								'gitwire'
+							) }: ${ new Date( repo.updated_at ).toLocaleString(
+								undefined,
+								{
+									dateStyle: 'medium',
+									timeStyle: 'short',
+								}
+							) }` }
 						>
 							<span className="gitwire-repo-updated">
 								<svg

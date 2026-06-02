@@ -1006,6 +1006,8 @@ class REST {
 			return $result;
 		}
 
+		unset( $result['_evicted'] );
+
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
 
