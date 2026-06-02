@@ -315,10 +315,10 @@ body.gitwire-admin-page {
 	}
 
 	&-updated {
-		display: block;
-		margin-top: 8px;
-		margin-bottom: 0;
-		margin-left: 1px;
+		display: inline-flex;
+		gap: 3px;
+		align-items: center;
+		margin-left: auto;
 		font-size: 11px;
 		color: #8c959f;
 	}

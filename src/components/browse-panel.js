@@ -17,6 +17,7 @@ import {
 	Card,
 	CardBody,
 	SearchControl,
+	Tooltip,
 } from '@wordpress/components';
 
 import * as api from '../api';
@@ -477,13 +478,35 @@ const RepoCard = memo( function RepoCard( {
 						detection={ detection }
 						installed={ installed }
 					/>
+					{ repo.updated_at && (
+						<Tooltip
+							text={ `${ __( 'Last Updated', 'gitwire' ) }: ${ new Date(
+								repo.updated_at
+							).toLocaleString( undefined, {
+								dateStyle: 'medium',
+								timeStyle: 'short',
+							} ) }` }
+						>
+							<span className="gitwire-repo-updated">
+								<svg
+									aria-hidden="true"
+									fill="none"
+									height="11"
+									stroke="currentColor"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									strokeWidth="1.5"
+									viewBox="0 0 16 16"
+									width="11"
+								>
+									<circle cx="8" cy="8" r="6.25" />
+									<polyline points="8,4.5 8,8 10.5,10" />
+								</svg>
+								{ timeAgo( repo.updated_at ) }
+							</span>
+						</Tooltip>
+					) }
 				</div>
-				{ repo.updated_at && (
-					<p className="gitwire-repo-updated">
-						{ __( 'Updated', 'gitwire' ) }{ ' ' }
-						{ timeAgo( repo.updated_at ) }
-					</p>
-				) }
 			</CardBody>
 		</Card>
 	);
