@@ -18,6 +18,35 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Repo_Detector {
 
 	/**
+	 * Directories that are never relevant to WP type detection.
+	 *
+	 * @var string[]
+	 */
+	private const IGNORED_DIRS = [
+		'.git', '.github', '.wordpress-org',
+		'node_modules', 'vendor',
+		'tests', 'docs', 'tools', 'prompts',
+	];
+
+	/**
+	 * File extensions that are never relevant to WP type detection.
+	 *
+	 * @var string[]
+	 */
+	private const IGNORED_EXTENSIONS = [
+		// Config / manifests
+		'json', 'lock', 'xml', 'yml', 'yaml', 'toml', 'ini',
+		// Docs / meta
+		'md', 'txt', 'rst', 'dist',
+		// Web assets (not WP template files)
+		'js', 'ts', 'jsx', 'tsx', 'scss', 'sass', 'less', 'svg',
+		// Images
+		'png', 'jpg', 'jpeg', 'gif', 'ico', 'webp',
+		// Misc
+		'map', 'log', 'sh', 'bash',
+	];
+
+	/**
 	 * Detects repository type from root file listing callbacks.
 	 *
 	 * @since 1.2.0
@@ -41,19 +70,26 @@ class Repo_Detector {
 
 		$files = [];
 		foreach ( $contents as $item ) {
-			if ( isset( $item['name'] ) ) {
-				$files[ strtolower( $item['name'] ) ] = $item;
+			if ( ! isset( $item['name'] ) ) {
+				continue;
 			}
+			$lc  = strtolower( $item['name'] );
+			$ext = pathinfo( $lc, PATHINFO_EXTENSION );
+			if (
+				in_array( $lc, self::IGNORED_DIRS, true ) ||
+				in_array( $ext, self::IGNORED_EXTENSIONS, true )
+			) {
+				continue;
+			}
+			$files[ $lc ] = $item;
 		}
 
-		// style.css with Theme Name is the only canonical WordPress indicator that a repo is a theme.
-		// theme.json alone is not sufficient — plugins routinely ship one for block styling.
+		// theme.json alone isn't enough — plugins ship it too; style.css + Theme Name is the real gate
 		if ( isset( $files['style.css'] ) ) {
 			$css = $get_file_content( 'style.css', $branch );
 			if ( ! is_wp_error( $css ) && self::has_header( $css, 'Theme Name' ) ) {
 				$name = self::extract_header( $css, 'Theme Name' );
 
-				// Block theme: theme.json is the strongest signal (required for FSE).
 				if ( isset( $files['theme.json'] ) ) {
 					return [
 						'type'       => 'theme',
