@@ -115,8 +115,8 @@ class Admin {
 
 		add_submenu_page(
 			self::PAGE_SLUG,
-			__( 'Add repository', 'gitwire' ),
-			__( 'Add repository', 'gitwire' ),
+			__( 'Add Repository', 'gitwire' ),
+			__( 'Add Repository', 'gitwire' ),
 			'manage_options',
 			self::PAGE_SLUG . '&path=add-repository',
 			[ self::class, 'render_page' ],

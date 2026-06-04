@@ -333,6 +333,7 @@ export default function ImportFromUrl( {
 						} }
 					/>
 					<Button
+						__next40pxDefaultSize
 						disabled={ ! url.trim() || isBusy }
 						isBusy={ step === 'checking' }
 						variant="primary"
@@ -340,7 +341,7 @@ export default function ImportFromUrl( {
 					>
 						{ step === 'checking'
 							? __( 'Checking…', 'gitwire' )
-							: __( 'Check repository', 'gitwire' ) }
+							: __( 'Check Repository', 'gitwire' ) }
 					</Button>
 				</div>
 			) }
@@ -377,7 +378,7 @@ export default function ImportFromUrl( {
 								variant="primary"
 								onClick={ handleConnectAndContinue }
 							>
-								{ __( 'Connect & continue', 'gitwire' ) }
+								{ __( 'Connect & Continue', 'gitwire' ) }
 							</Button>
 						</Flex>
 					) : (

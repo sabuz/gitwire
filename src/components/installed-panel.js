@@ -312,7 +312,7 @@ export default function InstalledPanel( {
 					) }
 				</p>
 				<Button variant="primary" onClick={ () => onOpenAddRepo() }>
-					{ __( 'Add repository', 'gitwire' ) }
+					{ __( 'Add Repository', 'gitwire' ) }
 				</Button>
 			</div>
 		);
@@ -322,7 +322,7 @@ export default function InstalledPanel( {
 		<div className="gitwire-installed-panel">
 			<div className="gitwire-installed-panel__header">
 				<Button variant="primary" onClick={ () => onOpenAddRepo() }>
-					{ __( 'Add repository', 'gitwire' ) }
+					{ __( 'Add Repository', 'gitwire' ) }
 				</Button>
 			</div>
 			<DataViews

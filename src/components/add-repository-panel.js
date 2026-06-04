@@ -6,22 +6,24 @@ import ImportFromUrl from './import-from-url';
 
 const BrowsePanel = lazy( () => import( './browse-panel' ) );
 
-function hasAnyConnection( connection ) {
+function hasAnyConnection( settings ) {
 	return !! (
-		connection?.github?.authenticated ||
-		connection?.gitlab?.authenticated ||
-		connection?.bitbucket?.authenticated
+		settings?.token_set ||
+		settings?.username ||
+		settings?.gitlab_token_set ||
+		settings?.bitbucket_api_token_set
 	);
 }
 
 /**
  * Add repository page — Browse and Import from URL sub-tabs.
  *
- * @param {Object}   props               Component props.
- * @param {Object}   props.installed     Map of installed repositories.
- * @param {Object}   props.settings      Plugin settings.
- * @param {Object}   props.connection    Live connection state per provider.
- * @param {Function} props.onPostInstall Called after a successful install.
+ * @param {Object}   props                Component props.
+ * @param {Object}   props.installed      Map of installed repositories.
+ * @param {Object}   props.settings       Plugin settings.
+ * @param {Object}   props.connection     Live connection state per provider.
+ * @param {Function} props.onPostInstall  Called after a successful install.
+ * @param {Function} props.onGoToSettings Navigates to the Settings tab.
  * @return {JSX.Element} The rendered page.
  */
 export default function AddRepositoryPanel( {
@@ -29,19 +31,11 @@ export default function AddRepositoryPanel( {
 	settings,
 	connection,
 	onPostInstall,
+	onGoToSettings,
 } ) {
-	const [ subTab, setSubTab ] = useState( () => {
-		const saved = sessionStorage.getItem( 'gitwire_add_repo_sub_tab' );
-		if ( saved === 'browse' || saved === 'url' ) {
-			return saved;
-		}
-		return hasAnyConnection( connection ) ? 'browse' : 'url';
-	} );
-
-	const handleSubTab = ( tab ) => {
-		setSubTab( tab );
-		sessionStorage.setItem( 'gitwire_add_repo_sub_tab', tab );
-	};
+	const [ subTab, setSubTab ] = useState(
+		hasAnyConnection( settings ) ? 'browse' : 'url'
+	);
 
 	const panelFallback = (
 		<div className="gitwire-page-loading">
@@ -56,22 +50,22 @@ export default function AddRepositoryPanel( {
 				className="gitwire-add-repo-page__sub-nav"
 			>
 				<button
-					aria-current={ subTab === 'url' ? 'page' : undefined }
-					className={ `gitwire-add-repo-tab${
-						subTab === 'url' ? ' is-active' : ''
-					}` }
-					onClick={ () => handleSubTab( 'url' ) }
-				>
-					{ __( 'Import from URL', 'gitwire' ) }
-				</button>
-				<button
 					aria-current={ subTab === 'browse' ? 'page' : undefined }
 					className={ `gitwire-add-repo-tab${
 						subTab === 'browse' ? ' is-active' : ''
 					}` }
-					onClick={ () => handleSubTab( 'browse' ) }
+					onClick={ () => setSubTab( 'browse' ) }
 				>
-					{ __( 'Browse my repositories', 'gitwire' ) }
+					{ __( 'Browse My Repositories', 'gitwire' ) }
+				</button>
+				<button
+					aria-current={ subTab === 'url' ? 'page' : undefined }
+					className={ `gitwire-add-repo-tab${
+						subTab === 'url' ? ' is-active' : ''
+					}` }
+					onClick={ () => setSubTab( 'url' ) }
+				>
+					{ __( 'Import from URL', 'gitwire' ) }
 				</button>
 			</nav>
 
@@ -89,6 +83,7 @@ export default function AddRepositoryPanel( {
 						<BrowsePanel
 							installed={ installed }
 							settings={ settings }
+							onGoToSettings={ onGoToSettings }
 							onPostInstall={ onPostInstall }
 						/>
 					</Suspense>

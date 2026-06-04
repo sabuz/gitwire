@@ -622,13 +622,30 @@ body.gitwire-admin-page {
 
 // Browse sub-tab — no connection state
 .gitwire-browse-no-connection {
-	padding: 48px 24px;
+	padding: 72px 24px;
 	text-align: center;
 
+	img {
+		display: block;
+		width: 64px;
+		height: 64px;
+		margin: 0 auto 20px;
+		opacity: 0.2;
+	}
+
+	h2 {
+		margin: 0 0 8px;
+		font-size: 16px;
+		font-weight: 600;
+		color: #1d2327;
+	}
+
 	p {
-		margin: 0 0 16px;
-		font-size: 14px;
-		color: #57606a;
+		max-width: 420px;
+		margin: 0 auto 20px;
+		font-size: 13px;
+		line-height: 1.6;
+		color: #8c959f;
 	}
 }
 

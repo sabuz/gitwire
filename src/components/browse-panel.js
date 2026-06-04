@@ -42,6 +42,7 @@ function lookupInstalled( installed, repo ) {
  * @param {Object}   props.installed          Map of installed repositories.
  * @param {Function} [props.onPostInstall]    Standalone mode: called after install completes.
  * @param {Function} [props.onInstallRequest] Modal mode: called with (repo, detection) instead of opening InstallModal.
+ * @param {Function} [props.onGoToSettings]   Navigates to the Settings tab.
  * @return {JSX.Element} The rendered browse panel.
  */
 export default function BrowsePanel( {
@@ -49,6 +50,7 @@ export default function BrowsePanel( {
 	installed,
 	onPostInstall,
 	onInstallRequest,
+	onGoToSettings,
 } ) {
 	const hasGitHub = !! ( settings?.token_set || settings?.username );
 	const hasGitLab = !! settings?.gitlab_token_set;
@@ -271,12 +273,23 @@ export default function BrowsePanel( {
 	if ( ! hasGitHub && ! hasGitLab && ! hasBitbucket ) {
 		return (
 			<div className="gitwire-browse-no-connection">
+				<img
+					alt=""
+					aria-hidden="true"
+					src={ window.Gitwire?.disconnected_url }
+				/>
+				<h2>{ __( 'No Account Connected', 'gitwire' ) }</h2>
 				<p>
 					{ __(
-						'Connect a GitHub, GitLab, or Bitbucket account in Settings to browse your repositories.',
+						'Connect a GitHub, GitLab, or Bitbucket account to browse and install from your repositories.',
 						'gitwire'
 					) }
 				</p>
+				{ onGoToSettings && (
+					<Button variant="primary" onClick={ onGoToSettings }>
+						{ __( 'Go to Settings', 'gitwire' ) }
+					</Button>
+				) }
 			</div>
 		);
 	}

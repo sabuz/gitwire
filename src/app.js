@@ -26,7 +26,7 @@ const InstalledPanel = lazy( () => import( './components/installed-panel' ) );
 
 const TABS = [
 	{ name: 'repositories', label: __( 'Repositories', 'gitwire' ) },
-	{ name: 'add-repository', label: __( 'Add repository', 'gitwire' ) },
+	{ name: 'add-repository', label: __( 'Add Repository', 'gitwire' ) },
 	{ name: 'settings', label: __( 'Settings', 'gitwire' ) },
 ];
 
@@ -367,6 +367,7 @@ export default function App( { initialData } ) {
 							connection={ connection }
 							installed={ installed }
 							settings={ settings }
+							onGoToSettings={ () => handleGoToTab( 'settings' ) }
 							onPostInstall={ handlePostInstall }
 						/>
 					</Suspense>
