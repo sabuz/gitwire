@@ -350,11 +350,11 @@ export default function BrowsePanel( {
 							<Button
 								aria-expanded={ isOpen }
 								icon="filter"
+								label={ __( 'Filter', 'gitwire' ) }
 								isPressed={ activeFilterCount > 0 }
 								variant="tertiary"
 								onClick={ onToggle }
 							>
-								{ __( 'Filter', 'gitwire' ) }
 								{ activeFilterCount > 0 && (
 									<span className="gitwire-filter-count">
 										{ activeFilterCount }
