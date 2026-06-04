@@ -471,14 +471,19 @@ export default function BrowsePanel( {
 						disabled={ loading }
 						icon="update"
 						isBusy={ loading }
-						label={ __( 'Refresh repositories', 'gitwire' ) }
 						variant="tertiary"
 						onClick={ handleRefresh }
-					/>
+					>
+						{ __( 'Refresh', 'gitwire' ) }
+					</Button>
 				</FlexItem>
 				{ onOpenUrlImport && (
 					<FlexItem>
-						<Button variant="secondary" onClick={ onOpenUrlImport }>
+						<Button
+							icon="admin-links"
+							variant="tertiary"
+							onClick={ onOpenUrlImport }
+						>
 							{ __( 'Import from URL', 'gitwire' ) }
 						</Button>
 					</FlexItem>
