@@ -106,10 +106,19 @@ class Admin {
 		// First submenu replaces the auto-generated duplicate of the parent.
 		add_submenu_page(
 			self::PAGE_SLUG,
-			__( 'Installed', 'gitwire' ),
-			__( 'Installed', 'gitwire' ),
+			__( 'Repositories', 'gitwire' ),
+			__( 'Repositories', 'gitwire' ),
 			'manage_options',
 			self::PAGE_SLUG,
+			[ self::class, 'render_page' ],
+		);
+
+		add_submenu_page(
+			self::PAGE_SLUG,
+			__( 'Add repository', 'gitwire' ),
+			__( 'Add repository', 'gitwire' ),
+			'manage_options',
+			self::PAGE_SLUG . '&path=add-repository',
 			[ self::class, 'render_page' ],
 		);
 
@@ -205,13 +214,12 @@ class Admin {
 			$initial_tab = 'settings';
 		} elseif ( 'settings' === $path ) {
 			$initial_tab = 'settings';
+		} elseif ( in_array( $path, [ 'add-repository', 'browse' ], true ) && $has_config ) {
+			// 'browse' is kept for back-compat with old bookmarks.
+			$initial_tab = 'add-repository';
 		} else {
-			$initial_tab = 'installed';
+			$initial_tab = 'repositories';
 		}
-
-		// ?path=browse opens the Add repository panel on the Browse sub-tab (back-compat).
-		$initial_open_add_repo    = 'browse' === $path && $has_config;
-		$initial_add_repo_sub_tab = $initial_open_add_repo ? 'browse' : null;
 
 		wp_add_inline_script(
 			'gitwire-app',
@@ -224,10 +232,8 @@ class Admin {
 					'themes_url'            => admin_url( 'themes.php' ),
 					'verify_activation_url' => home_url( '/?gitwire_verify_activation=1' ),
 					'verify_admin_url'      => admin_url( 'admin.php?page=gitwire&gitwire_verify_activation=1' ),
-					'initial_tab'              => $initial_tab,
-					'initial_open_add_repo'    => $initial_open_add_repo,
-					'initial_add_repo_sub_tab' => $initial_add_repo_sub_tab,
-					'settings'                 => $settings,
+					'initial_tab' => $initial_tab,
+					'settings'    => $settings,
 					'connection'            => $connection,
 					'installed'             => $installed ? $installed : (object) [],
 					'orphaned'              => $orphaned,

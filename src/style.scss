@@ -574,29 +574,13 @@ body.gitwire-admin-page {
 	color: #57606a;
 }
 
-// Add repository panel
-.gitwire-add-repo-panel {
-	min-height: 400px;
-
-	&__header {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 16px;
-		align-items: center;
-		margin-bottom: 32px;
-	}
-
-	&__title {
-		margin: 0;
-		font-size: 16px;
-		font-weight: 600;
-		color: #1d2327;
-	}
+// Add repository page
+.gitwire-add-repo-page {
 
 	&__sub-nav {
 		display: flex;
 		gap: 4px;
-		margin-left: auto;
+		margin-bottom: 28px;
 	}
 
 	&__content {

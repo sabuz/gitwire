@@ -25,7 +25,8 @@ const AddRepositoryPanel = lazy( () =>
 const InstalledPanel = lazy( () => import( './components/installed-panel' ) );
 
 const TABS = [
-	{ name: 'installed', label: __( 'Installed', 'gitwire' ) },
+	{ name: 'repositories', label: __( 'Repositories', 'gitwire' ) },
+	{ name: 'add-repository', label: __( 'Add repository', 'gitwire' ) },
 	{ name: 'settings', label: __( 'Settings', 'gitwire' ) },
 ];
 
@@ -48,7 +49,7 @@ function showOrphanedNotice( item ) {
 function tabUrl( tabName ) {
 	const url = new URL( window.location.href );
 	url.searchParams.set( 'page', 'gitwire' );
-	if ( tabName === 'installed' ) {
+	if ( tabName === 'repositories' ) {
 		url.searchParams.delete( 'path' );
 	} else {
 		url.searchParams.set( 'path', tabName );
@@ -61,7 +62,7 @@ function updateSidebarActive( tabName ) {
 	if ( ! submenu ) {
 		return;
 	}
-	const expectedPath = tabName === 'installed' ? '' : tabName;
+	const expectedPath = tabName === 'repositories' ? '' : tabName;
 	submenu.querySelectorAll( 'li' ).forEach( ( li ) => {
 		const a = li.querySelector( 'a' );
 		if ( ! a ) {
@@ -81,7 +82,7 @@ function updateSidebarActive( tabName ) {
 function syncUrl( tabName ) {
 	const url = new URL( window.location.href );
 	url.searchParams.set( 'page', 'gitwire' );
-	if ( tabName === 'installed' ) {
+	if ( tabName === 'repositories' ) {
 		url.searchParams.delete( 'path' );
 	} else {
 		url.searchParams.set( 'path', tabName );
@@ -102,17 +103,11 @@ export default function App( { initialData } ) {
 	const [ installed, setInstalled ] = useState( initialData.installed || {} );
 	const [ loading, setLoading ] = useState( ! initialData.settings );
 	const [ activeTab, setActiveTab ] = useState(
-		initialData.initial_tab || 'installed'
-	);
-	const [ addRepoOpen, setAddRepoOpen ] = useState(
-		!! initialData.initial_open_add_repo
-	);
-	const [ addRepoSubTab, setAddRepoSubTab ] = useState(
-		initialData.initial_add_repo_sub_tab || null
+		initialData.initial_tab || 'repositories'
 	);
 
 	useEffect( () => {
-		if ( activeTab !== 'installed' ) {
+		if ( activeTab !== 'repositories' ) {
 			return;
 		}
 		if ( initialData.fatal_notice ) {
@@ -158,10 +153,16 @@ export default function App( { initialData } ) {
 		const tab = sessionStorage.getItem( 'gitwire_goto_tab' );
 		if ( tab ) {
 			sessionStorage.removeItem( 'gitwire_goto_tab' );
-			setActiveTab( tab );
-			syncUrl( tab );
+			// Migrate old tab names from previous sessions.
+			const legacyMap = {
+				installed: 'repositories',
+				browse: 'add-repository',
+			};
+			const resolved = legacyMap[ tab ] ?? tab;
+			setActiveTab( resolved );
+			syncUrl( resolved );
 		} else {
-			updateSidebarActive( initialData.initial_tab || 'installed' );
+			updateSidebarActive( initialData.initial_tab || 'repositories' );
 		}
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -173,7 +174,9 @@ export default function App( { initialData } ) {
 			return;
 		}
 		const PATH_TO_TAB = {
-			'': 'installed',
+			'': 'repositories',
+			'add-repository': 'add-repository',
+			browse: 'add-repository', // back-compat
 			settings: 'settings',
 		};
 		function handleClick( ev ) {
@@ -186,25 +189,13 @@ export default function App( { initialData } ) {
 				if ( params.get( 'page' ) !== 'gitwire' ) {
 					return;
 				}
-				const path = params.get( 'path' ) || '';
-				// Back-compat: old ?path=browse bookmarks open the add-repo panel.
-				if ( path === 'browse' ) {
-					ev.preventDefault();
-					ev.stopPropagation();
-					setAddRepoOpen( true );
-					setAddRepoSubTab( 'browse' );
-					setActiveTab( 'installed' );
-					syncUrl( 'installed' );
-					return;
-				}
-				const tab = PATH_TO_TAB[ path ];
+				const tab = PATH_TO_TAB[ params.get( 'path' ) || '' ];
 				if ( tab === undefined ) {
 					return;
 				}
 				ev.preventDefault();
 				ev.stopPropagation();
 				setActiveTab( tab );
-				setAddRepoOpen( false );
 				syncUrl( tab );
 			} catch ( _ ) {
 				// Ignore malformed hrefs.
@@ -237,20 +228,7 @@ export default function App( { initialData } ) {
 
 	const handleGoToTab = useCallback( ( tabName ) => {
 		setActiveTab( tabName );
-		setAddRepoOpen( false );
 		syncUrl( tabName );
-	}, [] );
-
-	const handleOpenAddRepo = useCallback( ( subTab ) => {
-		setAddRepoOpen( true );
-		if ( subTab ) {
-			setAddRepoSubTab( subTab );
-		}
-	}, [] );
-
-	const handleCloseAddRepo = useCallback( () => {
-		setAddRepoOpen( false );
-		setAddRepoSubTab( null );
 	}, [] );
 
 	const handlePostInstall = useCallback(
@@ -277,9 +255,7 @@ export default function App( { initialData } ) {
 					variant: 'success',
 				} );
 			}
-			setAddRepoOpen( false );
-			setAddRepoSubTab( null );
-			handleGoToTab( 'installed' );
+			handleGoToTab( 'repositories' );
 			refreshInstalled();
 		},
 		[ handleGoToTab, refreshInstalled ]
@@ -288,7 +264,6 @@ export default function App( { initialData } ) {
 	const handleTabClick = useCallback( ( ev, tabName ) => {
 		ev.preventDefault();
 		setActiveTab( tabName );
-		setAddRepoOpen( false );
 		syncUrl( tabName );
 	}, [] );
 
@@ -344,20 +319,16 @@ export default function App( { initialData } ) {
 						<a
 							key={ tab.name }
 							aria-current={
-								activeTab === tab.name && ! addRepoOpen
-									? 'page'
-									: undefined
+								activeTab === tab.name ? 'page' : undefined
 							}
 							className={ `gitwire-nav-tab${
-								activeTab === tab.name && ! addRepoOpen
-									? ' is-active'
-									: ''
+								activeTab === tab.name ? ' is-active' : ''
 							}` }
 							href={ tabUrl( tab.name ) }
 							onClick={ ( ev ) => handleTabClick( ev, tab.name ) }
 						>
 							{ tab.label }
-							{ tab.name === 'installed' &&
+							{ tab.name === 'repositories' &&
 								installedCount > 0 && (
 									<span className="gitwire-nav-badge">
 										{ installedCount }
@@ -377,31 +348,27 @@ export default function App( { initialData } ) {
 						onSave={ handleSettingsSave }
 					/>
 				) }
-				{ activeTab === 'installed' && (
+				{ activeTab === 'repositories' && (
 					<Suspense fallback={ panelFallback }>
-						{ addRepoOpen ? (
-							<AddRepositoryPanel
-								connection={ connection }
-								initialSubTab={ addRepoSubTab }
-								installed={ installed }
-								settings={ settings }
-								onClose={ handleCloseAddRepo }
-								onGoToSettings={ () =>
-									handleGoToTab( 'settings' )
-								}
-								onPostInstall={ handlePostInstall }
-							/>
-						) : (
-							<InstalledPanel
-								installed={ installed }
-								settings={ settings }
-								onGoToSettings={ () =>
-									handleGoToTab( 'settings' )
-								}
-								onOpenAddRepo={ handleOpenAddRepo }
-								onRefresh={ refreshInstalled }
-							/>
-						) }
+						<InstalledPanel
+							installed={ installed }
+							settings={ settings }
+							onGoToSettings={ () => handleGoToTab( 'settings' ) }
+							onOpenAddRepo={ () =>
+								handleGoToTab( 'add-repository' )
+							}
+							onRefresh={ refreshInstalled }
+						/>
+					</Suspense>
+				) }
+				{ activeTab === 'add-repository' && (
+					<Suspense fallback={ panelFallback }>
+						<AddRepositoryPanel
+							connection={ connection }
+							installed={ installed }
+							settings={ settings }
+							onPostInstall={ handlePostInstall }
+						/>
 					</Suspense>
 				) }
 			</div>

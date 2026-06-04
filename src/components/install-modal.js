@@ -15,24 +15,13 @@ import {
 
 import * as api from '../api';
 
-/**
- * Normalizes a string into a safe directory slug matching WordPress conventions:
- * lowercase, only a-z / 0-9 / hyphens / underscores, no consecutive separators,
- * no leading or trailing separator.
- *
- * Both `-` and `_` are kept - WordPress plugins/themes use both. Any unsafe char
- * (including spaces) is replaced with `-`. Mixed runs like `_-` collapse to `-`.
- *
- * @param {string} value Raw input.
- * @return {string} Normalized slug.
- */
 function normalizeSlug( value ) {
 	return value
 		.toLowerCase()
-		.replace( /[^a-z0-9_-]+/g, '-' ) // unsafe chars → hyphen
-		.replace( /[-_]*-[-_]*/g, '-' ) // any run containing a hyphen → single hyphen
-		.replace( /__+/g, '_' ); // consecutive underscores → single underscore
-	// No leading/trailing trim here - trimming while typing blocks adding separators at the end.
+		.replace( /[^a-z0-9_-]+/g, '-' )
+		.replace( /[-_]*-[-_]*/g, '-' )
+		.replace( /__+/g, '_' );
+	// No leading/trailing trim here — trimming while typing blocks adding separators at the end.
 }
 
 function finalizeSlug( value ) {
@@ -40,24 +29,29 @@ function finalizeSlug( value ) {
 }
 
 /**
- * Install modal - lets the user choose a branch and confirms the install.
+ * Inline install form — branch picker, slug, detection badge, Install button.
+ * Renders without any Modal wrapper so it can be embedded inside a parent modal.
  *
- * @param {Object}      props              Component props.
- * @param {Object}      props.repo         Repository data object.
- * @param {boolean}     props.smartInstall Whether smart install is enabled.
- * @param {Function}    props.onClose      Callback fired when the modal is closed.
- * @param {Function}    props.onInstalled  Callback fired after a successful install.
- * @param {string}      props.provider     Git provider: 'github' or 'gitlab'.
- * @param {Object|null} props.detection    Pre-fetched detection result, if any.
- * @return {JSX.Element} The rendered install modal.
+ * @param {Object}      props                      Component props.
+ * @param {Object}      props.repo                 Repository data object.
+ * @param {string}      props.provider             Git provider.
+ * @param {boolean}     props.smartInstall         Whether smart install is enabled.
+ * @param {Object|null} props.detection            Pre-fetched detection result, if any.
+ * @param {Function}    props.onInstalled          Callback fired after a successful install.
+ * @param {Function}    [props.onBack]             Optional cancel/back button callback.
+ * @param {string}      [props.backLabel]          Label for the back button (default: Cancel).
+ * @param {Function}    [props.onInstallingChange] Called with true/false as install runs.
+ * @return {JSX.Element} The rendered install form.
  */
-export default function InstallModal( {
+export function InstallForm( {
 	repo,
 	provider = 'github',
 	smartInstall,
-	onClose,
-	onInstalled,
 	detection: initialDetection = null,
+	onInstalled,
+	onBack,
+	backLabel,
+	onInstallingChange,
 } ) {
 	const [ allBranches, setAllBranches ] = useState( [] );
 	const [ branch, setBranch ] = useState( repo.default_branch || 'main' );
@@ -76,8 +70,11 @@ export default function InstallModal( {
 	const [ installing, setInstalling ] = useState( false );
 	const debounceRef = useRef( null );
 
-	// Filter all fetched branches by the current search term, show at most 10.
-	// Always keep the selected branch visible when no search is active.
+	const setInstallingState = ( val ) => {
+		setInstalling( val );
+		onInstallingChange?.( val );
+	};
+
 	const branchOptions = useMemo( () => {
 		const filter = branchFilter.toLowerCase();
 		const defaultBranch = repo.default_branch || 'main';
@@ -144,11 +141,10 @@ export default function InstallModal( {
 					setSlugChecking( false );
 				} )
 				.catch( () => {
-					if ( cancelled ) {
-						return;
+					if ( ! cancelled ) {
+						setSlugConflict( false );
+						setSlugChecking( false );
 					}
-					setSlugConflict( false );
-					setSlugChecking( false );
 				} );
 		}, 400 );
 		return () => {
@@ -165,9 +161,8 @@ export default function InstallModal( {
 		( ! slugConflict || replace );
 
 	const handleInstall = async () => {
-		setInstalling( true );
+		setInstallingState( true );
 		try {
-			// Re-check conflict at install time to guard against stale debounce state.
 			const installType =
 				detection?.type !== 'unknown' ? detection.type : type;
 			const finalSlug = finalizeSlug( slug );
@@ -181,7 +176,7 @@ export default function InstallModal( {
 			);
 			if ( check.conflict && ! replace ) {
 				setSlugConflict( true );
-				setInstalling( false );
+				setInstallingState( false );
 				return;
 			}
 
@@ -197,32 +192,18 @@ export default function InstallModal( {
 			onInstalled( result );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Installation failed.', 'gitwire' ) );
-			setInstalling( false );
+			setInstallingState( false );
 		}
 	};
 
 	return (
-		<Modal
-			className="gitwire-modal"
-			shouldCloseOnClickOutside={ ! installing }
-			shouldCloseOnEsc={ ! installing }
-			style={ { width: 480 } }
-			title={
-				<span className="gitwire-modal__title">
-					{ __( 'Install', 'gitwire' ) }{ ' ' }
-					<span style={ { color: 'var(--gitwire-color-accent)' } }>
-						{ repo.full_name }
-					</span>
-				</span>
-			}
-			onRequestClose={ installing ? undefined : onClose }
-		>
+		<>
 			<DetectionBadge
 				detection={ detection }
 				smartInstall={ smartInstall }
 			/>
 
-			{ detection && detection.type === 'unknown' && ! smartInstall && (
+			{ detection?.type === 'unknown' && ! smartInstall && (
 				<div style={ { marginTop: 16 } }>
 					<SelectControl
 						__next40pxDefaultSize
@@ -291,9 +272,9 @@ export default function InstallModal( {
 			</div>
 
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 20 } }>
-				{ ! installing && (
-					<Button variant="tertiary" onClick={ onClose }>
-						{ __( 'Cancel', 'gitwire' ) }
+				{ ! installing && onBack && (
+					<Button variant="tertiary" onClick={ onBack }>
+						{ backLabel || __( 'Cancel', 'gitwire' ) }
 					</Button>
 				) }
 				<Button
@@ -308,13 +289,62 @@ export default function InstallModal( {
 					/>
 				</Button>
 			</Flex>
+		</>
+	);
+}
+
+/**
+ * Install modal — wraps InstallForm in a WordPress Modal.
+ *
+ * @param {Object}      props              Component props.
+ * @param {Object}      props.repo         Repository data object.
+ * @param {boolean}     props.smartInstall Whether smart install is enabled.
+ * @param {Function}    props.onClose      Callback fired when the modal is closed.
+ * @param {Function}    props.onInstalled  Callback fired after a successful install.
+ * @param {string}      props.provider     Git provider: 'github' or 'gitlab'.
+ * @param {Object|null} props.detection    Pre-fetched detection result, if any.
+ * @return {JSX.Element} The rendered install modal.
+ */
+export default function InstallModal( {
+	repo,
+	provider = 'github',
+	smartInstall,
+	onClose,
+	onInstalled,
+	detection = null,
+} ) {
+	const [ installing, setInstalling ] = useState( false );
+
+	return (
+		<Modal
+			className="gitwire-modal"
+			shouldCloseOnClickOutside={ ! installing }
+			shouldCloseOnEsc={ ! installing }
+			style={ { width: 480 } }
+			title={
+				<span className="gitwire-modal__title">
+					{ __( 'Install', 'gitwire' ) }{ ' ' }
+					<span style={ { color: 'var(--gitwire-color-accent)' } }>
+						{ repo.full_name }
+					</span>
+				</span>
+			}
+			onRequestClose={ installing ? undefined : onClose }
+		>
+			<InstallForm
+				detection={ detection }
+				provider={ provider }
+				repo={ repo }
+				smartInstall={ smartInstall }
+				onBack={ onClose }
+				onInstalled={ onInstalled }
+				onInstallingChange={ setInstalling }
+			/>
 		</Modal>
 	);
 }
 
 /**
- * Install modal primary button label.
- *
  * @param {Object}  props              Component props.
  * @param {boolean} props.installing   Whether an install request is in flight.
  * @param {boolean} props.slugChecking Whether the directory slug is being validated.
@@ -331,8 +361,6 @@ function InstallButtonLabel( { installing, slugChecking } ) {
 }
 
 /**
- * Detection result badge shown inside the install modal.
- *
  * @param {Object}      props              Component props.
  * @param {Object|null} props.detection    Type detection result.
  * @param {boolean}     props.smartInstall Whether smart install is enabled.
@@ -357,7 +385,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 				? sprintf(
 						/* translators: %s: plugin name */
 						__( 'WordPress Plugin%s', 'gitwire' ),
-						name ? ` - ${ name }` : ''
+						name ? `: ${ name }` : ''
 				  )
 				: __( 'Likely a WordPress Plugin', 'gitwire' );
 	} else if ( type === 'theme' && subtype === 'block' ) {
@@ -367,7 +395,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 				? sprintf(
 						/* translators: %s: theme name */
 						__( 'Block Theme%s', 'gitwire' ),
-						name ? ` - ${ name }` : ''
+						name ? `: ${ name }` : ''
 				  )
 				: __( 'Likely a Block Theme', 'gitwire' );
 	} else if ( type === 'theme' ) {
@@ -377,7 +405,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 				? sprintf(
 						/* translators: %s: theme name */
 						__( 'Classic Theme%s', 'gitwire' ),
-						name ? ` - ${ name }` : ''
+						name ? `: ${ name }` : ''
 				  )
 				: __( 'Likely a Classic Theme', 'gitwire' );
 	} else {
@@ -393,7 +421,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 			{ type === 'unknown' && smartInstall && (
 				<p className="gitwire-detect-note gitwire-detect-blocked">
 					{ __(
-						'Smart Install is enabled - only verified plugins and themes can be installed. Disable it in Settings to override.',
+						'Smart Install is enabled. Only verified plugins and themes can be installed. Disable it in Settings to override.',
 						'gitwire'
 					) }
 				</p>

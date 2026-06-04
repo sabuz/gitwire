@@ -37,13 +37,19 @@ function lookupInstalled( installed, repo ) {
 /**
  * Browse panel — lists GitHub and GitLab repositories with detection and install actions.
  *
- * @param {Object}   props               Component props.
- * @param {Object}   props.settings      Plugin settings.
- * @param {Object}   props.installed     Map of installed repositories.
- * @param {Function} props.onPostInstall Switches to Installed, refreshes, then toasts.
+ * @param {Object}   props                    Component props.
+ * @param {Object}   props.settings           Plugin settings.
+ * @param {Object}   props.installed          Map of installed repositories.
+ * @param {Function} [props.onPostInstall]    Standalone mode: called after install completes.
+ * @param {Function} [props.onInstallRequest] Modal mode: called with (repo, detection) instead of opening InstallModal.
  * @return {JSX.Element} The rendered browse panel.
  */
-export default function BrowsePanel( { settings, installed, onPostInstall } ) {
+export default function BrowsePanel( {
+	settings,
+	installed,
+	onPostInstall,
+	onInstallRequest,
+} ) {
 	const hasGitHub = !! ( settings?.token_set || settings?.username );
 	const hasGitLab = !! settings?.gitlab_token_set;
 	const hasBitbucket = !! settings?.bitbucket_api_token_set;
@@ -352,7 +358,17 @@ export default function BrowsePanel( { settings, installed, onPostInstall } ) {
 							repo={ repo }
 							showSourceBadge={ showSourceBadge }
 							smartInstall={ smartInstall }
-							onInstall={ () => setModal( repo ) }
+							onInstall={
+								onInstallRequest
+									? () =>
+											onInstallRequest(
+												repo,
+												detections[
+													detectionKey( repo )
+												]
+											)
+									: () => setModal( repo )
+							}
 						/>
 					) ) }
 				</div>
@@ -371,7 +387,7 @@ export default function BrowsePanel( { settings, installed, onPostInstall } ) {
 				</div>
 			) }
 
-			{ modal && (
+			{ ! onInstallRequest && modal && (
 				<InstallModal
 					detection={ detections[ detectionKey( modal ) ] }
 					provider={ modal.provider }

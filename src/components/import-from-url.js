@@ -62,18 +62,16 @@ function installButtonLabel( installing, slugChecking ) {
 /**
  * Full Import from URL flow — URL input → Check → install form (inline, no modal).
  *
- * @param {Object}   props                Component props.
- * @param {Object}   props.settings       Plugin settings.
- * @param {Object}   props.connection     Live connection state per provider.
- * @param {Function} props.onPostInstall  Called after a successful install.
- * @param {Function} props.onGoToSettings Navigates to the Settings tab.
+ * @param {Object}   props               Component props.
+ * @param {Object}   props.settings      Plugin settings.
+ * @param {Object}   props.connection    Live connection state per provider.
+ * @param {Function} props.onPostInstall Called after a successful install.
  * @return {JSX.Element} The rendered import form.
  */
 export default function ImportFromUrl( {
 	settings,
 	connection,
 	onPostInstall,
-	onGoToSettings,
 } ) {
 	const [ url, setUrl ] = useState( '' );
 	// step: idle | checking | error | resolved | private | verifying-conn | conn-error | installing
