@@ -516,7 +516,7 @@ body.gitwire-admin-page {
 	}
 
 	h2 {
-		margin: 0 0 16px;
+		margin: 0 0 8px;
 		font-size: 16px;
 		font-weight: 600;
 		color: #1d2327;
@@ -572,4 +572,143 @@ body.gitwire-admin-page {
 	margin: 2px 0 0;
 	font-size: 11px;
 	color: #57606a;
+}
+
+// Add repository panel
+.gitwire-add-repo-panel {
+	min-height: 400px;
+
+	&__header {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 16px;
+		align-items: center;
+		margin-bottom: 32px;
+	}
+
+	&__title {
+		margin: 0;
+		font-size: 16px;
+		font-weight: 600;
+		color: #1d2327;
+	}
+
+	&__sub-nav {
+		display: flex;
+		gap: 4px;
+		margin-left: auto;
+	}
+
+	&__content {
+		min-height: 200px;
+	}
+}
+
+.gitwire-add-repo-tab {
+	padding: 6px 14px;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+	background: transparent;
+	font-size: 13px;
+	font-weight: 400;
+	color: #2c3338;
+	cursor: pointer;
+	transition: background 0.15s ease;
+
+	&:hover {
+		background: #f6f7f7;
+	}
+
+	&.is-active {
+		border-color: var(--gitwire-color-accent);
+		background: var(--gitwire-color-accent);
+		color: #fff;
+
+		&:hover {
+			background: var(--gitwire-color-accent-darker-10);
+		}
+	}
+}
+
+// Browse sub-tab — no connection state
+.gitwire-browse-no-connection {
+	padding: 48px 24px;
+	text-align: center;
+
+	p {
+		margin: 0 0 16px;
+		font-size: 14px;
+		color: #57606a;
+	}
+}
+
+// Import from URL
+.gitwire-import-url {
+	max-width: 680px;
+
+	&__input-row {
+		display: flex;
+		gap: 12px;
+		align-items: flex-end;
+		margin-bottom: 20px;
+
+		.components-base-control {
+			flex: 1;
+			min-width: 0;
+			margin-bottom: 0 !important;
+		}
+	}
+
+	&__message {
+		margin: 0 0 16px;
+		font-size: 13px;
+		color: #57606a;
+
+		&.is-error {
+			color: #cf222e;
+		}
+	}
+
+	&__private {
+		margin-bottom: 16px;
+		padding: 16px;
+		border: 1px solid #dcdcde;
+		border-radius: 4px;
+		background: #f6f7f7;
+
+		p {
+			margin: 0 0 12px;
+		}
+	}
+
+	&__conn-hint {
+		font-size: 13px;
+		color: #57606a;
+	}
+
+	&__install-form {
+		padding-top: 4px;
+	}
+
+	&__resolved-name {
+		margin: 0 0 8px;
+		font-size: 13px;
+		color: #57606a;
+	}
+}
+
+// Installed panel header (Add repository button row)
+.gitwire-installed-panel__header {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: 16px;
+}
+
+// Empty state hint line
+.gitwire-installed-empty__hint {
+	max-width: 420px;
+	margin: 0 auto 20px;
+	font-size: 13px;
+	line-height: 1.6;
+	color: #8c959f;
 }

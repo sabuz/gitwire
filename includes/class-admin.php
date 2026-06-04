@@ -115,15 +115,6 @@ class Admin {
 
 		add_submenu_page(
 			self::PAGE_SLUG,
-			__( 'Browse', 'gitwire' ),
-			__( 'Browse', 'gitwire' ),
-			'manage_options',
-			self::PAGE_SLUG . '&path=browse',
-			[ self::class, 'render_page' ],
-		);
-
-		add_submenu_page(
-			self::PAGE_SLUG,
 			__( 'Settings', 'gitwire' ),
 			__( 'Settings', 'gitwire' ),
 			'manage_options',
@@ -212,11 +203,15 @@ class Admin {
 		$path = sanitize_key( $_GET['path'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( $first_activation || ! $has_config ) {
 			$initial_tab = 'settings';
-		} elseif ( in_array( $path, [ 'browse', 'settings' ], true ) ) {
-			$initial_tab = $path;
+		} elseif ( 'settings' === $path ) {
+			$initial_tab = 'settings';
 		} else {
 			$initial_tab = 'installed';
 		}
+
+		// ?path=browse opens the Add repository panel on the Browse sub-tab (back-compat).
+		$initial_open_add_repo    = 'browse' === $path && $has_config;
+		$initial_add_repo_sub_tab = $initial_open_add_repo ? 'browse' : null;
 
 		wp_add_inline_script(
 			'gitwire-app',
@@ -229,8 +224,10 @@ class Admin {
 					'themes_url'            => admin_url( 'themes.php' ),
 					'verify_activation_url' => home_url( '/?gitwire_verify_activation=1' ),
 					'verify_admin_url'      => admin_url( 'admin.php?page=gitwire&gitwire_verify_activation=1' ),
-					'initial_tab'           => $initial_tab,
-					'settings'              => $settings,
+					'initial_tab'              => $initial_tab,
+					'initial_open_add_repo'    => $initial_open_add_repo,
+					'initial_add_repo_sub_tab' => $initial_add_repo_sub_tab,
+					'settings'                 => $settings,
 					'connection'            => $connection,
 					'installed'             => $installed ? $installed : (object) [],
 					'orphaned'              => $orphaned,

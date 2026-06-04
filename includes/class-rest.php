@@ -335,6 +335,22 @@ class REST {
 				'permission_callback' => [ self::class, 'can_manage' ],
 			]
 		);
+
+		register_rest_route(
+			$ns,
+			'/repos/resolve',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'resolve_repo' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'url' => [
+						'required' => true,
+						'type'     => 'string',
+					],
+				],
+			]
+		);
 	}
 
 	/**
@@ -1601,6 +1617,167 @@ class REST {
 		return [
 			'cleared' => true,
 		];
+	}
+
+	/**
+	 * Parses a repository URL and attempts an anonymous type detection.
+	 *
+	 * Returns provider/owner/repo/branch, whether the repo is publicly readable,
+	 * and the detection result when public.
+	 *
+	 * @since 1.3.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error Resolve payload or WP_Error on bad URL.
+	 */
+	public static function resolve_repo( \WP_REST_Request $req ): array|\WP_Error {
+		$url    = sanitize_text_field( (string) $req->get_param( 'url' ) );
+		$parsed = self::parse_repo_url( $url );
+
+		if ( is_wp_error( $parsed ) ) {
+			return $parsed;
+		}
+
+		$provider = $parsed['provider'];
+		$owner    = $parsed['owner'];
+		$repo     = $parsed['repo'];
+		$branch   = $parsed['branch'];
+
+		$anon_api  = self::make_anon_api( $parsed );
+		$detect_br = $branch ?: 'HEAD';
+		$detected  = $anon_api->detect_type( $owner, $repo, $detect_br );
+		$is_public = ! is_wp_error( $detected );
+
+		return [
+			'provider'  => $provider,
+			'owner'     => $owner,
+			'repo'      => $repo,
+			'branch'    => $branch ?: null,
+			'is_public' => $is_public,
+			'detection' => $is_public ? $detected : null,
+		];
+	}
+
+	/**
+	 * Parses a GitHub, GitLab, or Bitbucket URL into its components.
+	 *
+	 * Handles .git suffix, /tree/<branch>, trailing slashes, and GitLab
+	 * nested namespaces. Self-hosted GitLab is matched against the saved
+	 * gitlab_url setting.
+	 *
+	 * @since 1.3.0
+	 * @param string $url Raw URL from the client.
+	 * @return array<string, string>|\WP_Error Parsed components or WP_Error.
+	 */
+	private static function parse_repo_url( string $url ): array|\WP_Error {
+		$invalid = new \WP_Error(
+			'invalid_url',
+			/* translators: shown when the pasted URL is not a GitHub/GitLab/Bitbucket repo link */
+			__( "We couldn't recognize this link. Use GitHub, GitLab, or Bitbucket.", 'gitwire' ),
+			[ 'status' => 400 ]
+		);
+
+		$url   = trim( $url );
+		$parts = wp_parse_url( $url );
+
+		if ( empty( $parts['host'] ) || empty( $parts['path'] ) ) {
+			return $invalid;
+		}
+
+		$host = strtolower( $parts['host'] );
+		$path = rtrim( $parts['path'], '/' );
+		$path = (string) preg_replace( '/\.git$/i', '', $path );
+
+		if ( 'github.com' === $host ) {
+			if ( ! preg_match( '#^/([^/]+)/([^/]+)(?:/tree/(.+))?$#', $path, $m ) ) {
+				return $invalid;
+			}
+			return [
+				'provider'   => 'github',
+				'owner'      => $m[1],
+				'repo'       => $m[2],
+				'branch'     => isset( $m[3] ) ? trim( $m[3], '/' ) : '',
+				'gitlab_url' => '',
+			];
+		}
+
+		if ( 'bitbucket.org' === $host ) {
+			if ( ! preg_match( '#^/([^/]+)/([^/]+)#', $path, $m ) ) {
+				return $invalid;
+			}
+			$branch = '';
+			if ( preg_match( '#/src/([^/]+)#', $path, $bm ) ) {
+				$branch = $bm[1];
+			}
+			return [
+				'provider'   => 'bitbucket',
+				'owner'      => $m[1],
+				'repo'       => $m[2],
+				'branch'     => $branch,
+				'gitlab_url' => '',
+			];
+		}
+
+		// GitLab.com or self-hosted GitLab.
+		$settings         = Settings::get_raw();
+		$is_gitlab_com    = 'gitlab.com' === $host;
+		$custom_url       = rtrim( $settings['gitlab_url'] ?? '', '/' );
+		$custom_host      = '';
+		if ( $custom_url ) {
+			$parsed_custom = wp_parse_url( $custom_url );
+			$custom_host   = strtolower( $parsed_custom['host'] ?? '' );
+		}
+		$is_custom_gitlab = $custom_host && $host === $custom_host;
+
+		if ( $is_gitlab_com || $is_custom_gitlab ) {
+			// Strip /-/tree/branch or /tree/branch.
+			$branch = '';
+			if ( preg_match( '#^(.+)/-/tree/(.+)$#', $path, $m ) ) {
+				$path   = rtrim( $m[1], '/' );
+				$branch = trim( $m[2], '/' );
+			} elseif ( preg_match( '#^(.+)/tree/([^/].+)$#', $path, $m ) ) {
+				$path   = rtrim( $m[1], '/' );
+				$branch = trim( $m[2], '/' );
+			}
+
+			$segments = array_values( array_filter( explode( '/', ltrim( $path, '/' ) ) ) );
+			if ( count( $segments ) < 2 ) {
+				return $invalid;
+			}
+
+			$repo_name = array_pop( $segments );
+			$owner     = implode( '/', $segments );
+
+			return [
+				'provider'   => 'gitlab',
+				'owner'      => $owner,
+				'repo'       => $repo_name,
+				'branch'     => $branch,
+				'gitlab_url' => $is_custom_gitlab ? $custom_url : '',
+			];
+		}
+
+		return $invalid;
+	}
+
+	/**
+	 * Returns an anonymous (no-token) API client for the given parsed URL components.
+	 *
+	 * @since 1.3.0
+	 * @param array<string, string> $parsed Output of parse_repo_url().
+	 * @return Git_Provider_Interface
+	 */
+	private static function make_anon_api( array $parsed ): Git_Provider_Interface {
+		$provider = $parsed['provider'] ?? 'github';
+
+		if ( 'gitlab' === $provider ) {
+			return new GitLab_API( '', $parsed['gitlab_url'] ?? '' );
+		}
+
+		if ( 'bitbucket' === $provider ) {
+			return new Bitbucket_API( '', '' );
+		}
+
+		return new API( '' );
 	}
 
 	/**

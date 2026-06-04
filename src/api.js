@@ -96,3 +96,10 @@ export const removeInstalled = ( owner, repo, provider = 'github' ) =>
 		) }`,
 		method: 'DELETE',
 	} );
+
+export const resolveRepo = ( url ) =>
+	apiFetch( {
+		path: `${ BASE }/repos/resolve`,
+		method: 'POST',
+		data: { url },
+	} );

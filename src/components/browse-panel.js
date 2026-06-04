@@ -22,7 +22,6 @@ import {
 
 import * as api from '../api';
 import { detectionKey, useRepoDetection } from '../hooks/use-repo-detection';
-import ConnectPrompt from './connect-prompt';
 import InstallModal from './install-modal';
 import { GitHubIcon, GitLabIcon, BitbucketIcon } from './provider-icons';
 
@@ -38,19 +37,13 @@ function lookupInstalled( installed, repo ) {
 /**
  * Browse panel — lists GitHub and GitLab repositories with detection and install actions.
  *
- * @param {Object}   props                Component props.
- * @param {Object}   props.settings       Plugin settings.
- * @param {Object}   props.installed      Map of installed repositories.
- * @param {Function} props.onPostInstall  Switches to Installed, refreshes, then toasts.
- * @param {Function} props.onGoToSettings Callback to navigate to the Settings tab.
+ * @param {Object}   props               Component props.
+ * @param {Object}   props.settings      Plugin settings.
+ * @param {Object}   props.installed     Map of installed repositories.
+ * @param {Function} props.onPostInstall Switches to Installed, refreshes, then toasts.
  * @return {JSX.Element} The rendered browse panel.
  */
-export default function BrowsePanel( {
-	settings,
-	installed,
-	onPostInstall,
-	onGoToSettings,
-} ) {
+export default function BrowsePanel( { settings, installed, onPostInstall } ) {
 	const hasGitHub = !! ( settings?.token_set || settings?.username );
 	const hasGitLab = !! settings?.gitlab_token_set;
 	const hasBitbucket = !! settings?.bitbucket_api_token_set;
@@ -270,7 +263,16 @@ export default function BrowsePanel( {
 	];
 
 	if ( ! hasGitHub && ! hasGitLab && ! hasBitbucket ) {
-		return <ConnectPrompt onConnect={ onGoToSettings } />;
+		return (
+			<div className="gitwire-browse-no-connection">
+				<p>
+					{ __(
+						'Connect a GitHub, GitLab, or Bitbucket account in Settings to browse your repositories.',
+						'gitwire'
+					) }
+				</p>
+			</div>
+		);
 	}
 
 	return (
