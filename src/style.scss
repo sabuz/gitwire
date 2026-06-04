@@ -706,19 +706,8 @@ body.gitwire-admin-page {
 		padding-top: 4px;
 	}
 
-	&__resolved-name {
-		margin: 0 0 8px;
-		font-size: 13px;
-		color: #57606a;
-	}
 }
 
-// Installed panel header (Add repository button row)
-.gitwire-installed-panel__header {
-	display: flex;
-	justify-content: flex-end;
-	margin-bottom: 16px;
-}
 
 // Empty state hint line
 .gitwire-installed-empty__hint {

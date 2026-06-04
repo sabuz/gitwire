@@ -112,7 +112,13 @@ export default function ImportFromUrl( {
 		setBranchFilter( '' );
 
 		api.getBranches( info.owner, info.repo, info.provider )
-			.then( ( b ) => setAllBranches( b ) )
+			.then( ( b ) => {
+				setAllBranches( b );
+				// if the hardcoded fallback branch doesn't exist, use the repo's real default
+				setBranch( ( current ) =>
+					b.length > 0 && ! b.includes( current ) ? b[ 0 ] : current
+				);
+			} )
 			.catch( () => {} );
 	}, [] );
 
@@ -263,6 +269,7 @@ export default function ImportFromUrl( {
 				provider: resolved.provider,
 				slug: finalSlug,
 				replace,
+				force_type: true,
 			} );
 			onPostInstall( result, `${ resolved.owner }/${ resolved.repo }` );
 		} catch ( e ) {
@@ -426,9 +433,6 @@ export default function ImportFromUrl( {
 				<div className="gitwire-import-url__install-form">
 					<ResolvedBadge
 						detection={ detection }
-						provider={ resolved.provider }
-						owner={ resolved.owner }
-						repo={ resolved.repo }
 						smartInstall={ smartInstall }
 					/>
 
@@ -532,15 +536,10 @@ export default function ImportFromUrl( {
  *
  * @param {Object}      props              Component props.
  * @param {Object|null} props.detection    Detection result from the resolve endpoint.
- * @param {string}      props.provider     Git provider.
- * @param {string}      props.owner        Repository owner.
- * @param {string}      props.repo         Repository name.
  * @param {boolean}     props.smartInstall Whether smart install is enabled.
  * @return {JSX.Element} The rendered detection badge.
  */
-function ResolvedBadge( { detection, provider, owner, repo, smartInstall } ) {
-	const fullName = `${ owner }/${ repo }`;
-
+function ResolvedBadge( { detection, smartInstall } ) {
 	if ( ! detection ) {
 		return (
 			<div className="gitwire-detect-row gitwire-detect-loading">
@@ -589,9 +588,6 @@ function ResolvedBadge( { detection, provider, owner, repo, smartInstall } ) {
 
 	return (
 		<div className="gitwire-detect-row">
-			<p className="gitwire-import-url__resolved-name">
-				<strong>{ providerLabel( provider ) }</strong> { fullName }
-			</p>
 			<span className={ `gitwire-detect-badge ${ badgeClass }` }>
 				{ label }
 			</span>

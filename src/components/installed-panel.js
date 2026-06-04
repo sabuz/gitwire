@@ -320,11 +320,6 @@ export default function InstalledPanel( {
 
 	return (
 		<div className="gitwire-installed-panel">
-			<div className="gitwire-installed-panel__header">
-				<Button variant="primary" onClick={ () => onOpenAddRepo() }>
-					{ __( 'Add Repository', 'gitwire' ) }
-				</Button>
-			</div>
 			<DataViews
 				actions={ actions }
 				data={ shownData }
