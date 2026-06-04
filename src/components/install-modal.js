@@ -401,7 +401,7 @@ function DetectionBadge( { detection, smartInstall } ) {
 			{ type === 'unknown' && ! smartInstall && (
 				<p className="gitwire-detect-note gitwire-detect-warn">
 					{ __(
-						'This repo was not recognised as a WordPress plugin or theme. You can still install it - choose a type below.',
+						'This repository was not recognised as a WordPress plugin or theme. You can still install it. Choose a type below.',
 						'gitwire'
 					) }
 				</p>

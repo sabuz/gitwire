@@ -304,7 +304,7 @@ export default function ImportFromUrl( {
 	const connLabel = existingConn?.authenticated
 		? sprintf(
 				/* translators: 1: provider name, 2: username */
-				__( '%1$s — @%2$s', 'gitwire' ),
+				__( '%1$s (@%2$s)', 'gitwire' ),
 				providerLabel( resolved?.provider ),
 				existingConn.login
 		  )
@@ -560,7 +560,7 @@ function ResolvedBadge( { detection, provider, owner, repo, smartInstall } ) {
 				? sprintf(
 						/* translators: %s: plugin name */
 						__( 'WordPress Plugin%s', 'gitwire' ),
-						name ? ` — ${ name }` : ''
+						name ? `: ${ name }` : ''
 				  )
 				: __( 'Likely a WordPress Plugin', 'gitwire' );
 	} else if ( type === 'theme' && subtype === 'block' ) {
@@ -570,7 +570,7 @@ function ResolvedBadge( { detection, provider, owner, repo, smartInstall } ) {
 				? sprintf(
 						/* translators: %s: theme name */
 						__( 'Block Theme%s', 'gitwire' ),
-						name ? ` — ${ name }` : ''
+						name ? `: ${ name }` : ''
 				  )
 				: __( 'Likely a Block Theme', 'gitwire' );
 	} else if ( type === 'theme' ) {
@@ -580,7 +580,7 @@ function ResolvedBadge( { detection, provider, owner, repo, smartInstall } ) {
 				? sprintf(
 						/* translators: %s: theme name */
 						__( 'Classic Theme%s', 'gitwire' ),
-						name ? ` — ${ name }` : ''
+						name ? `: ${ name }` : ''
 				  )
 				: __( 'Likely a Classic Theme', 'gitwire' );
 	} else {
@@ -599,7 +599,7 @@ function ResolvedBadge( { detection, provider, owner, repo, smartInstall } ) {
 			{ type === 'unknown' && smartInstall && (
 				<p className="gitwire-detect-note gitwire-detect-blocked">
 					{ __(
-						'Smart Install is enabled — only verified plugins and themes can be installed. Disable it in Settings to override.',
+						'Smart Install is enabled. Only verified plugins and themes can be installed. Disable it in Settings to override.',
 						'gitwire'
 					) }
 				</p>
@@ -607,7 +607,7 @@ function ResolvedBadge( { detection, provider, owner, repo, smartInstall } ) {
 			{ type === 'unknown' && ! smartInstall && (
 				<p className="gitwire-detect-note gitwire-detect-warn">
 					{ __(
-						'This repo was not recognised as a WordPress plugin or theme. You can still install it — choose a type below.',
+						'This repository was not recognised as a WordPress plugin or theme. You can still install it. Choose a type below.',
 						'gitwire'
 					) }
 				</p>
