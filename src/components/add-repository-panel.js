@@ -1,22 +1,13 @@
 import { __ } from '@wordpress/i18n';
 import { useState, lazy, Suspense } from '@wordpress/element';
-import { Spinner } from '@wordpress/components';
+import { Modal, Spinner } from '@wordpress/components';
 
 import ImportFromUrl from './import-from-url';
 
 const BrowsePanel = lazy( () => import( './browse-panel' ) );
 
-function hasAnyConnection( settings ) {
-	return !! (
-		settings?.token_set ||
-		settings?.username ||
-		settings?.gitlab_token_set ||
-		settings?.bitbucket_api_token_set
-	);
-}
-
 /**
- * Add repository page — Browse and Import from URL sub-tabs.
+ * Add Repository page — Browse panel with an Import from URL modal action.
  *
  * @param {Object}   props                Component props.
  * @param {Object}   props.installed      Map of installed repositories.
@@ -33,9 +24,12 @@ export default function AddRepositoryPanel( {
 	onPostInstall,
 	onGoToSettings,
 } ) {
-	const [ subTab, setSubTab ] = useState(
-		hasAnyConnection( settings ) ? 'browse' : 'url'
-	);
+	const [ urlImportOpen, setUrlImportOpen ] = useState( false );
+
+	const handleUrlImportInstall = ( result, repoFullName ) => {
+		setUrlImportOpen( false );
+		onPostInstall( result, repoFullName );
+	};
 
 	const panelFallback = (
 		<div className="gitwire-page-loading">
@@ -45,50 +39,31 @@ export default function AddRepositoryPanel( {
 
 	return (
 		<div className="gitwire-add-repo-page">
-			<nav
-				aria-label={ __( 'Add repository options', 'gitwire' ) }
-				className="gitwire-add-repo-page__sub-nav"
-			>
-				<button
-					aria-current={ subTab === 'browse' ? 'page' : undefined }
-					className={ `gitwire-add-repo-tab${
-						subTab === 'browse' ? ' is-active' : ''
-					}` }
-					onClick={ () => setSubTab( 'browse' ) }
-				>
-					{ __( 'Browse My Repositories', 'gitwire' ) }
-				</button>
-				<button
-					aria-current={ subTab === 'url' ? 'page' : undefined }
-					className={ `gitwire-add-repo-tab${
-						subTab === 'url' ? ' is-active' : ''
-					}` }
-					onClick={ () => setSubTab( 'url' ) }
-				>
-					{ __( 'Import from URL', 'gitwire' ) }
-				</button>
-			</nav>
+			<Suspense fallback={ panelFallback }>
+				<BrowsePanel
+					installed={ installed }
+					settings={ settings }
+					onGoToSettings={ onGoToSettings }
+					onOpenUrlImport={ () => setUrlImportOpen( true ) }
+					onPostInstall={ onPostInstall }
+				/>
+			</Suspense>
 
-			<div className="gitwire-add-repo-page__content">
-				{ subTab === 'url' && (
+			{ urlImportOpen && (
+				<Modal
+					className="gitwire-modal"
+					style={ { width: 520 } }
+					title={ __( 'Import from URL', 'gitwire' ) }
+					onRequestClose={ () => setUrlImportOpen( false ) }
+				>
 					<ImportFromUrl
 						connection={ connection }
 						installed={ installed }
 						settings={ settings }
-						onPostInstall={ onPostInstall }
+						onPostInstall={ handleUrlImportInstall }
 					/>
-				) }
-				{ subTab === 'browse' && (
-					<Suspense fallback={ panelFallback }>
-						<BrowsePanel
-							installed={ installed }
-							settings={ settings }
-							onGoToSettings={ onGoToSettings }
-							onPostInstall={ onPostInstall }
-						/>
-					</Suspense>
-				) }
-			</div>
+				</Modal>
+			) }
 		</div>
 	);
 }

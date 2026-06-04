@@ -296,6 +296,50 @@ body.gitwire-admin-page {
 	background: #dcdcde;
 }
 
+.gitwire-filter-count {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+	height: 18px;
+	min-width: 18px;
+	margin-left: 6px;
+	padding: 0 4px;
+	border-radius: 9px;
+	background: var(--gitwire-color-accent);
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1;
+	color: #fff;
+}
+
+.gitwire-filter-popover {
+	min-width: 180px;
+	padding: 12px 16px;
+
+	&__heading {
+		margin: 12px 0 6px;
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.5px;
+		color: #757575;
+		text-transform: uppercase;
+
+		&:first-child {
+			margin-top: 0;
+		}
+	}
+
+	&__clear {
+		display: block;
+		margin-top: 12px;
+		padding: 0;
+	}
+
+	.components-checkbox-control {
+		margin-bottom: 4px;
+	}
+}
+
 .gitwire-repo {
 
 	&-grid {
@@ -580,44 +624,9 @@ body.gitwire-admin-page {
 	color: #57606a;
 }
 
-// Add repository page
+// Add repository page — Import from URL opens as a modal
 .gitwire-add-repo-page {
-
-	&__sub-nav {
-		display: flex;
-		gap: 4px;
-		margin-bottom: 28px;
-	}
-
-	&__content {
-		min-height: 200px;
-	}
-}
-
-.gitwire-add-repo-tab {
-	padding: 6px 14px;
-	border: 1px solid #dcdcde;
-	border-radius: 3px;
-	background: transparent;
-	font-size: 13px;
-	font-weight: 400;
-	color: #2c3338;
-	cursor: pointer;
-	transition: background 0.15s ease;
-
-	&:hover {
-		background: #f6f7f7;
-	}
-
-	&.is-active {
-		border-color: var(--gitwire-color-accent);
-		background: var(--gitwire-color-accent);
-		color: #fff;
-
-		&:hover {
-			background: var(--gitwire-color-accent-darker-10);
-		}
-	}
+	min-height: 200px;
 }
 
 // Browse sub-tab — no connection state

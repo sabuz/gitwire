@@ -10,6 +10,8 @@ import {
 } from '@wordpress/element';
 import {
 	Button,
+	CheckboxControl,
+	Dropdown,
 	Spinner,
 	Flex,
 	FlexBlock,
@@ -43,6 +45,7 @@ function lookupInstalled( installed, repo ) {
  * @param {Function} [props.onPostInstall]    Standalone mode: called after install completes.
  * @param {Function} [props.onInstallRequest] Modal mode: called with (repo, detection) instead of opening InstallModal.
  * @param {Function} [props.onGoToSettings]   Navigates to the Settings tab.
+ * @param {Function} [props.onOpenUrlImport]  Opens the Import from URL modal.
  * @return {JSX.Element} The rendered browse panel.
  */
 export default function BrowsePanel( {
@@ -51,6 +54,7 @@ export default function BrowsePanel( {
 	onPostInstall,
 	onInstallRequest,
 	onGoToSettings,
+	onOpenUrlImport,
 } ) {
 	const hasGitHub = !! ( settings?.token_set || settings?.username );
 	const hasGitLab = !! settings?.gitlab_token_set;
@@ -74,7 +78,8 @@ export default function BrowsePanel( {
 	const [ loading, setLoading ] = useState( false );
 	const [ modal, setModal ] = useState( null );
 	const [ search, setSearch ] = useState( '' );
-	const [ typeFilter, setTypeFilter ] = useState( 'all' );
+	const [ activeTypeFilters, setActiveTypeFilters ] = useState( [] );
+	const [ activeSourceFilters, setActiveSourceFilters ] = useState( [] );
 	const handleRefreshRef = useRef( null );
 
 	const loadRepos = useCallback(
@@ -239,6 +244,25 @@ export default function BrowsePanel( {
 
 	const smartInstall = settings?.smart_install !== false;
 
+	const toggleTypeFilter = ( value ) => {
+		setActiveTypeFilters( ( prev ) =>
+			prev.includes( value )
+				? prev.filter( ( v ) => v !== value )
+				: [ ...prev, value ]
+		);
+	};
+
+	const toggleSourceFilter = ( value ) => {
+		setActiveSourceFilters( ( prev ) =>
+			prev.includes( value )
+				? prev.filter( ( v ) => v !== value )
+				: [ ...prev, value ]
+		);
+	};
+
+	const activeFilterCount =
+		activeTypeFilters.length + activeSourceFilters.length;
+
 	const matchesSearch = ( r ) => {
 		if ( ! search.trim() ) {
 			return true;
@@ -247,7 +271,7 @@ export default function BrowsePanel( {
 	};
 
 	const matchesType = ( r ) => {
-		if ( typeFilter === 'all' ) {
+		if ( activeTypeFilters.length === 0 ) {
 			return true;
 		}
 		const installedRec = lookupInstalled( installed, r );
@@ -256,19 +280,19 @@ export default function BrowsePanel( {
 		if ( ! type ) {
 			return false;
 		}
-		return type === typeFilter;
+		return activeTypeFilters.includes( type );
+	};
+
+	const matchesSource = ( r ) => {
+		if ( activeSourceFilters.length === 0 ) {
+			return true;
+		}
+		return activeSourceFilters.includes( r.provider ?? 'github' );
 	};
 
 	const filtered = repos.filter(
-		( r ) => matchesSearch( r ) && matchesType( r )
+		( r ) => matchesSearch( r ) && matchesType( r ) && matchesSource( r )
 	);
-
-	const typeFilters = [
-		{ id: 'all', label: __( 'All', 'gitwire' ) },
-		{ id: 'plugin', label: __( 'Plugin', 'gitwire' ) },
-		{ id: 'theme', label: __( 'Theme', 'gitwire' ) },
-		{ id: 'unknown', label: __( 'Unknown', 'gitwire' ) },
-	];
 
 	if ( ! hasGitHub && ! hasGitLab && ! hasBitbucket ) {
 		return (
@@ -285,11 +309,18 @@ export default function BrowsePanel( {
 						'gitwire'
 					) }
 				</p>
-				{ onGoToSettings && (
-					<Button variant="primary" onClick={ onGoToSettings }>
-						{ __( 'Go to Settings', 'gitwire' ) }
-					</Button>
-				) }
+				<Flex align="center" gap={ 2 } justify="center">
+					{ onGoToSettings && (
+						<Button variant="primary" onClick={ onGoToSettings }>
+							{ __( 'Go to Settings', 'gitwire' ) }
+						</Button>
+					) }
+					{ onOpenUrlImport && (
+						<Button variant="secondary" onClick={ onOpenUrlImport }>
+							{ __( 'Import from URL', 'gitwire' ) }
+						</Button>
+					) }
+				</Flex>
 			</div>
 		);
 	}
@@ -313,6 +344,128 @@ export default function BrowsePanel( {
 					/>
 				</FlexBlock>
 				<FlexItem>
+					<Dropdown
+						popoverProps={ { placement: 'bottom-start' } }
+						renderToggle={ ( { isOpen, onToggle } ) => (
+							<Button
+								aria-expanded={ isOpen }
+								icon="filter"
+								isPressed={ activeFilterCount > 0 }
+								variant="tertiary"
+								onClick={ onToggle }
+							>
+								{ __( 'Filter', 'gitwire' ) }
+								{ activeFilterCount > 0 && (
+									<span className="gitwire-filter-count">
+										{ activeFilterCount }
+									</span>
+								) }
+							</Button>
+						) }
+						renderContent={ () => (
+							<div className="gitwire-filter-popover">
+								<p className="gitwire-filter-popover__heading">
+									{ __( 'Type', 'gitwire' ) }
+								</p>
+								{ [
+									{
+										id: 'plugin',
+										label: __( 'Plugin', 'gitwire' ),
+									},
+									{
+										id: 'theme',
+										label: __( 'Theme', 'gitwire' ),
+									},
+									{
+										id: 'unknown',
+										label: __( 'Unknown', 'gitwire' ),
+									},
+								].map( ( { id, label } ) => (
+									<CheckboxControl
+										__nextHasNoMarginBottom
+										key={ id }
+										checked={ activeTypeFilters.includes(
+											id
+										) }
+										label={ label }
+										onChange={ () =>
+											toggleTypeFilter( id )
+										}
+									/>
+								) ) }
+								{ showSourceBadge && (
+									<>
+										<p className="gitwire-filter-popover__heading">
+											{ __( 'Source', 'gitwire' ) }
+										</p>
+										{ hasGitHub && (
+											<CheckboxControl
+												__nextHasNoMarginBottom
+												checked={ activeSourceFilters.includes(
+													'github'
+												) }
+												label="GitHub"
+												onChange={ () =>
+													toggleSourceFilter(
+														'github'
+													)
+												}
+											/>
+										) }
+										{ hasGitLab && (
+											<CheckboxControl
+												__nextHasNoMarginBottom
+												checked={ activeSourceFilters.includes(
+													'gitlab'
+												) }
+												label="GitLab"
+												onChange={ () =>
+													toggleSourceFilter(
+														'gitlab'
+													)
+												}
+											/>
+										) }
+										{ hasBitbucket && (
+											<CheckboxControl
+												__nextHasNoMarginBottom
+												checked={ activeSourceFilters.includes(
+													'bitbucket'
+												) }
+												label="Bitbucket"
+												onChange={ () =>
+													toggleSourceFilter(
+														'bitbucket'
+													)
+												}
+											/>
+										) }
+									</>
+								) }
+								{ activeFilterCount > 0 && (
+									<Button
+										className="gitwire-filter-popover__clear"
+										variant="link"
+										isDestructive
+										onClick={ () => {
+											setActiveTypeFilters( [] );
+											setActiveSourceFilters( [] );
+										} }
+									>
+										{ __( 'Clear filters', 'gitwire' ) }
+									</Button>
+								) }
+							</div>
+						) }
+					/>
+				</FlexItem>
+				<FlexItem>
+					<div
+						className="gitwire-toolbar-divider"
+						aria-hidden="true"
+					/>
+				</FlexItem>
+				<FlexItem>
 					<Button
 						className={ loading ? 'gitwire-spin' : '' }
 						disabled={ loading }
@@ -323,26 +476,13 @@ export default function BrowsePanel( {
 						onClick={ handleRefresh }
 					/>
 				</FlexItem>
-				<FlexItem>
-					<div
-						className="gitwire-toolbar-divider"
-						aria-hidden="true"
-					/>
-				</FlexItem>
-				<FlexItem>
-					<Flex align="center" gap={ 1 }>
-						{ typeFilters.map( ( f ) => (
-							<Button
-								key={ f.id }
-								isPressed={ typeFilter === f.id }
-								size="compact"
-								onClick={ () => setTypeFilter( f.id ) }
-							>
-								{ f.label }
-							</Button>
-						) ) }
-					</Flex>
-				</FlexItem>
+				{ onOpenUrlImport && (
+					<FlexItem>
+						<Button variant="secondary" onClick={ onOpenUrlImport }>
+							{ __( 'Import from URL', 'gitwire' ) }
+						</Button>
+					</FlexItem>
+				) }
 			</Flex>
 
 			{ repos.length === 0 && loading && (
