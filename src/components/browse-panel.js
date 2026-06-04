@@ -300,6 +300,23 @@ export default function BrowsePanel( {
 					/>
 				</FlexBlock>
 				<FlexItem>
+					<Button
+						className={ loading ? 'gitwire-spin' : '' }
+						disabled={ loading }
+						icon="update"
+						isBusy={ loading }
+						label={ __( 'Refresh repositories', 'gitwire' ) }
+						variant="tertiary"
+						onClick={ handleRefresh }
+					/>
+				</FlexItem>
+				<FlexItem>
+					<div
+						className="gitwire-toolbar-divider"
+						aria-hidden="true"
+					/>
+				</FlexItem>
+				<FlexItem>
 					<Flex align="center" gap={ 1 }>
 						{ typeFilters.map( ( f ) => (
 							<Button
@@ -312,17 +329,6 @@ export default function BrowsePanel( {
 							</Button>
 						) ) }
 					</Flex>
-				</FlexItem>
-				<FlexItem style={ { marginLeft: 'auto' } }>
-					<Button
-						className={ loading ? 'gitwire-spin' : '' }
-						disabled={ loading }
-						icon="update"
-						isBusy={ loading }
-						label={ __( 'Refresh repositories', 'gitwire' ) }
-						variant="tertiary"
-						onClick={ handleRefresh }
-					/>
 				</FlexItem>
 			</Flex>
 

@@ -290,6 +290,12 @@ body.gitwire-admin-page {
 	min-height: 200px;
 }
 
+.gitwire-toolbar-divider {
+	width: 1px;
+	height: 24px;
+	background: #dcdcde;
+}
+
 .gitwire-repo {
 
 	&-grid {
