@@ -133,6 +133,18 @@ export default function InstalledPanel( {
 									: __( 'Inactive', 'gitwire' ) }
 							</span>
 						) }
+						{ item.needs_reconnect && (
+							<Tooltip
+								text={ __(
+									'The connection used to install this repository no longer exists. Go to Settings → Connections to reconnect.',
+									'gitwire'
+								) }
+							>
+								<span className="gitwire-badge gitwire-badge--warning is-needs-reconnect">
+									{ __( 'Needs connection', 'gitwire' ) }
+								</span>
+							</Tooltip>
+						) }
 						{ item.update_available &&
 							( hasKnownFatalUpdate( item ) ? (
 								<Tooltip text={ knownFatalTooltip( item ) }>

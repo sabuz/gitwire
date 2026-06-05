@@ -214,6 +214,28 @@ class Installer {
 	}
 
 	/**
+	 * Removes the tracking record for a repository without deleting its files.
+	 *
+	 * @since 3.0.0
+	 * @param string $provider  Git provider key.
+	 * @param string $full_name Repository full name (owner/repo).
+	 * @return true|\WP_Error True on success, WP_Error when not found.
+	 */
+	public static function untrack( string $provider, string $full_name ): bool|\WP_Error {
+		$installed = self::get_installed();
+		$key       = $provider . ':' . $full_name;
+
+		if ( ! isset( $installed[ $key ] ) ) {
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
+		}
+
+		unset( $installed[ $key ] );
+		update_option( 'gitwire_installed', $installed );
+
+		return true;
+	}
+
+	/**
 	 * Activates an installed plugin or switches to an installed theme.
 	 *
 	 * @since 1.0.0

@@ -89,6 +89,16 @@ class REST {
 
 		register_rest_route(
 			$ns,
+			'/connections/(?P<id>[^/]+)/set-default',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'set_default_connection' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
 			'/connections/(?P<id>[^/]+)',
 			[
 				'methods'             => 'DELETE',
@@ -301,6 +311,17 @@ class REST {
 			[
 				'methods'             => 'DELETE',
 				'callback'            => [ self::class, 'remove_installed' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [ 'provider' => $provider_arg ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/untrack',
+			[
+				'methods'             => 'DELETE',
+				'callback'            => [ self::class, 'untrack_installed' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [ 'provider' => $provider_arg ],
 			]
@@ -553,14 +574,29 @@ class REST {
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function delete_connection( \WP_REST_Request $req ): array|\WP_Error {
-		$id = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
-		if ( ! Connections::delete( $id ) ) {
+		$id   = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
+		$conn = Connections::find( $id );
+		if ( ! $conn || ! Connections::delete( $id ) ) {
 			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
 		}
+		self::set_connection_cache( $conn['provider'] ?? '', null );
+		return [ 'connections' => Connections::get_public_list() ];
+	}
+
+	/**
+	 * Marks a connection as the default for its provider.
+	 *
+	 * @since 3.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function set_default_connection( \WP_REST_Request $req ): array|\WP_Error {
+		$id   = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
 		$conn = Connections::find( $id );
-		if ( $conn ) {
-			self::set_connection_cache( $conn['provider'] ?? '', null );
+		if ( null === $conn ) {
+			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
 		}
+		Connections::upsert( array_merge( $conn, [ 'is_default' => true ] ) );
 		return [ 'connections' => Connections::get_public_list() ];
 	}
 
@@ -1205,6 +1241,12 @@ class REST {
 				$rec['provider'] = 'github';
 			}
 
+			// Flag when the stamped connection no longer exists in the store.
+			$conn_id = $rec['connection_id'] ?? null;
+			if ( $conn_id && null === Connections::find( $conn_id ) ) {
+				$rec['needs_reconnect'] = true;
+			}
+
 			if ( 'plugin' === ( $rec['type'] ?? '' ) ) {
 				$rec['active']  = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
 				$rec['subtype'] = 'plugin';
@@ -1493,6 +1535,30 @@ class REST {
 		Repo_Cache::clear_repos();
 
 		return [ 'removed' => true ];
+	}
+
+	/**
+	 * Removes the Gitwire tracking record without deleting the files from disk.
+	 *
+	 * @since 3.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function untrack_installed( \WP_REST_Request $req ): array|\WP_Error {
+		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
+		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
+		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$full_name = $owner . '/' . $repo;
+
+		$result = Installer::untrack( $provider, $full_name );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		Repo_Cache::clear_repos();
+
+		return [ 'untracked' => true ];
 	}
 
 	/**

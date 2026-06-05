@@ -36,6 +36,13 @@ class Admin {
 		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue' ] );
 		add_filter( 'admin_body_class', [ self::class, 'body_class' ] );
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
+
+		// Native list badges.
+		add_filter( 'plugin_row_meta', [ self::class, 'plugin_row_badge' ], 10, 2 );
+		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'theme_badges' ] );
+
+		// Native screen delete guard.
+		add_filter( 'pre_delete_plugin', [ self::class, 'guard_plugin_delete' ], 10, 2 );
 	}
 
 	/**
@@ -255,5 +262,105 @@ class Admin {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'gitwire' ) );
 		}
 		require_once GITWIRE_DIR . 'views/admin-page.php';
+	}
+
+	/**
+	 * Appends a "Managed by Gitwire" badge to plugin row meta on the Plugins screen.
+	 *
+	 * @since 3.0.0
+	 * @param string[] $meta        Existing meta links.
+	 * @param string   $plugin_file Plugin file path relative to plugins dir.
+	 * @return string[]
+	 */
+	public static function plugin_row_badge( array $meta, string $plugin_file ): array {
+		$installed = Installer::get_installed();
+
+		foreach ( $installed as $rec ) {
+			if ( ( $rec['plugin_file'] ?? '' ) !== $plugin_file ) {
+				continue;
+			}
+
+			$full_name = $rec['full_name'] ?? '';
+			$provider  = $rec['provider'] ?? 'github';
+
+			$label = sprintf(
+				/* translators: 1: repository full name, 2: provider name */
+				__( 'Installed from %1$s via Gitwire (%2$s)', 'gitwire' ),
+				esc_html( $full_name ),
+				esc_html( ucfirst( $provider ) )
+			);
+
+			$meta[] = '<span class="gitwire-row-badge" title="' . esc_attr( $label ) . '">'
+				. '<span class="dashicons dashicons-admin-plugins" style="font-size:13px;vertical-align:middle;margin-right:2px;"></span>'
+				. esc_html__( 'Gitwire', 'gitwire' )
+				. '</span>';
+			break;
+		}
+
+		return $meta;
+	}
+
+	/**
+	 * Appends Gitwire attribution to theme cards on the Themes screen.
+	 *
+	 * @since 3.0.0
+	 * @param array[] $prepared Prepared theme data arrays.
+	 * @return array[]
+	 */
+	public static function theme_badges( array $prepared ): array {
+		$installed = Installer::get_installed();
+		$by_slug   = [];
+		foreach ( $installed as $rec ) {
+			if ( 'theme' === ( $rec['type'] ?? '' ) ) {
+				$by_slug[ $rec['slug'] ?? '' ] = $rec;
+			}
+		}
+
+		foreach ( $prepared as &$theme ) {
+			$slug = $theme['id'] ?? '';
+			if ( ! isset( $by_slug[ $slug ] ) ) {
+				continue;
+			}
+			$rec                    = $by_slug[ $slug ];
+			$theme['gitwire']       = true;
+			$theme['gitwire_repo']  = $rec['full_name'] ?? '';
+			$theme['gitwire_provider'] = $rec['provider'] ?? 'github';
+		}
+		unset( $theme );
+
+		return $prepared;
+	}
+
+	/**
+	 * Blocks deletion of a Gitwire-managed plugin via the native Plugins screen,
+	 * showing a clear notice rather than silently deleting.
+	 *
+	 * @since 3.0.0
+	 * @param bool|null $pre        Short-circuit value (null to proceed normally).
+	 * @param string    $plugin_file Plugin file path relative to plugins dir.
+	 * @return bool|null|\WP_Error WP_Error to cancel deletion with a message, null to allow.
+	 */
+	public static function guard_plugin_delete( $pre, string $plugin_file ) {
+		$installed = Installer::get_installed();
+
+		foreach ( $installed as $rec ) {
+			if ( ( $rec['plugin_file'] ?? '' ) !== $plugin_file ) {
+				continue;
+			}
+
+			$full_name = $rec['full_name'] ?? '';
+
+			return new \WP_Error(
+				'gitwire_managed',
+				sprintf(
+					/* translators: 1: repository full name, 2: Gitwire admin URL */
+					__( '"%1$s" is managed by Gitwire. To delete it, go to <a href="%2$s">Gitwire &rsaquo; Repositories</a> and use the Delete action there.', 'gitwire' ),
+					esc_html( $full_name ),
+					esc_url( admin_url( 'admin.php?page=gitwire' ) )
+				)
+			);
+		}
+
+		return $pre;
 	}
 }

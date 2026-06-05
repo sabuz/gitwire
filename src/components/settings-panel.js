@@ -1,7 +1,7 @@
 import { toast } from '../toast';
 
-import { __, sprintf } from '@wordpress/i18n';
-import { useState } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
+import { useState, useCallback } from '@wordpress/element';
 import {
 	Button,
 	Card,
@@ -22,9 +22,9 @@ import {
 import * as api from '../api';
 import { BitbucketIcon } from './provider-icons';
 
-/** Returns the first connection record for a provider, or null. */
-function getProviderConnection( connections, provider ) {
-	return connections.find( ( c ) => c.provider === provider ) ?? null;
+/** Returns all connection records for a provider. */
+function getProviderConnections( connections, provider ) {
+	return ( connections || [] ).filter( ( c ) => c.provider === provider );
 }
 
 /**
@@ -75,8 +75,7 @@ export default function SettingsPanel( {
 		>
 			<GitHubCard
 				connection={ connection?.github ?? null }
-				connRecord={ getProviderConnection( connections, 'github' ) }
-				smartInstall={ smartInstall }
+				connRecords={ getProviderConnections( connections, 'github' ) }
 				onConnectionsChange={ onConnectionsChange }
 				onConnectionUpdate={ ( data ) =>
 					onConnectionUpdate( 'github', data )
@@ -87,8 +86,7 @@ export default function SettingsPanel( {
 
 			<GitLabCard
 				connection={ connection?.gitlab ?? null }
-				connRecord={ getProviderConnection( connections, 'gitlab' ) }
-				smartInstall={ smartInstall }
+				connRecords={ getProviderConnections( connections, 'gitlab' ) }
 				onConnectionsChange={ onConnectionsChange }
 				onConnectionUpdate={ ( data ) =>
 					onConnectionUpdate( 'gitlab', data )
@@ -99,8 +97,7 @@ export default function SettingsPanel( {
 
 			<BitbucketCard
 				connection={ connection?.bitbucket ?? null }
-				connRecord={ getProviderConnection( connections, 'bitbucket' ) }
-				smartInstall={ smartInstall }
+				connRecords={ getProviderConnections( connections, 'bitbucket' ) }
 				onConnectionsChange={ onConnectionsChange }
 				onConnectionUpdate={ ( data ) =>
 					onConnectionUpdate( 'bitbucket', data )
@@ -143,18 +140,138 @@ export default function SettingsPanel( {
 }
 
 /**
- * GitHub provider card — shows a connect form when disconnected, profile when connected.
+ * Renders the list of saved connections for a provider with disconnect/set-default actions.
+ *
+ * @param {Object}   props                     Component props.
+ * @param {Array}    props.connRecords          Connection records for the provider.
+ * @param {Object}   props.connection          Cached connection profile data, or null.
+ * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
+ * @param {Function} props.onConnectionUpdate  Called with profile data (or null) after disconnect.
+ * @return {JSX.Element|null}
+ */
+function ConnectionList( {
+	connRecords,
+	connection,
+	onConnectionsChange,
+	onConnectionUpdate,
+} ) {
+	const [ busyId, setBusyId ] = useState( null );
+
+	const handleDisconnect = useCallback(
+		async ( id ) => {
+			setBusyId( id );
+			try {
+				const result = await api.deleteConnection( id );
+				onConnectionsChange( result.connections );
+				onConnectionUpdate( null );
+				toast.success( __( 'Disconnected.', 'gitwire' ) );
+			} catch ( e ) {
+				toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
+			} finally {
+				setBusyId( null );
+			}
+		},
+		[ onConnectionsChange, onConnectionUpdate ]
+	);
+
+	const handleSetDefault = useCallback(
+		async ( id ) => {
+			setBusyId( id );
+			try {
+				const result = await api.setDefaultConnection( id );
+				onConnectionsChange( result.connections );
+			} catch ( e ) {
+				toast.error( e.message || __( 'Failed to set default.', 'gitwire' ) );
+			} finally {
+				setBusyId( null );
+			}
+		},
+		[ onConnectionsChange ]
+	);
+
+	if ( ! connRecords.length ) {
+		return null;
+	}
+
+	return (
+		<div className="gitwire-connection-list">
+			{ connRecords.map( ( rec ) => {
+				const isBusy = busyId === rec.id;
+				const profile = rec.is_default ? connection : null;
+				const label = rec.username
+					? `@${ rec.username }`
+					: rec.email || rec.label || rec.id;
+
+				return (
+					<div key={ rec.id } className="gitwire-connection-item">
+						<Flex align="center" gap={ 2 }>
+							{ profile?.avatar_url && (
+								<img
+									alt={ label }
+									src={ profile.avatar_url }
+									style={ {
+										width: 28,
+										height: 28,
+										borderRadius: '50%',
+										display: 'block',
+									} }
+								/>
+							) }
+							<div style={ { flex: 1, minWidth: 0 } }>
+								<span className="gitwire-connection-item__label">
+									{ label }
+								</span>
+								{ rec.is_default && (
+									<span
+										className="gitwire-badge gitwire-badge--info"
+										style={ { marginLeft: 6 } }
+									>
+										{ __( 'Default', 'gitwire' ) }
+									</span>
+								) }
+							</div>
+							{ ! rec.is_default && connRecords.length > 1 && (
+								<Button
+									disabled={ !! busyId }
+									isBusy={ isBusy }
+									size="compact"
+									variant="secondary"
+									onClick={ () => handleSetDefault( rec.id ) }
+								>
+									{ __( 'Set default', 'gitwire' ) }
+								</Button>
+							) }
+							<Button
+								disabled={ !! busyId }
+								isBusy={ isBusy }
+								isDestructive
+								size="compact"
+								variant="secondary"
+								onClick={ () => handleDisconnect( rec.id ) }
+							>
+								{ __( 'Disconnect', 'gitwire' ) }
+							</Button>
+						</Flex>
+					</div>
+				);
+			} ) }
+		</div>
+	);
+}
+
+/**
+ * GitHub provider card — lists saved connections and shows an add-connection form.
  *
  * @param {Object}   props                     Component props.
  * @param {Object}   props.connection          Cached GitHub connection data, or null.
- * @param {Object}   props.connRecord          Connection record from the new model, or null.
+ * @param {Array}    props.connRecords          Connection records for GitHub.
  * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
- * @param {Function} props.onConnectionUpdate  Called with connection data (or null) after test.
+ * @param {Function} props.onConnectionUpdate  Called with connection data (or null) after change.
  * @return {JSX.Element} The rendered card.
  */
 function GitHubCard( {
 	connection,
-	connRecord,
+	connRecords,
 	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
@@ -164,8 +281,9 @@ function GitHubCard( {
 	const [ testing, setTesting ] = useState( false );
 	const [ tokenError, setTokenError ] = useState( false );
 	const [ usernameError, setUsernameError ] = useState( false );
+	const [ showForm, setShowForm ] = useState( false );
 
-	const isConnected = !! connRecord;
+	const hasConnections = connRecords.length > 0;
 
 	const handleConnect = async () => {
 		if ( ! token.trim() && ! username.trim() ) {
@@ -186,6 +304,7 @@ function GitHubCard( {
 			onConnectionUpdate( result.profile );
 			setToken( '' );
 			setUsername( '' );
+			setShowForm( false );
 			toast.success( __( 'GitHub connected.', 'gitwire' ) );
 		} catch ( e ) {
 			if ( token.trim() ) {
@@ -202,120 +321,104 @@ function GitHubCard( {
 		}
 	};
 
-	const handleSignOut = async () => {
-		if ( ! connRecord?.id ) {
-			return;
-		}
-		setSaving( true );
-		try {
-			const result = await api.deleteConnection( connRecord.id );
-			onConnectionsChange( result.connections );
-			onConnectionUpdate( null );
-			toast.success( __( 'GitHub disconnected.', 'gitwire' ) );
-		} catch ( e ) {
-			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
-		} finally {
-			setSaving( false );
-		}
-	};
+	const connectForm = ( ! hasConnections || showForm ) && (
+		<>
+			{ hasConnections && <Spacer marginTop={ 4 } /> }
+			{ testing ? (
+				<div style={ { textAlign: 'center', padding: '24px 0' } }>
+					<Spinner />
+					<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+						{ __( 'Checking connection…', 'gitwire' ) }
+					</p>
+				</div>
+			) : (
+				<>
+					<TextControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+						className={
+							usernameError ? 'gitwire-input-error' : undefined
+						}
+						help={ __(
+							'Your GitHub username or organization. Not required when a token is set.',
+							'gitwire'
+						) }
+						label={ __( 'GitHub Username', 'gitwire' ) }
+						placeholder="your-github-username"
+						value={ username }
+						onChange={ ( v ) => {
+							setUsername( v );
+							setUsernameError( false );
+						} }
+					/>
 
-	let cardBody;
-	if ( testing ) {
-		cardBody = (
-			<div style={ { textAlign: 'center', padding: '24px 0' } }>
-				<Spinner />
-				<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
-					{ __( 'Checking connection…', 'gitwire' ) }
-				</p>
-			</div>
-		);
-	} else if ( isConnected ) {
-		cardBody = (
-			<ConnectedProfile
-				connection={ connection }
-				isBusy={ saving }
-				signOutLabel={ __( 'Sign Out', 'gitwire' ) }
-				onSignOut={ handleSignOut }
-			/>
-		);
-	} else {
-		cardBody = (
-			<>
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					className={
-						usernameError ? 'gitwire-input-error' : undefined
-					}
-					help={ __(
-						'Your GitHub username or organization. Not required when a token is set.',
-						'gitwire'
-					) }
-					label={ __( 'GitHub Username', 'gitwire' ) }
-					placeholder="your-github-username"
-					value={ username }
-					onChange={ ( v ) => {
-						setUsername( v );
-						setUsernameError( false );
-					} }
-				/>
+					<Spacer marginTop={ 4 } />
 
-				<Spacer marginTop={ 4 } />
+					<TextControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+						autoComplete="new-password"
+						className={ tokenError ? 'gitwire-input-error' : undefined }
+						help={
+							<>
+								{ __(
+									'For private repos or to raise the rate limit.',
+									'gitwire'
+								) }{ ' ' }
+								<a
+									href="https://github.com/settings/personal-access-tokens/new"
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									{ __( 'Create token', 'gitwire' ) }
+								</a>{ ' ' }
+								{ __(
+									'Select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
+									'gitwire'
+								) }
+							</>
+						}
+						label={
+							<>
+								{ __( 'Fine-grained Access Token', 'gitwire' ) }{ ' ' }
+								<span className="gitwire-label-optional">
+									{ __( '(Optional)', 'gitwire' ) }
+								</span>
+							</>
+						}
+						placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx"
+						type="password"
+						value={ token }
+						onChange={ ( v ) => {
+							setToken( v );
+							setTokenError( false );
+						} }
+					/>
 
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					autoComplete="new-password"
-					className={ tokenError ? 'gitwire-input-error' : undefined }
-					help={
-						<>
-							{ __(
-								'For private repos or to raise the rate limit.',
-								'gitwire'
-							) }{ ' ' }
-							<a
-								href="https://github.com/settings/personal-access-tokens/new"
-								rel="noopener noreferrer"
-								target="_blank"
+					<Spacer marginTop={ 5 } />
+
+					<Flex gap={ 2 }>
+						<Button
+							disabled={ saving }
+							isBusy={ saving }
+							variant="primary"
+							onClick={ handleConnect }
+						>
+							{ __( 'Connect GitHub', 'gitwire' ) }
+						</Button>
+						{ hasConnections && (
+							<Button
+								variant="tertiary"
+								onClick={ () => setShowForm( false ) }
 							>
-								{ __( 'Create token', 'gitwire' ) }
-							</a>{ ' ' }
-							{ __(
-								'Select specific repositories, then grant Metadata: Read-only and Contents: Read-only.',
-								'gitwire'
-							) }
-						</>
-					}
-					label={
-						<>
-							{ __( 'Fine-grained Access Token', 'gitwire' ) }{ ' ' }
-							<span className="gitwire-label-optional">
-								{ __( '(Optional)', 'gitwire' ) }
-							</span>
-						</>
-					}
-					placeholder="github_pat_xxxxxxxxxxxxxxxxxxxx"
-					type="password"
-					value={ token }
-					onChange={ ( v ) => {
-						setToken( v );
-						setTokenError( false );
-					} }
-				/>
-
-				<Spacer marginTop={ 5 } />
-
-				<Button
-					disabled={ saving }
-					isBusy={ saving }
-					variant="primary"
-					onClick={ handleConnect }
-				>
-					{ __( 'Connect GitHub', 'gitwire' ) }
-				</Button>
-			</>
-		);
-	}
+								{ __( 'Cancel', 'gitwire' ) }
+							</Button>
+						) }
+					</Flex>
+				</>
+			) }
+		</>
+	);
 
 	return (
 		<Card>
@@ -338,52 +441,56 @@ function GitHubCard( {
 							{ __( 'GitHub', 'gitwire' ) }
 						</Heading>
 					</FlexBlock>
-					{ isConnected && connection && ! connection.error && (
+					{ hasConnections && ! showForm && (
 						<FlexItem>
-							<span
-								className={ `gitwire-badge gitwire-badge--${
-									connection.authenticated
-										? 'success'
-										: 'warning'
-								}` }
+							<Button
+								size="compact"
+								variant="secondary"
+								onClick={ () => setShowForm( true ) }
 							>
-								<span className="dashicons dashicons-yes-alt" />
-								{ connection.authenticated
-									? __( 'Connected', 'gitwire' )
-									: __( 'Public only', 'gitwire' ) }
-							</span>
+								{ __( 'Add account', 'gitwire' ) }
+							</Button>
 						</FlexItem>
 					) }
 				</Flex>
 			</CardHeader>
-			<CardBody>{ cardBody }</CardBody>
+			<CardBody>
+				<ConnectionList
+					connRecords={ connRecords }
+					connection={ connection }
+					onConnectionsChange={ onConnectionsChange }
+					onConnectionUpdate={ onConnectionUpdate }
+				/>
+				{ connectForm }
+			</CardBody>
 		</Card>
 	);
 }
 
 /**
- * GitLab provider card — shows a connect form when disconnected, profile when connected.
+ * GitLab provider card — lists saved connections and shows an add-connection form.
  *
  * @param {Object}   props                     Component props.
  * @param {Object}   props.connection          Cached GitLab connection data, or null.
- * @param {Object}   props.connRecord          Connection record from the new model, or null.
+ * @param {Array}    props.connRecords          Connection records for GitLab.
  * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
- * @param {Function} props.onConnectionUpdate  Called with connection data (or null) after test.
+ * @param {Function} props.onConnectionUpdate  Called with connection data (or null) after change.
  * @return {JSX.Element} The rendered card.
  */
 function GitLabCard( {
 	connection,
-	connRecord,
+	connRecords,
 	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
 	const [ gitlabToken, setGitlabToken ] = useState( '' );
-	const [ gitlabUrl, setGitlabUrl ] = useState( connRecord?.gitlab_url || '' );
+	const [ gitlabUrl, setGitlabUrl ] = useState( '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 	const [ tokenError, setTokenError ] = useState( false );
+	const [ showForm, setShowForm ] = useState( false );
 
-	const isConnected = !! connRecord;
+	const hasConnections = connRecords.length > 0;
 
 	const handleConnect = async () => {
 		if ( ! gitlabToken.trim() ) {
@@ -404,6 +511,8 @@ function GitLabCard( {
 			onConnectionsChange( result.connection );
 			onConnectionUpdate( result.profile );
 			setGitlabToken( '' );
+			setGitlabUrl( '' );
+			setShowForm( false );
 			toast.success( __( 'GitLab connected.', 'gitwire' ) );
 		} catch ( e ) {
 			setTokenError( true );
@@ -416,113 +525,95 @@ function GitLabCard( {
 		}
 	};
 
-	const handleSignOut = async () => {
-		if ( ! connRecord?.id ) {
-			return;
-		}
-		setSaving( true );
-		try {
-			const result = await api.deleteConnection( connRecord.id );
-			onConnectionsChange( result.connections );
-			onConnectionUpdate( null );
-			setGitlabToken( '' );
-			setGitlabUrl( '' );
-			toast.success( __( 'GitLab disconnected.', 'gitwire' ) );
-		} catch ( e ) {
-			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
-		} finally {
-			setSaving( false );
-		}
-	};
+	const connectForm = ( ! hasConnections || showForm ) && (
+		<>
+			{ hasConnections && <Spacer marginTop={ 4 } /> }
+			{ testing ? (
+				<div style={ { textAlign: 'center', padding: '24px 0' } }>
+					<Spinner />
+					<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+						{ __( 'Checking connection…', 'gitwire' ) }
+					</p>
+				</div>
+			) : (
+				<>
+					<TextControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+						autoComplete="new-password"
+						className={ tokenError ? 'gitwire-input-error' : undefined }
+						help={
+							<>
+								{ __( 'Required.', 'gitwire' ) }{ ' ' }
+								<a
+									href="https://gitlab.com/-/user_settings/personal_access_tokens"
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									{ __( 'Create token', 'gitwire' ) }
+								</a>{ ' ' }
+								{ __(
+									'- enable read_user, read_api and read_repository.',
+									'gitwire'
+								) }
+							</>
+						}
+						label={ __( 'Personal Access Token', 'gitwire' ) }
+						placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
+						type="password"
+						value={ gitlabToken }
+						onChange={ ( v ) => {
+							setGitlabToken( v );
+							setTokenError( false );
+						} }
+					/>
 
-	let gitlabCardBody;
-	if ( testing ) {
-		gitlabCardBody = (
-			<div style={ { textAlign: 'center', padding: '24px 0' } }>
-				<Spinner />
-				<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
-					{ __( 'Checking connection…', 'gitwire' ) }
-				</p>
-			</div>
-		);
-	} else if ( isConnected ) {
-		gitlabCardBody = (
-			<ConnectedProfile
-				connection={ connection }
-				isBusy={ saving }
-				signOutLabel={ __( 'Sign Out', 'gitwire' ) }
-				onSignOut={ handleSignOut }
-			/>
-		);
-	} else {
-		gitlabCardBody = (
-			<>
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					autoComplete="new-password"
-					className={ tokenError ? 'gitwire-input-error' : undefined }
-					help={
-						<>
-							{ __( 'Required.', 'gitwire' ) }{ ' ' }
-							<a
-								href="https://gitlab.com/-/user_settings/personal_access_tokens"
-								rel="noopener noreferrer"
-								target="_blank"
+					<Spacer marginTop={ 4 } />
+
+					<TextControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+						help={ __(
+							'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab (e.g. https://gitlab.example.com).',
+							'gitwire'
+						) }
+						label={
+							<>
+								{ __( 'GitLab Instance URL', 'gitwire' ) }{ ' ' }
+								<span className="gitwire-label-optional">
+									{ __( '(Optional)', 'gitwire' ) }
+								</span>
+							</>
+						}
+						placeholder="https://gitlab.com"
+						value={ gitlabUrl }
+						onChange={ setGitlabUrl }
+					/>
+
+					<Spacer marginTop={ 5 } />
+
+					<Flex gap={ 2 }>
+						<Button
+							disabled={ saving }
+							isBusy={ saving }
+							variant="primary"
+							onClick={ handleConnect }
+						>
+							{ __( 'Connect GitLab', 'gitwire' ) }
+						</Button>
+						{ hasConnections && (
+							<Button
+								variant="tertiary"
+								onClick={ () => setShowForm( false ) }
 							>
-								{ __( 'Create token', 'gitwire' ) }
-							</a>{ ' ' }
-							{ __(
-								'- enable read_user, read_api and read_repository.',
-								'gitwire'
-							) }
-						</>
-					}
-					label={ __( 'Personal Access Token', 'gitwire' ) }
-					placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
-					type="password"
-					value={ gitlabToken }
-					onChange={ ( v ) => {
-						setGitlabToken( v );
-						setTokenError( false );
-					} }
-				/>
-
-				<Spacer marginTop={ 4 } />
-
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					help={ __(
-						'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab (e.g. https://gitlab.example.com).',
-						'gitwire'
-					) }
-					label={
-						<>
-							{ __( 'GitLab Instance URL', 'gitwire' ) }{ ' ' }
-							<span className="gitwire-label-optional">
-								{ __( '(Optional)', 'gitwire' ) }
-							</span>
-						</>
-					}
-					placeholder="https://gitlab.com"
-					value={ gitlabUrl }
-					onChange={ setGitlabUrl }
-				/>
-
-				<Spacer marginTop={ 5 } />
-
-				<Button
-					disabled={ saving }
-					isBusy={ saving }
-					variant="primary"
-					onClick={ handleConnect }
-				>
-					{ __( 'Connect GitLab', 'gitwire' ) }
-				</Button>
-			</>
-		);
-	}
+								{ __( 'Cancel', 'gitwire' ) }
+							</Button>
+						) }
+					</Flex>
+				</>
+			) }
+		</>
+	);
 
 	return (
 		<Card>
@@ -545,44 +636,56 @@ function GitLabCard( {
 							{ __( 'GitLab', 'gitwire' ) }
 						</Heading>
 					</FlexBlock>
-					{ isConnected && connection && ! connection.error && (
+					{ hasConnections && ! showForm && (
 						<FlexItem>
-							<span className="gitwire-badge gitwire-badge--success">
-								<span className="dashicons dashicons-yes-alt" />
-								{ __( 'Connected', 'gitwire' ) }
-							</span>
+							<Button
+								size="compact"
+								variant="secondary"
+								onClick={ () => setShowForm( true ) }
+							>
+								{ __( 'Add account', 'gitwire' ) }
+							</Button>
 						</FlexItem>
 					) }
 				</Flex>
 			</CardHeader>
-			<CardBody>{ gitlabCardBody }</CardBody>
+			<CardBody>
+				<ConnectionList
+					connRecords={ connRecords }
+					connection={ connection }
+					onConnectionsChange={ onConnectionsChange }
+					onConnectionUpdate={ onConnectionUpdate }
+				/>
+				{ connectForm }
+			</CardBody>
 		</Card>
 	);
 }
 
 /**
- * Bitbucket provider card — shows a connect form when disconnected, profile when connected.
+ * Bitbucket provider card — lists saved connections and shows an add-connection form.
  *
  * @param {Object}   props                     Component props.
  * @param {Object}   props.connection          Cached Bitbucket connection data, or null.
- * @param {Object}   props.connRecord          Connection record from the new model, or null.
+ * @param {Array}    props.connRecords          Connection records for Bitbucket.
  * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
- * @param {Function} props.onConnectionUpdate  Called with connection data (or null) after test.
+ * @param {Function} props.onConnectionUpdate  Called with connection data (or null) after change.
  * @return {JSX.Element} The rendered card.
  */
 function BitbucketCard( {
 	connection,
-	connRecord,
+	connRecords,
 	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
-	const [ bbEmail, setBbEmail ] = useState( connRecord?.email || '' );
+	const [ bbEmail, setBbEmail ] = useState( '' );
 	const [ bbApiToken, setBbApiToken ] = useState( '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 	const [ credError, setCredError ] = useState( false );
+	const [ showForm, setShowForm ] = useState( false );
 
-	const isConnected = !! connRecord;
+	const hasConnections = connRecords.length > 0;
 
 	const handleConnect = async () => {
 		if ( ! bbEmail.trim() || ! bbApiToken.trim() ) {
@@ -605,7 +708,9 @@ function BitbucketCard( {
 			} );
 			onConnectionsChange( result.connection );
 			onConnectionUpdate( result.profile );
+			setBbEmail( '' );
 			setBbApiToken( '' );
+			setShowForm( false );
 			toast.success( __( 'Bitbucket connected.', 'gitwire' ) );
 		} catch ( e ) {
 			setCredError( true );
@@ -618,111 +723,93 @@ function BitbucketCard( {
 		}
 	};
 
-	const handleSignOut = async () => {
-		if ( ! connRecord?.id ) {
-			return;
-		}
-		setSaving( true );
-		try {
-			const result = await api.deleteConnection( connRecord.id );
-			onConnectionsChange( result.connections );
-			onConnectionUpdate( null );
-			setBbEmail( '' );
-			setBbApiToken( '' );
-			toast.success( __( 'Bitbucket disconnected.', 'gitwire' ) );
-		} catch ( e ) {
-			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
-		} finally {
-			setSaving( false );
-		}
-	};
+	const connectForm = ( ! hasConnections || showForm ) && (
+		<>
+			{ hasConnections && <Spacer marginTop={ 4 } /> }
+			{ testing ? (
+				<div style={ { textAlign: 'center', padding: '24px 0' } }>
+					<Spinner />
+					<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
+						{ __( 'Checking connection…', 'gitwire' ) }
+					</p>
+				</div>
+			) : (
+				<>
+					<TextControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+						className={ credError ? 'gitwire-input-error' : undefined }
+						help={ __(
+							'The email address for your Atlassian account.',
+							'gitwire'
+						) }
+						label={ __( 'Atlassian Email', 'gitwire' ) }
+						placeholder="you@example.com"
+						type="email"
+						value={ bbEmail }
+						onChange={ ( v ) => {
+							setBbEmail( v );
+							setCredError( false );
+						} }
+					/>
 
-	let cardBody;
-	if ( testing ) {
-		cardBody = (
-			<div style={ { textAlign: 'center', padding: '24px 0' } }>
-				<Spinner />
-				<p style={ { marginTop: 8, color: '#757575', fontSize: 13 } }>
-					{ __( 'Checking connection…', 'gitwire' ) }
-				</p>
-			</div>
-		);
-	} else if ( isConnected ) {
-		cardBody = (
-			<ConnectedProfile
-				connection={ connection }
-				isBusy={ saving }
-				signOutLabel={ __( 'Sign Out', 'gitwire' ) }
-				onSignOut={ handleSignOut }
-			/>
-		);
-	} else {
-		cardBody = (
-			<>
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					className={ credError ? 'gitwire-input-error' : undefined }
-					help={ __(
-						'The email address for your Atlassian account.',
-						'gitwire'
-					) }
-					label={ __( 'Atlassian Email', 'gitwire' ) }
-					placeholder="you@example.com"
-					type="email"
-					value={ bbEmail }
-					onChange={ ( v ) => {
-						setBbEmail( v );
-						setCredError( false );
-					} }
-				/>
+					<Spacer marginTop={ 4 } />
 
-				<Spacer marginTop={ 4 } />
+					<TextControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+						autoComplete="new-password"
+						className={ credError ? 'gitwire-input-error' : undefined }
+						help={
+							<>
+								{ __( 'Required.', 'gitwire' ) }{ ' ' }
+								<a
+									href="https://id.atlassian.com/manage-profile/security/api-tokens"
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									{ __( 'Create API token', 'gitwire' ) }
+								</a>{ ' ' }
+								{ __(
+									'at id.atlassian.com → Security → API tokens.',
+									'gitwire'
+								) }
+							</>
+						}
+						label={ __( 'API Token', 'gitwire' ) }
+						placeholder="ATATxxxxxxxxxxxxxxxxxxxxxxxx"
+						type="password"
+						value={ bbApiToken }
+						onChange={ ( v ) => {
+							setBbApiToken( v );
+							setCredError( false );
+						} }
+					/>
 
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					autoComplete="new-password"
-					className={ credError ? 'gitwire-input-error' : undefined }
-					help={
-						<>
-							{ __( 'Required.', 'gitwire' ) }{ ' ' }
-							<a
-								href="https://id.atlassian.com/manage-profile/security/api-tokens"
-								rel="noopener noreferrer"
-								target="_blank"
+					<Spacer marginTop={ 5 } />
+
+					<Flex gap={ 2 }>
+						<Button
+							disabled={ saving }
+							isBusy={ saving }
+							variant="primary"
+							onClick={ handleConnect }
+						>
+							{ __( 'Connect Bitbucket', 'gitwire' ) }
+						</Button>
+						{ hasConnections && (
+							<Button
+								variant="tertiary"
+								onClick={ () => setShowForm( false ) }
 							>
-								{ __( 'Create API token', 'gitwire' ) }
-							</a>{ ' ' }
-							{ __(
-								'at id.atlassian.com → Security → API tokens.',
-								'gitwire'
-							) }
-						</>
-					}
-					label={ __( 'API Token', 'gitwire' ) }
-					placeholder="ATATxxxxxxxxxxxxxxxxxxxxxxxx"
-					type="password"
-					value={ bbApiToken }
-					onChange={ ( v ) => {
-						setBbApiToken( v );
-						setCredError( false );
-					} }
-				/>
-
-				<Spacer marginTop={ 5 } />
-
-				<Button
-					disabled={ saving }
-					isBusy={ saving }
-					variant="primary"
-					onClick={ handleConnect }
-				>
-					{ __( 'Connect Bitbucket', 'gitwire' ) }
-				</Button>
-			</>
-		);
-	}
+								{ __( 'Cancel', 'gitwire' ) }
+							</Button>
+						) }
+					</Flex>
+				</>
+			) }
+		</>
+	);
 
 	return (
 		<Card>
@@ -736,260 +823,29 @@ function BitbucketCard( {
 							{ __( 'Bitbucket', 'gitwire' ) }
 						</Heading>
 					</FlexBlock>
-					{ isConnected && connection && ! connection.error && (
+					{ hasConnections && ! showForm && (
 						<FlexItem>
-							<span className="gitwire-badge gitwire-badge--success">
-								<span className="dashicons dashicons-yes-alt" />
-								{ __( 'Connected', 'gitwire' ) }
-							</span>
+							<Button
+								size="compact"
+								variant="secondary"
+								onClick={ () => setShowForm( true ) }
+							>
+								{ __( 'Add account', 'gitwire' ) }
+							</Button>
 						</FlexItem>
 					) }
 				</Flex>
 			</CardHeader>
-			<CardBody>{ cardBody }</CardBody>
+			<CardBody>
+				<ConnectionList
+					connRecords={ connRecords }
+					connection={ connection }
+					onConnectionsChange={ onConnectionsChange }
+					onConnectionUpdate={ onConnectionUpdate }
+				/>
+				{ connectForm }
+			</CardBody>
 		</Card>
 	);
 }
 
-/**
- * Shared connected-state profile block used by both provider cards.
- *
- * @param {Object}   props              Component props.
- * @param {Object}   props.connection   Connection cache data for this provider.
- * @param {boolean}  props.isBusy       Whether a sign-out request is in progress.
- * @param {string}   props.signOutLabel Label for the sign-out button.
- * @param {Function} props.onSignOut    Sign-out callback.
- * @return {JSX.Element} The rendered profile block.
- */
-function ConnectedProfile( { connection, isBusy, signOutLabel, onSignOut } ) {
-	if ( ! connection ) {
-		return (
-			<Flex align="center" gap={ 3 } justify="space-between">
-				<FlexItem>
-					<span className="gitwire-badge gitwire-badge--success">
-						<span className="dashicons dashicons-yes-alt" />
-						{ __( 'Credentials saved', 'gitwire' ) }
-					</span>
-				</FlexItem>
-				<FlexItem>
-					<Button
-						disabled={ isBusy }
-						isBusy={ isBusy }
-						isDestructive
-						variant="secondary"
-						onClick={ onSignOut }
-					>
-						{ signOutLabel }
-					</Button>
-				</FlexItem>
-			</Flex>
-		);
-	}
-
-	if ( connection.error ) {
-		return (
-			<>
-				<p
-					style={ {
-						color: '#cf222e',
-						fontSize: 13,
-						margin: '0 0 12px',
-					} }
-				>
-					<span
-						className="dashicons dashicons-warning"
-						style={ { verticalAlign: 'middle', marginRight: 4 } }
-					/>
-					{ connection.error }
-				</p>
-				<Button
-					disabled={ isBusy }
-					isBusy={ isBusy }
-					isDestructive
-					variant="secondary"
-					onClick={ onSignOut }
-				>
-					{ signOutLabel }
-				</Button>
-			</>
-		);
-	}
-
-	const isGitHub = connection.provider === 'github';
-	const hasRateLimit = connection.rate_limit > 0;
-	const pct = hasRateLimit
-		? Math.round(
-				( connection.rate_remaining / connection.rate_limit ) * 100
-		  )
-		: 0;
-	let barColor = '#cf222e';
-	if ( pct > 50 ) {
-		barColor = '#4ac26b';
-	} else if ( pct > 20 ) {
-		barColor = '#e3b341';
-	}
-
-	const rateCountdown = connection.rate_reset
-		? humanDiff( connection.rate_reset )
-		: null;
-
-	return (
-		<>
-			<Flex align="center" gap={ 3 }>
-				{ connection.avatar_url && (
-					<FlexItem>
-						<img
-							alt={ connection.login }
-							src={ connection.avatar_url }
-							style={ {
-								width: 44,
-								height: 44,
-								borderRadius: '50%',
-								display: 'block',
-							} }
-						/>
-					</FlexItem>
-				) }
-				<FlexBlock>
-					{ connection.name || connection.login ? (
-						<>
-							<div style={ { fontWeight: 700, fontSize: 14 } }>
-								{ connection.name || connection.login }
-							</div>
-							{ connection.login && (
-								<div
-									style={ { fontSize: 12, color: '#57606a' } }
-								>
-									@{ connection.login }
-								</div>
-							) }
-						</>
-					) : (
-						<div style={ { fontSize: 12, color: '#57606a' } }>
-							{ __(
-								'Profile unavailable. Add read_user scope to your token.',
-								'gitwire'
-							) }
-						</div>
-					) }
-					{ connection.checked_at && (
-						<div
-							style={ {
-								fontSize: 11,
-								color: '#8c959f',
-								marginTop: 2,
-							} }
-						>
-							{ sprintf(
-								/* translators: %s: relative time */
-								__( 'Connection verified %s', 'gitwire' ),
-								unixTimeAgo( connection.checked_at )
-							) }
-						</div>
-					) }
-				</FlexBlock>
-				<FlexItem>
-					<Button
-						disabled={ isBusy }
-						isBusy={ isBusy }
-						isDestructive
-						variant="secondary"
-						onClick={ onSignOut }
-					>
-						{ signOutLabel }
-					</Button>
-				</FlexItem>
-			</Flex>
-
-			{ hasRateLimit && (
-				<>
-					<hr
-						className="gitwire-divider"
-						style={ { margin: '12px 0' } }
-					/>
-					<div style={ { fontSize: 12 } }>
-						<Flex
-							justify="space-between"
-							style={ { marginBottom: 6 } }
-						>
-							<span style={ { color: '#24292f' } }>
-								{ __( 'API Usage', 'gitwire' ) }
-							</span>
-							<strong>
-								{ connection.rate_remaining?.toLocaleString() }{ ' ' }
-								/ { connection.rate_limit?.toLocaleString() }
-							</strong>
-						</Flex>
-						<div className="gitwire-rate-track">
-							<div
-								className="gitwire-rate-fill"
-								style={ {
-									width: `${ pct }%`,
-									background: barColor,
-								} }
-							/>
-						</div>
-						<p className="gitwire-rate-note">
-							<RateLimitNote
-								isGitHub={ isGitHub }
-								rateCountdown={ rateCountdown }
-								rateLimit={ connection.rate_limit }
-							/>
-						</p>
-					</div>
-				</>
-			) }
-		</>
-	);
-}
-
-/**
- * Rate limit reset note shown under the API usage bar.
- *
- * @param {Object}      props               Component props.
- * @param {boolean}     props.isGitHub      Whether the provider is GitHub.
- * @param {number}      props.rateLimit     Requests allowed per hour.
- * @param {string|null} props.rateCountdown Human-readable time until reset.
- * @return {string} Translated rate limit note.
- */
-function RateLimitNote( { isGitHub, rateLimit, rateCountdown } ) {
-	if ( isGitHub && rateLimit === 60 ) {
-		return __(
-			"Unauthenticated limit is shared by your server's IP. Add a token for 5,000/hour.",
-			'gitwire'
-		);
-	}
-	if ( rateCountdown ) {
-		return sprintf(
-			/* translators: %s: time until rate limit resets */
-			__( 'Resets in %s.', 'gitwire' ),
-			rateCountdown
-		);
-	}
-	return __( 'Resets in about an hour.', 'gitwire' );
-}
-
-function humanDiff( ts ) {
-	const s = ts - Math.floor( Date.now() / 1000 );
-	if ( s <= 0 ) {
-		return null;
-	}
-	const m = Math.floor( s / 60 );
-	return m > 0 ? `${ m }m ${ s % 60 }s` : `${ s }s`;
-}
-
-function unixTimeAgo( ts ) {
-	const s = Math.floor( Date.now() / 1000 ) - ts;
-	if ( s < 60 ) {
-		return 'just now';
-	}
-	const m = Math.floor( s / 60 );
-	if ( m < 60 ) {
-		return `${ m }m ago`;
-	}
-	const h = Math.floor( m / 60 );
-	if ( h < 24 ) {
-		return `${ h }h ago`;
-	}
-	return `${ Math.floor( h / 24 ) }d ago`;
-}

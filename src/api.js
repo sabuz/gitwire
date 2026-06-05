@@ -11,6 +11,8 @@ export const createConnection = ( data = {} ) =>
 	apiFetch( { path: `${ BASE }/connections`, method: 'POST', data } );
 export const deleteConnection = ( id ) =>
 	apiFetch( { path: `${ BASE }/connections/${ id }`, method: 'DELETE' } );
+export const setDefaultConnection = ( id ) =>
+	apiFetch( { path: `${ BASE }/connections/${ id }/set-default`, method: 'POST' } );
 export const testConnection = ( id ) =>
 	apiFetch( { path: `${ BASE }/connections/${ id }/test`, method: 'POST' } );
 export const getRepos = ( page = 1, provider = 'github' ) =>
@@ -98,6 +100,14 @@ export const verifyBootstrap = () =>
 export const removeInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ owner }/${ repo }?provider=${ encodeURIComponent(
+			provider
+		) }`,
+		method: 'DELETE',
+	} );
+
+export const untrackInstalled = ( owner, repo, provider = 'github' ) =>
+	apiFetch( {
+		path: `${ BASE }/installed/${ owner }/${ repo }/untrack?provider=${ encodeURIComponent(
 			provider
 		) }`,
 		method: 'DELETE',
