@@ -7,6 +7,7 @@ import {
 	useRef,
 	useMemo,
 	useCallback,
+	createInterpolateElement,
 } from '@wordpress/element';
 import {
 	Button,
@@ -62,16 +63,18 @@ function installButtonLabel( installing, slugChecking ) {
 /**
  * Full Import from URL flow — URL input → Check → install form (inline, no modal).
  *
- * @param {Object}   props               Component props.
- * @param {Object}   props.settings      Plugin settings.
- * @param {Object}   props.connection    Live connection state per provider.
- * @param {Function} props.onPostInstall Called after a successful install.
+ * @param {Object}   props                  Component props.
+ * @param {Object}   props.settings         Plugin settings.
+ * @param {Object}   props.connection       Live connection state per provider.
+ * @param {Function} props.onPostInstall    Called after a successful install.
+ * @param {Function} [props.onGoToSettings] Navigates to the Settings tab.
  * @return {JSX.Element} The rendered import form.
  */
 export default function ImportFromUrl( {
 	settings,
 	connection,
 	onPostInstall,
+	onGoToSettings,
 } ) {
 	const [ url, setUrl ] = useState( '' );
 	// step: idle | checking | error | resolved | private | verifying-conn | conn-error | installing
@@ -390,13 +393,25 @@ export default function ImportFromUrl( {
 						</Flex>
 					) : (
 						<p className="gitwire-import-url__conn-hint">
-							{ sprintf(
-								/* translators: %s: provider name */
-								__(
-									'Check the URL, or add a %s connection in Settings if this is a private repository.',
-									'gitwire'
+							{ createInterpolateElement(
+								sprintf(
+									/* translators: 1: provider name, 2: link to Settings */
+									__(
+										'Check the URL, or add a %s connection in <a>Settings</a> if this is a private repository.',
+										'gitwire'
+									),
+									providerLabel( resolved.provider )
 								),
-								providerLabel( resolved.provider )
+								{
+									a: onGoToSettings ? (
+										<Button
+											variant="link"
+											onClick={ onGoToSettings }
+										/>
+									) : (
+										<span />
+									),
+								}
 							) }
 						</p>
 					) }

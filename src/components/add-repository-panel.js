@@ -60,6 +60,7 @@ export default function AddRepositoryPanel( {
 						connection={ connection }
 						installed={ installed }
 						settings={ settings }
+						onGoToSettings={ onGoToSettings }
 						onPostInstall={ handleUrlImportInstall }
 					/>
 				</Modal>
