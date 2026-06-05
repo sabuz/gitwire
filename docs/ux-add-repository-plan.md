@@ -40,19 +40,18 @@ The real engineering lift. Do it on its own so a migration bug can't take down P
    - `gitwire_connections`: collection of `{ id, provider, label, scope: site|user, user_id?, credentials, is_default }`.
    - **Encrypt `credentials` at rest** (key derived from `wp_salt()`) — applies to free single-connection too.
    - `Provider_Factory::make()` resolves a connection (by id, or provider default) instead of reading the single token field. Filter seam: `gitwire_provider_factory_auth`.
-2. **Migration from `gitwire_settings`.** ●●
-   - Convert existing `token`/`gitlab_token`/`bitbucket_*` into one site-scoped default connection per provider. Idempotent, reversible-safe. Keep reading old keys until migrated.
-3. **`connection_id` on installed records.** ●●
+   - No migration needed — plugin is pre-release, no live credentials to preserve. Replace the old `gitwire_settings` token fields directly.
+2. **`connection_id` on installed records.** ●●
    - Stamp the connection used at install time onto each `gitwire_installed` record so updates/sync stay on the right account. `sync_installed()` / `fetch_remote_head()` resolve via `connection_id`, fall back to provider default.
-4. **Pro UX.** ●●
+3. **Pro UX.** ●●
    - Multiple connections per provider with a default; Browse account switcher ("Showing: Personal (default) ▾").
    - Per-user (personal) vs site connections — pickers show current user's personal + permitted site connections.
    - **Loud honesty copy:** personal = "kept out of colleagues' pickers," not "private/secure." (See review note in flow doc.)
-5. **Orphaned-connection state.** ●●
+4. **Orphaned-connection state.** ●●
    - Per-row "Needs connection — reconnect" when an install's `connection_id` no longer resolves. Decide re-own rules.
 
 ### Done when
-A user can save multiple accounts per provider, mark a default, scope a connection to themselves, install a private repo with a chosen connection, and have updates keep using it. Old single-token configs migrate transparently.
+A user can save multiple accounts per provider, mark a default, scope a connection to themselves, install a private repo with a chosen connection, and have updates keep using it.
 
 ---
 
