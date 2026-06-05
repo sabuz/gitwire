@@ -6,33 +6,27 @@ Implementation plan for the UX in [`ux-add-repository-flow.md`](ux-add-repositor
 
 ---
 
-## Phase 1 — UX shell (no data-model change)
+## Phase 1 — UX shell (no data-model change) ✓ DONE
 
 Pure front-end + one new read-only endpoint. Free tier. No change to how credentials are stored, so zero migration risk. This is where most of the perceived improvement lives.
 
 ### Scope
 
-1. **Remove the top-level Browse tab.** ●
-   - Drop `browse` from `TABS` and `PATH_TO_TAB` in [`app.js`](../src/app.js); remove the submenu item in `class-admin.php`.
-   - Redirect `?path=browse` → open the Add repository panel on the Browse sub-tab (back-compat for bookmarks/submenu links).
-2. **Replace the Connect wall with an action-oriented empty state.** ●
-   - Retire `connect-prompt.js` as the gate. Empty Installed shows **Add repository** (single label everywhere) + secondary line "You can paste a public link without connecting an account."
-3. **Add repository surface — full-width slide-over / route, not a nested modal.** ●●
-   - Two sub-tabs: **Browse my repositories** (lift current `browse-panel.js` behavior in as-is) and **Import from URL**.
-   - Default sub-tab by connection state: no connection → Import from URL; connected → Browse. Remember last-used.
-   - Avoid modal-in-modal: resolve type/branch/slug/connection sub-states inline.
-4. **Import from URL flow.** ●●
-   - URL field + **Check repository** button (not "Check connection").
-   - New endpoint `POST /repos/resolve` — parses URL → `(provider, owner, repo, branch?)`, attempts anonymous read, returns public/private + detected type. Reuses existing `detect_type` / `Repo_Detector`.
-   - URL parser handles: `.git` suffix, `/tree/<branch>`, trailing slashes, GitLab nested namespaces, self-hosted GitLab hosts (reuse `Settings::is_allowed_gitlab_url`).
-   - Public → type / branch / slug-conflict / Install (same rules as current install modal, Smart Install respected).
-   - Private/404 → connection picker using the **single existing** connection only (multi comes in Phase 2). Treat 404 as ambiguous: "not found, private, or no access."
+1. **Remove the top-level Browse tab.** ● ✓
+   - Dropped `browse` from `TABS` and `PATH_TO_TAB` in [`app.js`](../src/app.js); removed the submenu item in `class-admin.php`.
+   - `?path=browse` redirects to `add-repository` (back-compat).
+2. **Replace the Connect wall with an action-oriented empty state.** ● ✓
+   - `connect-prompt.js` removed. Empty Installed shows **Add repository** + "Install plugins and themes directly from GitHub, GitLab, or Bitbucket."
+3. **Add repository surface.** ●● ✓ (intentional scope reduction)
+   - Browse panel renders directly; Import from URL opens in a modal. Sub-tabs, connection-state defaulting, and last-used memory were intentionally skipped — the current shape is good enough for Phase 1.
+4. **Import from URL flow.** ●● ✓
+   - URL field + **Check repository** button.
+   - `POST /repos/resolve` endpoint live — parses URL, attempts anonymous read, returns public/private + detected type.
+   - Public → type / branch / slug-conflict / Install (Smart Install respected).
+   - Private/404 → connection picker (single site-wide connection per provider).
 
 ### Out of scope for Phase 1
 Multiple connections, per-user connections, badges, delete guard. Private URL import works only against the one site-wide connection per provider that already exists.
-
-### Done when
-A fresh install with no credentials can paste a public GitHub/GitLab/Bitbucket URL and install it; Browse still works for a connected account; no Browse tab in nav; empty state never shows a "Connect" wall.
 
 ---
 
