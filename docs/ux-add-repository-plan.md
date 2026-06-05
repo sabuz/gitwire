@@ -72,6 +72,32 @@ Installed items are identifiable on the native Plugins/Themes screens, and a cro
 
 ---
 
+---
+
+## Free vs Pro — restrictions to enforce in a future phase
+
+Documented here so the gating requirements are clear when we split the codebase.
+
+### Free tier
+- **One connection per provider** (GitHub / GitLab / Bitbucket). Adding a second connection to the same provider requires Pro. The Settings UI reflects this: providers that already have a connection are shown as disabled in the "Add account" picker with a "Pro" badge.
+- **Public repos only.** A free connection raises the API rate limit and enables Browse, but installing private repos is a Pro feature. Planned enforcement points:
+  - Settings card: help text on the connect form — "Free accounts can browse and install public repositories. Upgrade to Pro for private repository access."
+  - `POST /install` and `POST /repos/resolve`: server-side guard — if `is_pro` is false and the resolved repo is private, return a `pro_required` WP_Error.
+  - Browse panel: private repo cards show a "Pro" badge instead of an Install button when `is_pro` is false.
+- `is_pro` is exposed via the `gitwire_is_pro` PHP filter (default `false`). The Pro add-on hooks this to `true`.
+
+### Pro tier
+- Multiple connections per provider, each with a label and a default flag.
+- Private repo access across Browse, Import from URL, and updates.
+- Per-user (personal) connections scoped to a single admin (Phase 2 data model already supports `scope: user`).
+
+### Filter seams already in place
+- `gitwire_is_pro` — Pro plugin sets this to `true`.
+- `gitwire_provider_factory_auth` — credential/connection resolution override.
+- `gitwire_can_install_repo` — install/delete capability gate.
+
+---
+
 ## Filter seams to land early (Phase 1–2)
 So the Pro plugin hangs off stable hooks rather than forks (ties to the free/pro add-on split):
 
