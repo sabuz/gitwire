@@ -1,6 +1,6 @@
 <?php
 /**
- * Settings helpers — token masking and merge-on-save.
+ * Settings helpers — smart_install and token masking.
  *
  * @package Gitwire
  * @since 1.2.0
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Reads and writes gitwire_settings without exposing secrets to the client.
+ * Reads and writes gitwire_settings. Credentials live in gitwire_connections.
  */
 class Settings {
 
@@ -28,74 +28,34 @@ class Settings {
 	}
 
 	/**
-	 * Returns a client-safe settings payload (no full tokens).
+	 * Returns a client-safe settings payload.
 	 *
-	 * @since 1.2.0
+	 * @since 2.0.0
 	 * @return array<string, mixed>
 	 */
 	public static function get_public(): array {
 		$s = self::get_raw();
-
 		return [
-			'username'                    => $s['username'] ?? '',
-			'token_set'                   => ! empty( $s['token'] ),
-			'token_preview'               => self::mask_token( $s['token'] ?? '' ),
-			'smart_install'               => $s['smart_install'] ?? true,
-			'gitlab_token_set'            => ! empty( $s['gitlab_token'] ),
-			'gitlab_token_preview'        => self::mask_token( $s['gitlab_token'] ?? '' ),
-			'gitlab_url'                  => $s['gitlab_url'] ?? '',
-			'bitbucket_email'             => $s['bitbucket_email'] ?? '',
-			'bitbucket_api_token_set'     => ! empty( $s['bitbucket_api_token'] ),
-			'bitbucket_api_token_preview' => self::mask_token( $s['bitbucket_api_token'] ?? '' ),
+			'smart_install' => $s['smart_install'] ?? true,
 		];
 	}
 
 	/**
-	 * Merges incoming save params with stored credentials when tokens are omitted.
+	 * Merges incoming save params with stored settings.
 	 *
-	 * @since 1.2.0
+	 * @since 2.0.0
 	 * @param array<string, mixed> $incoming Request body fields.
 	 * @return array<string, mixed> Full settings array to persist.
 	 */
 	public static function merge_save( array $incoming ): array {
 		$current = self::get_raw();
 
-		$token = $current['token'] ?? '';
-		if ( array_key_exists( 'token', $incoming ) && null !== $incoming['token'] ) {
-			$token = sanitize_text_field( (string) $incoming['token'] );
-		}
-
-		$gitlab_token = $current['gitlab_token'] ?? '';
-		if ( array_key_exists( 'gitlab_token', $incoming ) && null !== $incoming['gitlab_token'] ) {
-			$gitlab_token = sanitize_text_field( (string) $incoming['gitlab_token'] );
-		}
-
-		$username = $current['username'] ?? '';
-		if ( array_key_exists( 'username', $incoming ) && null !== $incoming['username'] ) {
-			$username = sanitize_text_field( (string) $incoming['username'] );
-		}
-
-		$gitlab_url = $current['gitlab_url'] ?? '';
-		if ( array_key_exists( 'gitlab_url', $incoming ) && null !== $incoming['gitlab_url'] ) {
-			$gitlab_url = esc_url_raw( (string) $incoming['gitlab_url'] );
-		}
-
-		$bitbucket_email = $current['bitbucket_email'] ?? '';
-		if ( array_key_exists( 'bitbucket_email', $incoming ) && null !== $incoming['bitbucket_email'] ) {
-			$bitbucket_email = sanitize_email( (string) $incoming['bitbucket_email'] );
-		}
-
-		$bitbucket_api_token = $current['bitbucket_api_token'] ?? '';
-		if ( array_key_exists( 'bitbucket_api_token', $incoming ) && null !== $incoming['bitbucket_api_token'] ) {
-			$bitbucket_api_token = sanitize_text_field( (string) $incoming['bitbucket_api_token'] );
-		}
-
 		$smart_install = $current['smart_install'] ?? true;
 		if ( array_key_exists( 'smart_install', $incoming ) && null !== $incoming['smart_install'] ) {
 			$smart_install = (bool) $incoming['smart_install'];
 		}
 
-		return compact( 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url', 'bitbucket_email', 'bitbucket_api_token' );
+		return compact( 'smart_install' );
 	}
 
 	/**

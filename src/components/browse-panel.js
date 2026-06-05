@@ -40,6 +40,7 @@ function lookupInstalled( installed, repo ) {
  * Browse panel — lists GitHub and GitLab repositories with detection and install actions.
  *
  * @param {Object}   props                    Component props.
+ * @param {Array}    props.connections        Connection records array.
  * @param {Object}   props.settings           Plugin settings.
  * @param {Object}   props.installed          Map of installed repositories.
  * @param {Function} [props.onPostInstall]    Standalone mode: called after install completes.
@@ -49,6 +50,7 @@ function lookupInstalled( installed, repo ) {
  * @return {JSX.Element} The rendered browse panel.
  */
 export default function BrowsePanel( {
+	connections,
 	settings,
 	installed,
 	onPostInstall,
@@ -56,9 +58,11 @@ export default function BrowsePanel( {
 	onGoToSettings,
 	onOpenUrlImport,
 } ) {
-	const hasGitHub = !! ( settings?.token_set || settings?.username );
-	const hasGitLab = !! settings?.gitlab_token_set;
-	const hasBitbucket = !! settings?.bitbucket_api_token_set;
+	const hasGitHub = !! connections?.find( ( c ) => c.provider === 'github' );
+	const hasGitLab = !! connections?.find( ( c ) => c.provider === 'gitlab' );
+	const hasBitbucket = !! connections?.find(
+		( c ) => c.provider === 'bitbucket'
+	);
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 

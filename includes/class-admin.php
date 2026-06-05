@@ -173,16 +173,14 @@ class Admin {
 
 		wp_set_script_translations( 'gitwire-app', 'gitwire', GITWIRE_DIR . 'languages' );
 
-		$settings      = Settings::get_public();
-		$has_github    = ! empty( $settings['username'] ) || ! empty( $settings['token_set'] );
-		$has_gitlab    = ! empty( $settings['gitlab_token_set'] );
-		$has_bitbucket = ! empty( $settings['bitbucket_api_token_set'] );
-		$has_config    = $has_github || $has_gitlab || $has_bitbucket;
-		$raw_cache     = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
-		$connection    = [
-			'github'    => isset( $raw_cache['github'] ) ? $raw_cache['github'] : null,
-			'gitlab'    => isset( $raw_cache['gitlab'] ) ? $raw_cache['gitlab'] : null,
-			'bitbucket' => isset( $raw_cache['bitbucket'] ) ? $raw_cache['bitbucket'] : null,
+		$settings    = Settings::get_public();
+		$connections = Connections::get_public_list();
+		$has_config  = ! empty( $connections );
+		$raw_cache   = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
+		$connection  = [
+			'github'    => $raw_cache['github'] ?? null,
+			'gitlab'    => $raw_cache['gitlab'] ?? null,
+			'bitbucket' => $raw_cache['bitbucket'] ?? null,
 		];
 		Error_Handler::clear_stale_activation_guard();
 		$installed_result = REST::sync_installed();
@@ -214,8 +212,7 @@ class Admin {
 			$initial_tab = 'settings';
 		} elseif ( 'settings' === $path ) {
 			$initial_tab = 'settings';
-		} elseif ( in_array( $path, [ 'add-repository', 'browse' ], true ) && $has_config ) {
-			// 'browse' is kept for back-compat with old bookmarks.
+		} elseif ( in_array( $path, [ 'add-repository', 'browse' ], true ) ) {
 			$initial_tab = 'add-repository';
 		} else {
 			$initial_tab = 'repositories';
@@ -234,7 +231,8 @@ class Admin {
 					'verify_admin_url'      => admin_url( 'admin.php?page=gitwire&gitwire_verify_activation=1' ),
 					'initial_tab' => $initial_tab,
 					'settings'    => $settings,
-					'connection'            => $connection,
+					'connections' => $connections,
+					'connection'  => $connection,
 					'installed'             => $installed ? $installed : (object) [],
 					'orphaned'              => $orphaned,
 					'fatal_notice'          => $fatal_notice ? $fatal_notice : null,

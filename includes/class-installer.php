@@ -110,7 +110,8 @@ class Installer {
 		string $branch,
 		string $slug = '',
 		string $provider = 'github',
-		bool $replace = false
+		bool $replace = false,
+		?string $connection_id = null
 	): array|\WP_Error {
 		if ( ! $slug ) {
 			$slug = sanitize_title( $repo );
@@ -118,7 +119,7 @@ class Installer {
 
 		$destination = WP_PLUGIN_DIR . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'plugin', $provider, $replace );
+		return self::run( $owner, $repo, $branch, $slug, $destination, 'plugin', $provider, $replace, $connection_id );
 	}
 
 	/**
@@ -139,7 +140,8 @@ class Installer {
 		string $branch,
 		string $slug = '',
 		string $provider = 'github',
-		bool $replace = false
+		bool $replace = false,
+		?string $connection_id = null
 	): array|\WP_Error {
 		if ( ! $slug ) {
 			$slug = sanitize_title( $repo );
@@ -147,7 +149,7 @@ class Installer {
 
 		$destination = get_theme_root() . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'theme', $provider, $replace );
+		return self::run( $owner, $repo, $branch, $slug, $destination, 'theme', $provider, $replace, $connection_id );
 	}
 
 	/**
@@ -167,13 +169,14 @@ class Installer {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
-		$rec    = $installed[ $key ];
-		$parts  = explode( '/', $full_name );
-		$owner  = $parts[0];
-		$repo   = $parts[1];
-		$method = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
+		$rec           = $installed[ $key ];
+		$parts         = explode( '/', $full_name );
+		$owner         = $parts[0];
+		$repo          = $parts[1];
+		$method        = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
+		$connection_id = $rec['connection_id'] ?? null;
 
-		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider );
+		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider, false, $connection_id );
 
 		return $result;
 	}
@@ -721,8 +724,8 @@ class Installer {
 			return null;
 		}
 
-		$settings = (array) get_option( 'gitwire_settings', [] );
-		$api      = Provider_Factory::make( $settings, $provider );
+		$connection_id = $rec['connection_id'] ?? null;
+		$api           = Provider_Factory::make( $provider, $connection_id );
 
 		return self::fetch_remote_head_sha( $api, $parts[0], $parts[1], $branch );
 	}
@@ -799,13 +802,13 @@ class Installer {
 		string $install_path,
 		string $type,
 		string $provider = 'github',
-		bool $replace = false
+		bool $replace = false,
+		?string $connection_id = null
 	): array|\WP_Error {
 		self::init_fs();
 
-		$settings  = (array) get_option( 'gitwire_settings', [] );
 		$full_name = $owner . '/' . $repo;
-		$api       = Provider_Factory::make( $settings, $provider );
+		$api       = Provider_Factory::make( $provider, $connection_id );
 
 		// Auto-rename if the target directory exists but doesn't belong to this exact record.
 		// Covers both conflicts with other git-managed installs and unmanaged directories
@@ -934,18 +937,19 @@ class Installer {
 
 		// Save record.
 		$record = [
-			'slug'         => $slug,
-			'repo'         => $repo,
-			'owner'        => $owner,
-			'full_name'    => $full_name,
-			'branch'       => $branch,
-			'type'         => $type,
-			'provider'     => $provider,
-			'install_path' => $install_path,
-			'plugin_file'  => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
-			'installed_at' => time(),
-			'updated_at'   => time(),
-			'slug_renamed' => $slug_renamed,
+			'slug'          => $slug,
+			'repo'          => $repo,
+			'owner'         => $owner,
+			'full_name'     => $full_name,
+			'branch'        => $branch,
+			'type'          => $type,
+			'provider'      => $provider,
+			'connection_id' => $connection_id,
+			'install_path'  => $install_path,
+			'plugin_file'   => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
+			'installed_at'  => time(),
+			'updated_at'    => time(),
+			'slug_renamed'  => $slug_renamed,
 		];
 
 		$record_key             = $provider . ':' . $full_name;

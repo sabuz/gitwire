@@ -22,20 +22,29 @@ import {
 import * as api from '../api';
 import { BitbucketIcon } from './provider-icons';
 
+/** Returns the first connection record for a provider, or null. */
+function getProviderConnection( connections, provider ) {
+	return connections.find( ( c ) => c.provider === provider ) ?? null;
+}
+
 /**
  * Settings panel — one card per provider plus a Smart Install card.
  *
- * @param {Object}   props                    Component props.
- * @param {Object}   props.settings           Saved plugin settings.
- * @param {Object}   props.connection         Per-provider connection cache: { github, gitlab, bitbucket }.
- * @param {Function} props.onSave             Called with updated settings after save.
- * @param {Function} props.onConnectionUpdate Called with (provider, data) after a test/disconnect.
+ * @param {Object}   props                     Component props.
+ * @param {Object}   props.settings            Saved plugin settings.
+ * @param {Array}    props.connections         Connection records from the new model.
+ * @param {Object}   props.connection          Per-provider connection cache: { github, gitlab, bitbucket }.
+ * @param {Function} props.onSave              Called with updated settings after save.
+ * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
+ * @param {Function} props.onConnectionUpdate  Called with (provider, data) after a test/disconnect.
  * @return {JSX.Element} The rendered settings panel.
  */
 export default function SettingsPanel( {
 	settings,
+	connections,
 	connection,
 	onSave,
+	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
 	const [ smartInstall, setSmartInstall ] = useState(
@@ -66,36 +75,36 @@ export default function SettingsPanel( {
 		>
 			<GitHubCard
 				connection={ connection?.github ?? null }
-				settings={ settings }
+				connRecord={ getProviderConnection( connections, 'github' ) }
 				smartInstall={ smartInstall }
+				onConnectionsChange={ onConnectionsChange }
 				onConnectionUpdate={ ( data ) =>
 					onConnectionUpdate( 'github', data )
 				}
-				onSave={ onSave }
 			/>
 
 			<Spacer marginTop={ 4 } />
 
 			<GitLabCard
 				connection={ connection?.gitlab ?? null }
-				settings={ settings }
+				connRecord={ getProviderConnection( connections, 'gitlab' ) }
 				smartInstall={ smartInstall }
+				onConnectionsChange={ onConnectionsChange }
 				onConnectionUpdate={ ( data ) =>
 					onConnectionUpdate( 'gitlab', data )
 				}
-				onSave={ onSave }
 			/>
 
 			<Spacer marginTop={ 4 } />
 
 			<BitbucketCard
 				connection={ connection?.bitbucket ?? null }
-				settings={ settings }
+				connRecord={ getProviderConnection( connections, 'bitbucket' ) }
 				smartInstall={ smartInstall }
+				onConnectionsChange={ onConnectionsChange }
 				onConnectionUpdate={ ( data ) =>
 					onConnectionUpdate( 'bitbucket', data )
 				}
-				onSave={ onSave }
 			/>
 
 			<Spacer marginTop={ 4 } />
@@ -136,29 +145,27 @@ export default function SettingsPanel( {
 /**
  * GitHub provider card — shows a connect form when disconnected, profile when connected.
  *
- * @param {Object}   props                    Component props.
- * @param {Object}   props.settings           Saved plugin settings.
- * @param {Object}   props.connection         Cached GitHub connection data, or null.
- * @param {boolean}  props.smartInstall       Current smart install value (preserved on save).
- * @param {Function} props.onSave             Called with updated settings after save.
- * @param {Function} props.onConnectionUpdate Called with connection data (or null) after test.
+ * @param {Object}   props                     Component props.
+ * @param {Object}   props.connection          Cached GitHub connection data, or null.
+ * @param {Object}   props.connRecord          Connection record from the new model, or null.
+ * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
+ * @param {Function} props.onConnectionUpdate  Called with connection data (or null) after test.
  * @return {JSX.Element} The rendered card.
  */
 function GitHubCard( {
-	settings,
 	connection,
-	smartInstall,
-	onSave,
+	connRecord,
+	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
 	const [ token, setToken ] = useState( '' );
-	const [ username, setUsername ] = useState( settings.username || '' );
+	const [ username, setUsername ] = useState( '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 	const [ tokenError, setTokenError ] = useState( false );
 	const [ usernameError, setUsernameError ] = useState( false );
 
-	const isConnected = !! ( settings.token_set || settings.username );
+	const isConnected = !! connRecord;
 
 	const handleConnect = async () => {
 		if ( ! token.trim() && ! username.trim() ) {
@@ -170,19 +177,15 @@ function GitHubCard( {
 		setTokenError( false );
 		setUsernameError( false );
 		try {
-			const result = await api.testConnection( {
+			const result = await api.createConnection( {
 				provider: 'github',
 				token,
 				username,
 			} );
-			await api.saveSettings( {
-				token,
-				username,
-				smart_install: smartInstall,
-			} );
-			const saved = await api.getSettings();
-			onSave( saved );
-			onConnectionUpdate( result );
+			onConnectionsChange( result.connection );
+			onConnectionUpdate( result.profile );
+			setToken( '' );
+			setUsername( '' );
 			toast.success( __( 'GitHub connected.', 'gitwire' ) );
 		} catch ( e ) {
 			if ( token.trim() ) {
@@ -200,17 +203,13 @@ function GitHubCard( {
 	};
 
 	const handleSignOut = async () => {
+		if ( ! connRecord?.id ) {
+			return;
+		}
 		setSaving( true );
 		try {
-			await api.saveSettings( {
-				token: '',
-				username: '',
-				smart_install: smartInstall,
-			} );
-			setToken( '' );
-			setUsername( '' );
-			const saved = await api.getSettings();
-			onSave( saved );
+			const result = await api.deleteConnection( connRecord.id );
+			onConnectionsChange( result.connections );
 			onConnectionUpdate( null );
 			toast.success( __( 'GitHub disconnected.', 'gitwire' ) );
 		} catch ( e ) {
@@ -365,28 +364,26 @@ function GitHubCard( {
 /**
  * GitLab provider card — shows a connect form when disconnected, profile when connected.
  *
- * @param {Object}   props                    Component props.
- * @param {Object}   props.settings           Saved plugin settings.
- * @param {Object}   props.connection         Cached GitLab connection data, or null.
- * @param {boolean}  props.smartInstall       Current smart install value (preserved on save).
- * @param {Function} props.onSave             Called with updated settings after save.
- * @param {Function} props.onConnectionUpdate Called with connection data (or null) after test.
+ * @param {Object}   props                     Component props.
+ * @param {Object}   props.connection          Cached GitLab connection data, or null.
+ * @param {Object}   props.connRecord          Connection record from the new model, or null.
+ * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
+ * @param {Function} props.onConnectionUpdate  Called with connection data (or null) after test.
  * @return {JSX.Element} The rendered card.
  */
 function GitLabCard( {
-	settings,
 	connection,
-	smartInstall,
-	onSave,
+	connRecord,
+	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
 	const [ gitlabToken, setGitlabToken ] = useState( '' );
-	const [ gitlabUrl, setGitlabUrl ] = useState( settings.gitlab_url || '' );
+	const [ gitlabUrl, setGitlabUrl ] = useState( connRecord?.gitlab_url || '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 	const [ tokenError, setTokenError ] = useState( false );
 
-	const isConnected = !! settings.gitlab_token_set;
+	const isConnected = !! connRecord;
 
 	const handleConnect = async () => {
 		if ( ! gitlabToken.trim() ) {
@@ -399,19 +396,14 @@ function GitLabCard( {
 		setTesting( true );
 		setTokenError( false );
 		try {
-			const result = await api.testConnection( {
+			const result = await api.createConnection( {
 				provider: 'gitlab',
 				gitlab_token: gitlabToken,
 				gitlab_url: gitlabUrl,
 			} );
-			await api.saveSettings( {
-				gitlab_token: gitlabToken,
-				gitlab_url: gitlabUrl,
-				smart_install: smartInstall,
-			} );
-			const saved = await api.getSettings();
-			onSave( saved );
-			onConnectionUpdate( result );
+			onConnectionsChange( result.connection );
+			onConnectionUpdate( result.profile );
+			setGitlabToken( '' );
 			toast.success( __( 'GitLab connected.', 'gitwire' ) );
 		} catch ( e ) {
 			setTokenError( true );
@@ -425,18 +417,16 @@ function GitLabCard( {
 	};
 
 	const handleSignOut = async () => {
+		if ( ! connRecord?.id ) {
+			return;
+		}
 		setSaving( true );
 		try {
-			await api.saveSettings( {
-				gitlab_token: '',
-				gitlab_url: '',
-				smart_install: smartInstall,
-			} );
+			const result = await api.deleteConnection( connRecord.id );
+			onConnectionsChange( result.connections );
+			onConnectionUpdate( null );
 			setGitlabToken( '' );
 			setGitlabUrl( '' );
-			const saved = await api.getSettings();
-			onSave( saved );
-			onConnectionUpdate( null );
 			toast.success( __( 'GitLab disconnected.', 'gitwire' ) );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
@@ -573,28 +563,26 @@ function GitLabCard( {
 /**
  * Bitbucket provider card — shows a connect form when disconnected, profile when connected.
  *
- * @param {Object}   props                    Component props.
- * @param {Object}   props.settings           Saved plugin settings.
- * @param {Object}   props.connection         Cached Bitbucket connection data, or null.
- * @param {boolean}  props.smartInstall       Current smart install value (preserved on save).
- * @param {Function} props.onSave             Called with updated settings after save.
- * @param {Function} props.onConnectionUpdate Called with connection data (or null) after test.
+ * @param {Object}   props                     Component props.
+ * @param {Object}   props.connection          Cached Bitbucket connection data, or null.
+ * @param {Object}   props.connRecord          Connection record from the new model, or null.
+ * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
+ * @param {Function} props.onConnectionUpdate  Called with connection data (or null) after test.
  * @return {JSX.Element} The rendered card.
  */
 function BitbucketCard( {
-	settings,
 	connection,
-	smartInstall,
-	onSave,
+	connRecord,
+	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
-	const [ bbEmail, setBbEmail ] = useState( settings.bitbucket_email || '' );
+	const [ bbEmail, setBbEmail ] = useState( connRecord?.email || '' );
 	const [ bbApiToken, setBbApiToken ] = useState( '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 	const [ credError, setCredError ] = useState( false );
 
-	const isConnected = !! settings.bitbucket_api_token_set;
+	const isConnected = !! connRecord;
 
 	const handleConnect = async () => {
 		if ( ! bbEmail.trim() || ! bbApiToken.trim() ) {
@@ -610,19 +598,14 @@ function BitbucketCard( {
 		setTesting( true );
 		setCredError( false );
 		try {
-			const result = await api.testConnection( {
+			const result = await api.createConnection( {
 				provider: 'bitbucket',
 				bitbucket_email: bbEmail,
 				bitbucket_api_token: bbApiToken,
 			} );
-			await api.saveSettings( {
-				bitbucket_email: bbEmail,
-				bitbucket_api_token: bbApiToken,
-				smart_install: smartInstall,
-			} );
-			const saved = await api.getSettings();
-			onSave( saved );
-			onConnectionUpdate( result );
+			onConnectionsChange( result.connection );
+			onConnectionUpdate( result.profile );
+			setBbApiToken( '' );
 			toast.success( __( 'Bitbucket connected.', 'gitwire' ) );
 		} catch ( e ) {
 			setCredError( true );
@@ -636,18 +619,16 @@ function BitbucketCard( {
 	};
 
 	const handleSignOut = async () => {
+		if ( ! connRecord?.id ) {
+			return;
+		}
 		setSaving( true );
 		try {
-			await api.saveSettings( {
-				bitbucket_email: '',
-				bitbucket_api_token: '',
-				smart_install: smartInstall,
-			} );
+			const result = await api.deleteConnection( connRecord.id );
+			onConnectionsChange( result.connections );
+			onConnectionUpdate( null );
 			setBbEmail( '' );
 			setBbApiToken( '' );
-			const saved = await api.getSettings();
-			onSave( saved );
-			onConnectionUpdate( null );
 			toast.success( __( 'Bitbucket disconnected.', 'gitwire' ) );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );

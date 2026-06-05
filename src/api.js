@@ -5,8 +5,14 @@ const BASE = '/gitwire/v1';
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>
 	apiFetch( { path: `${ BASE }/settings`, method: 'POST', data } );
-export const testConnection = ( data = {} ) =>
-	apiFetch( { path: `${ BASE }/connection`, method: 'POST', data } );
+export const getConnections = () =>
+	apiFetch( { path: `${ BASE }/connections` } );
+export const createConnection = ( data = {} ) =>
+	apiFetch( { path: `${ BASE }/connections`, method: 'POST', data } );
+export const deleteConnection = ( id ) =>
+	apiFetch( { path: `${ BASE }/connections/${ id }`, method: 'DELETE' } );
+export const testConnection = ( id ) =>
+	apiFetch( { path: `${ BASE }/connections/${ id }/test`, method: 'POST' } );
 export const getRepos = ( page = 1, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/repos?page=${ page }&provider=${ provider }`,

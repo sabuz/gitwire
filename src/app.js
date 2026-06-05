@@ -93,6 +93,7 @@ function syncUrl( tabName ) {
 
 export default function App( { initialData } ) {
 	const [ settings, setSettings ] = useState( initialData.settings || null );
+	const [ connections, setConnections ] = useState( initialData.connections || [] );
 	const [ connection, setConnection ] = useState(
 		initialData.connection || {
 			github: null,
@@ -207,9 +208,14 @@ export default function App( { initialData } ) {
 
 	useEffect( () => {
 		if ( ! initialData.settings ) {
-			Promise.all( [ api.getSettings(), api.syncInstalled() ] )
-				.then( ( [ s, result ] ) => {
+			Promise.all( [
+				api.getSettings(),
+				api.getConnections(),
+				api.syncInstalled(),
+			] )
+				.then( ( [ s, { connections: conns }, result ] ) => {
 					setSettings( s );
+					setConnections( conns || [] );
 					applyInstalled( result );
 				} )
 				.finally( () => setLoading( false ) );
@@ -265,6 +271,10 @@ export default function App( { initialData } ) {
 		ev.preventDefault();
 		setActiveTab( tabName );
 		syncUrl( tabName );
+	}, [] );
+
+	const handleConnectionsChange = useCallback( ( conns ) => {
+		setConnections( conns || [] );
 	}, [] );
 
 	const handleConnectionUpdate = useCallback( ( provider, data ) => {
@@ -343,7 +353,9 @@ export default function App( { initialData } ) {
 				{ activeTab === 'settings' && (
 					<SettingsPanel
 						connection={ connection }
+						connections={ connections }
 						settings={ settings }
+						onConnectionsChange={ handleConnectionsChange }
 						onConnectionUpdate={ handleConnectionUpdate }
 						onSave={ handleSettingsSave }
 					/>
@@ -365,6 +377,7 @@ export default function App( { initialData } ) {
 					<Suspense fallback={ panelFallback }>
 						<AddRepositoryPanel
 							connection={ connection }
+							connections={ connections }
 							installed={ installed }
 							settings={ settings }
 							onGoToSettings={ () => handleGoToTab( 'settings' ) }

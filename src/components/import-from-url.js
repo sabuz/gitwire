@@ -65,13 +65,15 @@ function installButtonLabel( installing, slugChecking ) {
  *
  * @param {Object}   props                  Component props.
  * @param {Object}   props.settings         Plugin settings.
- * @param {Object}   props.connection       Live connection state per provider.
+ * @param {Array}    props.connections      Connection records array.
+ * @param {Object}   props.connection       Live connection cache per provider (for profile display).
  * @param {Function} props.onPostInstall    Called after a successful install.
  * @param {Function} [props.onGoToSettings] Navigates to the Settings tab.
  * @return {JSX.Element} The rendered import form.
  */
 export default function ImportFromUrl( {
 	settings,
+	connections,
 	connection,
 	onPostInstall,
 	onGoToSettings,
@@ -308,7 +310,12 @@ export default function ImportFromUrl( {
 		step === 'checking' || step === 'verifying-conn' || isInstalling;
 
 	// Connection info for the detected provider (private path, Phase 1: one per provider).
-	const existingConn = resolved ? connection?.[ resolved.provider ] : null;
+	const hasProviderConn = resolved
+		? !! connections?.find( ( c ) => c.provider === resolved.provider )
+		: false;
+	const existingConn = hasProviderConn
+		? ( connection?.[ resolved.provider ] ?? {} )
+		: null;
 	const connLabel = existingConn?.authenticated
 		? sprintf(
 				/* translators: 1: provider name, 2: username */

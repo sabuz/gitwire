@@ -105,10 +105,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function run_connection_check(): void {
-		$settings = Settings::get_raw();
-		if ( $settings ) {
-			REST::test_connection();
-		}
+		REST::refresh_all_connections();
 	}
 
 	/**
