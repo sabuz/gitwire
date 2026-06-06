@@ -23,11 +23,13 @@ const AddRepositoryPanel = lazy( () =>
 	import( './components/add-repository-panel' )
 );
 const InstalledPanel = lazy( () => import( './components/installed-panel' ) );
+const LogsPanel = lazy( () => import( './components/logs-panel' ) );
 
-const TABS = [
+const BASE_TABS = [
 	{ name: 'repositories', label: __( 'Repositories', 'gitwire' ) },
 	{ name: 'add-repository', label: __( 'Add Repository', 'gitwire' ) },
 	{ name: 'settings', label: __( 'Settings', 'gitwire' ) },
+	{ name: 'logs', label: __( 'Logs', 'gitwire' ) },
 ];
 
 /**
@@ -177,6 +179,7 @@ export default function App( { initialData } ) {
 			'add-repository': 'add-repository',
 			browse: 'add-repository', // back-compat
 			settings: 'settings',
+			logs: 'logs',
 		};
 		function handleClick( ev ) {
 			const a = ev.target.closest( 'a' );
@@ -302,6 +305,9 @@ export default function App( { initialData } ) {
 	}
 
 	const installedCount = Object.keys( installed ).length;
+	const tabs = settings?.enable_logging
+		? BASE_TABS
+		: BASE_TABS.filter( ( t ) => t.name !== 'logs' );
 	const panelFallback = (
 		<div className="gitwire-page-loading">
 			<Spinner />
@@ -328,7 +334,7 @@ export default function App( { initialData } ) {
 					aria-label={ __( 'Plugin navigation', 'gitwire' ) }
 					className="gitwire-page-nav"
 				>
-					{ TABS.map( ( tab ) => (
+					{ tabs.map( ( tab ) => (
 						<a
 							key={ tab.name }
 							aria-current={
@@ -385,6 +391,14 @@ export default function App( { initialData } ) {
 							settings={ settings }
 							onGoToSettings={ () => handleGoToTab( 'settings' ) }
 							onPostInstall={ handlePostInstall }
+						/>
+					</Suspense>
+				) }
+				{ activeTab === 'logs' && (
+					<Suspense fallback={ panelFallback }>
+						<LogsPanel
+							settings={ settings }
+							onGoToSettings={ () => handleGoToTab( 'settings' ) }
 						/>
 					</Suspense>
 				) }

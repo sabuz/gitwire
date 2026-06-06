@@ -36,7 +36,8 @@ class Settings {
 	public static function get_public(): array {
 		$s = self::get_raw();
 		return [
-			'smart_install' => $s['smart_install'] ?? true,
+			'smart_install'  => $s['smart_install'] ?? true,
+			'enable_logging' => $s['enable_logging'] ?? false,
 		];
 	}
 
@@ -55,7 +56,23 @@ class Settings {
 			$smart_install = (bool) $incoming['smart_install'];
 		}
 
-		return compact( 'smart_install' );
+		$enable_logging = $current['enable_logging'] ?? false;
+		if ( array_key_exists( 'enable_logging', $incoming ) && null !== $incoming['enable_logging'] ) {
+			$enable_logging = (bool) $incoming['enable_logging'];
+		}
+
+		return compact( 'smart_install', 'enable_logging' );
+	}
+
+	/**
+	 * Returns whether activity logging is currently enabled.
+	 *
+	 * @since 1.3.0
+	 * @return bool
+	 */
+	public static function is_logging_enabled(): bool {
+		$s = self::get_raw();
+		return (bool) ( $s['enable_logging'] ?? false );
 	}
 
 	/**

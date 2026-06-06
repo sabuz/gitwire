@@ -126,3 +126,8 @@ export const resolveRepo = ( url ) =>
 		method: 'POST',
 		data: { url },
 	} );
+
+export const getLogs = () => apiFetch( { path: `${ BASE }/logs` } );
+
+export const clearLogs = () =>
+	apiFetch( { path: `${ BASE }/logs`, method: 'DELETE' } );

@@ -32,6 +32,7 @@ $class_map = [
 	'Gitwire\Repo_Cache'             => 'includes/class-repo-cache.php',
 	'Gitwire\Repo_Detector'          => 'includes/class-repo-detector.php',
 	'Gitwire\REST'                   => 'includes/class-rest.php',
+	'Gitwire\Logger'                 => 'includes/class-logger.php',
 	'Gitwire\Settings'               => 'includes/helper/class-settings.php',
 ];
 

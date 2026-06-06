@@ -157,9 +157,10 @@ final class Plugin {
 			add_option(
 				'gitwire_settings',
 				[
-					'token'         => '',
-					'username'      => '',
-					'smart_install' => true,
+					'token'          => '',
+					'username'       => '',
+					'smart_install'  => true,
+					'enable_logging' => false,
 				]
 			);
 		}

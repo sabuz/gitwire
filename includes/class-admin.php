@@ -140,6 +140,17 @@ class Admin {
 			self::PAGE_SLUG . '&path=settings',
 			[ self::class, 'render_page' ],
 		);
+
+		if ( Settings::is_logging_enabled() ) {
+			add_submenu_page(
+				self::PAGE_SLUG,
+				__( 'Logs', 'gitwire' ),
+				__( 'Logs', 'gitwire' ),
+				'manage_options',
+				self::PAGE_SLUG . '&path=logs',
+				[ self::class, 'render_page' ],
+			);
+		}
 	}
 
 	/**
@@ -217,6 +228,8 @@ class Admin {
 			$initial_tab = 'settings';
 		} elseif ( 'settings' === $path ) {
 			$initial_tab = 'settings';
+		} elseif ( 'logs' === $path ) {
+			$initial_tab = 'logs';
 		} elseif ( in_array( $path, [ 'add-repository', 'browse' ], true ) ) {
 			$initial_tab = 'add-repository';
 		} else {

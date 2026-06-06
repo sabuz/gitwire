@@ -376,6 +376,23 @@ class REST {
 				],
 			]
 		);
+
+		register_rest_route(
+			$ns,
+			'/logs',
+			[
+				[
+					'methods'             => 'GET',
+					'callback'            => [ self::class, 'get_logs' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+				[
+					'methods'             => 'DELETE',
+					'callback'            => [ self::class, 'clear_logs' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+			]
+		);
 	}
 
 	/**
@@ -502,9 +519,18 @@ class REST {
 		if ( null !== $req->get_param( 'smart_install' ) ) {
 			$incoming['smart_install'] = $req->get_param( 'smart_install' );
 		}
+		if ( null !== $req->get_param( 'enable_logging' ) ) {
+			$incoming['enable_logging'] = $req->get_param( 'enable_logging' );
+		}
 
-		$merged = Settings::merge_save( $incoming );
+		$was_logging = Settings::is_logging_enabled();
+		$merged      = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
+
+		$now_logging = (bool) ( $merged['enable_logging'] ?? false );
+		if ( ! $was_logging && $now_logging ) {
+			Logger::log( 'Logging enabled' );
+		}
 
 		return [
 			'saved'    => true,
@@ -584,6 +610,9 @@ class REST {
 
 		self::set_connection_cache( $conn['id'], array_merge( $test, [ 'connection_id' => $conn['id'] ] ) );
 
+		$login_label = '' !== $login ? '@' . $login : '';
+		Logger::log( sprintf( 'Connected %s account%s', $provider, $login_label ? ' ' . $login_label : '' ) );
+
 		return [
 			'connection' => Connections::get_public_list(),
 			'profile'    => array_merge( $test, [ 'connection_id' => $conn['id'] ] ),
@@ -604,6 +633,7 @@ class REST {
 			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
 		}
 		self::set_connection_cache( $id, null );
+		Logger::log( sprintf( 'Removed %s connection', $conn['provider'] ?? 'unknown' ) );
 		return [ 'connections' => Connections::get_public_list() ];
 	}
 
@@ -1132,6 +1162,8 @@ class REST {
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
 
+		Logger::log( sprintf( 'Installed %s/%s (%s) from %s, branch %s', $owner, $repo, $type, $provider, $branch ) );
+
 		return $result;
 	}
 
@@ -1426,10 +1458,7 @@ class REST {
 			$result = self::detect_type_for_repo( $provider, $owner, $repo, $branch );
 
 			if ( is_wp_error( $result ) ) {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( '[Gitwire] Could not detect repository type for ' . $key . ': ' . $result->get_error_message() );
-				}
+				Logger::log( sprintf( 'Could not detect repository type for %s: %s', $key, $result->get_error_message() ) );
 				$result = [
 					'type'       => 'unknown',
 					'subtype'    => null,
@@ -1477,6 +1506,8 @@ class REST {
 			return $result;
 		}
 
+		Logger::log( sprintf( 'Activated %s/%s (%s)', $owner, $repo, $provider ) );
+
 		return [ 'activated' => true ];
 	}
 
@@ -1497,6 +1528,8 @@ class REST {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
+
+		Logger::log( sprintf( 'Deactivated %s/%s (%s)', $owner, $repo, $provider ) );
 
 		return [ 'deactivated' => true ];
 	}
@@ -1532,6 +1565,8 @@ class REST {
 		delete_transient( 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $branch ) );
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
+
+		Logger::log( sprintf( 'Switched %s/%s (%s) to branch %s', $owner, $repo, $provider, $branch ) );
 
 		return $result;
 	}
@@ -1580,6 +1615,8 @@ class REST {
 		}
 
 		Repo_Cache::clear_repos();
+
+		Logger::log( sprintf( 'Removed %s/%s (%s)', $owner, $repo, $provider ) );
 
 		return [ 'removed' => true ];
 	}
@@ -1910,6 +1947,33 @@ class REST {
 		}
 
 		return new API( '' );
+	}
+
+	/**
+	 * Returns the raw log file contents.
+	 *
+	 * @since 1.3.0
+	 * @return array<string, mixed>
+	 */
+	public static function get_logs(): array {
+		return [
+			'logs'           => Logger::get_instance()->get_contents(),
+			'enable_logging' => Settings::is_logging_enabled(),
+		];
+	}
+
+	/**
+	 * Clears the log file.
+	 *
+	 * @since 1.3.0
+	 * @return array<string, bool>
+	 */
+	public static function clear_logs(): array {
+		$cleared = Logger::get_instance()->clear();
+		if ( $cleared ) {
+			Logger::log( 'Log cleared' );
+		}
+		return [ 'cleared' => $cleared ];
 	}
 
 	/**

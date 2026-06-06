@@ -60,6 +60,10 @@ export default function SettingsPanel( {
 		settings.smart_install !== false
 	);
 	const [ savingSi, setSavingSi ] = useState( false );
+	const [ enableLogging, setEnableLogging ] = useState(
+		!! settings.enable_logging
+	);
+	const [ savingLog, setSavingLog ] = useState( false );
 
 	const handleSmartInstallChange = async ( newVal ) => {
 		setSmartInstall( newVal );
@@ -74,6 +78,22 @@ export default function SettingsPanel( {
 			setSmartInstall( ! newVal );
 		} finally {
 			setSavingSi( false );
+		}
+	};
+
+	const handleEnableLoggingChange = async ( newVal ) => {
+		setEnableLogging( newVal );
+		setSavingLog( true );
+		try {
+			await api.saveSettings( { enable_logging: newVal } );
+			const saved = await api.getSettings();
+			onSave( saved );
+			toast.success( __( 'Settings saved.', 'gitwire' ) );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
+			setEnableLogging( ! newVal );
+		} finally {
+			setSavingLog( false );
 		}
 	};
 
@@ -154,6 +174,22 @@ export default function SettingsPanel( {
 							</>
 						}
 						onChange={ handleSmartInstallChange }
+					/>
+					<Spacer marginTop={ 4 } />
+					<ToggleControl
+						__nextHasNoMarginBottom
+						checked={ enableLogging }
+						disabled={ savingLog }
+						help={ __(
+							'Record installs, removals, activations, and connection changes to the Logs page.',
+							'gitwire'
+						) }
+						label={
+							<strong>
+								{ __( 'Enable Logging', 'gitwire' ) }
+							</strong>
+						}
+						onChange={ handleEnableLoggingChange }
 					/>
 				</CardBody>
 			</Card>
