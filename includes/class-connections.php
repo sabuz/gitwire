@@ -270,7 +270,7 @@ class Connections {
 		if ( false === $enc ) {
 			return '';
 		}
-		return base64_encode( $iv . $enc );
+		return base64_encode( $iv . $enc ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 	}
 
 	/**
@@ -285,7 +285,7 @@ class Connections {
 			return '';
 		}
 		$key  = substr( hash( 'sha256', wp_salt( 'auth' ), true ), 0, 32 );
-		$data = base64_decode( $cipher, true );
+		$data = base64_decode( $cipher, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 		if ( false === $data || strlen( $data ) <= 16 ) {
 			return '';
 		}

@@ -402,7 +402,7 @@ export default function ImportFromUrl( {
 						<p className="gitwire-import-url__conn-hint">
 							{ createInterpolateElement(
 								sprintf(
-									/* translators: 1: provider name, 2: link to Settings */
+									/* translators: %s: Git provider name (e.g. GitHub) */
 									__(
 										'Check the URL, or add a %s connection in <a>Settings</a> if this is a private repository.',
 										'gitwire'

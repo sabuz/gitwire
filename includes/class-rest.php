@@ -548,21 +548,23 @@ class REST {
 		$existing_default = Connections::get_default( $provider );
 		$label            = sanitize_text_field( $req->get_param( 'label' ) ?? '' );
 
-		$conn = Connections::upsert( [
-			'provider'   => $provider,
-			'label'      => $label,
-			'scope'      => 'site',
-			'is_default' => null === $existing_default,
-			'username'   => $test['login'] ?? '',
-			'gitlab_url' => $creds['gitlab_url'] ?? '',
-			'credentials' => $creds,
-		] );
+		$conn = Connections::upsert(
+			[
+				'provider'    => $provider,
+				'label'       => $label,
+				'scope'       => 'site',
+				'is_default'  => null === $existing_default,
+				'username'    => $test['login'] ?? '',
+				'gitlab_url'  => $creds['gitlab_url'] ?? '',
+				'credentials' => $creds,
+			]
+		);
 
 		self::set_connection_cache( $conn['id'], array_merge( $test, [ 'connection_id' => $conn['id'] ] ) );
 
 		return [
-			'connection'  => Connections::get_public_list(),
-			'profile'     => array_merge( $test, [ 'connection_id' => $conn['id'] ] ),
+			'connection' => Connections::get_public_list(),
+			'profile'    => array_merge( $test, [ 'connection_id' => $conn['id'] ] ),
 		];
 	}
 
@@ -619,7 +621,14 @@ class REST {
 		$result   = self::run_credentials_test( $provider, $creds );
 
 		if ( is_wp_error( $result ) ) {
-			self::set_connection_cache( $id, [ 'provider' => $provider, 'error' => $result->get_error_message(), 'connection_id' => $id ] );
+			self::set_connection_cache(
+				$id,
+				[
+					'provider'      => $provider,
+					'error'         => $result->get_error_message(),
+					'connection_id' => $id,
+				]
+			);
 			return $result;
 		}
 
@@ -640,7 +649,11 @@ class REST {
 			$creds    = Connections::get_credentials( $id ) ?? [];
 			$result   = self::run_credentials_test( $provider, $creds );
 			$cache    = is_wp_error( $result )
-				? [ 'provider' => $provider, 'error' => $result->get_error_message(), 'connection_id' => $id ]
+				? [
+					'provider'      => $provider,
+					'error'         => $result->get_error_message(),
+					'connection_id' => $id,
+				]
 				: array_merge( $result, [ 'connection_id' => $id ] );
 			self::set_connection_cache( $id, $cache );
 		}
@@ -747,16 +760,16 @@ class REST {
 	}
 
 	/**
-	 * Updates a single provider slot in the connection cache.
+	 * Updates a single connection slot in the connection cache.
 	 *
 	 * @since 1.0.0
-	 * @param string     $provider Provider key.
-	 * @param array|null $data     Connection data, or null to clear.
+	 * @param string     $connection_id Connection ID key.
+	 * @param array|null $data          Connection data, or null to clear.
 	 * @return void
 	 */
 	private static function set_connection_cache( string $connection_id, ?array $data ): void {
-		$cache                    = (array) get_option( 'gitwire_connection_cache', [] );
-		$cache[ $connection_id ]  = $data;
+		$cache                   = (array) get_option( 'gitwire_connection_cache', [] );
+		$cache[ $connection_id ] = $data;
 		update_option( 'gitwire_connection_cache', $cache, false );
 	}
 
@@ -794,9 +807,8 @@ class REST {
 	 * Builds a paginated repository list payload from the Git provider API.
 	 *
 	 * @since 1.2.0
-	 * @param array<string, mixed> $settings Plugin settings.
-	 * @param string               $provider Provider key: github or gitlab.
-	 * @param int                  $page     Page number.
+	 * @param string $provider Provider key: github or gitlab.
+	 * @param int    $page     Page number.
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function build_repos_page( string $provider, int $page ) {
@@ -1021,7 +1033,8 @@ class REST {
 
 		$settings      = Settings::get_raw();
 		$smart_install = $settings['smart_install'] ?? true;
-		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' ) ?: null;
+		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
+		$connection_id = '' !== $connection_id ? $connection_id : null;
 
 		if ( $smart_install && ! $force_type ) {
 			$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
@@ -1314,8 +1327,7 @@ class REST {
 	 * Fetches the latest remote commit SHA for an installed record.
 	 *
 	 * @since 1.2.0
-	 * @param array<string, mixed> $rec      Installed record.
-	 * @param array<string, mixed> $settings Plugin settings.
+	 * @param array<string, mixed> $rec Installed record.
 	 * @return string|null Remote HEAD SHA or null on failure.
 	 */
 	private static function fetch_remote_head( array $rec ): ?string {
@@ -1728,7 +1740,7 @@ class REST {
 		$branch   = $parsed['branch'];
 
 		$anon_api  = self::make_anon_api( $parsed );
-		$detect_br = $branch ?: 'HEAD';
+		$detect_br = '' !== $branch ? $branch : 'HEAD';
 		$detected  = $anon_api->detect_type( $owner, $repo, $detect_br );
 		$is_public = ! is_wp_error( $detected );
 
@@ -1736,7 +1748,7 @@ class REST {
 			'provider'  => $provider,
 			'owner'     => $owner,
 			'repo'      => $repo,
-			'branch'    => $branch ?: null,
+			'branch'    => '' !== $branch ? $branch : null,
 			'is_public' => $is_public,
 			'detection' => $is_public ? $detected : null,
 		];
@@ -1803,10 +1815,10 @@ class REST {
 		}
 
 		// GitLab.com or self-hosted GitLab.
-		$settings         = Settings::get_raw();
-		$is_gitlab_com    = 'gitlab.com' === $host;
-		$custom_url       = rtrim( $settings['gitlab_url'] ?? '', '/' );
-		$custom_host      = '';
+		$settings      = Settings::get_raw();
+		$is_gitlab_com = 'gitlab.com' === $host;
+		$custom_url    = rtrim( $settings['gitlab_url'] ?? '', '/' );
+		$custom_host   = '';
 		if ( $custom_url ) {
 			$parsed_custom = wp_parse_url( $custom_url );
 			$custom_host   = strtolower( $parsed_custom['host'] ?? '' );

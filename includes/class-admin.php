@@ -183,7 +183,7 @@ class Admin {
 		$settings    = Settings::get_public();
 		$connections = Connections::get_public_list();
 		$has_config  = ! empty( $connections );
-		$connection = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
+		$connection  = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
 		Error_Handler::clear_stale_activation_guard();
 		$installed_result = REST::sync_installed();
 		$installed        = $installed_result['installed'];
@@ -231,10 +231,10 @@ class Admin {
 					'themes_url'            => admin_url( 'themes.php' ),
 					'verify_activation_url' => home_url( '/?gitwire_verify_activation=1' ),
 					'verify_admin_url'      => admin_url( 'admin.php?page=gitwire&gitwire_verify_activation=1' ),
-					'initial_tab' => $initial_tab,
-					'settings'    => $settings,
-					'connections' => $connections,
-					'connection'  => $connection,
+					'initial_tab'           => $initial_tab,
+					'settings'              => $settings,
+					'connections'           => $connections,
+					'connection'            => $connection,
 					'installed'             => $installed ? $installed : (object) [],
 					'orphaned'              => $orphaned,
 					'fatal_notice'          => $fatal_notice ? $fatal_notice : null,
@@ -316,9 +316,9 @@ class Admin {
 			if ( ! isset( $by_slug[ $slug ] ) ) {
 				continue;
 			}
-			$rec                    = $by_slug[ $slug ];
-			$theme['gitwire']       = true;
-			$theme['gitwire_repo']  = $rec['full_name'] ?? '';
+			$rec                       = $by_slug[ $slug ];
+			$theme['gitwire']          = true;
+			$theme['gitwire_repo']     = $rec['full_name'] ?? '';
 			$theme['gitwire_provider'] = $rec['provider'] ?? 'github';
 		}
 		unset( $theme );

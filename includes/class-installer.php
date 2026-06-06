@@ -96,12 +96,13 @@ class Installer {
 	 * Installs or updates a repository as a WordPress plugin.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner    Git owner or organisation.
-	 * @param string $repo     Repository name.
-	 * @param string $branch   Branch, tag, or SHA.
-	 * @param string $slug     Desired directory slug (defaults to sanitised repo name).
-	 * @param string $provider Git provider: 'github' or 'gitlab'.
-	 * @param bool   $replace  Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string      $owner         Git owner or organisation.
+	 * @param string      $repo          Repository name.
+	 * @param string      $branch        Branch, tag, or SHA.
+	 * @param string      $slug          Desired directory slug (defaults to sanitised repo name).
+	 * @param string      $provider      Git provider: 'github' or 'gitlab'.
+	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_plugin(
@@ -126,12 +127,13 @@ class Installer {
 	 * Installs or updates a repository as a WordPress theme.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner    Git owner or organisation.
-	 * @param string $repo     Repository name.
-	 * @param string $branch   Branch, tag, or SHA.
-	 * @param string $slug     Desired directory slug (defaults to sanitised repo name).
-	 * @param string $provider Git provider: 'github' or 'gitlab'.
-	 * @param bool   $replace  Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string      $owner         Git owner or organisation.
+	 * @param string      $repo          Repository name.
+	 * @param string      $branch        Branch, tag, or SHA.
+	 * @param string      $slug          Desired directory slug (defaults to sanitised repo name).
+	 * @param string      $provider      Git provider: 'github' or 'gitlab'.
+	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_theme(
@@ -806,14 +808,15 @@ class Installer {
 	 * Core install routine: downloads, backs up, extracts, and records a repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner        Git owner or organisation.
-	 * @param string $repo         Repository name.
-	 * @param string $branch       Branch, tag, or SHA.
-	 * @param string $slug         Directory slug for the installation.
-	 * @param string $install_path Absolute filesystem path for the installation.
-	 * @param string $type         Installation type: "plugin" or "theme".
-	 * @param string $provider     Git provider: 'github' or 'gitlab'.
-	 * @param bool   $replace      Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string      $owner         Git owner or organisation.
+	 * @param string      $repo          Repository name.
+	 * @param string      $branch        Branch, tag, or SHA.
+	 * @param string      $slug          Directory slug for the installation.
+	 * @param string      $install_path  Absolute filesystem path for the installation.
+	 * @param string      $type          Installation type: "plugin" or "theme".
+	 * @param string      $provider      Git provider: 'github' or 'gitlab'.
+	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	private static function run(
