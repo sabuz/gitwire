@@ -139,24 +139,8 @@ export default function BrowsePanel( {
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 
-	const getDefaultId = ( provider ) => {
-		const list = connectionsByProvider[ provider ] ?? [];
-		return list.find( ( c ) => c.is_default )?.id ?? list[ 0 ]?.id ?? '';
-	};
-
-	const [ selectedConnections, setSelectedConnections ] = useState( () => ( {
-		github: getDefaultId( 'github' ),
-		gitlab: getDefaultId( 'gitlab' ),
-		bitbucket: getDefaultId( 'bitbucket' ),
-	} ) );
-
-	useEffect( () => {
-		setSelectedConnections( {
-			github: getDefaultId( 'github' ),
-			gitlab: getDefaultId( 'gitlab' ),
-			bitbucket: getDefaultId( 'bitbucket' ),
-		} );
-	}, [ connections ] ); // eslint-disable-line react-hooks/exhaustive-deps
+	const connectionsByProviderRef = useRef( connectionsByProvider );
+	connectionsByProviderRef.current = connectionsByProvider;
 
 	const { detections, runBatch, seedFromRepos, reset } = useRepoDetection();
 
@@ -177,13 +161,24 @@ export default function BrowsePanel( {
 	const [ activeTypeFilters, setActiveTypeFilters ] = useState( [] );
 	const [ activeSourceFilters, setActiveSourceFilters ] = useState( [] );
 	const handleRefreshRef = useRef( null );
-	const selectedConnectionsRef = useRef( selectedConnections );
-	selectedConnectionsRef.current = selectedConnections;
 
 	const loadRepos = useCallback(
 		async ( ghPage, glPage, bbPage, append = false ) => {
 			setLoading( true );
-			const sel = selectedConnectionsRef.current;
+			const byProvider = connectionsByProviderRef.current;
+			const getDefaultId = ( provider ) => {
+				const list = byProvider[ provider ] ?? [];
+				return (
+					list.find( ( c ) => c.is_default )?.id ??
+					list[ 0 ]?.id ??
+					''
+				);
+			};
+			const sel = {
+				github: getDefaultId( 'github' ),
+				gitlab: getDefaultId( 'gitlab' ),
+				bitbucket: getDefaultId( 'bitbucket' ),
+			};
 			try {
 				const fetches = [];
 				if ( ghPage > 0 ) {
@@ -340,31 +335,6 @@ export default function BrowsePanel( {
 		const bbPage = hasMore.bitbucket ? pagesLoaded.bitbucket + 1 : 0;
 		loadRepos( ghPage, glPage, bbPage, true );
 	};
-
-	const handleSwitchConnection = useCallback(
-		( provider, connectionId ) => {
-			setSelectedConnections( ( prev ) => ( {
-				...prev,
-				[ provider ]: connectionId,
-			} ) );
-			setRepos( ( prev ) =>
-				prev.filter( ( r ) => r.provider !== provider )
-			);
-			setHasMore( ( prev ) => ( { ...prev, [ provider ]: false } ) );
-			setPagesLoaded( ( prev ) => ( { ...prev, [ provider ]: 0 } ) );
-			selectedConnectionsRef.current = {
-				...selectedConnectionsRef.current,
-				[ provider ]: connectionId,
-			};
-			const pages = {
-				github: provider === 'github' ? 1 : 0,
-				gitlab: provider === 'gitlab' ? 1 : 0,
-				bitbucket: provider === 'bitbucket' ? 1 : 0,
-			};
-			loadRepos( pages.github, pages.gitlab, pages.bitbucket, true );
-		},
-		[ loadRepos ]
-	);
 
 	const smartInstall = settings?.smart_install !== false;
 
