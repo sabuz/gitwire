@@ -356,7 +356,7 @@ export default function BrowsePanel( {
 								icon="filter"
 								label={ __( 'Filter', 'gitwire' ) }
 								isPressed={ activeFilterCount > 0 }
-								variant="tertiary"
+								variant="secondary"
 								onClick={ onToggle }
 							>
 								{ activeFilterCount > 0 && (
@@ -471,11 +471,9 @@ export default function BrowsePanel( {
 				</FlexItem>
 				<FlexItem>
 					<Button
-						className={ loading ? 'gitwire-spin' : '' }
 						disabled={ loading }
-						icon="update"
 						isBusy={ loading }
-						variant="tertiary"
+						variant="secondary"
 						onClick={ handleRefresh }
 					>
 						{ __( 'Refresh', 'gitwire' ) }
@@ -483,11 +481,7 @@ export default function BrowsePanel( {
 				</FlexItem>
 				{ onOpenUrlImport && (
 					<FlexItem>
-						<Button
-							icon="admin-links"
-							variant="tertiary"
-							onClick={ onOpenUrlImport }
-						>
+						<Button variant="secondary" onClick={ onOpenUrlImport }>
 							{ __( 'Import from URL', 'gitwire' ) }
 						</Button>
 					</FlexItem>
