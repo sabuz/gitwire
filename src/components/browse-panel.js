@@ -650,42 +650,6 @@ export default function BrowsePanel( {
 				) }
 			</Flex>
 
-			{ [ 'github', 'gitlab', 'bitbucket' ].map( ( provider ) => {
-				const list = connectionsByProvider[ provider ] ?? [];
-				if ( list.length < 2 ) {
-					return null;
-				}
-				return (
-					<Flex
-						key={ provider }
-						align="center"
-						gap={ 1 }
-						style={ { marginBottom: 12 } }
-					>
-						<span style={ { fontSize: 12, color: '#57606a' } }>
-							{ provider.charAt( 0 ).toUpperCase() +
-								provider.slice( 1 ) }
-							{ ':' }
-						</span>
-						{ list.map( ( conn ) => (
-							<Button
-								key={ conn.id }
-								isPressed={
-									conn.id === selectedConnections[ provider ]
-								}
-								size="compact"
-								variant="tertiary"
-								onClick={ () =>
-									handleSwitchConnection( provider, conn.id )
-								}
-							>
-								{ conn.label || conn.username || conn.id }
-							</Button>
-						) ) }
-					</Flex>
-				);
-			} ) }
-
 			{ repos.length === 0 && loading && (
 				<div style={ { textAlign: 'center', padding: 48 } }>
 					<Spinner />

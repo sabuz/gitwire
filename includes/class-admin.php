@@ -43,6 +43,9 @@ class Admin {
 
 		// Native screen delete guard.
 		add_filter( 'pre_delete_plugin', [ self::class, 'guard_plugin_delete' ], 10, 2 );
+		add_action( 'load-themes.php', [ self::class, 'guard_theme_delete' ], 1 );
+		add_action( 'admin_notices', [ self::class, 'show_theme_delete_notice' ] );
+
 	}
 
 	/**
@@ -260,7 +263,7 @@ class Admin {
 	}
 
 	/**
-	 * Appends a "Managed by Gitwire" badge to plugin row meta on the Plugins screen.
+	 * Appends an "Installed with Gitwire" attribution link to plugin row meta on the Plugins screen.
 	 *
 	 * @since 3.0.0
 	 * @param string[] $meta        Existing meta links.
@@ -275,20 +278,9 @@ class Admin {
 				continue;
 			}
 
-			$full_name = $rec['full_name'] ?? '';
-			$provider  = $rec['provider'] ?? 'github';
-
-			$label = sprintf(
-				/* translators: 1: repository full name, 2: provider name */
-				__( 'Installed from %1$s via Gitwire (%2$s)', 'gitwire' ),
-				esc_html( $full_name ),
-				esc_html( ucfirst( $provider ) )
-			);
-
-			$meta[] = '<span class="gitwire-row-badge" title="' . esc_attr( $label ) . '">'
-				. '<span class="dashicons dashicons-admin-plugins" style="font-size:13px;vertical-align:middle;margin-right:2px;"></span>'
-				. esc_html__( 'Gitwire', 'gitwire' )
-				. '</span>';
+			$meta[] = '<a href="https://gitwire.app" target="_blank" rel="noopener noreferrer">'
+				. esc_html__( 'Installed with Gitwire', 'gitwire' )
+				. '</a>';
 			break;
 		}
 
@@ -357,5 +349,65 @@ class Admin {
 		}
 
 		return $pre;
+	}
+
+	/**
+	 * Displays the blocked-theme-delete error as an admin notice on the Themes screen.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public static function show_theme_delete_notice(): void {
+		$key     = 'gitwire_theme_delete_blocked_' . get_current_user_id();
+		$message = get_transient( $key );
+		if ( false === $message ) {
+			return;
+		}
+
+		delete_transient( $key );
+
+		printf(
+			'<div class="notice notice-error"><p>%s</p></div>',
+			wp_kses( $message, [ 'a' => [ 'href' => [] ] ] )
+		);
+	}
+
+	/**
+	 * Blocks deletion of a Gitwire-managed theme via the native Themes screen.
+	 * Intercepts before themes.php processes the delete action and redirects
+	 * with a clear admin notice.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public static function guard_theme_delete(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		if ( 'delete' !== sanitize_key( wp_unslash( $_GET['action'] ?? '' ) ) || ! isset( $_GET['stylesheet'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+
+		$stylesheet = sanitize_key( wp_unslash( $_GET['stylesheet'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$installed  = Installer::get_installed();
+
+		foreach ( $installed as $rec ) {
+			if ( ( $rec['type'] ?? '' ) !== 'theme' ) {
+				continue;
+			}
+			if ( ( $rec['slug'] ?? '' ) !== $stylesheet ) {
+				continue;
+			}
+
+			$full_name = $rec['full_name'] ?? $stylesheet;
+			$message   = sprintf(
+				/* translators: 1: repository full name, 2: Gitwire admin URL */
+				__( '"%1$s" is managed by Gitwire. To delete it, go to <a href="%2$s">Gitwire &rsaquo; Repositories</a> and use the Delete action there.', 'gitwire' ),
+				esc_html( $full_name ),
+				esc_url( admin_url( 'admin.php?page=gitwire' ) )
+			);
+
+			set_transient( 'gitwire_theme_delete_blocked_' . get_current_user_id(), $message, 60 );
+			wp_safe_redirect( admin_url( 'themes.php' ) );
+			exit;
+		}
 	}
 }

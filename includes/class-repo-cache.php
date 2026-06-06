@@ -290,7 +290,6 @@ class Repo_Cache {
 			}
 
 			$result = REST::detect_type_for_repo(
-				$settings,
 				$provider,
 				$name_parts[0],
 				$name_parts[1],

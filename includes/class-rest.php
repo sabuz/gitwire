@@ -1924,8 +1924,7 @@ class REST {
 	 * @return void
 	 */
 	private static function store_head( string $owner, string $repo, string $branch, string $provider ): void {
-		$settings  = (array) get_option( 'gitwire_settings', [] );
-		$api       = self::make_api( $settings, $provider );
+		$api = self::make_api( $provider );
 		$commits   = $api->get_commits( $owner, $repo, $branch, 1 );
 		$full_name = $owner . '/' . $repo;
 		if ( ! is_wp_error( $commits ) && ! empty( $commits ) ) {
