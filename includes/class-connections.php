@@ -41,7 +41,17 @@ class Connections {
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function get_public_list(): array {
-		return array_values( array_map( [ self::class, 'to_public' ], self::all() ) );
+		$current_user_id = get_current_user_id();
+		$visible         = array_filter(
+			self::all(),
+			static function ( $conn ) use ( $current_user_id ) {
+				if ( ( $conn['scope'] ?? 'site' ) === 'user' ) {
+					return (int) ( $conn['user_id'] ?? 0 ) === $current_user_id;
+				}
+				return true;
+			}
+		);
+		return array_values( array_map( [ self::class, 'to_public' ], $visible ) );
 	}
 
 	/**
@@ -54,6 +64,29 @@ class Connections {
 	public static function find( string $id ): ?array {
 		foreach ( self::all() as $conn ) {
 			if ( ( $conn['id'] ?? '' ) === $id ) {
+				return $conn;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Returns an existing connection that matches the provider and username, if any.
+	 *
+	 * @since 2.0.0
+	 * @param string $provider Provider key.
+	 * @param string $username Login/username to match.
+	 * @return array<string, mixed>|null
+	 */
+	public static function find_by_username( string $provider, string $username ): ?array {
+		if ( '' === $username ) {
+			return null;
+		}
+		foreach ( self::all() as $conn ) {
+			if (
+				( $conn['provider'] ?? '' ) === $provider &&
+				( $conn['username'] ?? '' ) === $username
+			) {
 				return $conn;
 			}
 		}
@@ -223,6 +256,7 @@ class Connections {
 			'provider'   => $provider,
 			'label'      => $conn['label'] ?? '',
 			'scope'      => $conn['scope'] ?? 'site',
+			'user_id'    => (int) ( $conn['user_id'] ?? 0 ),
 			'is_default' => $conn['is_default'] ?? false,
 			'username'   => $conn['username'] ?? '',
 			'gitlab_url' => $conn['gitlab_url'] ?? '',

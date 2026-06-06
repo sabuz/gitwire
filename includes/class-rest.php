@@ -114,6 +114,13 @@ class REST {
 				'methods'             => 'GET',
 				'callback'            => [ self::class, 'get_repos' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'connection_id' => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+				],
 			]
 		);
 
@@ -545,20 +552,35 @@ class REST {
 			return $test;
 		}
 
+		$login = $test['login'] ?? '';
+		if ( '' !== $login && null !== Connections::find_by_username( $provider, $login ) ) {
+			return new \WP_Error(
+				'duplicate_connection',
+				/* translators: %s: username/login of the existing connection */
+				sprintf( __( 'A connection for @%s already exists.', 'gitwire' ), $login ),
+				[ 'status' => 409 ]
+			);
+		}
+
 		$existing_default = Connections::get_default( $provider );
 		$label            = sanitize_text_field( $req->get_param( 'label' ) ?? '' );
+		$scope            = 'user' === $req->get_param( 'scope' ) ? 'user' : 'site';
 
-		$conn = Connections::upsert(
-			[
-				'provider'    => $provider,
-				'label'       => $label,
-				'scope'       => 'site',
-				'is_default'  => null === $existing_default,
-				'username'    => $test['login'] ?? '',
-				'gitlab_url'  => $creds['gitlab_url'] ?? '',
-				'credentials' => $creds,
-			]
-		);
+		$record = [
+			'provider'    => $provider,
+			'label'       => $label,
+			'scope'       => $scope,
+			'is_default'  => null === $existing_default,
+			'username'    => $login,
+			'gitlab_url'  => $creds['gitlab_url'] ?? '',
+			'credentials' => $creds,
+		];
+
+		if ( 'user' === $scope ) {
+			$record['user_id'] = get_current_user_id();
+		}
+
+		$conn = Connections::upsert( $record );
 
 		self::set_connection_cache( $conn['id'], array_merge( $test, [ 'connection_id' => $conn['id'] ] ) );
 
@@ -787,18 +809,28 @@ class REST {
 		}
 		$page = max( 1, (int) ( $req->get_param( 'page' ) ?? 1 ) );
 
-		$cached = Repo_Cache::get_repos_page( $provider, $page );
+		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
+		if ( '' === $connection_id ) {
+			$default       = Connections::get_default( $provider );
+			$connection_id = $default['id'] ?? '';
+		}
+
+		if ( '' === $connection_id ) {
+			return new \WP_Error( 'no_connection', 'No connection found for this provider.', [ 'status' => 400 ] );
+		}
+
+		$cached = Repo_Cache::get_repos_page( $connection_id, $page );
 		if ( is_array( $cached ) ) {
 			return self::enrich_repos_payload( $cached, $provider );
 		}
 
-		$payload = self::build_repos_page( $provider, $page );
+		$payload = self::build_repos_page( $provider, $page, $connection_id );
 		if ( is_wp_error( $payload ) ) {
-			Repo_Cache::clear_repos( $provider );
+			Repo_Cache::clear_repos( $connection_id );
 			return $payload;
 		}
 
-		Repo_Cache::set_repos_page( $provider, $page, $payload );
+		Repo_Cache::set_repos_page( $connection_id, $page, $payload );
 
 		return self::enrich_repos_payload( $payload, $provider );
 	}
@@ -807,13 +839,17 @@ class REST {
 	 * Builds a paginated repository list payload from the Git provider API.
 	 *
 	 * @since 1.2.0
-	 * @param string $provider Provider key: github or gitlab.
-	 * @param int    $page     Page number.
+	 * @param string $provider      Provider key: github, gitlab, or bitbucket.
+	 * @param int    $page          Page number.
+	 * @param string $connection_id Connection ID to use for credentials.
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	public static function build_repos_page( string $provider, int $page ) {
+	public static function build_repos_page( string $provider, int $page, string $connection_id = '' ) {
+		$creds = '' !== $connection_id
+			? Connections::get_credentials( $connection_id )
+			: Connections::get_default_credentials( $provider );
+
 		if ( 'bitbucket' === $provider ) {
-			$creds = Connections::get_default_credentials( 'bitbucket' );
 			if ( ! $creds || empty( $creds['email'] ) || empty( $creds['api_token'] ) ) {
 				return new \WP_Error( 'missing_config', 'Configure Bitbucket credentials first.', [ 'status' => 400 ] );
 			}
@@ -856,7 +892,6 @@ class REST {
 		}
 
 		if ( 'gitlab' === $provider ) {
-			$creds = Connections::get_default_credentials( 'gitlab' );
 			if ( ! $creds || empty( $creds['token'] ) ) {
 				return new \WP_Error( 'missing_config', 'Configure a GitLab token first.', [ 'status' => 400 ] );
 			}
@@ -898,7 +933,7 @@ class REST {
 			];
 		}
 
-		$creds    = Connections::get_default_credentials( 'github' ) ?? [];
+		$creds    = $creds ?? [];
 		$username = sanitize_text_field( $creds['username'] ?? '' );
 
 		if ( ! $username && empty( $creds['token'] ) ) {

@@ -5,6 +5,7 @@ import {
 	useState,
 	useEffect,
 	useCallback,
+	useMemo,
 	useRef,
 	memo,
 } from '@wordpress/element';
@@ -121,13 +122,41 @@ export default function BrowsePanel( {
 	onGoToSettings,
 	onOpenUrlImport,
 } ) {
-	const hasGitHub = !! connections?.find( ( c ) => c.provider === 'github' );
-	const hasGitLab = !! connections?.find( ( c ) => c.provider === 'gitlab' );
-	const hasBitbucket = !! connections?.find(
-		( c ) => c.provider === 'bitbucket'
-	);
+	const connectionsByProvider = useMemo( () => {
+		const map = {};
+		( connections ?? [] ).forEach( ( c ) => {
+			if ( ! map[ c.provider ] ) {
+				map[ c.provider ] = [];
+			}
+			map[ c.provider ].push( c );
+		} );
+		return map;
+	}, [ connections ] );
+
+	const hasGitHub = !! connectionsByProvider.github?.length;
+	const hasGitLab = !! connectionsByProvider.gitlab?.length;
+	const hasBitbucket = !! connectionsByProvider.bitbucket?.length;
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
+
+	const getDefaultId = ( provider ) => {
+		const list = connectionsByProvider[ provider ] ?? [];
+		return list.find( ( c ) => c.is_default )?.id ?? list[ 0 ]?.id ?? '';
+	};
+
+	const [ selectedConnections, setSelectedConnections ] = useState( () => ( {
+		github: getDefaultId( 'github' ),
+		gitlab: getDefaultId( 'gitlab' ),
+		bitbucket: getDefaultId( 'bitbucket' ),
+	} ) );
+
+	useEffect( () => {
+		setSelectedConnections( {
+			github: getDefaultId( 'github' ),
+			gitlab: getDefaultId( 'gitlab' ),
+			bitbucket: getDefaultId( 'bitbucket' ),
+		} );
+	}, [ connections ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const { detections, runBatch, seedFromRepos, reset } = useRepoDetection();
 
@@ -148,16 +177,19 @@ export default function BrowsePanel( {
 	const [ activeTypeFilters, setActiveTypeFilters ] = useState( [] );
 	const [ activeSourceFilters, setActiveSourceFilters ] = useState( [] );
 	const handleRefreshRef = useRef( null );
+	const selectedConnectionsRef = useRef( selectedConnections );
+	selectedConnectionsRef.current = selectedConnections;
 
 	const loadRepos = useCallback(
 		async ( ghPage, glPage, bbPage, append = false ) => {
 			setLoading( true );
+			const sel = selectedConnectionsRef.current;
 			try {
 				const fetches = [];
 				if ( ghPage > 0 ) {
 					fetches.push(
 						api
-							.getRepos( ghPage, 'github' )
+							.getRepos( ghPage, 'github', sel.github )
 							.then( ( d ) => ( {
 								...d,
 								provider: 'github',
@@ -172,7 +204,7 @@ export default function BrowsePanel( {
 				if ( glPage > 0 ) {
 					fetches.push(
 						api
-							.getRepos( glPage, 'gitlab' )
+							.getRepos( glPage, 'gitlab', sel.gitlab )
 							.then( ( d ) => ( {
 								...d,
 								provider: 'gitlab',
@@ -187,7 +219,7 @@ export default function BrowsePanel( {
 				if ( bbPage > 0 ) {
 					fetches.push(
 						api
-							.getRepos( bbPage, 'bitbucket' )
+							.getRepos( bbPage, 'bitbucket', sel.bitbucket )
 							.then( ( d ) => ( {
 								...d,
 								provider: 'bitbucket',
@@ -308,6 +340,31 @@ export default function BrowsePanel( {
 		const bbPage = hasMore.bitbucket ? pagesLoaded.bitbucket + 1 : 0;
 		loadRepos( ghPage, glPage, bbPage, true );
 	};
+
+	const handleSwitchConnection = useCallback(
+		( provider, connectionId ) => {
+			setSelectedConnections( ( prev ) => ( {
+				...prev,
+				[ provider ]: connectionId,
+			} ) );
+			setRepos( ( prev ) =>
+				prev.filter( ( r ) => r.provider !== provider )
+			);
+			setHasMore( ( prev ) => ( { ...prev, [ provider ]: false } ) );
+			setPagesLoaded( ( prev ) => ( { ...prev, [ provider ]: 0 } ) );
+			selectedConnectionsRef.current = {
+				...selectedConnectionsRef.current,
+				[ provider ]: connectionId,
+			};
+			const pages = {
+				github: provider === 'github' ? 1 : 0,
+				gitlab: provider === 'gitlab' ? 1 : 0,
+				bitbucket: provider === 'bitbucket' ? 1 : 0,
+			};
+			loadRepos( pages.github, pages.gitlab, pages.bitbucket, true );
+		},
+		[ loadRepos ]
+	);
 
 	const smartInstall = settings?.smart_install !== false;
 
@@ -592,6 +649,42 @@ export default function BrowsePanel( {
 					</FlexItem>
 				) }
 			</Flex>
+
+			{ [ 'github', 'gitlab', 'bitbucket' ].map( ( provider ) => {
+				const list = connectionsByProvider[ provider ] ?? [];
+				if ( list.length < 2 ) {
+					return null;
+				}
+				return (
+					<Flex
+						key={ provider }
+						align="center"
+						gap={ 1 }
+						style={ { marginBottom: 12 } }
+					>
+						<span style={ { fontSize: 12, color: '#57606a' } }>
+							{ provider.charAt( 0 ).toUpperCase() +
+								provider.slice( 1 ) }
+							{ ':' }
+						</span>
+						{ list.map( ( conn ) => (
+							<Button
+								key={ conn.id }
+								isPressed={
+									conn.id === selectedConnections[ provider ]
+								}
+								size="compact"
+								variant="tertiary"
+								onClick={ () =>
+									handleSwitchConnection( provider, conn.id )
+								}
+							>
+								{ conn.label || conn.username || conn.id }
+							</Button>
+						) ) }
+					</Flex>
+				);
+			} ) }
 
 			{ repos.length === 0 && loading && (
 				<div style={ { textAlign: 'center', padding: 48 } }>

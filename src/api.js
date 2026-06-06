@@ -18,9 +18,13 @@ export const setDefaultConnection = ( id ) =>
 	} );
 export const testConnection = ( id ) =>
 	apiFetch( { path: `${ BASE }/connections/${ id }/test`, method: 'POST' } );
-export const getRepos = ( page = 1, provider = 'github' ) =>
+export const getRepos = ( page = 1, provider = 'github', connectionId = '' ) =>
 	apiFetch( {
-		path: `${ BASE }/repos?page=${ page }&provider=${ provider }`,
+		path:
+			`${ BASE }/repos?page=${ page }&provider=${ provider }` +
+			( connectionId
+				? `&connection_id=${ encodeURIComponent( connectionId ) }`
+				: '' ),
 	} );
 export const clearCache = () =>
 	apiFetch( { path: `${ BASE }/repos/cache`, method: 'DELETE' } );

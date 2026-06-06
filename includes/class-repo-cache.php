@@ -26,17 +26,17 @@ class Repo_Cache {
 	 * Returns a cached repos page payload when still fresh.
 	 *
 	 * @since 1.2.0
-	 * @param string $provider Provider key.
-	 * @param int    $page     Page number.
+	 * @param string $connection_id Connection ID used for the fetch.
+	 * @param int    $page          Page number.
 	 * @return array<string, mixed>|null Cached payload or null when missing/stale.
 	 */
-	public static function get_repos_page( string $provider, int $page ): ?array {
+	public static function get_repos_page( string $connection_id, int $page ): ?array {
 		$cache = get_option( self::REPOS_OPTION, [] );
-		if ( ! is_array( $cache ) || empty( $cache[ $provider ]['pages'][ (string) $page ] ) ) {
+		if ( ! is_array( $cache ) || empty( $cache[ $connection_id ]['pages'][ (string) $page ] ) ) {
 			return null;
 		}
 
-		$page_data = $cache[ $provider ]['pages'][ (string) $page ];
+		$page_data = $cache[ $connection_id ]['pages'][ (string) $page ];
 		$fetched   = (int) ( $page_data['fetched_at'] ?? 0 );
 		if ( $fetched && ( time() - $fetched ) <= self::REPOS_TTL ) {
 			return $page_data;
@@ -49,26 +49,26 @@ class Repo_Cache {
 	 * Stores a repos page payload.
 	 *
 	 * @since 1.2.0
-	 * @param string               $provider Provider key.
-	 * @param int                  $page     Page number.
-	 * @param array<string, mixed> $payload  Repos payload.
+	 * @param string               $connection_id Connection ID used for the fetch.
+	 * @param int                  $page          Page number.
+	 * @param array<string, mixed> $payload       Repos payload.
 	 * @return void
 	 */
-	public static function set_repos_page( string $provider, int $page, array $payload ): void {
+	public static function set_repos_page( string $connection_id, int $page, array $payload ): void {
 		$cache = get_option( self::REPOS_OPTION, [] );
 		if ( ! is_array( $cache ) ) {
 			$cache = [];
 		}
-		if ( ! isset( $cache[ $provider ] ) || ! is_array( $cache[ $provider ] ) ) {
-			$cache[ $provider ] = [
+		if ( ! isset( $cache[ $connection_id ] ) || ! is_array( $cache[ $connection_id ] ) ) {
+			$cache[ $connection_id ] = [
 				'pages'      => [],
 				'updated_at' => 0,
 			];
 		}
 
-		$payload['fetched_at']                         = time();
-		$cache[ $provider ]['pages'][ (string) $page ] = $payload;
-		$cache[ $provider ]['updated_at']              = time();
+		$payload['fetched_at']                              = time();
+		$cache[ $connection_id ]['pages'][ (string) $page ] = $payload;
+		$cache[ $connection_id ]['updated_at']              = time();
 
 		update_option( self::REPOS_OPTION, $cache, false );
 	}
@@ -139,11 +139,11 @@ class Repo_Cache {
 	 * Clears cached repository list data.
 	 *
 	 * @since 1.2.0
-	 * @param string|null $provider Optional provider key to clear one provider only.
+	 * @param string|null $connection_id Optional connection ID to clear one slot only. Null clears all.
 	 * @return void
 	 */
-	public static function clear_repos( ?string $provider = null ): void {
-		if ( null === $provider ) {
+	public static function clear_repos( ?string $connection_id = null ): void {
+		if ( null === $connection_id ) {
 			delete_option( self::REPOS_OPTION );
 			return;
 		}
@@ -153,7 +153,7 @@ class Repo_Cache {
 			return;
 		}
 
-		unset( $cache[ $provider ] );
+		unset( $cache[ $connection_id ] );
 		update_option( self::REPOS_OPTION, $cache, false );
 	}
 

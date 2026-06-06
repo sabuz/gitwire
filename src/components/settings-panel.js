@@ -643,6 +643,11 @@ function ConnectionsSummary( {
 										/>
 										{ provLabel }
 									</span>
+									{ 'user' === rec.scope && (
+										<span className="gitwire-badge gitwire-badge--info">
+											{ __( 'Personal', 'gitwire' ) }
+										</span>
+									) }
 									{ profile && ! profile.error && (
 										<span
 											className={ `gitwire-badge gitwire-badge--${
@@ -738,6 +743,13 @@ function ConnectionCard( {
 					<FlexBlock>
 						<strong>{ provLabel }</strong>
 					</FlexBlock>
+					{ 'user' === rec.scope && (
+						<FlexItem>
+							<span className="gitwire-badge gitwire-badge--info">
+								{ __( 'Personal', 'gitwire' ) }
+							</span>
+						</FlexItem>
+					) }
 					{ profile && ! profile.error && (
 						<FlexItem>
 							<span
@@ -913,6 +925,7 @@ function rateNote( provider, rateLimit, rateReset ) {
  */
 function AddConnectionForm( { onCreated, onCancel } ) {
 	const [ provider, setProvider ] = useState( 'github' );
+	const [ personal, setPersonal ] = useState( false );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 
@@ -991,7 +1004,10 @@ function AddConnectionForm( { onCreated, onCancel } ) {
 		resetErrors();
 
 		try {
-			const result = await api.createConnection( data );
+			const result = await api.createConnection( {
+				...data,
+				scope: personal ? 'user' : 'site',
+			} );
 			toast.success(
 				( PROVIDER_LABELS[ provider ] ?? provider ) +
 					' ' +
@@ -1251,6 +1267,19 @@ function AddConnectionForm( { onCreated, onCancel } ) {
 			) }
 
 			<Spacer marginTop={ 5 } />
+
+			<ToggleControl
+				__nextHasNoMarginBottom
+				checked={ personal }
+				help={ __(
+					'Only you can see and use this connection. Site connections are shared with all administrators.',
+					'gitwire'
+				) }
+				label={ __( 'Personal connection', 'gitwire' ) }
+				onChange={ setPersonal }
+			/>
+
+			<Spacer marginTop={ 4 } />
 
 			<Flex gap={ 2 } justify="flex-end">
 				<Button variant="tertiary" onClick={ onCancel }>
