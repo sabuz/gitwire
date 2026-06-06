@@ -183,12 +183,7 @@ class Admin {
 		$settings    = Settings::get_public();
 		$connections = Connections::get_public_list();
 		$has_config  = ! empty( $connections );
-		$raw_cache   = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
-		$connection  = [
-			'github'    => $raw_cache['github'] ?? null,
-			'gitlab'    => $raw_cache['gitlab'] ?? null,
-			'bitbucket' => $raw_cache['bitbucket'] ?? null,
-		];
+		$connection = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
 		Error_Handler::clear_stale_activation_guard();
 		$installed_result = REST::sync_installed();
 		$installed        = $installed_result['installed'];

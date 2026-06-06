@@ -558,11 +558,11 @@ class REST {
 			'credentials' => $creds,
 		] );
 
-		self::set_connection_cache( $provider, array_merge( $test, [ 'connection_id' => $conn['id'] ] ) );
+		self::set_connection_cache( $conn['id'], array_merge( $test, [ 'connection_id' => $conn['id'] ] ) );
 
 		return [
 			'connection'  => Connections::get_public_list(),
-			'profile'     => $test,
+			'profile'     => array_merge( $test, [ 'connection_id' => $conn['id'] ] ),
 		];
 	}
 
@@ -579,7 +579,7 @@ class REST {
 		if ( ! $conn || ! Connections::delete( $id ) ) {
 			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
 		}
-		self::set_connection_cache( $conn['provider'] ?? '', null );
+		self::set_connection_cache( $id, null );
 		return [ 'connections' => Connections::get_public_list() ];
 	}
 
@@ -619,11 +619,11 @@ class REST {
 		$result   = self::run_credentials_test( $provider, $creds );
 
 		if ( is_wp_error( $result ) ) {
-			self::set_connection_cache( $provider, [ 'provider' => $provider, 'error' => $result->get_error_message(), 'connection_id' => $id ] );
+			self::set_connection_cache( $id, [ 'provider' => $provider, 'error' => $result->get_error_message(), 'connection_id' => $id ] );
 			return $result;
 		}
 
-		self::set_connection_cache( $provider, array_merge( $result, [ 'connection_id' => $id ] ) );
+		self::set_connection_cache( $id, array_merge( $result, [ 'connection_id' => $id ] ) );
 		return $result;
 	}
 
@@ -642,7 +642,7 @@ class REST {
 			$cache    = is_wp_error( $result )
 				? [ 'provider' => $provider, 'error' => $result->get_error_message(), 'connection_id' => $id ]
 				: array_merge( $result, [ 'connection_id' => $id ] );
-			self::set_connection_cache( $provider, $cache );
+			self::set_connection_cache( $id, $cache );
 		}
 	}
 
@@ -754,9 +754,9 @@ class REST {
 	 * @param array|null $data     Connection data, or null to clear.
 	 * @return void
 	 */
-	private static function set_connection_cache( string $provider, ?array $data ): void {
-		$cache              = (array) get_option( 'gitwire_connection_cache', [] );
-		$cache[ $provider ] = $data;
+	private static function set_connection_cache( string $connection_id, ?array $data ): void {
+		$cache                    = (array) get_option( 'gitwire_connection_cache', [] );
+		$cache[ $connection_id ]  = $data;
 		update_option( 'gitwire_connection_cache', $cache, false );
 	}
 

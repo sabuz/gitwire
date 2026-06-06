@@ -12,7 +12,10 @@ export const createConnection = ( data = {} ) =>
 export const deleteConnection = ( id ) =>
 	apiFetch( { path: `${ BASE }/connections/${ id }`, method: 'DELETE' } );
 export const setDefaultConnection = ( id ) =>
-	apiFetch( { path: `${ BASE }/connections/${ id }/set-default`, method: 'POST' } );
+	apiFetch( {
+		path: `${ BASE }/connections/${ id }/set-default`,
+		method: 'POST',
+	} );
 export const testConnection = ( id ) =>
 	apiFetch( { path: `${ BASE }/connections/${ id }/test`, method: 'POST' } );
 export const getRepos = ( page = 1, provider = 'github' ) =>

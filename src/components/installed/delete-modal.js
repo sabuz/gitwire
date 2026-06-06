@@ -34,14 +34,20 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
-					__( '%s removed from Gitwire. Files remain on disk.', 'gitwire' ),
+					__(
+						'%s removed from Gitwire. Files remain on disk.',
+						'gitwire'
+					),
 					item.full_name
 				)
 			);
 			onRefresh();
 			closeModal();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Failed to remove tracking record.', 'gitwire' ) );
+			toast.error(
+				e.message ||
+					__( 'Failed to remove tracking record.', 'gitwire' )
+			);
 			setBusy( null );
 		}
 	};

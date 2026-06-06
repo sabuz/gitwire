@@ -314,7 +314,7 @@ export default function ImportFromUrl( {
 		? !! connections?.find( ( c ) => c.provider === resolved.provider )
 		: false;
 	const existingConn = hasProviderConn
-		? ( connection?.[ resolved.provider ] ?? {} )
+		? connection?.[ resolved.provider ] ?? {}
 		: null;
 	const connLabel = existingConn?.authenticated
 		? sprintf(

@@ -1,6 +1,6 @@
 import { toast } from '../toast';
 
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { useState, useCallback } from '@wordpress/element';
 import {
 	Button,
@@ -10,6 +10,7 @@ import {
 	Flex,
 	FlexBlock,
 	FlexItem,
+	Popover,
 	Spinner,
 	TextControl,
 	ToggleControl,
@@ -70,6 +71,7 @@ export default function SettingsPanel( {
 	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
+	const [ view, setView ] = useState( 'overview' );
 	const [ smartInstall, setSmartInstall ] = useState(
 		settings.smart_install !== false
 	);
@@ -91,16 +93,32 @@ export default function SettingsPanel( {
 		}
 	};
 
+	if ( view === 'connections' ) {
+		return (
+			<div
+				className="gitwire-settings-panels"
+				style={ { maxWidth: 540, margin: '0 auto' } }
+			>
+				<ConnectionsManager
+					connection={ connection }
+					connections={ connections }
+					onBack={ () => setView( 'overview' ) }
+					onConnectionsChange={ onConnectionsChange }
+					onConnectionUpdate={ onConnectionUpdate }
+				/>
+			</div>
+		);
+	}
+
 	return (
 		<div
 			className="gitwire-settings-panels"
 			style={ { maxWidth: 540, margin: '0 auto' } }
 		>
-			<ConnectionsCard
+			<ConnectionsSummary
 				connection={ connection }
 				connections={ connections }
-				onConnectionsChange={ onConnectionsChange }
-				onConnectionUpdate={ onConnectionUpdate }
+				onManage={ () => setView( 'connections' ) }
 			/>
 
 			<Spacer marginTop={ 4 } />
@@ -145,18 +163,178 @@ const PROVIDER_LABELS = {
 };
 
 /**
- * Renders all saved connections with provider badges, disconnect, and set-default actions.
+ * Returns the small inline icon for a provider, used inside badges.
  *
+ * @param {Object} props          Component props.
+ * @param {string} props.provider Provider key.
+ * @return {JSX.Element|null} The provider icon.
+ */
+function ProviderIcon( { provider } ) {
+	if ( 'github' === provider ) {
+		return <GitHubIcon />;
+	}
+	if ( 'gitlab' === provider ) {
+		return <GitLabIcon />;
+	}
+	if ( 'bitbucket' === provider ) {
+		return <BitbucketIcon size={ 12 } variant="brand" />;
+	}
+	return null;
+}
+
+/**
+ * Popover showing full connection profile details (API usage, verified time, etc.).
+ *
+ * @param {Object}   props         Component props.
+ * @param {Object}   props.profile Cached profile data for this connection.
+ * @param {Function} props.onClose Callback to close the popover.
+ * @return {JSX.Element} The rendered popover.
+ */
+function ConnectionProfilePopover( { profile, onClose } ) {
+	const hasRateLimit = profile.rate_limit > 0;
+	const pct = hasRateLimit
+		? Math.round( ( profile.rate_remaining / profile.rate_limit ) * 100 )
+		: 0;
+	let barColor = '#cf222e';
+	if ( pct > 50 ) {
+		barColor = '#4ac26b';
+	} else if ( pct > 20 ) {
+		barColor = '#e3b341';
+	}
+
+	return (
+		<Popover
+			placement="bottom-start"
+			onClose={ onClose }
+			onFocusOutside={ onClose }
+		>
+			<div
+				className="gitwire-connection-popover"
+				role="presentation"
+				style={ { padding: 16, minWidth: 260 } }
+				onClick={ ( ev ) => ev.stopPropagation() }
+				onKeyDown={ ( ev ) => ev.stopPropagation() }
+			>
+				{ profile.error ? (
+					<p style={ { color: '#cf222e', margin: 0, fontSize: 13 } }>
+						{ profile.error }
+					</p>
+				) : (
+					<>
+						<Flex
+							align="center"
+							gap={ 3 }
+							style={ { marginBottom: 12 } }
+						>
+							{ profile.avatar_url && (
+								<img
+									alt={ profile.login }
+									src={ profile.avatar_url }
+									style={ {
+										width: 44,
+										height: 44,
+										borderRadius: '50%',
+										display: 'block',
+										flexShrink: 0,
+									} }
+								/>
+							) }
+							<div>
+								{ profile.name && (
+									<div
+										style={ {
+											fontWeight: 700,
+											fontSize: 14,
+										} }
+									>
+										{ profile.name }
+									</div>
+								) }
+								{ profile.login && (
+									<div
+										style={ {
+											fontSize: 12,
+											color: '#57606a',
+										} }
+									>
+										@{ profile.login }
+									</div>
+								) }
+								{ profile.checked_at && (
+									<div
+										style={ {
+											fontSize: 11,
+											color: '#8c959f',
+											marginTop: 2,
+										} }
+									>
+										{ __( 'Verified', 'gitwire' ) }{ ' ' }
+										{ unixTimeAgo( profile.checked_at ) }
+									</div>
+								) }
+							</div>
+						</Flex>
+						<Flex gap={ 1 }>
+							<span
+								className={ `gitwire-badge gitwire-badge--${
+									profile.authenticated
+										? 'success'
+										: 'warning'
+								}` }
+							>
+								{ profile.authenticated
+									? __( 'Connected', 'gitwire' )
+									: __( 'Public only', 'gitwire' ) }
+							</span>
+						</Flex>
+						{ hasRateLimit && (
+							<>
+								<hr
+									className="gitwire-divider"
+									style={ { margin: '12px 0' } }
+								/>
+								<div style={ { fontSize: 12 } }>
+									<Flex
+										justify="space-between"
+										style={ { marginBottom: 6 } }
+									>
+										<span style={ { color: '#50575e' } }>
+											{ __( 'API Usage', 'gitwire' ) }
+										</span>
+										<strong>
+											{ profile.rate_remaining?.toLocaleString() }
+											{ ' / ' }
+											{ profile.rate_limit?.toLocaleString() }
+										</strong>
+									</Flex>
+									<div className="gitwire-rate-track">
+										<div
+											className="gitwire-rate-fill"
+											style={ {
+												width: `${ pct }%`,
+												background: barColor,
+											} }
+										/>
+									</div>
+								</div>
+							</>
+						) }
+					</>
+				) }
+			</div>
+		</Popover>
+	);
+}
+
+/**
+ * Renders all saved connections as compact rows with an expandable profile popover.
+ *
+ * @param {Object}   props                     Component props.
  * @param {Array}    props.connections         All connection records.
- * @param {Object}   props.connectionCache     Per-provider profile cache: { github, gitlab, bitbucket }.
+ * @param {Object}   props.connectionCache     Per-connection-ID profile cache.
  * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
  * @param {Function} props.onConnectionUpdate  Called with (provider, data|null) after disconnect.
- * @param            root0
- * @param            root0.connections
- * @param            root0.connectionCache
- * @param            root0.onConnectionsChange
- * @param            root0.onConnectionUpdate
- * @return {JSX.Element|null}
+ * @return {JSX.Element|null} The rendered list, or null when empty.
  */
 function ConnectionList( {
 	connections,
@@ -165,6 +343,7 @@ function ConnectionList( {
 	onConnectionUpdate,
 } ) {
 	const [ busyId, setBusyId ] = useState( null );
+	const [ openPopoverId, setOpenPopoverId ] = useState( null );
 
 	const handleDisconnect = useCallback(
 		async ( id, provider ) => {
@@ -216,54 +395,103 @@ function ConnectionList( {
 		<div className="gitwire-connection-list">
 			{ connections.map( ( rec ) => {
 				const isBusy = busyId === rec.id;
-				const profile = connectionCache?.[ rec.provider ] ?? null;
-				const label = rec.username
-					? `@${ rec.username }`
-					: rec.email || rec.label || rec.id;
-				const providerLabel =
+				const profile = connectionCache?.[ rec.id ] ?? null;
+				const name =
+					profile?.name || rec.username || rec.email || rec.label;
+				const username = profile?.login || rec.username;
+				const provLabel =
 					PROVIDER_LABELS[ rec.provider ] ?? rec.provider;
+				const isPopoverOpen = openPopoverId === rec.id;
 
 				return (
 					<div key={ rec.id } className="gitwire-connection-item">
 						<Flex align="center" gap={ 2 }>
-							{ profile?.avatar_url && (
-								<img
-									alt={ label }
-									src={ profile.avatar_url }
-									style={ {
-										width: 28,
-										height: 28,
-										borderRadius: '50%',
-										display: 'block',
-									} }
-								/>
-							) }
-							<div style={ { flex: 1, minWidth: 0 } }>
-								<span className="gitwire-connection-item__label">
-									{ label }
-								</span>
-								<span
-									className="gitwire-badge gitwire-badge--draft"
-									style={ { marginLeft: 6 } }
+							{ /* Clickable identity section — opens profile popover */ }
+							<div style={ { position: 'relative' } }>
+								<button
+									className="gitwire-connection-identity"
+									type="button"
+									onClick={ () =>
+										setOpenPopoverId(
+											isPopoverOpen ? null : rec.id
+										)
+									}
 								>
-									{ providerLabel }
+									{ profile?.avatar_url ? (
+										<img
+											alt={ name }
+											className="gitwire-connection-avatar"
+											height={ 32 }
+											src={ profile.avatar_url }
+											style={ {
+												borderRadius: '50%',
+												display: 'block',
+												flexShrink: 0,
+											} }
+											width={ 32 }
+										/>
+									) : (
+										<span className="gitwire-connection-avatar is-placeholder" />
+									) }
+									<div className="gitwire-connection-identity__info">
+										<span className="gitwire-connection-identity__name">
+											{ name }
+										</span>
+										{ username && username !== name && (
+											<span className="gitwire-connection-identity__username">
+												@{ username }
+											</span>
+										) }
+									</div>
+								</button>
+								{ isPopoverOpen && profile && (
+									<ConnectionProfilePopover
+										profile={ profile }
+										onClose={ () =>
+											setOpenPopoverId( null )
+										}
+									/>
+								) }
+							</div>
+
+							{ /* Badges */ }
+							<Flex
+								align="center"
+								gap={ 1 }
+								style={ { flex: 1 } }
+							>
+								<span className="gitwire-badge gitwire-badge--draft gitwire-badge--provider">
+									<ProviderIcon provider={ rec.provider } />
+									{ provLabel }
 								</span>
+								{ profile && ! profile.error && (
+									<span
+										className={ `gitwire-badge gitwire-badge--${
+											profile.authenticated
+												? 'success'
+												: 'warning'
+										}` }
+									>
+										{ profile.authenticated
+											? __( 'Connected', 'gitwire' )
+											: __( 'Public only', 'gitwire' ) }
+									</span>
+								) }
 								{ rec.is_default &&
 									providerCounts[ rec.provider ] > 1 && (
-										<span
-											className="gitwire-badge gitwire-badge--info"
-											style={ { marginLeft: 4 } }
-										>
+										<span className="gitwire-badge gitwire-badge--info">
 											{ __( 'Default', 'gitwire' ) }
 										</span>
 									) }
-							</div>
+							</Flex>
+
+							{ /* Actions */ }
 							{ ! rec.is_default &&
 								providerCounts[ rec.provider ] > 1 && (
 									<Button
 										disabled={ !! busyId }
 										isBusy={ isBusy }
-										size="compact"
+										size="small"
 										variant="tertiary"
 										onClick={ () =>
 											handleSetDefault( rec.id )
@@ -276,7 +504,7 @@ function ConnectionList( {
 								disabled={ !! busyId }
 								isBusy={ isBusy }
 								isDestructive
-								size="compact"
+								size="small"
 								variant="tertiary"
 								onClick={ () =>
 									handleDisconnect( rec.id, rec.provider )
@@ -293,18 +521,135 @@ function ConnectionList( {
 }
 
 /**
- * Unified connections card — lists all connections and exposes a provider picker + connect forms.
+ * Compact connections summary shown on the Settings overview.
+ * Displays connection status at a glance with a Manage button to open the full screen.
+ *
+ * @param {Object}   props             Component props.
+ * @param {Array}    props.connections All connection records.
+ * @param {Object}   props.connection  Per-connection-ID profile cache.
+ * @param {Function} props.onManage    Opens the connections management screen.
+ * @return {JSX.Element} The rendered summary card.
+ */
+function ConnectionsSummary( { connections, connection, onManage } ) {
+	return (
+		<Card>
+			<CardHeader>
+				<Flex align="center" gap={ 2 }>
+					<FlexBlock>
+						<Heading level={ 4 }>
+							{ __( 'Connections', 'gitwire' ) }
+						</Heading>
+					</FlexBlock>
+					<FlexItem>
+						<Button
+							size="compact"
+							variant="secondary"
+							onClick={ onManage }
+						>
+							{ __( 'Manage', 'gitwire' ) }
+						</Button>
+					</FlexItem>
+				</Flex>
+			</CardHeader>
+			{ connections.length > 0 && (
+				<CardBody>
+					<div className="gitwire-connections-summary">
+						{ connections.map( ( rec ) => {
+							const profile = connection?.[ rec.id ] ?? null;
+							const username =
+								profile?.login ||
+								rec.username ||
+								rec.email ||
+								rec.label;
+							const name = username ? `@${ username }` : rec.id;
+							const provLabel =
+								PROVIDER_LABELS[ rec.provider ] ?? rec.provider;
+
+							return (
+								<Flex
+									key={ rec.id }
+									align="center"
+									className="gitwire-connection-summary-row"
+									gap={ 2 }
+								>
+									{ profile?.avatar_url ? (
+										<img
+											alt={ name }
+											height={ 24 }
+											src={ profile.avatar_url }
+											style={ {
+												borderRadius: '50%',
+												display: 'block',
+												flexShrink: 0,
+											} }
+											width={ 24 }
+										/>
+									) : (
+										<span
+											className="gitwire-connection-avatar is-placeholder"
+											style={ { width: 24, height: 24 } }
+										/>
+									) }
+									<span
+										style={ {
+											flex: 1,
+											fontSize: 13,
+											fontWeight: 500,
+											minWidth: 0,
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											whiteSpace: 'nowrap',
+										} }
+									>
+										{ name }
+									</span>
+									<span className="gitwire-badge gitwire-badge--draft gitwire-badge--provider">
+										<ProviderIcon
+											provider={ rec.provider }
+										/>
+										{ provLabel }
+									</span>
+									{ profile && ! profile.error && (
+										<span
+											className={ `gitwire-badge gitwire-badge--${
+												profile.authenticated
+													? 'success'
+													: 'warning'
+											}` }
+										>
+											{ profile.authenticated
+												? __( 'Connected', 'gitwire' )
+												: __(
+														'Public only',
+														'gitwire'
+												  ) }
+										</span>
+									) }
+								</Flex>
+							);
+						} ) }
+					</div>
+				</CardBody>
+			) }
+		</Card>
+	);
+}
+
+/**
+ * Full connections management screen — back button, connection list, add form.
  *
  * @param {Object}   props                     Component props.
  * @param {Array}    props.connections         All connection records.
- * @param {Object}   props.connection          Per-provider connection cache.
+ * @param {Object}   props.connection          Per-connection-ID profile cache.
+ * @param {Function} props.onBack              Returns to the settings overview.
  * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
  * @param {Function} props.onConnectionUpdate  Called with (provider, data) after change.
- * @return {JSX.Element} The rendered card.
+ * @return {JSX.Element} The rendered management screen.
  */
-function ConnectionsCard( {
+function ConnectionsManager( {
 	connections,
 	connection,
+	onBack,
 	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
@@ -320,53 +665,246 @@ function ConnectionsCard( {
 	);
 
 	return (
+		<div className="gitwire-connections-screen">
+			{ /* Page-level header — sits outside any card */ }
+			<Flex align="center" gap={ 2 } style={ { marginBottom: 16 } }>
+				<FlexItem>
+					<Button
+						icon="arrow-left-alt2"
+						label={ __( 'Back to Settings', 'gitwire' ) }
+						variant="tertiary"
+						onClick={ onBack }
+					/>
+				</FlexItem>
+				<FlexBlock>
+					<Heading level={ 4 } style={ { margin: 0 } }>
+						{ __( 'Connections', 'gitwire' ) }
+					</Heading>
+				</FlexBlock>
+				{ ! adding && (
+					<FlexItem>
+						<Button
+							variant="secondary"
+							onClick={ () => setAdding( true ) }
+						>
+							{ __( 'Add connection', 'gitwire' ) }
+						</Button>
+					</FlexItem>
+				) }
+			</Flex>
+
+			{ ! adding && connections.length === 0 && (
+				<p style={ { margin: 0, color: '#757575', fontSize: 13 } }>
+					{ __(
+						'No connections yet. Click "Add connection" to connect GitHub, GitLab, or Bitbucket.',
+						'gitwire'
+					) }
+				</p>
+			) }
+
+			<div
+				style={ { display: 'flex', flexDirection: 'column', gap: 16 } }
+			>
+				{ connections.map( ( rec ) => (
+					<ConnectionCard
+						key={ rec.id }
+						connection={ connection }
+						rec={ rec }
+						onConnectionsChange={ onConnectionsChange }
+						onConnectionUpdate={ onConnectionUpdate }
+					/>
+				) ) }
+			</div>
+
+			{ adding && (
+				<>
+					{ connections.length > 0 && <Spacer marginTop={ 4 } /> }
+					<Card>
+						<CardBody>
+							<AddConnectionForm
+								onCreated={ handleCreated }
+								onCancel={ () => setAdding( false ) }
+							/>
+						</CardBody>
+					</Card>
+				</>
+			) }
+		</div>
+	);
+}
+
+/**
+ * Full-detail card for a single connection — provider header, profile body, API usage.
+ *
+ * @param {Object}   props                     Component props.
+ * @param {Object}   props.rec                 Connection record.
+ * @param {Object}   props.connection          Per-connection-ID profile cache.
+ * @param {Function} props.onConnectionsChange Called with new connections array after disconnect.
+ * @param {Function} props.onConnectionUpdate  Called with (provider, data|null) after disconnect.
+ * @return {JSX.Element} The rendered connection card.
+ */
+function ConnectionCard( {
+	rec,
+	connection,
+	onConnectionsChange,
+	onConnectionUpdate,
+} ) {
+	const [ busy, setBusy ] = useState( false );
+	const profile = connection?.[ rec.id ] ?? null;
+	const provLabel = PROVIDER_LABELS[ rec.provider ] ?? rec.provider;
+
+	const hasRateLimit = profile && profile.rate_limit > 0;
+	const pct = hasRateLimit
+		? Math.round( ( profile.rate_remaining / profile.rate_limit ) * 100 )
+		: 0;
+	let barColor = '#cf222e';
+	if ( pct > 50 ) {
+		barColor = '#4ac26b';
+	} else if ( pct > 20 ) {
+		barColor = '#e3b341';
+	}
+
+	const handleDisconnect = async () => {
+		setBusy( true );
+		try {
+			const result = await api.deleteConnection( rec.id );
+			onConnectionsChange( result.connections );
+			onConnectionUpdate( rec.provider, null );
+			toast.success( __( 'Disconnected.', 'gitwire' ) );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
+		} finally {
+			setBusy( false );
+		}
+	};
+
+	return (
 		<Card>
 			<CardHeader>
 				<Flex align="center" gap={ 2 }>
+					<FlexItem>
+						<ProviderIcon provider={ rec.provider } />
+					</FlexItem>
 					<FlexBlock>
-						<Heading level={ 4 }>
-							{ __( 'Connections', 'gitwire' ) }
-						</Heading>
+						<strong>{ provLabel }</strong>
 					</FlexBlock>
-					{ ! adding && (
+					{ profile && ! profile.error && (
 						<FlexItem>
-							<Button
-								size="compact"
-								variant="secondary"
-								onClick={ () => setAdding( true ) }
+							<span
+								className={ `gitwire-badge gitwire-badge--${
+									profile.authenticated
+										? 'success'
+										: 'warning'
+								}` }
 							>
-								{ __( 'Add account', 'gitwire' ) }
-							</Button>
+								{ profile.authenticated
+									? __( 'Connected', 'gitwire' )
+									: __( 'Public only', 'gitwire' ) }
+							</span>
 						</FlexItem>
 					) }
 				</Flex>
 			</CardHeader>
 			<CardBody>
-				{ connections.length > 0 && (
-					<ConnectionList
-						connections={ connections }
-						connectionCache={ connection }
-						onConnectionsChange={ onConnectionsChange }
-						onConnectionUpdate={ onConnectionUpdate }
-					/>
-				) }
-
-				{ ! adding && connections.length === 0 && (
-					<p style={ { margin: 0, color: '#757575', fontSize: 13 } }>
-						{ __(
-							'No accounts connected. Click "Add account" to connect GitHub, GitLab, or Bitbucket.',
-							'gitwire'
-						) }
-					</p>
-				) }
-
-				{ adding && (
-					<>
-						{ connections.length > 0 && <Spacer marginTop={ 4 } /> }
-						<AddConnectionForm
-							onCreated={ handleCreated }
-							onCancel={ () => setAdding( false ) }
+				<Flex align="center" gap={ 3 }>
+					{ profile?.avatar_url && (
+						<img
+							alt={ profile.login }
+							height={ 44 }
+							src={ profile.avatar_url }
+							style={ {
+								borderRadius: '50%',
+								display: 'block',
+								flexShrink: 0,
+							} }
+							width={ 44 }
 						/>
+					) }
+					<FlexBlock>
+						{ profile?.name && (
+							<div style={ { fontWeight: 700, fontSize: 14 } }>
+								{ profile.name }
+							</div>
+						) }
+						{ profile?.login && (
+							<div style={ { fontSize: 12, color: '#57606a' } }>
+								@{ profile.login }
+							</div>
+						) }
+						{ profile?.checked_at && (
+							<div
+								style={ {
+									fontSize: 11,
+									color: '#8c959f',
+									marginTop: 2,
+								} }
+							>
+								{ __( 'Connection verified', 'gitwire' ) }{ ' ' }
+								{ unixTimeAgo( profile.checked_at ) }
+							</div>
+						) }
+						{ profile?.error && (
+							<div style={ { fontSize: 12, color: '#cf222e' } }>
+								{ profile.error }
+							</div>
+						) }
+					</FlexBlock>
+					<FlexItem>
+						<Button
+							disabled={ busy }
+							isDestructive
+							isBusy={ busy }
+							variant="secondary"
+							onClick={ handleDisconnect }
+						>
+							{ __( 'Sign Out', 'gitwire' ) }
+						</Button>
+					</FlexItem>
+				</Flex>
+
+				{ hasRateLimit && (
+					<>
+						<hr
+							className="gitwire-divider"
+							style={ { margin: '12px 0' } }
+						/>
+						<div style={ { fontSize: 12 } }>
+							<Flex
+								justify="space-between"
+								style={ { marginBottom: 6 } }
+							>
+								<span style={ { color: '#50575e' } }>
+									{ __( 'API Usage', 'gitwire' ) }
+								</span>
+								<strong>
+									{ profile.rate_remaining?.toLocaleString() }
+									{ ' / ' }
+									{ profile.rate_limit?.toLocaleString() }
+								</strong>
+							</Flex>
+							<div className="gitwire-rate-track">
+								<div
+									className="gitwire-rate-fill"
+									style={ {
+										width: `${ pct }%`,
+										background: barColor,
+									} }
+								/>
+							</div>
+							<p
+								className="gitwire-rate-note"
+								style={ {
+									margin: '6px 0 0',
+									color: '#757575',
+								} }
+							>
+								{ rateNote(
+									rec.provider,
+									profile.rate_limit,
+									profile.rate_reset
+								) }
+							</p>
+						</div>
 					</>
 				) }
 			</CardBody>
@@ -375,14 +913,42 @@ function ConnectionsCard( {
 }
 
 /**
+ * Returns a human-readable note about the current rate limit state.
+ *
+ * @param {string} provider  Provider key.
+ * @param {number} rateLimit Total requests allowed.
+ * @param {number} rateReset Unix timestamp when the limit resets.
+ * @return {string} The note text.
+ */
+function rateNote( provider, rateLimit, rateReset ) {
+	if ( 'github' === provider && rateLimit === 60 ) {
+		return __(
+			"Unauthenticated limit is shared by your server's IP. Add a token for 5,000/hour.",
+			'gitwire'
+		);
+	}
+	if ( rateReset ) {
+		const s = rateReset - Math.floor( Date.now() / 1000 );
+		if ( s > 0 ) {
+			const m = Math.floor( s / 60 );
+			const countdown = m > 0 ? `${ m }m ${ s % 60 }s` : `${ s }s`;
+			return sprintf(
+				/* translators: %s: time until rate limit resets, e.g. "4m 32s" */
+				__( 'Resets in %s.', 'gitwire' ),
+				countdown
+			);
+		}
+	}
+	return __( 'Resets in about an hour.', 'gitwire' );
+}
+
+/**
  * Inline add-connection form: radio to pick a provider, fields appear below.
  *
+ * @param {Object}   props           Component props.
  * @param {Function} props.onCreated Called with (provider, connections, profile) after success.
  * @param {Function} props.onCancel  Hides the form.
- * @param            root0
- * @param            root0.onCreated
- * @param            root0.onCancel
- * @return {JSX.Element}
+ * @return {JSX.Element} The rendered form.
  */
 function AddConnectionForm( { onCreated, onCancel } ) {
 	const [ provider, setProvider ] = useState( 'github' );
@@ -473,9 +1039,11 @@ function AddConnectionForm( { onCreated, onCancel } ) {
 			onCreated( provider, result.connection, result.profile );
 		} catch ( e ) {
 			if ( 'github' === provider ) {
-				ghToken.trim()
-					? setGhTokenError( true )
-					: setGhUsernameError( true );
+				if ( ghToken.trim() ) {
+					setGhTokenError( true );
+				} else {
+					setGhUsernameError( true );
+				}
 			} else if ( 'gitlab' === provider ) {
 				setGlTokenError( true );
 			} else {
@@ -738,4 +1306,20 @@ function AddConnectionForm( { onCreated, onCancel } ) {
 			</Flex>
 		</div>
 	);
+}
+
+function unixTimeAgo( ts ) {
+	const s = Math.floor( Date.now() / 1000 ) - ts;
+	if ( s < 60 ) {
+		return __( 'just now', 'gitwire' );
+	}
+	const m = Math.floor( s / 60 );
+	if ( m < 60 ) {
+		return m + 'm ago';
+	}
+	const h = Math.floor( m / 60 );
+	if ( h < 24 ) {
+		return h + 'h ago';
+	}
+	return Math.floor( h / 24 ) + 'd ago';
 }

@@ -173,11 +173,32 @@ class Connections {
 	 * @return bool True when deleted, false when not found.
 	 */
 	public static function delete( string $id ): bool {
-		$all      = self::all();
-		$filtered = array_values( array_filter( $all, static fn( $c ) => ( $c['id'] ?? '' ) !== $id ) );
-		if ( count( $filtered ) === count( $all ) ) {
+		$all     = self::all();
+		$deleted = null;
+		foreach ( $all as $conn ) {
+			if ( ( $conn['id'] ?? '' ) === $id ) {
+				$deleted = $conn;
+				break;
+			}
+		}
+		if ( null === $deleted ) {
 			return false;
 		}
+
+		$filtered = array_values( array_filter( $all, static fn( $c ) => ( $c['id'] ?? '' ) !== $id ) );
+
+		// When the deleted connection was the default, promote the next one for that provider.
+		if ( $deleted['is_default'] ?? false ) {
+			$provider = $deleted['provider'] ?? '';
+			foreach ( $filtered as &$conn ) {
+				if ( ( $conn['provider'] ?? '' ) === $provider ) {
+					$conn['is_default'] = true;
+					break;
+				}
+			}
+			unset( $conn );
+		}
+
 		update_option( self::OPTION, $filtered );
 		return true;
 	}

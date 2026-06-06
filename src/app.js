@@ -93,13 +93,11 @@ function syncUrl( tabName ) {
 
 export default function App( { initialData } ) {
 	const [ settings, setSettings ] = useState( initialData.settings || null );
-	const [ connections, setConnections ] = useState( initialData.connections || [] );
+	const [ connections, setConnections ] = useState(
+		initialData.connections || []
+	);
 	const [ connection, setConnection ] = useState(
-		initialData.connection || {
-			github: null,
-			gitlab: null,
-			bitbucket: null,
-		}
+		initialData.connection || {}
 	);
 	const [ installed, setInstalled ] = useState( initialData.installed || {} );
 	const [ loading, setLoading ] = useState( ! initialData.settings );
@@ -278,10 +276,20 @@ export default function App( { initialData } ) {
 	}, [] );
 
 	const handleConnectionUpdate = useCallback( ( provider, data ) => {
-		setConnection( ( prev ) => ( {
-			...( prev || { github: null, gitlab: null, bitbucket: null } ),
-			[ provider ]: data,
-		} ) );
+		const id = data?.connection_id ?? provider;
+		setConnection( ( prev ) => {
+			if ( ! data ) {
+				// On disconnect, remove all entries for this provider.
+				const next = { ...prev };
+				Object.keys( next ).forEach( ( k ) => {
+					if ( next[ k ]?.provider === provider ) {
+						delete next[ k ];
+					}
+				} );
+				return next;
+			}
+			return { ...( prev || {} ), [ id ]: data };
+		} );
 	}, [] );
 
 	const handleSettingsSave = useCallback( ( s ) => {
