@@ -58,7 +58,7 @@ function tabUrl( tabName ) {
 }
 
 function updateSidebarActive( tabName ) {
-	const submenu = document.querySelector( '#toplevel_page_git .wp-submenu' );
+	const submenu = document.querySelector( '#toplevel_page_gitwire .wp-submenu' );
 	if ( ! submenu ) {
 		return;
 	}
@@ -167,7 +167,7 @@ export default function App( { initialData } ) {
 
 	useEffect( () => {
 		const submenu = document.querySelector(
-			'#toplevel_page_git .wp-submenu'
+			'#toplevel_page_gitwire .wp-submenu'
 		);
 		if ( ! submenu ) {
 			return;
