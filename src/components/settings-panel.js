@@ -89,7 +89,7 @@ export default function SettingsPanel( {
 					<FlexItem>
 						<Button
 							icon="arrow-left-alt2"
-							label={ __( 'Back to Settings', 'gitwire' ) }
+							label={ __( 'Back to Connections', 'gitwire' ) }
 							variant="tertiary"
 							onClick={ () => setSelectedId( null ) }
 						/>
