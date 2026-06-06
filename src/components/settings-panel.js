@@ -7,6 +7,8 @@ import {
 	Card,
 	CardBody,
 	CardHeader,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalConfirmDialog as ConfirmDialog,
 	Flex,
 	FlexBlock,
 	FlexItem,
@@ -26,6 +28,12 @@ import {
 
 import * as api from '../api';
 import { BitbucketIcon, GitHubIcon, GitLabIcon } from './provider-icons';
+
+const PROVIDER_LABELS = {
+	github: 'GitHub',
+	gitlab: 'GitLab',
+	bitbucket: 'Bitbucket',
+};
 
 /**
  * Settings panel — unified Connections card + Smart Install card.
@@ -47,7 +55,7 @@ export default function SettingsPanel( {
 	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
-	const [ view, setView ] = useState( 'overview' );
+	const [ selectedId, setSelectedId ] = useState( null );
 	const [ smartInstall, setSmartInstall ] = useState(
 		settings.smart_install !== false
 	);
@@ -69,19 +77,38 @@ export default function SettingsPanel( {
 		}
 	};
 
-	if ( view === 'connections' ) {
+	if ( selectedId ) {
+		const rec = connections.find( ( c ) => c.id === selectedId );
+
 		return (
 			<div
 				className="gitwire-settings-panels"
 				style={ { maxWidth: 540, margin: '0 auto' } }
 			>
-				<ConnectionsManager
-					connection={ connection }
-					connections={ connections }
-					onBack={ () => setView( 'overview' ) }
-					onConnectionsChange={ onConnectionsChange }
-					onConnectionUpdate={ onConnectionUpdate }
-				/>
+				<Flex align="center" gap={ 2 } style={ { marginBottom: 16 } }>
+					<FlexItem>
+						<Button
+							icon="arrow-left-alt2"
+							label={ __( 'Back to Settings', 'gitwire' ) }
+							variant="tertiary"
+							onClick={ () => setSelectedId( null ) }
+						/>
+					</FlexItem>
+					<FlexBlock>
+						<Heading level={ 4 } style={ { margin: 0 } }>
+							{ __( 'Connections', 'gitwire' ) }
+						</Heading>
+					</FlexBlock>
+				</Flex>
+				{ rec && (
+					<ConnectionCard
+						connection={ connection }
+						rec={ rec }
+						onConnectionsChange={ onConnectionsChange }
+						onConnectionUpdate={ onConnectionUpdate }
+						onDisconnected={ () => setSelectedId( null ) }
+					/>
+				) }
 			</div>
 		);
 	}
@@ -96,7 +123,7 @@ export default function SettingsPanel( {
 				connections={ connections }
 				onConnectionsChange={ onConnectionsChange }
 				onConnectionUpdate={ onConnectionUpdate }
-				onManage={ () => setView( 'connections' ) }
+				onSelect={ setSelectedId }
 			/>
 
 			<Spacer marginTop={ 4 } />
@@ -133,12 +160,6 @@ export default function SettingsPanel( {
 		</div>
 	);
 }
-
-const PROVIDER_LABELS = {
-	github: 'GitHub',
-	gitlab: 'GitLab',
-	bitbucket: 'Bitbucket',
-};
 
 /**
  * Returns the small inline icon for a provider, used inside badges.
@@ -509,7 +530,7 @@ function ConnectionList( {
  * @param {Object}   props.connection          Per-connection-ID profile cache.
  * @param {Function} props.onConnectionsChange Called with new connections array after create.
  * @param {Function} props.onConnectionUpdate  Called with (provider, data) after connect.
- * @param {Function} props.onManage            Opens the full connections management screen.
+ * @param {Function} props.onSelect            Called with a connection ID when a row is clicked.
  * @return {JSX.Element} The rendered summary card.
  */
 function ConnectionsSummary( {
@@ -517,7 +538,7 @@ function ConnectionsSummary( {
 	connection,
 	onConnectionsChange,
 	onConnectionUpdate,
-	onManage,
+	onSelect,
 } ) {
 	const [ adding, setAdding ] = useState( false );
 
@@ -536,20 +557,11 @@ function ConnectionsSummary( {
 				<Flex align="center" gap={ 2 }>
 					<FlexBlock>
 						<Heading level={ 4 }>
-							{ __( 'Connections', 'gitwire' ) }
+							{ adding
+								? __( 'New Connection', 'gitwire' )
+								: __( 'Connections', 'gitwire' ) }
 						</Heading>
 					</FlexBlock>
-					{ ! adding && connections.length > 0 && (
-						<FlexItem>
-							<Button
-								size="compact"
-								variant="tertiary"
-								onClick={ onManage }
-							>
-								{ __( 'Manage', 'gitwire' ) }
-							</Button>
-						</FlexItem>
-					) }
 					{ ! adding && (
 						<FlexItem>
 							<Button
@@ -586,11 +598,11 @@ function ConnectionsSummary( {
 								PROVIDER_LABELS[ rec.provider ] ?? rec.provider;
 
 							return (
-								<Flex
+								<button
 									key={ rec.id }
-									align="center"
 									className="gitwire-connection-summary-row"
-									gap={ 2 }
+									type="button"
+									onClick={ () => onSelect( rec.id ) }
 								>
 									{ profile?.avatar_url ? (
 										<img
@@ -626,19 +638,28 @@ function ConnectionsSummary( {
 									<span
 										className={ `gitwire-badge gitwire-badge--${ rec.provider }` }
 									>
-										<ProviderIcon provider={ rec.provider } />
+										<ProviderIcon
+											provider={ rec.provider }
+										/>
 										{ provLabel }
 									</span>
 									{ profile && ! profile.error && (
 										<span
-											className={ `gitwire-badge gitwire-badge--${ profile.authenticated ? 'success' : 'warning' }` }
+											className={ `gitwire-badge gitwire-badge--${
+												profile.authenticated
+													? 'success'
+													: 'warning'
+											}` }
 										>
 											{ profile.authenticated
 												? __( 'Connected', 'gitwire' )
-												: __( 'Public only', 'gitwire' ) }
+												: __(
+														'Public only',
+														'gitwire'
+												  ) }
 										</span>
 									) }
-								</Flex>
+								</button>
 							);
 						} ) }
 					</div>
@@ -658,96 +679,6 @@ function ConnectionsSummary( {
 }
 
 /**
- * Full connections management screen — back button, connection list, add form.
- *
- * @param {Object}   props                     Component props.
- * @param {Array}    props.connections         All connection records.
- * @param {Object}   props.connection          Per-connection-ID profile cache.
- * @param {boolean}  props.initialAdding       Open the add form immediately on mount.
- * @param {Function} props.onBack              Returns to the settings overview.
- * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
- * @param {Function} props.onConnectionUpdate  Called with (provider, data) after change.
- * @return {JSX.Element} The rendered management screen.
- */
-function ConnectionsManager( {
-	connections,
-	connection,
-	initialAdding = false,
-	onBack,
-	onConnectionsChange,
-	onConnectionUpdate,
-} ) {
-	const [ adding, setAdding ] = useState( initialAdding );
-
-	const handleCreated = useCallback(
-		( provider, conns, profile ) => {
-			onConnectionsChange( conns );
-			onConnectionUpdate( provider, profile );
-			setAdding( false );
-		},
-		[ onConnectionsChange, onConnectionUpdate ]
-	);
-
-	return (
-		<div className="gitwire-connections-screen">
-			{ /* Page-level header — sits outside any card */ }
-			<Flex align="center" gap={ 2 } style={ { marginBottom: 16 } }>
-				<FlexItem>
-					<Button
-						icon="arrow-left-alt2"
-						label={ __( 'Back to Settings', 'gitwire' ) }
-						variant="tertiary"
-						onClick={ onBack }
-					/>
-				</FlexItem>
-				<FlexBlock>
-					<Heading level={ 4 } style={ { margin: 0 } }>
-						{ __( 'Connections', 'gitwire' ) }
-					</Heading>
-				</FlexBlock>
-			</Flex>
-
-			{ ! adding && connections.length === 0 && (
-				<p style={ { margin: 0, color: '#757575', fontSize: 13 } }>
-					{ __(
-						'No connections yet. Click "Add connection" to connect GitHub, GitLab, or Bitbucket.',
-						'gitwire'
-					) }
-				</p>
-			) }
-
-			<div
-				style={ { display: 'flex', flexDirection: 'column', gap: 16 } }
-			>
-				{ connections.map( ( rec ) => (
-					<ConnectionCard
-						key={ rec.id }
-						connection={ connection }
-						rec={ rec }
-						onConnectionsChange={ onConnectionsChange }
-						onConnectionUpdate={ onConnectionUpdate }
-					/>
-				) ) }
-			</div>
-
-			{ adding && (
-				<>
-					{ connections.length > 0 && <Spacer marginTop={ 4 } /> }
-					<Card>
-						<CardBody>
-							<AddConnectionForm
-								onCreated={ handleCreated }
-								onCancel={ () => setAdding( false ) }
-							/>
-						</CardBody>
-					</Card>
-				</>
-			) }
-		</div>
-	);
-}
-
-/**
  * Full-detail card for a single connection — provider header, profile body, API usage.
  *
  * @param {Object}   props                     Component props.
@@ -755,6 +686,7 @@ function ConnectionsManager( {
  * @param {Object}   props.connection          Per-connection-ID profile cache.
  * @param {Function} props.onConnectionsChange Called with new connections array after disconnect.
  * @param {Function} props.onConnectionUpdate  Called with (provider, data|null) after disconnect.
+ * @param {Function} [props.onDisconnected]    Called after a successful disconnect.
  * @return {JSX.Element} The rendered connection card.
  */
 function ConnectionCard( {
@@ -762,8 +694,10 @@ function ConnectionCard( {
 	connection,
 	onConnectionsChange,
 	onConnectionUpdate,
+	onDisconnected,
 } ) {
 	const [ busy, setBusy ] = useState( false );
+	const [ confirming, setConfirming ] = useState( false );
 	const profile = connection?.[ rec.id ] ?? null;
 	const provLabel = PROVIDER_LABELS[ rec.provider ] ?? rec.provider;
 
@@ -779,12 +713,14 @@ function ConnectionCard( {
 	}
 
 	const handleDisconnect = async () => {
+		setConfirming( false );
 		setBusy( true );
 		try {
 			const result = await api.deleteConnection( rec.id );
 			onConnectionsChange( result.connections );
 			onConnectionUpdate( rec.id, null );
 			toast.success( __( 'Disconnected.', 'gitwire' ) );
+			onDisconnected?.();
 		} catch ( e ) {
 			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
 		} finally {
@@ -869,10 +805,21 @@ function ConnectionCard( {
 							isDestructive
 							isBusy={ busy }
 							variant="secondary"
-							onClick={ handleDisconnect }
+							onClick={ () => setConfirming( true ) }
 						>
 							{ __( 'Disconnect', 'gitwire' ) }
 						</Button>
+						{ confirming && (
+							<ConfirmDialog
+								onConfirm={ handleDisconnect }
+								onCancel={ () => setConfirming( false ) }
+							>
+								{ __(
+									'Disconnect this provider? Gitwire will remove its saved access.',
+									'gitwire'
+								) }
+							</ConfirmDialog>
+						) }
 					</FlexItem>
 				</Flex>
 
