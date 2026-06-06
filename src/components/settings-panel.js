@@ -118,6 +118,8 @@ export default function SettingsPanel( {
 			<ConnectionsSummary
 				connection={ connection }
 				connections={ connections }
+				onConnectionsChange={ onConnectionsChange }
+				onConnectionUpdate={ onConnectionUpdate }
 				onManage={ () => setView( 'connections' ) }
 			/>
 
@@ -351,7 +353,7 @@ function ConnectionList( {
 			try {
 				const result = await api.deleteConnection( id );
 				onConnectionsChange( result.connections );
-				onConnectionUpdate( provider, null );
+				onConnectionUpdate( id, null );
 				toast.success( __( 'Disconnected.', 'gitwire' ) );
 			} catch ( e ) {
 				toast.error(
@@ -522,15 +524,34 @@ function ConnectionList( {
 
 /**
  * Compact connections summary shown on the Settings overview.
- * Displays connection status at a glance with a Manage button to open the full screen.
+ * Handles inline add-connection form — no navigation needed.
  *
- * @param {Object}   props             Component props.
- * @param {Array}    props.connections All connection records.
- * @param {Object}   props.connection  Per-connection-ID profile cache.
- * @param {Function} props.onManage    Opens the connections management screen.
+ * @param {Object}   props                     Component props.
+ * @param {Array}    props.connections         All connection records.
+ * @param {Object}   props.connection          Per-connection-ID profile cache.
+ * @param {Function} props.onConnectionsChange Called with new connections array after create.
+ * @param {Function} props.onConnectionUpdate  Called with (provider, data) after connect.
+ * @param {Function} props.onManage            Opens the full connections management screen.
  * @return {JSX.Element} The rendered summary card.
  */
-function ConnectionsSummary( { connections, connection, onManage } ) {
+function ConnectionsSummary( {
+	connections,
+	connection,
+	onConnectionsChange,
+	onConnectionUpdate,
+	onManage,
+} ) {
+	const [ adding, setAdding ] = useState( false );
+
+	const handleCreated = useCallback(
+		( provider, conns, profile ) => {
+			onConnectionsChange( conns );
+			onConnectionUpdate( provider, profile );
+			setAdding( false );
+		},
+		[ onConnectionsChange, onConnectionUpdate ]
+	);
+
 	return (
 		<Card>
 			<CardHeader>
@@ -540,20 +561,41 @@ function ConnectionsSummary( { connections, connection, onManage } ) {
 							{ __( 'Connections', 'gitwire' ) }
 						</Heading>
 					</FlexBlock>
-					<FlexItem>
-						<Button
-							size="compact"
-							variant="secondary"
-							onClick={ onManage }
-						>
-							{ __( 'Manage', 'gitwire' ) }
-						</Button>
-					</FlexItem>
+					{ ! adding && connections.length > 0 && (
+						<FlexItem>
+							<Button
+								size="compact"
+								variant="tertiary"
+								onClick={ onManage }
+							>
+								{ __( 'Manage', 'gitwire' ) }
+							</Button>
+						</FlexItem>
+					) }
+					{ ! adding && (
+						<FlexItem>
+							<Button
+								size="compact"
+								variant="secondary"
+								onClick={ () => setAdding( true ) }
+							>
+								{ __( 'Add New', 'gitwire' ) }
+							</Button>
+						</FlexItem>
+					) }
 				</Flex>
 			</CardHeader>
-			{ connections.length > 0 && (
+
+			{ ! adding && connections.length > 0 && (
 				<CardBody>
-					<div className="gitwire-connections-summary">
+					<div
+						className="gitwire-connections-summary"
+						style={ {
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 12,
+						} }
+					>
 						{ connections.map( ( rec ) => {
 							const profile = connection?.[ rec.id ] ?? null;
 							const username =
@@ -604,31 +646,31 @@ function ConnectionsSummary( { connections, connection, onManage } ) {
 										{ name }
 									</span>
 									<span className="gitwire-badge gitwire-badge--draft gitwire-badge--provider">
-										<ProviderIcon
-											provider={ rec.provider }
-										/>
+										<ProviderIcon provider={ rec.provider } />
 										{ provLabel }
 									</span>
 									{ profile && ! profile.error && (
 										<span
-											className={ `gitwire-badge gitwire-badge--${
-												profile.authenticated
-													? 'success'
-													: 'warning'
-											}` }
+											className={ `gitwire-badge gitwire-badge--${ profile.authenticated ? 'success' : 'warning' }` }
 										>
 											{ profile.authenticated
 												? __( 'Connected', 'gitwire' )
-												: __(
-														'Public only',
-														'gitwire'
-												  ) }
+												: __( 'Public only', 'gitwire' ) }
 										</span>
 									) }
 								</Flex>
 							);
 						} ) }
 					</div>
+				</CardBody>
+			) }
+
+			{ adding && (
+				<CardBody>
+					<AddConnectionForm
+						onCreated={ handleCreated }
+						onCancel={ () => setAdding( false ) }
+					/>
 				</CardBody>
 			) }
 		</Card>
@@ -641,6 +683,7 @@ function ConnectionsSummary( { connections, connection, onManage } ) {
  * @param {Object}   props                     Component props.
  * @param {Array}    props.connections         All connection records.
  * @param {Object}   props.connection          Per-connection-ID profile cache.
+ * @param {boolean}  props.initialAdding       Open the add form immediately on mount.
  * @param {Function} props.onBack              Returns to the settings overview.
  * @param {Function} props.onConnectionsChange Called with new connections array after create/delete.
  * @param {Function} props.onConnectionUpdate  Called with (provider, data) after change.
@@ -649,11 +692,12 @@ function ConnectionsSummary( { connections, connection, onManage } ) {
 function ConnectionsManager( {
 	connections,
 	connection,
+	initialAdding = false,
 	onBack,
 	onConnectionsChange,
 	onConnectionUpdate,
 } ) {
-	const [ adding, setAdding ] = useState( false );
+	const [ adding, setAdding ] = useState( initialAdding );
 
 	const handleCreated = useCallback(
 		( provider, conns, profile ) => {
@@ -681,16 +725,6 @@ function ConnectionsManager( {
 						{ __( 'Connections', 'gitwire' ) }
 					</Heading>
 				</FlexBlock>
-				{ ! adding && (
-					<FlexItem>
-						<Button
-							variant="secondary"
-							onClick={ () => setAdding( true ) }
-						>
-							{ __( 'Add connection', 'gitwire' ) }
-						</Button>
-					</FlexItem>
-				) }
 			</Flex>
 
 			{ ! adding && connections.length === 0 && (
@@ -769,7 +803,7 @@ function ConnectionCard( {
 		try {
 			const result = await api.deleteConnection( rec.id );
 			onConnectionsChange( result.connections );
-			onConnectionUpdate( rec.provider, null );
+			onConnectionUpdate( rec.id, null );
 			toast.success( __( 'Disconnected.', 'gitwire' ) );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Disconnect failed.', 'gitwire' ) );
@@ -857,7 +891,7 @@ function ConnectionCard( {
 							variant="secondary"
 							onClick={ handleDisconnect }
 						>
-							{ __( 'Sign Out', 'gitwire' ) }
+							{ __( 'Disconnect', 'gitwire' ) }
 						</Button>
 					</FlexItem>
 				</Flex>

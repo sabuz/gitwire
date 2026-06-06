@@ -275,17 +275,12 @@ export default function App( { initialData } ) {
 		setConnections( conns || [] );
 	}, [] );
 
-	const handleConnectionUpdate = useCallback( ( provider, data ) => {
-		const id = data?.connection_id ?? provider;
+	const handleConnectionUpdate = useCallback( ( providerOrId, data ) => {
+		const id = data?.connection_id ?? providerOrId;
 		setConnection( ( prev ) => {
 			if ( ! data ) {
-				// On disconnect, remove all entries for this provider.
 				const next = { ...prev };
-				Object.keys( next ).forEach( ( k ) => {
-					if ( next[ k ]?.provider === provider ) {
-						delete next[ k ];
-					}
-				} );
+				delete next[ providerOrId ];
 				return next;
 			}
 			return { ...( prev || {} ), [ id ]: data };
