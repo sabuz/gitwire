@@ -10,7 +10,6 @@ import {
 } from '@wordpress/element';
 import {
 	Button,
-	CheckboxControl,
 	Dropdown,
 	Spinner,
 	Flex,
@@ -44,6 +43,52 @@ const ListFilterIcon = () => (
 		<path d="M9 19h6" />
 	</svg>
 );
+
+const SelectAllIcon = () => (
+	<svg
+		fill="none"
+		height="14"
+		viewBox="0 0 14 14"
+		width="14"
+		xmlns="http://www.w3.org/2000/svg"
+	>
+		<path
+			d="M11.5 2a.5.5 0 000 1h2a.5.5 0 000-1h-2zM9.3 2.6a.5.5 0 01.1.7l-5.995 7.993a.505.505 0 01-.37.206.5.5 0 01-.395-.152L.146 8.854a.5.5 0 11.708-.708l2.092 2.093L8.6 2.7a.5.5 0 01.7-.1zM11 7a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2A.5.5 0 0111 7zM11.5 11a.5.5 0 000 1h2a.5.5 0 000-1h-2z"
+			fill="currentColor"
+		/>
+	</svg>
+);
+
+const ClearAllIcon = () => (
+	<svg
+		fill="none"
+		height="14"
+		viewBox="0 0 14 14"
+		width="14"
+		xmlns="http://www.w3.org/2000/svg"
+	>
+		<path
+			clipRule="evenodd"
+			d="M9.621 3.914l.379.379 3.146-3.147a.5.5 0 01.708.708L10.707 5l.379.379a3 3 0 010 4.242l-.707.707-.005.005-.008.008-.012.013-1.733 1.732a3 3 0 01-4.242 0L.146 7.854a.5.5 0 01.708-.707.915.915 0 001.292 0L4.64 4.654a.52.52 0 01.007-.008l.733-.732a3 3 0 014.242 0zm-4.26 1.432l.139-.139 3.146 3.147a.5.5 0 10.708-.707L6.212 4.505a2 2 0 012.702.116l.731.731.001.002h.002l.73.732a2 2 0 010 2.828l-.706.707-.012.013a.503.503 0 00-.014.013l-1.732 1.732a2 2 0 01-2.828 0L3.354 9.647a2.489 2.489 0 001.414-.708l1.086-1.085a.5.5 0 10-.708-.707L4.061 8.232a1.5 1.5 0 01-2.01.102c.294-.088.57-.248.803-.48l2.5-2.5a.475.475 0 00.007-.008z"
+			fill="currentColor"
+			fillRule="evenodd"
+		/>
+		<path
+			d="M2 5.004a1 1 0 11-2 0 1 1 0 012 0zM4 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
+			fill="currentColor"
+		/>
+	</svg>
+);
+
+function FilterOption( { label, checked, onChange } ) {
+	return (
+		// eslint-disable-next-line jsx-a11y/label-has-associated-control
+		<label className="gitwire-filter-option">
+			<input checked={ checked } type="checkbox" onChange={ onChange } />
+			<span className="gitwire-filter-option__label">{ label }</span>
+		</label>
+	);
+}
 
 /**
  * @param {Object} installed Installed repositories map from app state.
@@ -285,6 +330,29 @@ export default function BrowsePanel( {
 	const activeFilterCount =
 		activeTypeFilters.length + activeSourceFilters.length;
 
+	const allTypeOptions = [ 'plugin', 'theme', 'unknown' ];
+	const allSourceOptions = [
+		hasGitHub && 'github',
+		hasGitLab && 'gitlab',
+		hasBitbucket && 'bitbucket',
+	].filter( Boolean );
+	const totalOptions =
+		allTypeOptions.length +
+		( showSourceBadge ? allSourceOptions.length : 0 );
+	const allSelected = activeFilterCount === totalOptions;
+
+	const handleSelectAll = () => {
+		if ( activeFilterCount > 0 ) {
+			setActiveTypeFilters( [] );
+			setActiveSourceFilters( [] );
+		} else {
+			setActiveTypeFilters( [ ...allTypeOptions ] );
+			if ( showSourceBadge ) {
+				setActiveSourceFilters( [ ...allSourceOptions ] );
+			}
+		}
+	};
+
 	const matchesSearch = ( r ) => {
 		if ( ! search.trim() ) {
 			return true;
@@ -367,7 +435,11 @@ export default function BrowsePanel( {
 				</FlexBlock>
 				<FlexItem>
 					<Dropdown
-						popoverProps={ { placement: 'bottom-start' } }
+						popoverProps={ {
+							placement: 'bottom-start',
+							className: 'gitwire-filter-dropdown',
+							focusOnMount: 'container',
+						} }
 						renderToggle={ ( { isOpen, onToggle } ) => (
 							<div
 								style={ {
@@ -397,96 +469,100 @@ export default function BrowsePanel( {
 						) }
 						renderContent={ () => (
 							<div className="gitwire-filter-popover">
-								<p className="gitwire-filter-popover__heading">
-									{ __( 'Type', 'gitwire' ) }
-								</p>
-								{ [
-									{
-										id: 'plugin',
-										label: __( 'Plugin', 'gitwire' ),
-									},
-									{
-										id: 'theme',
-										label: __( 'Theme', 'gitwire' ),
-									},
-									{
-										id: 'unknown',
-										label: __( 'Unknown', 'gitwire' ),
-									},
-								].map( ( { id, label } ) => (
-									<CheckboxControl
-										__nextHasNoMarginBottom
-										key={ id }
-										checked={ activeTypeFilters.includes(
-											id
-										) }
-										label={ label }
-										onChange={ () =>
-											toggleTypeFilter( id )
+								<div className="gitwire-filter-popover__header">
+									<Button
+										icon={
+											activeFilterCount > 0
+												? ClearAllIcon
+												: SelectAllIcon
 										}
-									/>
-								) ) }
-								{ showSourceBadge && (
-									<>
-										<p className="gitwire-filter-popover__heading">
-											{ __( 'Source', 'gitwire' ) }
-										</p>
-										{ hasGitHub && (
-											<CheckboxControl
-												__nextHasNoMarginBottom
-												checked={ activeSourceFilters.includes(
-													'github'
+										size="compact"
+										variant="tertiary"
+										onClick={ handleSelectAll }
+									>
+										{ activeFilterCount > 0
+											? __( 'Clear filters', 'gitwire' )
+											: __( 'Select all', 'gitwire' ) }
+									</Button>
+								</div>
+
+								<ul className="gitwire-filter-popover__list">
+									{ [
+										{
+											id: 'plugin',
+											label: __( 'Plugin', 'gitwire' ),
+										},
+										{
+											id: 'theme',
+											label: __( 'Theme', 'gitwire' ),
+										},
+										{
+											id: 'unknown',
+											label: __( 'Unknown', 'gitwire' ),
+										},
+									].map( ( { id, label } ) => (
+										<li key={ id }>
+											<FilterOption
+												checked={ activeTypeFilters.includes(
+													id
 												) }
-												label="GitHub"
+												label={ label }
 												onChange={ () =>
-													toggleSourceFilter(
-														'github'
-													)
+													toggleTypeFilter( id )
 												}
 											/>
+										</li>
+									) ) }
+								</ul>
+
+								{ showSourceBadge && (
+									<ul className="gitwire-filter-popover__list">
+										{ hasGitHub && (
+											<li>
+												<FilterOption
+													checked={ activeSourceFilters.includes(
+														'github'
+													) }
+													label="GitHub"
+													onChange={ () =>
+														toggleSourceFilter(
+															'github'
+														)
+													}
+												/>
+											</li>
 										) }
 										{ hasGitLab && (
-											<CheckboxControl
-												__nextHasNoMarginBottom
-												checked={ activeSourceFilters.includes(
-													'gitlab'
-												) }
-												label="GitLab"
-												onChange={ () =>
-													toggleSourceFilter(
+											<li>
+												<FilterOption
+													checked={ activeSourceFilters.includes(
 														'gitlab'
-													)
-												}
-											/>
+													) }
+													label="GitLab"
+													onChange={ () =>
+														toggleSourceFilter(
+															'gitlab'
+														)
+													}
+												/>
+											</li>
 										) }
 										{ hasBitbucket && (
-											<CheckboxControl
-												__nextHasNoMarginBottom
-												checked={ activeSourceFilters.includes(
-													'bitbucket'
-												) }
-												label="Bitbucket"
-												onChange={ () =>
-													toggleSourceFilter(
+											<li>
+												<FilterOption
+													checked={ activeSourceFilters.includes(
 														'bitbucket'
-													)
-												}
-											/>
+													) }
+													label="Bitbucket"
+													onChange={ () =>
+														toggleSourceFilter(
+															'bitbucket'
+														)
+													}
+												/>
+											</li>
 										) }
-									</>
-								) }
-								{ activeFilterCount > 0 && (
-									<Button
-										className="gitwire-filter-popover__clear"
-										variant="link"
-										isDestructive
-										onClick={ () => {
-											setActiveTypeFilters( [] );
-											setActiveSourceFilters( [] );
-										} }
-									>
-										{ __( 'Clear filters', 'gitwire' ) }
-									</Button>
+									</ul>
 								) }
 							</div>
 						) }
