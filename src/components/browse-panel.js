@@ -27,6 +27,24 @@ import { detectionKey, useRepoDetection } from '../hooks/use-repo-detection';
 import InstallModal from './install-modal';
 import { GitHubIcon, GitLabIcon, BitbucketIcon } from './provider-icons';
 
+const ListFilterIcon = () => (
+	<svg
+		fill="none"
+		height="16"
+		stroke="currentColor"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		strokeWidth="2"
+		viewBox="0 0 24 24"
+		width="16"
+		xmlns="http://www.w3.org/2000/svg"
+	>
+		<path d="M2 5h20" />
+		<path d="M6 12h12" />
+		<path d="M9 19h6" />
+	</svg>
+);
+
 /**
  * @param {Object} installed Installed repositories map from app state.
  * @param {Object} repo      Browse repository record.
@@ -351,20 +369,31 @@ export default function BrowsePanel( {
 					<Dropdown
 						popoverProps={ { placement: 'bottom-start' } }
 						renderToggle={ ( { isOpen, onToggle } ) => (
-							<Button
-								aria-expanded={ isOpen }
-								icon="filter"
-								label={ __( 'Filter', 'gitwire' ) }
-								isPressed={ activeFilterCount > 0 }
-								variant="secondary"
-								onClick={ onToggle }
+							<div
+								style={ {
+									position: 'relative',
+									display: 'inline-flex',
+								} }
 							>
+								<Button
+									aria-expanded={ isOpen }
+									className={
+										activeFilterCount > 0
+											? 'gitwire-filter-btn is-active'
+											: 'gitwire-filter-btn'
+									}
+									icon={ ListFilterIcon }
+									label={ __( 'Filter', 'gitwire' ) }
+									variant="secondary"
+									onClick={ onToggle }
+								/>
 								{ activeFilterCount > 0 && (
-									<span className="gitwire-filter-count">
-										{ activeFilterCount }
-									</span>
+									<span
+										aria-hidden="true"
+										className="gitwire-filter-dot"
+									/>
 								) }
-							</Button>
+							</div>
 						) }
 						renderContent={ () => (
 							<div className="gitwire-filter-popover">
