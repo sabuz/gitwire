@@ -36,11 +36,11 @@ class Settings {
 	public static function get_public(): array {
 		$s = self::get_raw();
 		return [
-			'smart_install'       => $s['smart_install'] ?? true,
-			'show_repo_label'     => $s['show_repo_label'] ?? true,
-			'enable_logging'      => $s['enable_logging'] ?? false,
-			'log_retention_days'  => $s['log_retention_days'] ?? 30,
-			'log_level'           => $s['log_level'] ?? 'activity',
+			'smart_install'      => $s['smart_install'] ?? true,
+			'show_repo_label'    => $s['show_repo_label'] ?? true,
+			'enable_logging'     => $s['enable_logging'] ?? false,
+			'log_retention_days' => $s['log_retention_days'] ?? 30,
+			'log_level'          => $s['log_level'] ?? 'activity',
 		];
 	}
 

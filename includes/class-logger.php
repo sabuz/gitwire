@@ -77,9 +77,10 @@ class Logger {
 	 * Returns log entries as structured arrays, newest first, with optional filters.
 	 *
 	 * @since 1.3.0
-	 * @param string $from  ISO date string 'YYYY-MM-DD' or empty for no lower bound.
-	 * @param string $to    ISO date string 'YYYY-MM-DD' or empty for no upper bound.
-	 * @param string $level Level to keep ('activity', 'error'), or empty for all.
+	 * @param string   $from   ISO date string 'YYYY-MM-DD' or empty for no lower bound.
+	 * @param string   $to     ISO date string 'YYYY-MM-DD' or empty for no upper bound.
+	 * @param string   $level  Level to keep ('activity', 'error'), or empty for all.
+	 * @param string[] $actors User logins to include; empty means all actors.
 	 * @return array<int, array{timestamp: string, level: string, message: string}>
 	 */
 	public function get_entries( string $from = '', string $to = '', string $level = '', array $actors = [] ): array {
@@ -183,28 +184,22 @@ class Logger {
 	}
 
 	/**
-	 * Parses a single log line into a structured entry, or null if the format is unrecognized.
+	 * Parses a single log line into a structured entry, or null if unrecognized.
 	 *
 	 * @since 1.3.0
 	 * @param string $line Raw log line.
 	 * @return array{timestamp: string, level: string, actor: string, message: string}|null
 	 */
 	private static function parse_line( string $line ): ?array {
-		// Current format: [timestamp] [level] [@actor] message
-		if ( preg_match( '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(activity|error)\] \[(@[^\]]+)\] (.+)$/', $line, $m ) ) {
-			return [ 'timestamp' => $m[1], 'level' => $m[2], 'actor' => $m[3], 'message' => $m[4] ];
+		if ( ! preg_match( '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(activity|error)\] \[(@[^\]]+)\] (.+)$/', $line, $m ) ) {
+			return null;
 		}
-		// Legacy format: [timestamp] [level] message (actor may be @login prefix in message)
-		if ( preg_match( '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(activity|error)\] (.+)$/', $line, $m ) ) {
-			$actor   = '';
-			$message = $m[3];
-			if ( preg_match( '/^(@\S+) (.+)$/', $message, $am ) ) {
-				$actor   = $am[1];
-				$message = $am[2];
-			}
-			return [ 'timestamp' => $m[1], 'level' => $m[2], 'actor' => $actor, 'message' => $message ];
-		}
-		return null;
+		return [
+			'timestamp' => $m[1],
+			'level'     => $m[2],
+			'actor'     => $m[3],
+			'message'   => $m[4],
+		];
 	}
 
 	/**

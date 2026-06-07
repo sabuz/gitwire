@@ -2025,6 +2025,7 @@ class REST {
 	 * Returns the raw log file contents.
 	 *
 	 * @since 1.3.0
+	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>
 	 */
 	public static function get_logs( \WP_REST_Request $req ): array {

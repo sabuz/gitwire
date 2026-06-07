@@ -46,9 +46,13 @@ const DATE_OPTIONS = [
 ];
 
 function fromDateForRange( range ) {
-	if ( 'all' === range ) return '';
+	if ( 'all' === range ) {
+		return '';
+	}
 	const d = new Date();
-	if ( 'today' === range ) return d.toISOString().slice( 0, 10 );
+	if ( 'today' === range ) {
+		return d.toISOString().slice( 0, 10 );
+	}
 	if ( '7d' === range ) {
 		d.setDate( d.getDate() - 7 );
 		return d.toISOString().slice( 0, 10 );
@@ -69,10 +73,9 @@ function LevelBadge( { level } ) {
 	);
 }
 
-
 /**
- * @param {Object}   props              Component props.
- * @param {Object}   props.settings     Current plugin settings.
+ * @param {Object}   props                Component props.
+ * @param {Object}   props.settings       Current plugin settings.
  * @param {Function} props.onGoToSettings Called when user clicks the Settings link.
  */
 export default function LogsPanel( { settings, onGoToSettings } ) {
@@ -108,8 +111,12 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 	}, [ fetchLogs, levelFilter, dateRange, userFilter ] );
 
 	useEffect( () => {
-		if ( ! loggingEnabled ) return;
-		api.getLogActors( '' ).then( setActorSuggestions ).catch( () => {} );
+		if ( ! loggingEnabled ) {
+			return;
+		}
+		api.getLogActors( '' )
+			.then( setActorSuggestions )
+			.catch( () => {} );
 	}, [ loggingEnabled ] );
 
 	const handleActorInputChange = useCallback( async ( text ) => {
@@ -119,7 +126,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 		} catch ( _ ) {}
 	}, [] );
 
-const hasEntries = entries && entries.length > 0;
+	const hasEntries = entries && entries.length > 0;
 	const hasActiveFilter =
 		'' !== levelFilter || 'today' !== dateRange || userFilter.length > 0;
 
@@ -189,10 +196,7 @@ const hasEntries = entries && entries.length > 0;
 										<FormTokenField
 											__nextHasNoMarginBottom
 											__next40pxDefaultSize
-											label={ __(
-												'User',
-												'gitwire'
-											) }
+											label={ __( 'User', 'gitwire' ) }
 											placeholder={ __(
 												'All users',
 												'gitwire'
@@ -208,10 +212,7 @@ const hasEntries = entries && entries.length > 0;
 										<ToggleGroupControl
 											__nextHasNoMarginBottom
 											isBlock
-											label={ __(
-												'Level',
-												'gitwire'
-											) }
+											label={ __( 'Level', 'gitwire' ) }
 											value={ levelFilter }
 											onChange={ setLevelFilter }
 										>
