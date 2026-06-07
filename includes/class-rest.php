@@ -1556,7 +1556,11 @@ class REST {
 
 		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
-		$result    = Installer::switch_branch( $provider, $full_name, $branch );
+
+		$existing_record  = Installer::get_record( $provider, $full_name );
+		$is_pull          = $existing_record && ( $existing_record['branch'] ?? '' ) === $branch;
+
+		$result = Installer::switch_branch( $provider, $full_name, $branch );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -1566,7 +1570,11 @@ class REST {
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
 
-		Logger::log( sprintf( 'Switched %s/%s (%s) to branch %s', $owner, $repo, $provider, $branch ) );
+		if ( $is_pull ) {
+			Logger::log( sprintf( 'Pulled latest for %s/%s (%s) on branch %s', $owner, $repo, $provider, $branch ) );
+		} else {
+			Logger::log( sprintf( 'Switched %s/%s (%s) to branch %s', $owner, $repo, $provider, $branch ) );
+		}
 
 		return $result;
 	}
