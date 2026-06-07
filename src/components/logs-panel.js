@@ -162,7 +162,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 						</p>
 					) }
 
-					{ loggingEnabled && (
+					{ loggingEnabled && ( hasEntries || hasActiveFilter ) && (
 						<div
 							style={ {
 								display: 'flex',
