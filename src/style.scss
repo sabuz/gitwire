@@ -241,6 +241,11 @@ body.gitwire-admin-page {
 		color: #0f766e;
 	}
 
+	&--error {
+		background: #fdecea;
+		color: #c62828;
+	}
+
 	&.is-update {
 		font-size: 11px;
 	}

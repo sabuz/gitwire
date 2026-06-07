@@ -25,14 +25,14 @@ import {
 
 import * as api from '../api';
 
-const LEVEL_COLORS = {
-	activity: { background: '#e8f5e9', color: '#2e7d32' },
-	error: { background: '#fdecea', color: '#c62828' },
-};
-
 const LEVEL_LABELS = {
 	activity: __( 'Activity', 'gitwire' ),
 	error: __( 'Error', 'gitwire' ),
+};
+
+const LEVEL_BADGE_MOD = {
+	activity: 'success',
+	error: 'error',
 };
 
 const LEVEL_OPTIONS = [
@@ -63,22 +63,9 @@ function fromDateForRange( range ) {
 }
 
 function LevelBadge( { level } ) {
-	const style = LEVEL_COLORS[ level ] ?? LEVEL_COLORS.activity;
+	const mod = LEVEL_BADGE_MOD[ level ] ?? 'neutral';
 	return (
-		<span
-			style={ {
-				...style,
-				display: 'inline-block',
-				padding: '1px 7px',
-				borderRadius: 10,
-				fontSize: 11,
-				fontWeight: 600,
-				lineHeight: '18px',
-				letterSpacing: '0.02em',
-				textTransform: 'uppercase',
-				flexShrink: 0,
-			} }
-		>
+		<span className={ `gitwire-badge gitwire-badge--${ mod }` }>
 			{ LEVEL_LABELS[ level ] ?? level }
 		</span>
 	);
