@@ -71,6 +71,7 @@ export default function SettingsPanel( {
 	const [ logLevel, setLogLevel ] = useState(
 		settings.log_level ?? 'activity'
 	);
+	const [ clearingLogs, setClearingLogs ] = useState( false );
 
 	const handleSmartInstallChange = async ( newVal ) => {
 		setSmartInstall( newVal );
@@ -112,6 +113,15 @@ export default function SettingsPanel( {
 		} catch ( e ) {
 			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
 		}
+	};
+
+	const handleClearLogs = () => {
+		setClearingLogs( true );
+		toast.promise( api.clearLogs().finally( () => setClearingLogs( false ) ), {
+			loading: __( 'Clearing logs…', 'gitwire' ),
+			success: __( 'Logs cleared.', 'gitwire' ),
+			error: ( e ) => e?.message || __( 'Could not clear logs.', 'gitwire' ),
+		} );
 	};
 
 	const handleLogLevelChange = async ( newVal ) => {
@@ -265,10 +275,24 @@ export default function SettingsPanel( {
 								__next40pxDefaultSize
 								__nextHasNoMarginBottom
 								label={ __( 'Log Retention', 'gitwire' ) }
-								help={ __(
-									'Entries older than this are automatically removed.',
-									'gitwire'
-								) }
+								help={
+									<>
+										{ __(
+											'Entries older than this are automatically removed.',
+											'gitwire'
+										) }{ ' ' }
+										<Button
+											disabled={ clearingLogs }
+											isDestructive
+											style={ { fontSize: 12 } }
+											variant="link"
+											onClick={ handleClearLogs }
+										>
+											{ __( 'Click here', 'gitwire' ) }
+										</Button>{ ' ' }
+										{ __( 'to clear all logs now.', 'gitwire' ) }
+									</>
+								}
 								options={ [
 									{
 										label: __( '7 days', 'gitwire' ),

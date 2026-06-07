@@ -8,9 +8,6 @@ import {
 	Card,
 	CardBody,
 	CardHeader,
-	Flex,
-	FlexBlock,
-	FlexItem,
 	FormTokenField,
 	Popover,
 	Spinner,
@@ -81,7 +78,6 @@ function LevelBadge( { level } ) {
 export default function LogsPanel( { settings, onGoToSettings } ) {
 	const [ entries, setEntries ] = useState( null );
 	const [ loading, setLoading ] = useState( true );
-	const [ clearing, setClearing ] = useState( false );
 	const [ levelFilter, setLevelFilter ] = useState( '' );
 	const [ dateRange, setDateRange ] = useState( 'today' );
 	const [ isFilterOpen, setIsFilterOpen ] = useState( false );
@@ -123,20 +119,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 		} catch ( _ ) {}
 	}, [] );
 
-	const handleClear = async () => {
-		setClearing( true );
-		try {
-			await api.clearLogs();
-			setEntries( [] );
-			toast.success( __( 'Logs cleared.', 'gitwire' ) );
-		} catch ( e ) {
-			toast.error( e.message || __( 'Could not clear logs.', 'gitwire' ) );
-		} finally {
-			setClearing( false );
-		}
-	};
-
-	const hasEntries = entries && entries.length > 0;
+const hasEntries = entries && entries.length > 0;
 	const hasActiveFilter =
 		'' !== levelFilter || 'today' !== dateRange || userFilter.length > 0;
 
@@ -144,27 +127,9 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 		<div style={ { maxWidth: 760, margin: '0 auto' } }>
 			<Card>
 				<CardHeader>
-					<Flex align="center" gap={ 2 }>
-						<FlexBlock>
-							<Heading level={ 4 }>
-								{ __( 'Activity Log', 'gitwire' ) }
-							</Heading>
-						</FlexBlock>
-						{ hasEntries && (
-							<FlexItem>
-								<Button
-									disabled={ clearing }
-									isBusy={ clearing }
-									isDestructive
-									size="compact"
-									variant="secondary"
-									onClick={ handleClear }
-								>
-									{ __( 'Clear Log', 'gitwire' ) }
-								</Button>
-							</FlexItem>
-						) }
-					</Flex>
+					<Heading level={ 4 }>
+						{ __( 'Activity Log', 'gitwire' ) }
+					</Heading>
 				</CardHeader>
 
 				<CardBody>
