@@ -137,9 +137,9 @@ class Logger {
 	 * @return void
 	 */
 	private function write( string $message, string $level ): void {
-		$user  = wp_get_current_user();
-		$actor = $user->exists() ? '@' . $user->user_login . ' ' : '';
-		$line  = '[' . gmdate( 'Y-m-d H:i:s' ) . '] [' . $level . '] ' . $actor . $message . PHP_EOL;
+		$user       = wp_get_current_user();
+		$actor_part = $user->exists() ? ' [@' . $user->user_login . ']' : '';
+		$line       = '[' . gmdate( 'Y-m-d H:i:s' ) . '] [' . $level . ']' . $actor_part . ' ' . $message . PHP_EOL;
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 		file_put_contents( $this->log_file, $line, FILE_APPEND | LOCK_EX );
 	}
@@ -184,13 +184,24 @@ class Logger {
 	 *
 	 * @since 1.3.0
 	 * @param string $line Raw log line.
-	 * @return array{timestamp: string, level: string, message: string}|null
+	 * @return array{timestamp: string, level: string, actor: string, message: string}|null
 	 */
 	private static function parse_line( string $line ): ?array {
-		if ( ! preg_match( '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(activity|error)\] (.+)$/', $line, $m ) ) {
-			return null;
+		// Current format: [timestamp] [level] [@actor] message
+		if ( preg_match( '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(activity|error)\] \[(@[^\]]+)\] (.+)$/', $line, $m ) ) {
+			return [ 'timestamp' => $m[1], 'level' => $m[2], 'actor' => $m[3], 'message' => $m[4] ];
 		}
-		return [ 'timestamp' => $m[1], 'level' => $m[2], 'message' => $m[3] ];
+		// Legacy format: [timestamp] [level] message (actor may be @login prefix in message)
+		if ( preg_match( '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(activity|error)\] (.+)$/', $line, $m ) ) {
+			$actor   = '';
+			$message = $m[3];
+			if ( preg_match( '/^(@\S+) (.+)$/', $message, $am ) ) {
+				$actor   = $am[1];
+				$message = $am[2];
+			}
+			return [ 'timestamp' => $m[1], 'level' => $m[2], 'actor' => $actor, 'message' => $message ];
+		}
+		return null;
 	}
 
 	/**

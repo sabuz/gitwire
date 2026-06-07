@@ -330,7 +330,39 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 									>
 										{ entry.timestamp }
 									</span>
-									<LevelBadge level={ entry.level } />
+									<span
+										style={ {
+											display: 'flex',
+											alignItems: 'center',
+											gap: 6,
+											flexShrink: 0,
+											lineHeight: '20px',
+											whiteSpace: 'nowrap',
+										} }
+									>
+										{ entry.actor && (
+											<span
+												style={ {
+													fontFamily: 'monospace',
+													fontSize: 12,
+													color: '#555',
+												} }
+											>
+												{ entry.actor }
+											</span>
+										) }
+										{ entry.actor && (
+											<span
+												style={ {
+													color: '#bbb',
+													fontSize: 12,
+												} }
+											>
+												~
+											</span>
+										) }
+										<LevelBadge level={ entry.level } />
+									</span>
 									<span
 										style={ {
 											fontFamily: 'monospace',
