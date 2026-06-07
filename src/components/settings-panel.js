@@ -132,7 +132,7 @@ export default function SettingsPanel( {
 		return (
 			<div
 				className="gitwire-settings-panels"
-				style={ { maxWidth: 540, margin: '0 auto' } }
+				style={ { maxWidth: 580, margin: '0 auto' } }
 			>
 				<Flex align="center" gap={ 2 } style={ { marginBottom: 16 } }>
 					<FlexItem>
@@ -165,7 +165,7 @@ export default function SettingsPanel( {
 	return (
 		<div
 			className="gitwire-settings-panels"
-			style={ { maxWidth: 540, margin: '0 auto' } }
+			style={ { maxWidth: 580, margin: '0 auto' } }
 		>
 			<ConnectionsSummary
 				connection={ connection }
