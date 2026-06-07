@@ -69,7 +69,7 @@ class Logger {
 	}
 
 	/**
-	 * Returns the raw log file contents, newest entries at the bottom.
+	 * Returns log file contents with newest entries first.
 	 *
 	 * @since 1.3.0
 	 * @return string
@@ -80,7 +80,11 @@ class Logger {
 		}
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$contents = file_get_contents( $this->log_file );
-		return is_string( $contents ) ? $contents : '';
+		if ( ! is_string( $contents ) || '' === $contents ) {
+			return '';
+		}
+		$lines = array_filter( explode( PHP_EOL, trim( $contents ) ) );
+		return implode( PHP_EOL, array_reverse( array_values( $lines ) ) );
 	}
 
 	/**

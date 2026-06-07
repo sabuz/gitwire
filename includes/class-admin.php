@@ -45,7 +45,6 @@ class Admin {
 		add_filter( 'pre_delete_plugin', [ self::class, 'guard_plugin_delete' ], 10, 2 );
 		add_action( 'load-themes.php', [ self::class, 'guard_theme_delete' ], 1 );
 		add_action( 'admin_notices', [ self::class, 'show_theme_delete_notice' ] );
-
 	}
 
 	/**

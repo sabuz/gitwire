@@ -610,8 +610,7 @@ class REST {
 
 		self::set_connection_cache( $conn['id'], array_merge( $test, [ 'connection_id' => $conn['id'] ] ) );
 
-		$login_label = '' !== $login ? '@' . $login : '';
-		Logger::log( sprintf( 'Connected %s account%s', $provider, $login_label ? ' ' . $login_label : '' ) );
+		Logger::log( sprintf( '[%s] Connected%s', $provider, '' !== $login ? ' @' . $login : '' ) );
 
 		return [
 			'connection' => Connections::get_public_list(),
@@ -633,7 +632,8 @@ class REST {
 			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
 		}
 		self::set_connection_cache( $id, null );
-		Logger::log( sprintf( 'Removed %s connection', $conn['provider'] ?? 'unknown' ) );
+		$identity = $conn['username'] ?? $conn['email'] ?? $conn['label'] ?? '';
+		Logger::log( sprintf( '[%s] Disconnected%s', $conn['provider'] ?? 'unknown', $identity ? ' @' . $identity : '' ) );
 		return [ 'connections' => Connections::get_public_list() ];
 	}
 
@@ -1150,10 +1150,12 @@ class REST {
 			$provider = 'github';
 		}
 
-		$method = 'theme' === $type ? 'install_theme' : 'install_plugin';
-		$result = Installer::$method( $owner, $repo, $branch, $slug, $provider, $replace, $connection_id );
+		$method    = 'theme' === $type ? 'install_theme' : 'install_plugin';
+		$is_update = null !== Installer::get_record( $provider, $owner . '/' . $repo );
+		$result    = Installer::$method( $owner, $repo, $branch, $slug, $provider, $replace, $connection_id );
 
 		if ( is_wp_error( $result ) ) {
+			Logger::log( sprintf( '[%s] %s failed — %s/%s: %s', $provider, $is_update ? 'Update' : 'Install', $owner, $repo, $result->get_error_message() ) );
 			return $result;
 		}
 
@@ -1162,7 +1164,11 @@ class REST {
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
 
-		Logger::log( sprintf( 'Installed %s/%s (%s) from %s, branch %s', $owner, $repo, $type, $provider, $branch ) );
+		if ( $is_update ) {
+			Logger::log( sprintf( '[%s] Updated %s/%s (%s) on branch %s', $provider, $owner, $repo, $type, $branch ) );
+		} else {
+			Logger::log( sprintf( '[%s] Installed %s/%s as %s on branch %s', $provider, $owner, $repo, $type, $branch ) );
+		}
 
 		return $result;
 	}
@@ -1458,7 +1464,7 @@ class REST {
 			$result = self::detect_type_for_repo( $provider, $owner, $repo, $branch );
 
 			if ( is_wp_error( $result ) ) {
-				Logger::log( sprintf( 'Could not detect repository type for %s: %s', $key, $result->get_error_message() ) );
+				Logger::log( sprintf( 'Detection failed — %s: %s', $key, $result->get_error_message() ) );
 				$result = [
 					'type'       => 'unknown',
 					'subtype'    => null,
@@ -1487,6 +1493,7 @@ class REST {
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
+		$record    = Installer::get_record( $provider, $full_name );
 
 		Error_Handler::clear_stale_activation_guard();
 
@@ -1495,6 +1502,7 @@ class REST {
 		} catch ( \Throwable $e ) {
 			// guard was armed before activation — clean up before returning.
 			Error_Handler::abort_pending_guard();
+			Logger::log( sprintf( '[%s] Activation failed — %s/%s: fatal error', $provider, $owner, $repo ) );
 			return new \WP_Error(
 				'gitwire_activation_fatal',
 				__( 'Plugin could not be activated because it triggered a fatal error.', 'gitwire' ),
@@ -1503,10 +1511,11 @@ class REST {
 		}
 
 		if ( is_wp_error( $result ) ) {
+			Logger::log( sprintf( '[%s] Activation failed — %s/%s: %s', $provider, $owner, $repo, $result->get_error_message() ) );
 			return $result;
 		}
 
-		Logger::log( sprintf( 'Activated %s/%s (%s)', $owner, $repo, $provider ) );
+		Logger::log( sprintf( '[%s] Activated %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
 
 		return [ 'activated' => true ];
 	}
@@ -1523,13 +1532,14 @@ class REST {
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
+		$record    = Installer::get_record( $provider, $full_name );
 		$result    = Installer::deactivate( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 
-		Logger::log( sprintf( 'Deactivated %s/%s (%s)', $owner, $repo, $provider ) );
+		Logger::log( sprintf( '[%s] Deactivated %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
 
 		return [ 'deactivated' => true ];
 	}
@@ -1557,8 +1567,8 @@ class REST {
 		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
 
-		$existing_record  = Installer::get_record( $provider, $full_name );
-		$is_pull          = $existing_record && ( $existing_record['branch'] ?? '' ) === $branch;
+		$existing_record = Installer::get_record( $provider, $full_name );
+		$is_pull         = $existing_record && ( $existing_record['branch'] ?? '' ) === $branch;
 
 		$result = Installer::switch_branch( $provider, $full_name, $branch );
 
@@ -1570,10 +1580,11 @@ class REST {
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
 
+		$type = $existing_record['type'] ?? 'plugin';
 		if ( $is_pull ) {
-			Logger::log( sprintf( 'Pulled latest for %s/%s (%s) on branch %s', $owner, $repo, $provider, $branch ) );
+			Logger::log( sprintf( '[%s] Pulled %s/%s (%s) on branch %s', $provider, $owner, $repo, $type, $branch ) );
 		} else {
-			Logger::log( sprintf( 'Switched %s/%s (%s) to branch %s', $owner, $repo, $provider, $branch ) );
+			Logger::log( sprintf( '[%s] Switched %s/%s (%s) to branch %s', $provider, $owner, $repo, $type, $branch ) );
 		}
 
 		return $result;
@@ -1624,7 +1635,7 @@ class REST {
 
 		Repo_Cache::clear_repos();
 
-		Logger::log( sprintf( 'Removed %s/%s (%s)', $owner, $repo, $provider ) );
+		Logger::log( sprintf( '[%s] Uninstalled %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
 
 		return [ 'removed' => true ];
 	}
@@ -1996,7 +2007,7 @@ class REST {
 	 * @return void
 	 */
 	private static function store_head( string $owner, string $repo, string $branch, string $provider ): void {
-		$api = self::make_api( $provider );
+		$api       = self::make_api( $provider );
 		$commits   = $api->get_commits( $owner, $repo, $branch, 1 );
 		$full_name = $owner . '/' . $repo;
 		if ( ! is_wp_error( $commits ) && ! empty( $commits ) ) {
