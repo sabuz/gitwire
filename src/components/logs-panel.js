@@ -160,7 +160,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 									variant="secondary"
 									onClick={ handleClear }
 								>
-									{ __( 'Clear log', 'gitwire' ) }
+									{ __( 'Clear Log', 'gitwire' ) }
 								</Button>
 							</FlexItem>
 						) }

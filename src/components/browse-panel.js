@@ -508,8 +508,8 @@ export default function BrowsePanel( {
 										onClick={ handleSelectAll }
 									>
 										{ activeFilterCount > 0
-											? __( 'Clear filters', 'gitwire' )
-											: __( 'Select all', 'gitwire' ) }
+											? __( 'Clear Filters', 'gitwire' )
+											: __( 'Select All', 'gitwire' ) }
 									</Button>
 								</div>
 
@@ -676,7 +676,7 @@ export default function BrowsePanel( {
 						variant="secondary"
 						onClick={ handleLoadMore }
 					>
-						{ __( 'Load more', 'gitwire' ) }
+						{ __( 'Load More', 'gitwire' ) }
 					</Button>
 				</div>
 			) }

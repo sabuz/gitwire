@@ -242,7 +242,7 @@ export default function SettingsPanel( {
 							<SelectControl
 								__next40pxDefaultSize
 								__nextHasNoMarginBottom
-								label={ __( 'Log level', 'gitwire' ) }
+								label={ __( 'Log Level', 'gitwire' ) }
 								help={ __(
 									'Errors only records failed operations. All activity includes installs, activations, and connections.',
 									'gitwire'
@@ -264,7 +264,7 @@ export default function SettingsPanel( {
 							<SelectControl
 								__next40pxDefaultSize
 								__nextHasNoMarginBottom
-								label={ __( 'Log retention', 'gitwire' ) }
+								label={ __( 'Log Retention', 'gitwire' ) }
 								help={ __(
 									'Entries older than this are automatically removed.',
 									'gitwire'
