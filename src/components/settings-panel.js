@@ -76,59 +76,53 @@ export default function SettingsPanel( {
 	);
 	const [ clearingLogs, setClearingLogs ] = useState( false );
 
-	const handleSmartInstallChange = async ( newVal ) => {
+	const saveSetting = ( payload, rollback ) => {
+		const p = api.saveSettings( payload )
+			.then( () => api.getSettings() )
+			.then( ( saved ) => onSave( saved ) )
+			.catch( ( e ) => { rollback?.(); throw e; } );
+
+		toast.promise( p, {
+			id: 'settings-save',
+			loading: __( 'Saving…', 'gitwire' ),
+			success: __( 'Saved.', 'gitwire' ),
+			error: ( e ) => e?.message || __( 'Save failed.', 'gitwire' ),
+		} );
+
+		return p;
+	};
+
+	const handleSmartInstallChange = ( newVal ) => {
 		setSmartInstall( newVal );
 		setSavingSi( true );
-		try {
-			await api.saveSettings( { smart_install: newVal } );
-			const saved = await api.getSettings();
-			onSave( saved );
-			toast.success( __( 'Settings saved.', 'gitwire' ) );
-		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
-			setSmartInstall( ! newVal );
-		} finally {
-			setSavingSi( false );
-		}
+		saveSetting( { smart_install: newVal }, () => setSmartInstall( ! newVal ) )
+			.finally( () => setSavingSi( false ) )
+			.catch( () => {} );
 	};
 
-	const handleShowRepoLabelChange = async ( newVal ) => {
+	const handleShowRepoLabelChange = ( newVal ) => {
 		setShowRepoLabel( newVal );
-		try {
-			await api.saveSettings( { show_repo_label: newVal } );
-			const saved = await api.getSettings();
-			onSave( saved );
-			toast.success( __( 'Settings saved.', 'gitwire' ) );
-		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
-			setShowRepoLabel( ! newVal );
-		}
+		saveSetting( { show_repo_label: newVal }, () => setShowRepoLabel( ! newVal ) ).catch( () => {} );
 	};
 
-	const handleEnableLoggingChange = async ( newVal ) => {
+	const handleEnableLoggingChange = ( newVal ) => {
 		setEnableLogging( newVal );
 		setSavingLog( true );
-		try {
-			await api.saveSettings( { enable_logging: newVal } );
-			// Reload so the WP admin sidebar reflects the updated Logs menu.
-			window.location.reload();
-		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
-			setEnableLogging( ! newVal );
-			setSavingLog( false );
-		}
+		// Reload on success so the WP admin sidebar reflects the updated Logs menu.
+		const p = api.saveSettings( { enable_logging: newVal } )
+			.then( () => window.location.reload() )
+			.catch( ( e ) => { setEnableLogging( ! newVal ); setSavingLog( false ); throw e; } );
+		toast.promise( p, {
+			id: 'settings-save',
+			loading: __( 'Saving…', 'gitwire' ),
+			success: __( 'Saved.', 'gitwire' ),
+			error: ( e ) => e?.message || __( 'Save failed.', 'gitwire' ),
+		} );
 	};
 
-	const handleLogRetentionChange = async ( newVal ) => {
+	const handleLogRetentionChange = ( newVal ) => {
 		setLogRetentionDays( newVal );
-		try {
-			await api.saveSettings( { log_retention_days: parseInt( newVal, 10 ) } );
-			const saved = await api.getSettings();
-			onSave( saved );
-			toast.success( __( 'Settings saved.', 'gitwire' ) );
-		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
-		}
+		saveSetting( { log_retention_days: parseInt( newVal, 10 ) } ).catch( () => {} );
 	};
 
 	const handleClearLogs = () => {
@@ -140,16 +134,9 @@ export default function SettingsPanel( {
 		} );
 	};
 
-	const handleLogLevelChange = async ( newVal ) => {
+	const handleLogLevelChange = ( newVal ) => {
 		setLogLevel( newVal );
-		try {
-			await api.saveSettings( { log_level: newVal } );
-			const saved = await api.getSettings();
-			onSave( saved );
-			toast.success( __( 'Settings saved.', 'gitwire' ) );
-		} catch ( e ) {
-			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
-		}
+		saveSetting( { log_level: newVal } ).catch( () => {} );
 	};
 
 	if ( selectedId ) {
