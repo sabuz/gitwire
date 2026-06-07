@@ -86,13 +86,11 @@ export default function SettingsPanel( {
 		setSavingLog( true );
 		try {
 			await api.saveSettings( { enable_logging: newVal } );
-			const saved = await api.getSettings();
-			onSave( saved );
-			toast.success( __( 'Settings saved.', 'gitwire' ) );
+			// Reload so the WP admin sidebar reflects the updated Logs menu.
+			window.location.reload();
 		} catch ( e ) {
 			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
 			setEnableLogging( ! newVal );
-		} finally {
 			setSavingLog( false );
 		}
 	};
