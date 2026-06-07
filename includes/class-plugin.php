@@ -115,6 +115,9 @@ final class Plugin {
 	 */
 	public function run_maintenance(): void {
 		REST::sync_installed();
+		if ( Settings::is_logging_enabled() ) {
+			Logger::get_instance()->trim_old_entries();
+		}
 	}
 
 	/**

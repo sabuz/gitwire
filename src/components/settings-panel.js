@@ -108,6 +108,7 @@ export default function SettingsPanel( {
 			await api.saveSettings( { log_retention_days: parseInt( newVal, 10 ) } );
 			const saved = await api.getSettings();
 			onSave( saved );
+			toast.success( __( 'Settings saved.', 'gitwire' ) );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
 		}
@@ -119,6 +120,7 @@ export default function SettingsPanel( {
 			await api.saveSettings( { log_level: newVal } );
 			const saved = await api.getSettings();
 			onSave( saved );
+			toast.success( __( 'Settings saved.', 'gitwire' ) );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
 		}
@@ -178,7 +180,7 @@ export default function SettingsPanel( {
 			<Card>
 				<CardHeader>
 					<Heading level={ 4 }>
-						{ __( 'Miscellaneous', 'gitwire' ) }
+						{ __( 'Install', 'gitwire' ) }
 					</Heading>
 				</CardHeader>
 				<CardBody>
@@ -202,7 +204,18 @@ export default function SettingsPanel( {
 						}
 						onChange={ handleSmartInstallChange }
 					/>
-					<Spacer marginTop={ 4 } />
+				</CardBody>
+			</Card>
+
+			<Spacer marginTop={ 4 } />
+
+			<Card>
+				<CardHeader>
+					<Heading level={ 4 }>
+						{ __( 'Logging', 'gitwire' ) }
+					</Heading>
+				</CardHeader>
+				<CardBody>
 					<ToggleControl
 						__nextHasNoMarginBottom
 						checked={ enableLogging }
@@ -219,9 +232,15 @@ export default function SettingsPanel( {
 						onChange={ handleEnableLoggingChange }
 					/>
 					{ enableLogging && (
-						<>
-							<Spacer marginTop={ 4 } />
+						<div
+							style={ {
+								marginTop: 16,
+								paddingLeft: 16,
+								borderLeft: '3px solid #e0e0e0',
+							} }
+						>
 							<SelectControl
+								__next40pxDefaultSize
 								__nextHasNoMarginBottom
 								label={ __( 'Log retention', 'gitwire' ) }
 								help={ __(
@@ -230,24 +249,16 @@ export default function SettingsPanel( {
 								) }
 								options={ [
 									{
-										label: __( 'Unlimited', 'gitwire' ),
-										value: '0',
-									},
-									{
 										label: __( '7 days', 'gitwire' ),
 										value: '7',
 									},
 									{
+										label: __( '15 days', 'gitwire' ),
+										value: '15',
+									},
+									{
 										label: __( '30 days', 'gitwire' ),
 										value: '30',
-									},
-									{
-										label: __( '60 days', 'gitwire' ),
-										value: '60',
-									},
-									{
-										label: __( '90 days', 'gitwire' ),
-										value: '90',
 									},
 								] }
 								value={ logRetentionDays }
@@ -255,6 +266,7 @@ export default function SettingsPanel( {
 							/>
 							<Spacer marginTop={ 4 } />
 							<SelectControl
+								__next40pxDefaultSize
 								__nextHasNoMarginBottom
 								label={ __( 'Log level', 'gitwire' ) }
 								help={ __(
@@ -274,7 +286,7 @@ export default function SettingsPanel( {
 								value={ logLevel }
 								onChange={ handleLogLevelChange }
 							/>
-						</>
+						</div>
 					) }
 				</CardBody>
 			</Card>

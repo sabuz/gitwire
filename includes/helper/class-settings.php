@@ -65,7 +65,8 @@ class Settings {
 
 		$log_retention_days = (int) ( $current['log_retention_days'] ?? 30 );
 		if ( array_key_exists( 'log_retention_days', $incoming ) && null !== $incoming['log_retention_days'] ) {
-			$log_retention_days = (int) $incoming['log_retention_days'];
+			$val                = (int) $incoming['log_retention_days'];
+			$log_retention_days = in_array( $val, [ 7, 15, 30 ], true ) ? $val : 30;
 		}
 
 		$log_level = $current['log_level'] ?? 'activity';

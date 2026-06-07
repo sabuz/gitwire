@@ -142,16 +142,16 @@ class Logger {
 		$line  = '[' . gmdate( 'Y-m-d H:i:s' ) . '] [' . $level . '] ' . $actor . $message . PHP_EOL;
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 		file_put_contents( $this->log_file, $line, FILE_APPEND | LOCK_EX );
-		$this->maybe_trim_retention();
 	}
 
 	/**
 	 * Removes entries older than the configured retention window, at most once per day.
+	 * Called from the maintenance cron — not triggered on every write.
 	 *
 	 * @since 1.3.0
 	 * @return void
 	 */
-	private function maybe_trim_retention(): void {
+	public function trim_old_entries(): void {
 		$days = Settings::get_log_retention_days();
 		if ( 0 === $days || get_transient( 'gitwire_log_trim' ) ) {
 			return;
