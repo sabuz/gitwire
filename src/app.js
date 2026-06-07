@@ -5,10 +5,11 @@ import {
 	useState,
 	useEffect,
 	useCallback,
+	Component,
 	lazy,
 	Suspense,
 } from '@wordpress/element';
-import { Spinner } from '@wordpress/components';
+import { Button, Spinner } from '@wordpress/components';
 
 import * as api from './api';
 import { showFatalNotice } from './fatal-notice';
@@ -18,12 +19,41 @@ import {
 	clearPendingToast,
 } from './pending-toast';
 import SettingsPanel from './components/settings-panel';
+import AddRepositoryPanel from './components/add-repository-panel';
+import InstalledPanel from './components/installed-panel';
 
-const AddRepositoryPanel = lazy( () =>
-	import( './components/add-repository-panel' )
-);
-const InstalledPanel = lazy( () => import( './components/installed-panel' ) );
 const LogsPanel = lazy( () => import( './components/logs-panel' ) );
+
+class ChunkErrorBoundary extends Component {
+	constructor( props ) {
+		super( props );
+		this.state = { failed: false };
+	}
+	static getDerivedStateFromError( error ) {
+		if ( error.name === 'ChunkLoadError' ) {
+			return { failed: true };
+		}
+		return null;
+	}
+	render() {
+		if ( this.state.failed ) {
+			return (
+				<div style={ { padding: '24px', textAlign: 'center' } }>
+					<p style={ { marginBottom: 12 } }>
+						{ __( 'A resource failed to load. Please reload the page.', 'gitwire' ) }
+					</p>
+					<Button
+						variant="primary"
+						onClick={ () => window.location.reload() }
+					>
+						{ __( 'Reload', 'gitwire' ) }
+					</Button>
+				</div>
+			);
+		}
+		return this.props.children;
+	}
+}
 
 const BASE_TABS = [
 	{ name: 'repositories', label: __( 'Repositories', 'gitwire' ) },
@@ -370,37 +400,35 @@ export default function App( { initialData } ) {
 					/>
 				) }
 				{ activeTab === 'repositories' && (
-					<Suspense fallback={ panelFallback }>
-						<InstalledPanel
-							installed={ installed }
-							settings={ settings }
-							onGoToSettings={ () => handleGoToTab( 'settings' ) }
-							onOpenAddRepo={ () =>
-								handleGoToTab( 'add-repository' )
-							}
-							onRefresh={ refreshInstalled }
-						/>
-					</Suspense>
+					<InstalledPanel
+						installed={ installed }
+						settings={ settings }
+						onGoToSettings={ () => handleGoToTab( 'settings' ) }
+						onOpenAddRepo={ () =>
+							handleGoToTab( 'add-repository' )
+						}
+						onRefresh={ refreshInstalled }
+					/>
 				) }
 				{ activeTab === 'add-repository' && (
-					<Suspense fallback={ panelFallback }>
-						<AddRepositoryPanel
-							connection={ connection }
-							connections={ connections }
-							installed={ installed }
-							settings={ settings }
-							onGoToSettings={ () => handleGoToTab( 'settings' ) }
-							onPostInstall={ handlePostInstall }
-						/>
-					</Suspense>
+					<AddRepositoryPanel
+						connection={ connection }
+						connections={ connections }
+						installed={ installed }
+						settings={ settings }
+						onGoToSettings={ () => handleGoToTab( 'settings' ) }
+						onPostInstall={ handlePostInstall }
+					/>
 				) }
 				{ activeTab === 'logs' && (
-					<Suspense fallback={ panelFallback }>
-						<LogsPanel
-							settings={ settings }
-							onGoToSettings={ () => handleGoToTab( 'settings' ) }
-						/>
-					</Suspense>
+					<ChunkErrorBoundary>
+						<Suspense fallback={ panelFallback }>
+							<LogsPanel
+								settings={ settings }
+								onGoToSettings={ () => handleGoToTab( 'settings' ) }
+							/>
+						</Suspense>
+					</ChunkErrorBoundary>
 				) }
 			</div>
 		</div>
