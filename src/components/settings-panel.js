@@ -61,6 +61,9 @@ export default function SettingsPanel( {
 		settings.smart_install !== false
 	);
 	const [ savingSi, setSavingSi ] = useState( false );
+	const [ showRepoLabel, setShowRepoLabel ] = useState(
+		settings.show_repo_label !== false
+	);
 	const [ enableLogging, setEnableLogging ] = useState(
 		!! settings.enable_logging
 	);
@@ -86,6 +89,19 @@ export default function SettingsPanel( {
 			setSmartInstall( ! newVal );
 		} finally {
 			setSavingSi( false );
+		}
+	};
+
+	const handleShowRepoLabelChange = async ( newVal ) => {
+		setShowRepoLabel( newVal );
+		try {
+			await api.saveSettings( { show_repo_label: newVal } );
+			const saved = await api.getSettings();
+			onSave( saved );
+			toast.success( __( 'Settings saved.', 'gitwire' ) );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
+			setShowRepoLabel( ! newVal );
 		}
 	};
 
@@ -213,6 +229,17 @@ export default function SettingsPanel( {
 							</>
 						}
 						onChange={ handleSmartInstallChange }
+					/>
+					<Spacer marginTop={ 4 } />
+					<ToggleControl
+						__nextHasNoMarginBottom
+						checked={ showRepoLabel }
+						help={ __(
+							'Shows a [Gitwire] label next to managed plugin and theme names on the Plugins and Themes screens.',
+							'gitwire'
+						) }
+						label={ <strong>{ __( 'Repo Label', 'gitwire' ) }</strong> }
+						onChange={ handleShowRepoLabelChange }
 					/>
 				</CardBody>
 			</Card>

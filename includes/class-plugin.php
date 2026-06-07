@@ -163,6 +163,7 @@ final class Plugin {
 					'token'               => '',
 					'username'            => '',
 					'smart_install'       => true,
+					'show_repo_label'     => true,
 					'enable_logging'      => false,
 					'log_retention_days'  => 30,
 					'log_level'           => 'activity',

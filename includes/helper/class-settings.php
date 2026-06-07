@@ -37,6 +37,7 @@ class Settings {
 		$s = self::get_raw();
 		return [
 			'smart_install'       => $s['smart_install'] ?? true,
+			'show_repo_label'     => $s['show_repo_label'] ?? true,
 			'enable_logging'      => $s['enable_logging'] ?? false,
 			'log_retention_days'  => $s['log_retention_days'] ?? 30,
 			'log_level'           => $s['log_level'] ?? 'activity',
@@ -58,6 +59,11 @@ class Settings {
 			$smart_install = (bool) $incoming['smart_install'];
 		}
 
+		$show_repo_label = $current['show_repo_label'] ?? true;
+		if ( array_key_exists( 'show_repo_label', $incoming ) && null !== $incoming['show_repo_label'] ) {
+			$show_repo_label = (bool) $incoming['show_repo_label'];
+		}
+
 		$enable_logging = $current['enable_logging'] ?? false;
 		if ( array_key_exists( 'enable_logging', $incoming ) && null !== $incoming['enable_logging'] ) {
 			$enable_logging = (bool) $incoming['enable_logging'];
@@ -75,7 +81,7 @@ class Settings {
 			$log_level = in_array( $val, [ 'activity', 'error' ], true ) ? $val : 'activity';
 		}
 
-		return compact( 'smart_install', 'enable_logging', 'log_retention_days', 'log_level' );
+		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level' );
 	}
 
 	/**

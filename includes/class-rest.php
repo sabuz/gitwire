@@ -561,6 +561,9 @@ class REST {
 		if ( null !== $req->get_param( 'smart_install' ) ) {
 			$incoming['smart_install'] = $req->get_param( 'smart_install' );
 		}
+		if ( null !== $req->get_param( 'show_repo_label' ) ) {
+			$incoming['show_repo_label'] = $req->get_param( 'show_repo_label' );
+		}
 		if ( null !== $req->get_param( 'enable_logging' ) ) {
 			$incoming['enable_logging'] = $req->get_param( 'enable_logging' );
 		}

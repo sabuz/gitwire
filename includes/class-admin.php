@@ -37,9 +37,9 @@ class Admin {
 		add_filter( 'admin_body_class', [ self::class, 'body_class' ] );
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
 
-		// Native list badges.
-		add_filter( 'plugin_row_meta', [ self::class, 'plugin_row_badge' ], 10, 2 );
-		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'theme_badges' ] );
+		// Native list repo labels.
+		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
+		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'label_managed_themes' ] );
 
 		// Native screen delete guard.
 		add_filter( 'pre_delete_plugin', [ self::class, 'guard_plugin_delete' ], 10, 2 );
@@ -275,57 +275,53 @@ class Admin {
 	}
 
 	/**
-	 * Appends an "Installed with Gitwire" attribution link to plugin row meta on the Plugins screen.
+	 * Appends a [Gitwire] label to managed plugin names in the plugins list table.
 	 *
 	 * @since 3.0.0
-	 * @param string[] $meta        Existing meta links.
-	 * @param string   $plugin_file Plugin file path relative to plugins dir.
-	 * @return string[]
+	 * @param array<string, array<string, string>> $all_plugins All installed plugins keyed by plugin file.
+	 * @return array<string, array<string, string>>
 	 */
-	public static function plugin_row_badge( array $meta, string $plugin_file ): array {
-		$installed = Installer::get_installed();
-
-		foreach ( $installed as $rec ) {
-			if ( ( $rec['plugin_file'] ?? '' ) !== $plugin_file ) {
-				continue;
-			}
-
-			$meta[] = '<a href="https://gitwire.app" target="_blank" rel="noopener noreferrer">'
-				. esc_html__( 'Installed with Gitwire', 'gitwire' )
-				. '</a>';
-			break;
+	public static function label_managed_plugins( array $all_plugins ): array {
+		if ( ! ( Settings::get_raw()['show_repo_label'] ?? true ) ) {
+			return $all_plugins;
 		}
 
-		return $meta;
+		foreach ( Installer::get_installed() as $rec ) {
+			$file = $rec['plugin_file'] ?? '';
+			if ( '' === $file || ! isset( $all_plugins[ $file ] ) ) {
+				continue;
+			}
+			$all_plugins[ $file ]['Name'] .= ' [Gitwire]';
+		}
+
+		return $all_plugins;
 	}
 
 	/**
-	 * Appends Gitwire attribution to theme cards on the Themes screen.
+	 * Appends a [Gitwire] label to managed theme names in the themes browser.
 	 *
 	 * @since 3.0.0
-	 * @param array[] $prepared Prepared theme data arrays.
-	 * @return array[]
+	 * @param array<string, array<string, mixed>> $prepared Themes data prepared for JS.
+	 * @return array<string, array<string, mixed>>
 	 */
-	public static function theme_badges( array $prepared ): array {
-		$installed = Installer::get_installed();
-		$by_slug   = [];
-		foreach ( $installed as $rec ) {
-			if ( 'theme' === ( $rec['type'] ?? '' ) ) {
-				$by_slug[ $rec['slug'] ?? '' ] = $rec;
+	public static function label_managed_themes( array $prepared ): array {
+		if ( ! ( Settings::get_raw()['show_repo_label'] ?? true ) ) {
+			return $prepared;
+		}
+
+		$slugs = [];
+		foreach ( Installer::get_installed() as $rec ) {
+			if ( 'theme' === ( $rec['type'] ?? '' ) && '' !== ( $rec['slug'] ?? '' ) ) {
+				$slugs[ $rec['slug'] ] = true;
 			}
 		}
 
-		foreach ( $prepared as &$theme ) {
-			$slug = $theme['id'] ?? '';
-			if ( ! isset( $by_slug[ $slug ] ) ) {
-				continue;
+		foreach ( $prepared as $slug => &$data ) {
+			if ( isset( $slugs[ $slug ] ) ) {
+				$data['name'] .= ' [Gitwire]';
 			}
-			$rec                       = $by_slug[ $slug ];
-			$theme['gitwire']          = true;
-			$theme['gitwire_repo']     = $rec['full_name'] ?? '';
-			$theme['gitwire_provider'] = $rec['provider'] ?? 'github';
 		}
-		unset( $theme );
+		unset( $data );
 
 		return $prepared;
 	}
