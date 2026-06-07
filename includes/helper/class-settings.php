@@ -36,8 +36,10 @@ class Settings {
 	public static function get_public(): array {
 		$s = self::get_raw();
 		return [
-			'smart_install'  => $s['smart_install'] ?? true,
-			'enable_logging' => $s['enable_logging'] ?? false,
+			'smart_install'       => $s['smart_install'] ?? true,
+			'enable_logging'      => $s['enable_logging'] ?? false,
+			'log_retention_days'  => $s['log_retention_days'] ?? 30,
+			'log_level'           => $s['log_level'] ?? 'activity',
 		];
 	}
 
@@ -61,7 +63,18 @@ class Settings {
 			$enable_logging = (bool) $incoming['enable_logging'];
 		}
 
-		return compact( 'smart_install', 'enable_logging' );
+		$log_retention_days = (int) ( $current['log_retention_days'] ?? 30 );
+		if ( array_key_exists( 'log_retention_days', $incoming ) && null !== $incoming['log_retention_days'] ) {
+			$log_retention_days = (int) $incoming['log_retention_days'];
+		}
+
+		$log_level = $current['log_level'] ?? 'activity';
+		if ( array_key_exists( 'log_level', $incoming ) && null !== $incoming['log_level'] ) {
+			$val       = (string) $incoming['log_level'];
+			$log_level = in_array( $val, [ 'activity', 'error' ], true ) ? $val : 'activity';
+		}
+
+		return compact( 'smart_install', 'enable_logging', 'log_retention_days', 'log_level' );
 	}
 
 	/**
@@ -73,6 +86,29 @@ class Settings {
 	public static function is_logging_enabled(): bool {
 		$s = self::get_raw();
 		return (bool) ( $s['enable_logging'] ?? false );
+	}
+
+	/**
+	 * Returns the number of days to retain log entries (0 = unlimited).
+	 *
+	 * @since 1.3.0
+	 * @return int
+	 */
+	public static function get_log_retention_days(): int {
+		$s = self::get_raw();
+		return (int) ( $s['log_retention_days'] ?? 30 );
+	}
+
+	/**
+	 * Returns the minimum log level to record ('activity' or 'error').
+	 *
+	 * @since 1.3.0
+	 * @return string
+	 */
+	public static function get_log_level(): string {
+		$s   = self::get_raw();
+		$val = $s['log_level'] ?? 'activity';
+		return in_array( $val, [ 'activity', 'error' ], true ) ? $val : 'activity';
 	}
 
 	/**

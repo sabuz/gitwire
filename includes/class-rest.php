@@ -385,6 +385,23 @@ class REST {
 					'methods'             => 'GET',
 					'callback'            => [ self::class, 'get_logs' ],
 					'permission_callback' => [ self::class, 'can_manage' ],
+					'args'                => [
+						'from'  => [
+							'type'              => 'string',
+							'default'           => '',
+							'sanitize_callback' => 'sanitize_text_field',
+						],
+						'to'    => [
+							'type'              => 'string',
+							'default'           => '',
+							'sanitize_callback' => 'sanitize_text_field',
+						],
+						'level' => [
+							'type'    => 'string',
+							'default' => '',
+							'enum'    => [ '', 'activity', 'error' ],
+						],
+					],
 				],
 				[
 					'methods'             => 'DELETE',
@@ -521,6 +538,12 @@ class REST {
 		}
 		if ( null !== $req->get_param( 'enable_logging' ) ) {
 			$incoming['enable_logging'] = $req->get_param( 'enable_logging' );
+		}
+		if ( null !== $req->get_param( 'log_retention_days' ) ) {
+			$incoming['log_retention_days'] = $req->get_param( 'log_retention_days' );
+		}
+		if ( null !== $req->get_param( 'log_level' ) ) {
+			$incoming['log_level'] = $req->get_param( 'log_level' );
 		}
 
 		$was_logging = Settings::is_logging_enabled();
@@ -1155,7 +1178,7 @@ class REST {
 		$result    = Installer::$method( $owner, $repo, $branch, $slug, $provider, $replace, $connection_id );
 
 		if ( is_wp_error( $result ) ) {
-			Logger::log( sprintf( '[%s] %s failed — %s/%s: %s', $provider, $is_update ? 'Update' : 'Install', $owner, $repo, $result->get_error_message() ) );
+			Logger::log( sprintf( '[%s] %s failed — %s/%s: %s', $provider, $is_update ? 'Update' : 'Install', $owner, $repo, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 
@@ -1464,7 +1487,7 @@ class REST {
 			$result = self::detect_type_for_repo( $provider, $owner, $repo, $branch );
 
 			if ( is_wp_error( $result ) ) {
-				Logger::log( sprintf( 'Detection failed — %s: %s', $key, $result->get_error_message() ) );
+				Logger::log( sprintf( 'Detection failed — %s: %s', $key, $result->get_error_message() ), 'error' );
 				$result = [
 					'type'       => 'unknown',
 					'subtype'    => null,
@@ -1502,7 +1525,7 @@ class REST {
 		} catch ( \Throwable $e ) {
 			// guard was armed before activation — clean up before returning.
 			Error_Handler::abort_pending_guard();
-			Logger::log( sprintf( '[%s] Activation failed — %s/%s: fatal error', $provider, $owner, $repo ) );
+			Logger::log( sprintf( '[%s] Activation failed — %s/%s: fatal error', $provider, $owner, $repo ), 'error' );
 			return new \WP_Error(
 				'gitwire_activation_fatal',
 				__( 'Plugin could not be activated because it triggered a fatal error.', 'gitwire' ),
@@ -1511,7 +1534,7 @@ class REST {
 		}
 
 		if ( is_wp_error( $result ) ) {
-			Logger::log( sprintf( '[%s] Activation failed — %s/%s: %s', $provider, $owner, $repo, $result->get_error_message() ) );
+			Logger::log( sprintf( '[%s] Activation failed — %s/%s: %s', $provider, $owner, $repo, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 
@@ -1974,9 +1997,13 @@ class REST {
 	 * @since 1.3.0
 	 * @return array<string, mixed>
 	 */
-	public static function get_logs(): array {
+	public static function get_logs( \WP_REST_Request $req ): array {
+		$from  = sanitize_text_field( $req->get_param( 'from' ) ?? '' );
+		$to    = sanitize_text_field( $req->get_param( 'to' ) ?? '' );
+		$level = sanitize_key( $req->get_param( 'level' ) ?? '' );
+
 		return [
-			'logs'           => Logger::get_instance()->get_contents(),
+			'entries'        => Logger::get_instance()->get_entries( $from, $to, $level ),
 			'enable_logging' => Settings::is_logging_enabled(),
 		];
 	}

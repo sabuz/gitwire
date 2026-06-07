@@ -127,7 +127,14 @@ export const resolveRepo = ( url ) =>
 		data: { url },
 	} );
 
-export const getLogs = () => apiFetch( { path: `${ BASE }/logs` } );
+export const getLogs = ( { from = '', to = '', level = '' } = {} ) => {
+	const params = new URLSearchParams();
+	if ( from ) params.set( 'from', from );
+	if ( to ) params.set( 'to', to );
+	if ( level ) params.set( 'level', level );
+	const query = params.toString();
+	return apiFetch( { path: `${ BASE }/logs${ query ? '?' + query : '' }` } );
+};
 
 export const clearLogs = () =>
 	apiFetch( { path: `${ BASE }/logs`, method: 'DELETE' } );

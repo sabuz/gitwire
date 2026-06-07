@@ -13,6 +13,7 @@ import {
 	FlexBlock,
 	FlexItem,
 	Popover,
+	SelectControl,
 	Spinner,
 	TextControl,
 	ToggleControl,
@@ -64,6 +65,12 @@ export default function SettingsPanel( {
 		!! settings.enable_logging
 	);
 	const [ savingLog, setSavingLog ] = useState( false );
+	const [ logRetentionDays, setLogRetentionDays ] = useState(
+		String( settings.log_retention_days ?? 30 )
+	);
+	const [ logLevel, setLogLevel ] = useState(
+		settings.log_level ?? 'activity'
+	);
 
 	const handleSmartInstallChange = async ( newVal ) => {
 		setSmartInstall( newVal );
@@ -92,6 +99,28 @@ export default function SettingsPanel( {
 			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
 			setEnableLogging( ! newVal );
 			setSavingLog( false );
+		}
+	};
+
+	const handleLogRetentionChange = async ( newVal ) => {
+		setLogRetentionDays( newVal );
+		try {
+			await api.saveSettings( { log_retention_days: parseInt( newVal, 10 ) } );
+			const saved = await api.getSettings();
+			onSave( saved );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
+		}
+	};
+
+	const handleLogLevelChange = async ( newVal ) => {
+		setLogLevel( newVal );
+		try {
+			await api.saveSettings( { log_level: newVal } );
+			const saved = await api.getSettings();
+			onSave( saved );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Save failed.', 'gitwire' ) );
 		}
 	};
 
@@ -189,6 +218,64 @@ export default function SettingsPanel( {
 						}
 						onChange={ handleEnableLoggingChange }
 					/>
+					{ enableLogging && (
+						<>
+							<Spacer marginTop={ 4 } />
+							<SelectControl
+								__nextHasNoMarginBottom
+								label={ __( 'Log retention', 'gitwire' ) }
+								help={ __(
+									'Entries older than this are automatically removed.',
+									'gitwire'
+								) }
+								options={ [
+									{
+										label: __( 'Unlimited', 'gitwire' ),
+										value: '0',
+									},
+									{
+										label: __( '7 days', 'gitwire' ),
+										value: '7',
+									},
+									{
+										label: __( '30 days', 'gitwire' ),
+										value: '30',
+									},
+									{
+										label: __( '60 days', 'gitwire' ),
+										value: '60',
+									},
+									{
+										label: __( '90 days', 'gitwire' ),
+										value: '90',
+									},
+								] }
+								value={ logRetentionDays }
+								onChange={ handleLogRetentionChange }
+							/>
+							<Spacer marginTop={ 4 } />
+							<SelectControl
+								__nextHasNoMarginBottom
+								label={ __( 'Log level', 'gitwire' ) }
+								help={ __(
+									'Errors only records failed operations. All activity includes installs, activations, and connections.',
+									'gitwire'
+								) }
+								options={ [
+									{
+										label: __( 'All activity', 'gitwire' ),
+										value: 'activity',
+									},
+									{
+										label: __( 'Errors only', 'gitwire' ),
+										value: 'error',
+									},
+								] }
+								value={ logLevel }
+								onChange={ handleLogLevelChange }
+							/>
+						</>
+					) }
 				</CardBody>
 			</Card>
 		</div>

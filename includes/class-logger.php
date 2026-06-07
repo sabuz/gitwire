@@ -55,36 +55,63 @@ class Logger {
 	}
 
 	/**
-	 * Appends a timestamped entry when logging is enabled. No-op otherwise.
+	 * Appends a timestamped entry when logging is enabled and the level meets the minimum.
 	 *
 	 * @since 1.3.0
 	 * @param string $message Human-readable description of the activity.
+	 * @param string $level   'activity' or 'error'.
 	 * @return void
 	 */
-	public static function log( string $message ): void {
+	public static function log( string $message, string $level = 'activity' ): void {
 		if ( ! Settings::is_logging_enabled() ) {
 			return;
 		}
-		self::get_instance()->write( $message );
+		// 'error' minimum level silences non-error entries.
+		if ( 'error' === Settings::get_log_level() && 'error' !== $level ) {
+			return;
+		}
+		self::get_instance()->write( $message, $level );
 	}
 
 	/**
-	 * Returns log file contents with newest entries first.
+	 * Returns log entries as structured arrays, newest first, with optional filters.
 	 *
 	 * @since 1.3.0
-	 * @return string
+	 * @param string $from  ISO date string 'YYYY-MM-DD' or empty for no lower bound.
+	 * @param string $to    ISO date string 'YYYY-MM-DD' or empty for no upper bound.
+	 * @param string $level Level to keep ('activity', 'error'), or empty for all.
+	 * @return array<int, array{timestamp: string, level: string, message: string}>
 	 */
-	public function get_contents(): string {
+	public function get_entries( string $from = '', string $to = '', string $level = '' ): array {
 		if ( ! file_exists( $this->log_file ) ) {
-			return '';
+			return [];
 		}
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$contents = file_get_contents( $this->log_file );
-		if ( ! is_string( $contents ) || '' === $contents ) {
-			return '';
+		if ( ! is_string( $contents ) || '' === trim( $contents ) ) {
+			return [];
 		}
-		$lines = array_filter( explode( PHP_EOL, trim( $contents ) ) );
-		return implode( PHP_EOL, array_reverse( array_values( $lines ) ) );
+
+		$entries = [];
+		foreach ( array_filter( explode( PHP_EOL, trim( $contents ) ) ) as $line ) {
+			$entry = self::parse_line( $line );
+			if ( null === $entry ) {
+				continue;
+			}
+			$date = substr( $entry['timestamp'], 0, 10 );
+			if ( '' !== $from && $date < $from ) {
+				continue;
+			}
+			if ( '' !== $to && $date > $to ) {
+				continue;
+			}
+			if ( '' !== $level && $entry['level'] !== $level ) {
+				continue;
+			}
+			$entries[] = $entry;
+		}
+
+		return array_reverse( $entries );
 	}
 
 	/**
@@ -102,16 +129,66 @@ class Logger {
 	}
 
 	/**
-	 * Appends a formatted line to the log file.
+	 * Appends a formatted line to the log file, then trims old entries if retention is set.
 	 *
 	 * @since 1.3.0
 	 * @param string $message Log message.
+	 * @param string $level   Log level.
 	 * @return void
 	 */
-	private function write( string $message ): void {
-		$line = '[' . gmdate( 'Y-m-d H:i:s' ) . '] ' . $message . PHP_EOL;
+	private function write( string $message, string $level ): void {
+		$line = '[' . gmdate( 'Y-m-d H:i:s' ) . '] [' . $level . '] ' . $message . PHP_EOL;
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 		file_put_contents( $this->log_file, $line, FILE_APPEND | LOCK_EX );
+		$this->maybe_trim_retention();
+	}
+
+	/**
+	 * Removes entries older than the configured retention window, at most once per day.
+	 *
+	 * @since 1.3.0
+	 * @return void
+	 */
+	private function maybe_trim_retention(): void {
+		$days = Settings::get_log_retention_days();
+		if ( 0 === $days || get_transient( 'gitwire_log_trim' ) ) {
+			return;
+		}
+		set_transient( 'gitwire_log_trim', 1, DAY_IN_SECONDS );
+
+		if ( ! file_exists( $this->log_file ) ) {
+			return;
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$contents = file_get_contents( $this->log_file );
+		if ( ! is_string( $contents ) ) {
+			return;
+		}
+
+		$cutoff = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
+		$kept   = [];
+		foreach ( array_filter( explode( PHP_EOL, trim( $contents ) ) ) as $line ) {
+			$entry = self::parse_line( $line );
+			if ( null === $entry || substr( $entry['timestamp'], 0, 10 ) >= $cutoff ) {
+				$kept[] = $line;
+			}
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		file_put_contents( $this->log_file, $kept ? implode( PHP_EOL, $kept ) . PHP_EOL : '', LOCK_EX );
+	}
+
+	/**
+	 * Parses a single log line into a structured entry, or null if the format is unrecognized.
+	 *
+	 * @since 1.3.0
+	 * @param string $line Raw log line.
+	 * @return array{timestamp: string, level: string, message: string}|null
+	 */
+	private static function parse_line( string $line ): ?array {
+		if ( ! preg_match( '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(activity|error)\] (.+)$/', $line, $m ) ) {
+			return null;
+		}
+		return [ 'timestamp' => $m[1], 'level' => $m[2], 'message' => $m[3] ];
 	}
 
 	/**
