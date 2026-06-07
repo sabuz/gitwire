@@ -77,10 +77,14 @@ export default function SettingsPanel( {
 	const [ clearingLogs, setClearingLogs ] = useState( false );
 
 	const saveSetting = ( payload, rollback ) => {
-		const p = api.saveSettings( payload )
+		const p = api
+			.saveSettings( payload )
 			.then( () => api.getSettings() )
 			.then( ( saved ) => onSave( saved ) )
-			.catch( ( e ) => { rollback?.(); throw e; } );
+			.catch( ( e ) => {
+				rollback?.();
+				throw e;
+			} );
 
 		toast.promise( p, {
 			id: 'settings-save',
@@ -95,23 +99,32 @@ export default function SettingsPanel( {
 	const handleSmartInstallChange = ( newVal ) => {
 		setSmartInstall( newVal );
 		setSavingSi( true );
-		saveSetting( { smart_install: newVal }, () => setSmartInstall( ! newVal ) )
+		saveSetting( { smart_install: newVal }, () =>
+			setSmartInstall( ! newVal )
+		)
 			.finally( () => setSavingSi( false ) )
 			.catch( () => {} );
 	};
 
 	const handleShowRepoLabelChange = ( newVal ) => {
 		setShowRepoLabel( newVal );
-		saveSetting( { show_repo_label: newVal }, () => setShowRepoLabel( ! newVal ) ).catch( () => {} );
+		saveSetting( { show_repo_label: newVal }, () =>
+			setShowRepoLabel( ! newVal )
+		).catch( () => {} );
 	};
 
 	const handleEnableLoggingChange = ( newVal ) => {
 		setEnableLogging( newVal );
 		setSavingLog( true );
 		// Reload on success so the WP admin sidebar reflects the updated Logs menu.
-		const p = api.saveSettings( { enable_logging: newVal } )
+		const p = api
+			.saveSettings( { enable_logging: newVal } )
 			.then( () => window.location.reload() )
-			.catch( ( e ) => { setEnableLogging( ! newVal ); setSavingLog( false ); throw e; } );
+			.catch( ( e ) => {
+				setEnableLogging( ! newVal );
+				setSavingLog( false );
+				throw e;
+			} );
 		toast.promise( p, {
 			id: 'settings-save',
 			loading: __( 'Saving…', 'gitwire' ),
@@ -122,16 +135,22 @@ export default function SettingsPanel( {
 
 	const handleLogRetentionChange = ( newVal ) => {
 		setLogRetentionDays( newVal );
-		saveSetting( { log_retention_days: parseInt( newVal, 10 ) } ).catch( () => {} );
+		saveSetting( { log_retention_days: parseInt( newVal, 10 ) } ).catch(
+			() => {}
+		);
 	};
 
 	const handleClearLogs = () => {
 		setClearingLogs( true );
-		toast.promise( api.clearLogs().finally( () => setClearingLogs( false ) ), {
-			loading: __( 'Clearing logs…', 'gitwire' ),
-			success: __( 'Logs cleared.', 'gitwire' ),
-			error: ( e ) => e?.message || __( 'Could not clear logs.', 'gitwire' ),
-		} );
+		toast.promise(
+			api.clearLogs().finally( () => setClearingLogs( false ) ),
+			{
+				loading: __( 'Clearing logs…', 'gitwire' ),
+				success: __( 'Logs cleared.', 'gitwire' ),
+				error: ( e ) =>
+					e?.message || __( 'Could not clear logs.', 'gitwire' ),
+			}
+		);
 	};
 
 	const handleLogLevelChange = ( newVal ) => {
@@ -225,7 +244,9 @@ export default function SettingsPanel( {
 							'Shows a [Gitwire] label next to managed plugin and theme names on the Plugins and Themes screens.',
 							'gitwire'
 						) }
-						label={ <strong>{ __( 'Repo Label', 'gitwire' ) }</strong> }
+						label={
+							<strong>{ __( 'Repo Label', 'gitwire' ) }</strong>
+						}
 						onChange={ handleShowRepoLabelChange }
 					/>
 				</CardBody>
@@ -304,7 +325,10 @@ export default function SettingsPanel( {
 										>
 											{ __( 'Click here', 'gitwire' ) }
 										</Button>{ ' ' }
-										{ __( 'to clear all logs now.', 'gitwire' ) }
+										{ __(
+											'to clear all logs now.',
+											'gitwire'
+										) }
 									</>
 								}
 								options={ [

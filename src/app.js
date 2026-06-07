@@ -40,7 +40,10 @@ class ChunkErrorBoundary extends Component {
 			return (
 				<div style={ { padding: '24px', textAlign: 'center' } }>
 					<p style={ { marginBottom: 12 } }>
-						{ __( 'A resource failed to load. Please reload the page.', 'gitwire' ) }
+						{ __(
+							'A resource failed to load. Please reload the page.',
+							'gitwire'
+						) }
 					</p>
 					<Button
 						variant="primary"
@@ -90,7 +93,9 @@ function tabUrl( tabName ) {
 }
 
 function updateSidebarActive( tabName ) {
-	const submenu = document.querySelector( '#toplevel_page_gitwire .wp-submenu' );
+	const submenu = document.querySelector(
+		'#toplevel_page_gitwire .wp-submenu'
+	);
 	if ( ! submenu ) {
 		return;
 	}
@@ -425,7 +430,9 @@ export default function App( { initialData } ) {
 						<Suspense fallback={ panelFallback }>
 							<LogsPanel
 								settings={ settings }
-								onGoToSettings={ () => handleGoToTab( 'settings' ) }
+								onGoToSettings={ () =>
+									handleGoToTab( 'settings' )
+								}
 							/>
 						</Suspense>
 					</ChunkErrorBoundary>

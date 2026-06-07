@@ -127,11 +127,22 @@ export const resolveRepo = ( url ) =>
 		data: { url },
 	} );
 
-export const getLogs = ( { from = '', to = '', level = '', actors = [] } = {} ) => {
+export const getLogs = ( {
+	from = '',
+	to = '',
+	level = '',
+	actors = [],
+} = {} ) => {
 	const params = new URLSearchParams();
-	if ( from ) params.set( 'from', from );
-	if ( to ) params.set( 'to', to );
-	if ( level ) params.set( 'level', level );
+	if ( from ) {
+		params.set( 'from', from );
+	}
+	if ( to ) {
+		params.set( 'to', to );
+	}
+	if ( level ) {
+		params.set( 'level', level );
+	}
 	actors.forEach( ( a ) => params.append( 'actors[]', a ) );
 	const query = params.toString();
 	return apiFetch( { path: `${ BASE }/logs${ query ? '?' + query : '' }` } );
@@ -142,5 +153,7 @@ export const clearLogs = () =>
 
 export const getLogActors = ( search = '' ) =>
 	apiFetch( {
-		path: `${ BASE }/log-actors${ search ? '?search=' + encodeURIComponent( search ) : '' }`,
+		path: `${ BASE }/log-actors${
+			search ? '?search=' + encodeURIComponent( search ) : ''
+		}`,
 	} );
