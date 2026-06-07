@@ -242,6 +242,28 @@ export default function SettingsPanel( {
 							<SelectControl
 								__next40pxDefaultSize
 								__nextHasNoMarginBottom
+								label={ __( 'Log level', 'gitwire' ) }
+								help={ __(
+									'Errors only records failed operations. All activity includes installs, activations, and connections.',
+									'gitwire'
+								) }
+								options={ [
+									{
+										label: __( 'All activity', 'gitwire' ),
+										value: 'activity',
+									},
+									{
+										label: __( 'Errors only', 'gitwire' ),
+										value: 'error',
+									},
+								] }
+								value={ logLevel }
+								onChange={ handleLogLevelChange }
+							/>
+							<Spacer marginTop={ 4 } />
+							<SelectControl
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
 								label={ __( 'Log retention', 'gitwire' ) }
 								help={ __(
 									'Entries older than this are automatically removed.',
@@ -263,28 +285,6 @@ export default function SettingsPanel( {
 								] }
 								value={ logRetentionDays }
 								onChange={ handleLogRetentionChange }
-							/>
-							<Spacer marginTop={ 4 } />
-							<SelectControl
-								__next40pxDefaultSize
-								__nextHasNoMarginBottom
-								label={ __( 'Log level', 'gitwire' ) }
-								help={ __(
-									'Errors only records failed operations. All activity includes installs, activations, and connections.',
-									'gitwire'
-								) }
-								options={ [
-									{
-										label: __( 'All activity', 'gitwire' ),
-										value: 'activity',
-									},
-									{
-										label: __( 'Errors only', 'gitwire' ),
-										value: 'error',
-									},
-								] }
-								value={ logLevel }
-								onChange={ handleLogLevelChange }
 							/>
 						</div>
 					) }

@@ -221,24 +221,24 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 											minWidth: 348,
 										} }
 									>
-										<ToggleGroupControl
+										<FormTokenField
 											__nextHasNoMarginBottom
-											isBlock
+											__next40pxDefaultSize
 											label={ __(
-												'Date range',
+												'User',
 												'gitwire'
 											) }
-											value={ dateRange }
-											onChange={ setDateRange }
-										>
-											{ DATE_OPTIONS.map( ( opt ) => (
-												<ToggleGroupControlOption
-													key={ opt.value }
-													label={ opt.label }
-													value={ opt.value }
-												/>
-											) ) }
-										</ToggleGroupControl>
+											placeholder={ __(
+												'All users',
+												'gitwire'
+											) }
+											suggestions={ actorSuggestions }
+											value={ userFilter }
+											onChange={ setUserFilter }
+											onInputChange={
+												handleActorInputChange
+											}
+										/>
 										<Spacer marginTop={ 4 } />
 										<ToggleGroupControl
 											__nextHasNoMarginBottom
@@ -259,24 +259,24 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 											) ) }
 										</ToggleGroupControl>
 										<Spacer marginTop={ 4 } />
-										<FormTokenField
+										<ToggleGroupControl
 											__nextHasNoMarginBottom
-											__next40pxDefaultSize
+											isBlock
 											label={ __(
-												'User',
+												'Date range',
 												'gitwire'
 											) }
-											placeholder={ __(
-												'All users',
-												'gitwire'
-											) }
-											suggestions={ actorSuggestions }
-											value={ userFilter }
-											onChange={ setUserFilter }
-											onInputChange={
-												handleActorInputChange
-											}
-										/>
+											value={ dateRange }
+											onChange={ setDateRange }
+										>
+											{ DATE_OPTIONS.map( ( opt ) => (
+												<ToggleGroupControlOption
+													key={ opt.value }
+													label={ opt.label }
+													value={ opt.value }
+												/>
+											) ) }
+										</ToggleGroupControl>
 									</div>
 								</Popover>
 							) }
