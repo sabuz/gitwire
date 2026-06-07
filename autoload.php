@@ -18,6 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 $class_map = [
 	'Gitwire\Admin'                  => 'includes/class-admin.php',
+	'Gitwire\Connections'            => 'includes/class-connections.php',
 	'Gitwire\API'                    => 'includes/class-api.php',
 	'Gitwire\Bitbucket_API'          => 'includes/class-bitbucket-api.php',
 	'Gitwire\Constants'              => 'includes/class-constants.php',
@@ -31,6 +32,7 @@ $class_map = [
 	'Gitwire\Repo_Cache'             => 'includes/class-repo-cache.php',
 	'Gitwire\Repo_Detector'          => 'includes/class-repo-detector.php',
 	'Gitwire\REST'                   => 'includes/class-rest.php',
+	'Gitwire\Logger'                 => 'includes/class-logger.php',
 	'Gitwire\Settings'               => 'includes/helper/class-settings.php',
 ];
 

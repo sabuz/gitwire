@@ -6,7 +6,8 @@ body {
 	--gitwire-color-accent-darker-20: var(--wp-admin-theme-color-darker-20, #132ea8);
 }
 
-// DataViews table overrides
+// DataViews overrides ───────────────
+
 .dataviews {
 
 	&-wrapper {
@@ -21,11 +22,8 @@ body {
 		padding-left: 0;
 	}
 
-	&__search {
-
-		.components-input-control__input {
-			height: 36px !important;
-		}
+	&__search .components-input-control__input {
+		height: 36px !important;
 	}
 
 	&-filters__container {
@@ -36,6 +34,8 @@ body {
 		border: 1px solid rgba(0, 0, 0, 0.1);
 	}
 }
+
+// Admin page ──────────────────
 
 body.gitwire-admin-page {
 	background: #fff;
@@ -49,12 +49,14 @@ body.gitwire-admin-page {
 	}
 }
 
+// Page layout ──────────────────
+
 .gitwire-page {
 
 	&-header {
 		position: sticky;
 		top: var(--wp-admin--admin-bar--height, 32px);
-		z-index: 9;
+		z-index: 9999999;
 		padding: 16px 32px 0;
 		background-color: #fff;
 		box-shadow: inset 0 -1px 0 0 #ddd;
@@ -87,7 +89,14 @@ body.gitwire-admin-page {
 	&-content {
 		padding: 48px 32px;
 	}
+
+	&-loading {
+		padding: 48px;
+		text-align: center;
+	}
 }
+
+// Navigation ──────────────────
 
 .gitwire-nav-tab {
 	box-sizing: border-box;
@@ -144,7 +153,8 @@ body.gitwire-admin-page {
 	color: #fff;
 }
 
-// Settings layout
+// Settings ───────────────────
+
 .gitwire-settings-row {
 	align-items: flex-start;
 }
@@ -168,20 +178,7 @@ body.gitwire-admin-page {
 	background: #f6f7f7;
 }
 
-.gitwire-badge-recommended {
-	display: inline-block;
-	margin-left: 6px;
-	padding: 2px 6px;
-	border-radius: 3px;
-	background: #d1e4dd;
-	font-size: 10px;
-	font-weight: 600;
-	letter-spacing: 0.5px;
-	color: #14532d;
-	user-select: none;
-	text-transform: uppercase;
-	vertical-align: middle;
-}
+// Badges ────────────────────
 
 .gitwire-badge {
 	display: inline-flex;
@@ -244,10 +241,59 @@ body.gitwire-admin-page {
 		color: #0f766e;
 	}
 
+	&--error {
+		background: #fdecea;
+		color: #c62828;
+	}
+
+	&.is-update {
+		font-size: 11px;
+	}
+
 	.dashicons {
 		width: 14px;
 		height: 14px;
 		font-size: 14px;
+	}
+}
+
+.gitwire-badge-recommended {
+	display: inline-block;
+	margin-left: 6px;
+	padding: 2px 6px;
+	border-radius: 3px;
+	background: #d1e4dd;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.5px;
+	color: #14532d;
+	user-select: none;
+	text-transform: uppercase;
+	vertical-align: middle;
+}
+
+// Connection ──────────────────
+
+.gitwire-connection-summary-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	width: calc(100% + 16px);
+	margin: 0 -8px;
+	padding: 6px 8px;
+	border: none;
+	border-radius: 4px;
+	background: none;
+	text-align: left;
+	cursor: pointer;
+
+	&:hover {
+		background: #f0f0f0;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--wp-admin-theme-color, #3858e9);
+		outline-offset: 1px;
 	}
 }
 
@@ -285,10 +331,133 @@ body.gitwire-admin-page {
 	}
 }
 
-// Browse panel
+// Browse panel ──────────────────
+
 .gitwire-browse {
 	min-height: 200px;
+
+	&-no-connection {
+		padding: 72px 24px;
+		text-align: center;
+
+		img {
+			display: block;
+			width: 64px;
+			height: 64px;
+			margin: 0 auto 20px;
+			opacity: 0.2;
+		}
+
+		h2 {
+			margin: 0 0 8px;
+			font-size: 16px;
+			font-weight: 600;
+			color: #1d2327;
+		}
+
+		p {
+			max-width: 420px;
+			margin: 0 auto 20px;
+			font-size: 13px;
+			line-height: 1.6;
+			color: #8c959f;
+		}
+	}
 }
+
+.gitwire-toolbar-divider {
+	width: 1px;
+	height: 24px;
+	margin: 0 4px;
+	background: #dcdcde;
+}
+
+// Filter ────────────────────
+
+.gitwire-filter {
+
+	&-btn {
+
+		&.is-active {
+			border-color: transparent;
+			background: color-mix(in srgb, var(--wp-admin-theme-color, #3858e9) 10%, transparent);
+			color: var(--wp-admin-theme-color, #3858e9);
+
+			&:hover:not(:disabled) {
+				border-color: transparent;
+				background: color-mix(in srgb, var(--wp-admin-theme-color, #3858e9) 18%, transparent);
+			}
+		}
+	}
+
+	&-dot {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--wp-admin-theme-color, #3858e9);
+		pointer-events: none;
+	}
+
+	&-dropdown .components-popover__content {
+		padding: 0;
+	}
+
+	&-popover {
+		min-width: 200px;
+		padding: 0;
+
+		&__header {
+			padding: 4px 8px;
+
+			.components-button.has-icon.has-text {
+				gap: 6px;
+				font-size: 12px;
+			}
+		}
+
+		&__list {
+			margin: 0;
+			padding: 4px;
+			border-top: 1px solid #dcdcde;
+			list-style: none;
+
+			li {
+				margin-bottom: 0;
+			}
+		}
+	}
+
+	&-option {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		width: 100%;
+		padding: 8px;
+		border-radius: 4px;
+		cursor: pointer;
+
+		&:hover {
+			background: color-mix(in srgb, var(--wp-admin-theme-color, #3858e9) 8%, transparent);
+		}
+
+		input[type="checkbox"] {
+			flex-shrink: 0;
+			margin: 0;
+			border-radius: 2px;
+			box-shadow: none;
+			cursor: pointer;
+		}
+
+		&__label {
+			font-size: 12px;
+		}
+	}
+}
+
+// Repo cards ──────────────────
 
 .gitwire-repo {
 
@@ -334,10 +503,9 @@ body.gitwire-admin-page {
 			color: var(--gitwire-color-accent);
 		}
 	}
-
 }
 
-// Detecting spinner (browse cards — badges replaced with @wordpress/ui Badge)
+// Detecting spinner
 .gitwire-type-detecting {
 	display: inline-flex;
 	gap: 4px;
@@ -351,9 +519,9 @@ body.gitwire-admin-page {
 	}
 }
 
-// Installed panel
-.gitwire-installed {
+// Installed panel ─────────────────
 
+.gitwire-installed {
 
 	&-list {
 		display: flex;
@@ -391,17 +559,48 @@ body.gitwire-admin-page {
 			margin: 0;
 		}
 	}
-}
 
-// Installed panel — align cells to middle for compact rows
-.gitwire-installed-panel .dataviews-view-table {
+	&-source,
+	&-date {
+		font-size: 12px;
+		color: #57606a;
+	}
 
-	tbody td {
+	&-empty {
+		padding: 72px 24px;
+		text-align: center;
+
+		img {
+			display: block;
+			width: 64px;
+			height: 64px;
+			margin: 0 auto 20px;
+			opacity: 0.2;
+		}
+
+		h2 {
+			margin: 0 0 8px;
+			font-size: 16px;
+			font-weight: 600;
+			color: #1d2327;
+		}
+
+		&__hint {
+			max-width: 420px;
+			margin: 0 auto 20px;
+			font-size: 13px;
+			line-height: 1.6;
+			color: #8c959f;
+		}
+	}
+
+	&-panel .dataviews-view-table tbody td {
 		vertical-align: middle;
 	}
 }
 
-// Spinning icon button (e.g. Pull Latest while in progress)
+// Animations ──────────────────
+
 @keyframes gitwire-spin {
 
 	to {
@@ -409,12 +608,16 @@ body.gitwire-admin-page {
 	}
 }
 
-.gitwire-spin .dashicon,
-.gitwire-spin svg {
-	animation: gitwire-spin 0.8s linear infinite;
+.gitwire-spin {
+
+	.dashicon,
+	svg {
+		animation: gitwire-spin 0.8s linear infinite;
+	}
 }
 
-// Branch button — truncate long branch names with ellipsis
+// Branch ────────────────────
+
 .gitwire-branch-btn {
 	max-width: 140px;
 
@@ -426,7 +629,8 @@ body.gitwire-admin-page {
 	}
 }
 
-// Detection badge (inside modal)
+// Detection badge ─────────────────
+
 .gitwire-detect {
 
 	&-row {
@@ -479,6 +683,8 @@ body.gitwire-admin-page {
 	}
 }
 
+// Modal ────────────────────
+
 .components-modal__header .components-modal__header-heading {
 	font-size: 16px;
 }
@@ -498,78 +704,102 @@ body.gitwire-admin-page {
 	}
 }
 
-.gitwire-page-loading {
-	padding: 48px;
-	text-align: center;
-}
+// Commit history ─────────────────
 
-.gitwire-installed-empty {
-	padding: 72px 24px;
-	text-align: center;
+.gitwire-commit {
 
-	img {
-		display: block;
-		width: 64px;
-		height: 64px;
-		margin: 0 auto 20px;
-		opacity: 0.2;
+	&-row {
+		display: flex;
+		gap: 12px;
+		padding: 10px 0;
+		border-bottom: 1px solid #f0f0f0;
 	}
 
-	h2 {
-		margin: 0 0 16px;
-		font-size: 16px;
-		font-weight: 600;
+	&-sha {
+		flex-shrink: 0;
+		align-self: flex-start;
+		padding-top: 1px;
+		font-family: monospace;
+		font-size: 11px;
+		color: var(--gitwire-color-accent);
+
+		&.is-fatal {
+			color: #d63638;
+			cursor: help;
+		}
+	}
+
+	&-body {
+		flex: 1;
+		min-width: 0;
+	}
+
+	&-message {
+		margin: 0;
+		font-size: 13px;
+		text-overflow: ellipsis;
 		color: #1d2327;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+
+	&-meta {
+		margin: 2px 0 0;
+		font-size: 11px;
+		color: #57606a;
 	}
 }
 
-.gitwire-installed-source,
-.gitwire-installed-date {
-	font-size: 12px;
-	color: #57606a;
+// Import from URL ─────────────────
+
+.gitwire-add-repo-page {
+	min-height: 200px;
 }
 
-.gitwire-badge.is-update {
-	font-size: 11px;
-}
+.gitwire-import-url {
+	max-width: 680px;
 
-.gitwire-commit-row {
-	display: flex;
-	gap: 12px;
-	padding: 10px 0;
-	border-bottom: 1px solid #f0f0f0;
-}
+	&__input-row {
+		display: flex;
+		gap: 12px;
+		align-items: flex-end;
+		margin-bottom: 20px;
 
-.gitwire-commit-sha {
-	flex-shrink: 0;
-	align-self: flex-start;
-	padding-top: 1px;
-	font-family: monospace;
-	font-size: 11px;
-	color: var(--gitwire-color-accent);
-
-	&.is-fatal {
-		color: #d63638;
-		cursor: help;
+		.components-base-control {
+			flex: 1;
+			min-width: 0;
+			margin-bottom: 0 !important;
+		}
 	}
-}
 
-.gitwire-commit-body {
-	flex: 1;
-	min-width: 0;
-}
+	&__message {
+		margin: 0 0 16px;
+		font-size: 13px;
+		color: #57606a;
 
-.gitwire-commit-message {
-	margin: 0;
-	font-size: 13px;
-	text-overflow: ellipsis;
-	color: #1d2327;
-	white-space: nowrap;
-	overflow: hidden;
-}
+		&.is-error {
+			color: #cf222e;
+		}
+	}
 
-.gitwire-commit-meta {
-	margin: 2px 0 0;
-	font-size: 11px;
-	color: #57606a;
+	&__private {
+		margin-bottom: 16px;
+		padding: 16px;
+		border: 1px solid #dcdcde;
+		border-radius: 4px;
+		background: #f6f7f7;
+
+		p {
+			margin: 0 0 12px;
+		}
+	}
+
+	&__conn-hint {
+		font-size: 13px;
+		color: #57606a;
+	}
+
+	&__install-form {
+		padding-top: 4px;
+	}
 }

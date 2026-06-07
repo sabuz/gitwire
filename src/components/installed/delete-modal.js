@@ -9,6 +9,10 @@ import * as api from '../../api';
 /**
  * Modal body rendered by DataViews for the delete action.
  *
+ * Offers two choices:
+ *   - "Remove from Gitwire" — removes the tracking record only, files stay on disk.
+ *   - "Delete files"        — removes the record AND deletes files from the server.
+ *
  * @param {Object}   props            Component props supplied by DataViews.
  * @param {Array}    props.items      Selected items.
  * @param {Function} props.closeModal Callback to close the DataViews modal.
@@ -17,10 +21,39 @@ import * as api from '../../api';
  */
 export default function DeleteModal( { items, closeModal, onRefresh } ) {
 	const [ item ] = items;
-	const [ deleting, setDeleting ] = useState( false );
+	const [ busy, setBusy ] = useState( null ); // 'untrack' | 'delete' | null
+
+	const handleUntrack = async () => {
+		setBusy( 'untrack' );
+		try {
+			await api.untrackInstalled(
+				item.owner,
+				item.repo,
+				item.provider ?? 'github'
+			);
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__(
+						'%s removed from Gitwire. Files remain on disk.',
+						'gitwire'
+					),
+					item.full_name
+				)
+			);
+			onRefresh();
+			closeModal();
+		} catch ( e ) {
+			toast.error(
+				e.message ||
+					__( 'Failed to remove tracking record.', 'gitwire' )
+			);
+			setBusy( null );
+		}
+	};
 
 	const handleDelete = async () => {
-		setDeleting( true );
+		setBusy( 'delete' );
 		try {
 			await api.removeInstalled(
 				item.owner,
@@ -38,36 +71,63 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 			closeModal();
 		} catch ( e ) {
 			toast.error( e.message || __( 'Delete failed.', 'gitwire' ) );
-			setDeleting( false );
+			setBusy( null );
 		}
 	};
 
 	return (
 		<>
-			<p style={ { margin: 0 } }>
+			<p style={ { margin: '0 0 12px' } }>
 				{ sprintf(
 					/* translators: %s: repository full name */
-					__(
-						'Permanently delete %s? This will remove all files from the server and cannot be undone.',
-						'gitwire'
-					),
+					__( 'What would you like to do with %s?', 'gitwire' ),
 					item.full_name
 				) }
 			</p>
+			<div className="gitwire-delete-options">
+				<div className="gitwire-delete-option">
+					<strong>{ __( 'Remove from Gitwire', 'gitwire' ) }</strong>
+					<p>
+						{ __(
+							'Stops tracking this repository. The plugin or theme files stay on the server and remain usable.',
+							'gitwire'
+						) }
+					</p>
+				</div>
+				<div className="gitwire-delete-option gitwire-delete-option--destructive">
+					<strong>{ __( 'Delete files', 'gitwire' ) }</strong>
+					<p>
+						{ __(
+							'Removes the tracking record and permanently deletes all files from the server. This cannot be undone.',
+							'gitwire'
+						) }
+					</p>
+				</div>
+			</div>
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
-				<Button variant="tertiary" onClick={ closeModal }>
+				<Button
+					disabled={ !! busy }
+					variant="tertiary"
+					onClick={ closeModal }
+				>
 					{ __( 'Cancel', 'gitwire' ) }
 				</Button>
 				<Button
-					disabled={ deleting }
+					disabled={ !! busy }
+					isBusy={ busy === 'untrack' }
+					variant="secondary"
+					onClick={ handleUntrack }
+				>
+					{ __( 'Remove from Gitwire', 'gitwire' ) }
+				</Button>
+				<Button
+					disabled={ !! busy }
 					isDestructive
-					isBusy={ deleting }
+					isBusy={ busy === 'delete' }
 					variant="primary"
 					onClick={ handleDelete }
 				>
-					{ deleting
-						? __( 'Deleting…', 'gitwire' )
-						: __( 'Delete', 'gitwire' ) }
+					{ __( 'Delete files', 'gitwire' ) }
 				</Button>
 			</Flex>
 		</>

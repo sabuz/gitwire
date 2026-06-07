@@ -1,6 +1,6 @@
 <?php
 /**
- * Settings helpers — token masking and merge-on-save.
+ * Settings helpers — smart_install and token masking.
  *
  * @package Gitwire
  * @since 1.2.0
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Reads and writes gitwire_settings without exposing secrets to the client.
+ * Reads and writes gitwire_settings. Credentials live in gitwire_connections.
  */
 class Settings {
 
@@ -28,74 +28,94 @@ class Settings {
 	}
 
 	/**
-	 * Returns a client-safe settings payload (no full tokens).
+	 * Returns a client-safe settings payload.
 	 *
-	 * @since 1.2.0
+	 * @since 2.0.0
 	 * @return array<string, mixed>
 	 */
 	public static function get_public(): array {
 		$s = self::get_raw();
-
 		return [
-			'username'                    => $s['username'] ?? '',
-			'token_set'                   => ! empty( $s['token'] ),
-			'token_preview'               => self::mask_token( $s['token'] ?? '' ),
-			'smart_install'               => $s['smart_install'] ?? true,
-			'gitlab_token_set'            => ! empty( $s['gitlab_token'] ),
-			'gitlab_token_preview'        => self::mask_token( $s['gitlab_token'] ?? '' ),
-			'gitlab_url'                  => $s['gitlab_url'] ?? '',
-			'bitbucket_email'             => $s['bitbucket_email'] ?? '',
-			'bitbucket_api_token_set'     => ! empty( $s['bitbucket_api_token'] ),
-			'bitbucket_api_token_preview' => self::mask_token( $s['bitbucket_api_token'] ?? '' ),
+			'smart_install'       => $s['smart_install'] ?? true,
+			'show_repo_label'     => $s['show_repo_label'] ?? true,
+			'enable_logging'      => $s['enable_logging'] ?? false,
+			'log_retention_days'  => $s['log_retention_days'] ?? 30,
+			'log_level'           => $s['log_level'] ?? 'activity',
 		];
 	}
 
 	/**
-	 * Merges incoming save params with stored credentials when tokens are omitted.
+	 * Merges incoming save params with stored settings.
 	 *
-	 * @since 1.2.0
+	 * @since 2.0.0
 	 * @param array<string, mixed> $incoming Request body fields.
 	 * @return array<string, mixed> Full settings array to persist.
 	 */
 	public static function merge_save( array $incoming ): array {
 		$current = self::get_raw();
 
-		$token = $current['token'] ?? '';
-		if ( array_key_exists( 'token', $incoming ) && null !== $incoming['token'] ) {
-			$token = sanitize_text_field( (string) $incoming['token'] );
-		}
-
-		$gitlab_token = $current['gitlab_token'] ?? '';
-		if ( array_key_exists( 'gitlab_token', $incoming ) && null !== $incoming['gitlab_token'] ) {
-			$gitlab_token = sanitize_text_field( (string) $incoming['gitlab_token'] );
-		}
-
-		$username = $current['username'] ?? '';
-		if ( array_key_exists( 'username', $incoming ) && null !== $incoming['username'] ) {
-			$username = sanitize_text_field( (string) $incoming['username'] );
-		}
-
-		$gitlab_url = $current['gitlab_url'] ?? '';
-		if ( array_key_exists( 'gitlab_url', $incoming ) && null !== $incoming['gitlab_url'] ) {
-			$gitlab_url = esc_url_raw( (string) $incoming['gitlab_url'] );
-		}
-
-		$bitbucket_email = $current['bitbucket_email'] ?? '';
-		if ( array_key_exists( 'bitbucket_email', $incoming ) && null !== $incoming['bitbucket_email'] ) {
-			$bitbucket_email = sanitize_email( (string) $incoming['bitbucket_email'] );
-		}
-
-		$bitbucket_api_token = $current['bitbucket_api_token'] ?? '';
-		if ( array_key_exists( 'bitbucket_api_token', $incoming ) && null !== $incoming['bitbucket_api_token'] ) {
-			$bitbucket_api_token = sanitize_text_field( (string) $incoming['bitbucket_api_token'] );
-		}
-
 		$smart_install = $current['smart_install'] ?? true;
 		if ( array_key_exists( 'smart_install', $incoming ) && null !== $incoming['smart_install'] ) {
 			$smart_install = (bool) $incoming['smart_install'];
 		}
 
-		return compact( 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url', 'bitbucket_email', 'bitbucket_api_token' );
+		$show_repo_label = $current['show_repo_label'] ?? true;
+		if ( array_key_exists( 'show_repo_label', $incoming ) && null !== $incoming['show_repo_label'] ) {
+			$show_repo_label = (bool) $incoming['show_repo_label'];
+		}
+
+		$enable_logging = $current['enable_logging'] ?? false;
+		if ( array_key_exists( 'enable_logging', $incoming ) && null !== $incoming['enable_logging'] ) {
+			$enable_logging = (bool) $incoming['enable_logging'];
+		}
+
+		$log_retention_days = (int) ( $current['log_retention_days'] ?? 30 );
+		if ( array_key_exists( 'log_retention_days', $incoming ) && null !== $incoming['log_retention_days'] ) {
+			$val                = (int) $incoming['log_retention_days'];
+			$log_retention_days = in_array( $val, [ 7, 15, 30 ], true ) ? $val : 30;
+		}
+
+		$log_level = $current['log_level'] ?? 'activity';
+		if ( array_key_exists( 'log_level', $incoming ) && null !== $incoming['log_level'] ) {
+			$val       = (string) $incoming['log_level'];
+			$log_level = in_array( $val, [ 'activity', 'error' ], true ) ? $val : 'activity';
+		}
+
+		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level' );
+	}
+
+	/**
+	 * Returns whether activity logging is currently enabled.
+	 *
+	 * @since 1.3.0
+	 * @return bool
+	 */
+	public static function is_logging_enabled(): bool {
+		$s = self::get_raw();
+		return (bool) ( $s['enable_logging'] ?? false );
+	}
+
+	/**
+	 * Returns the number of days to retain log entries (0 = unlimited).
+	 *
+	 * @since 1.3.0
+	 * @return int
+	 */
+	public static function get_log_retention_days(): int {
+		$s = self::get_raw();
+		return (int) ( $s['log_retention_days'] ?? 30 );
+	}
+
+	/**
+	 * Returns the minimum log level to record ('activity' or 'error').
+	 *
+	 * @since 1.3.0
+	 * @return string
+	 */
+	public static function get_log_level(): string {
+		$s   = self::get_raw();
+		$val = $s['log_level'] ?? 'activity';
+		return in_array( $val, [ 'activity', 'error' ], true ) ? $val : 'activity';
 	}
 
 	/**

@@ -5,10 +5,11 @@ import {
 	useState,
 	useEffect,
 	useCallback,
+	Component,
 	lazy,
 	Suspense,
 } from '@wordpress/element';
-import { Spinner } from '@wordpress/components';
+import { Button, Spinner } from '@wordpress/components';
 
 import * as api from './api';
 import { showFatalNotice } from './fatal-notice';
@@ -18,14 +19,47 @@ import {
 	clearPendingToast,
 } from './pending-toast';
 import SettingsPanel from './components/settings-panel';
+import AddRepositoryPanel from './components/add-repository-panel';
+import InstalledPanel from './components/installed-panel';
 
-const BrowsePanel = lazy( () => import( './components/browse-panel' ) );
-const InstalledPanel = lazy( () => import( './components/installed-panel' ) );
+const LogsPanel = lazy( () => import( './components/logs-panel' ) );
 
-const TABS = [
-	{ name: 'installed', label: __( 'Installed', 'gitwire' ) },
-	{ name: 'browse', label: __( 'Browse', 'gitwire' ) },
+class ChunkErrorBoundary extends Component {
+	constructor( props ) {
+		super( props );
+		this.state = { failed: false };
+	}
+	static getDerivedStateFromError( error ) {
+		if ( error.name === 'ChunkLoadError' ) {
+			return { failed: true };
+		}
+		return null;
+	}
+	render() {
+		if ( this.state.failed ) {
+			return (
+				<div style={ { padding: '24px', textAlign: 'center' } }>
+					<p style={ { marginBottom: 12 } }>
+						{ __( 'A resource failed to load. Please reload the page.', 'gitwire' ) }
+					</p>
+					<Button
+						variant="primary"
+						onClick={ () => window.location.reload() }
+					>
+						{ __( 'Reload', 'gitwire' ) }
+					</Button>
+				</div>
+			);
+		}
+		return this.props.children;
+	}
+}
+
+const BASE_TABS = [
+	{ name: 'repositories', label: __( 'Repositories', 'gitwire' ) },
+	{ name: 'add-repository', label: __( 'Add Repository', 'gitwire' ) },
 	{ name: 'settings', label: __( 'Settings', 'gitwire' ) },
+	{ name: 'logs', label: __( 'Logs', 'gitwire' ) },
 ];
 
 /**
@@ -47,7 +81,7 @@ function showOrphanedNotice( item ) {
 function tabUrl( tabName ) {
 	const url = new URL( window.location.href );
 	url.searchParams.set( 'page', 'gitwire' );
-	if ( tabName === 'installed' ) {
+	if ( tabName === 'repositories' ) {
 		url.searchParams.delete( 'path' );
 	} else {
 		url.searchParams.set( 'path', tabName );
@@ -56,11 +90,11 @@ function tabUrl( tabName ) {
 }
 
 function updateSidebarActive( tabName ) {
-	const submenu = document.querySelector( '#toplevel_page_git .wp-submenu' );
+	const submenu = document.querySelector( '#toplevel_page_gitwire .wp-submenu' );
 	if ( ! submenu ) {
 		return;
 	}
-	const expectedPath = tabName === 'installed' ? '' : tabName;
+	const expectedPath = tabName === 'repositories' ? '' : tabName;
 	submenu.querySelectorAll( 'li' ).forEach( ( li ) => {
 		const a = li.querySelector( 'a' );
 		if ( ! a ) {
@@ -80,7 +114,7 @@ function updateSidebarActive( tabName ) {
 function syncUrl( tabName ) {
 	const url = new URL( window.location.href );
 	url.searchParams.set( 'page', 'gitwire' );
-	if ( tabName === 'installed' ) {
+	if ( tabName === 'repositories' ) {
 		url.searchParams.delete( 'path' );
 	} else {
 		url.searchParams.set( 'path', tabName );
@@ -91,21 +125,20 @@ function syncUrl( tabName ) {
 
 export default function App( { initialData } ) {
 	const [ settings, setSettings ] = useState( initialData.settings || null );
+	const [ connections, setConnections ] = useState(
+		initialData.connections || []
+	);
 	const [ connection, setConnection ] = useState(
-		initialData.connection || {
-			github: null,
-			gitlab: null,
-			bitbucket: null,
-		}
+		initialData.connection || {}
 	);
 	const [ installed, setInstalled ] = useState( initialData.installed || {} );
 	const [ loading, setLoading ] = useState( ! initialData.settings );
 	const [ activeTab, setActiveTab ] = useState(
-		initialData.initial_tab || 'installed'
+		initialData.initial_tab || 'repositories'
 	);
 
 	useEffect( () => {
-		if ( activeTab !== 'installed' ) {
+		if ( activeTab !== 'repositories' ) {
 			return;
 		}
 		if ( initialData.fatal_notice ) {
@@ -151,24 +184,32 @@ export default function App( { initialData } ) {
 		const tab = sessionStorage.getItem( 'gitwire_goto_tab' );
 		if ( tab ) {
 			sessionStorage.removeItem( 'gitwire_goto_tab' );
-			setActiveTab( tab );
-			syncUrl( tab );
+			// Migrate old tab names from previous sessions.
+			const legacyMap = {
+				installed: 'repositories',
+				browse: 'add-repository',
+			};
+			const resolved = legacyMap[ tab ] ?? tab;
+			setActiveTab( resolved );
+			syncUrl( resolved );
 		} else {
-			updateSidebarActive( initialData.initial_tab || 'installed' );
+			updateSidebarActive( initialData.initial_tab || 'repositories' );
 		}
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect( () => {
 		const submenu = document.querySelector(
-			'#toplevel_page_git .wp-submenu'
+			'#toplevel_page_gitwire .wp-submenu'
 		);
 		if ( ! submenu ) {
 			return;
 		}
 		const PATH_TO_TAB = {
-			'': 'installed',
-			browse: 'browse',
+			'': 'repositories',
+			'add-repository': 'add-repository',
+			browse: 'add-repository', // back-compat
 			settings: 'settings',
+			logs: 'logs',
 		};
 		function handleClick( ev ) {
 			const a = ev.target.closest( 'a' );
@@ -198,9 +239,14 @@ export default function App( { initialData } ) {
 
 	useEffect( () => {
 		if ( ! initialData.settings ) {
-			Promise.all( [ api.getSettings(), api.syncInstalled() ] )
-				.then( ( [ s, result ] ) => {
+			Promise.all( [
+				api.getSettings(),
+				api.getConnections(),
+				api.syncInstalled(),
+			] )
+				.then( ( [ s, { connections: conns }, result ] ) => {
 					setSettings( s );
+					setConnections( conns || [] );
 					applyInstalled( result );
 				} )
 				.finally( () => setLoading( false ) );
@@ -246,7 +292,7 @@ export default function App( { initialData } ) {
 					variant: 'success',
 				} );
 			}
-			handleGoToTab( 'installed' );
+			handleGoToTab( 'repositories' );
 			refreshInstalled();
 		},
 		[ handleGoToTab, refreshInstalled ]
@@ -258,11 +304,20 @@ export default function App( { initialData } ) {
 		syncUrl( tabName );
 	}, [] );
 
-	const handleConnectionUpdate = useCallback( ( provider, data ) => {
-		setConnection( ( prev ) => ( {
-			...( prev || { github: null, gitlab: null, bitbucket: null } ),
-			[ provider ]: data,
-		} ) );
+	const handleConnectionsChange = useCallback( ( conns ) => {
+		setConnections( conns || [] );
+	}, [] );
+
+	const handleConnectionUpdate = useCallback( ( providerOrId, data ) => {
+		const id = data?.connection_id ?? providerOrId;
+		setConnection( ( prev ) => {
+			if ( ! data ) {
+				const next = { ...prev };
+				delete next[ providerOrId ];
+				return next;
+			}
+			return { ...( prev || {} ), [ id ]: data };
+		} );
 	}, [] );
 
 	const handleSettingsSave = useCallback( ( s ) => {
@@ -280,6 +335,9 @@ export default function App( { initialData } ) {
 	}
 
 	const installedCount = Object.keys( installed ).length;
+	const tabs = settings?.enable_logging
+		? BASE_TABS
+		: BASE_TABS.filter( ( t ) => t.name !== 'logs' );
 	const panelFallback = (
 		<div className="gitwire-page-loading">
 			<Spinner />
@@ -306,7 +364,7 @@ export default function App( { initialData } ) {
 					aria-label={ __( 'Plugin navigation', 'gitwire' ) }
 					className="gitwire-page-nav"
 				>
-					{ TABS.map( ( tab ) => (
+					{ tabs.map( ( tab ) => (
 						<a
 							key={ tab.name }
 							aria-current={
@@ -319,7 +377,7 @@ export default function App( { initialData } ) {
 							onClick={ ( ev ) => handleTabClick( ev, tab.name ) }
 						>
 							{ tab.label }
-							{ tab.name === 'installed' &&
+							{ tab.name === 'repositories' &&
 								installedCount > 0 && (
 									<span className="gitwire-nav-badge">
 										{ installedCount }
@@ -334,31 +392,43 @@ export default function App( { initialData } ) {
 				{ activeTab === 'settings' && (
 					<SettingsPanel
 						connection={ connection }
+						connections={ connections }
 						settings={ settings }
+						onConnectionsChange={ handleConnectionsChange }
 						onConnectionUpdate={ handleConnectionUpdate }
 						onSave={ handleSettingsSave }
 					/>
 				) }
-				{ activeTab === 'browse' && (
-					<Suspense fallback={ panelFallback }>
-						<BrowsePanel
-							installed={ installed }
-							settings={ settings }
-							onGoToSettings={ () => handleGoToTab( 'settings' ) }
-							onPostInstall={ handlePostInstall }
-						/>
-					</Suspense>
+				{ activeTab === 'repositories' && (
+					<InstalledPanel
+						installed={ installed }
+						settings={ settings }
+						onGoToSettings={ () => handleGoToTab( 'settings' ) }
+						onOpenAddRepo={ () =>
+							handleGoToTab( 'add-repository' )
+						}
+						onRefresh={ refreshInstalled }
+					/>
 				) }
-				{ activeTab === 'installed' && (
-					<Suspense fallback={ panelFallback }>
-						<InstalledPanel
-							installed={ installed }
-							settings={ settings }
-							onGoToBrowse={ () => handleGoToTab( 'browse' ) }
-							onGoToSettings={ () => handleGoToTab( 'settings' ) }
-							onRefresh={ refreshInstalled }
-						/>
-					</Suspense>
+				{ activeTab === 'add-repository' && (
+					<AddRepositoryPanel
+						connection={ connection }
+						connections={ connections }
+						installed={ installed }
+						settings={ settings }
+						onGoToSettings={ () => handleGoToTab( 'settings' ) }
+						onPostInstall={ handlePostInstall }
+					/>
+				) }
+				{ activeTab === 'logs' && (
+					<ChunkErrorBoundary>
+						<Suspense fallback={ panelFallback }>
+							<LogsPanel
+								settings={ settings }
+								onGoToSettings={ () => handleGoToTab( 'settings' ) }
+							/>
+						</Suspense>
+					</ChunkErrorBoundary>
 				) }
 			</div>
 		</div>

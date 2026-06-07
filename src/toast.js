@@ -49,6 +49,7 @@ export const toast = {
 	success: ( message, options ) => showToast( 'success', message, options ),
 	error: ( message, options ) => showToast( 'error', message, options ),
 	warning: ( message, options ) => showToast( 'warning', message, options ),
+	promise: sonnerToast.promise,
 	dismiss: sonnerToast.dismiss,
 };
 

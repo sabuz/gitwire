@@ -7,7 +7,6 @@ import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
 import { queuePendingToastAndReload } from '../pending-toast';
-import ConnectPrompt from './connect-prompt';
 import BranchCell from './installed/branch-cell';
 import BranchModal from './installed/branch-modal';
 import CommitsModal, { clearCommitsCache } from './installed/commits-modal';
@@ -48,14 +47,9 @@ export default function InstalledPanel( {
 	settings,
 	onRefresh,
 	onGoToSettings,
-	onGoToBrowse,
+	onOpenAddRepo,
 } ) {
 	const entries = Object.values( installed );
-	const isConfigured = !! (
-		settings?.username ||
-		settings?.token_set ||
-		settings?.gitlab_token_set
-	);
 	const [ view, setView ] = useState( DEFAULT_VIEW );
 	const [ branchModalItem, setBranchModalItem ] = useState( null );
 	const [ commitsModalItem, setCommitsModalItem ] = useState( null );
@@ -138,6 +132,18 @@ export default function InstalledPanel( {
 									? __( 'Active', 'gitwire' )
 									: __( 'Inactive', 'gitwire' ) }
 							</span>
+						) }
+						{ item.needs_reconnect && (
+							<Tooltip
+								text={ __(
+									'The connection used to install this repository no longer exists. Go to Settings → Connections to reconnect.',
+									'gitwire'
+								) }
+							>
+								<span className="gitwire-badge gitwire-badge--warning is-needs-reconnect">
+									{ __( 'Needs connection', 'gitwire' ) }
+								</span>
+							</Tooltip>
 						) }
 						{ item.update_available &&
 							( hasKnownFatalUpdate( item ) ? (
@@ -303,9 +309,6 @@ export default function InstalledPanel( {
 	);
 
 	if ( entries.length === 0 ) {
-		if ( ! isConfigured ) {
-			return <ConnectPrompt onConnect={ onGoToSettings } />;
-		}
 		return (
 			<div className="gitwire-installed-empty">
 				<img
@@ -313,9 +316,15 @@ export default function InstalledPanel( {
 					aria-hidden="true"
 					src={ window.Gitwire?.not_found_url }
 				/>
-				<h2>{ __( 'No repositories installed yet.', 'gitwire' ) }</h2>
-				<Button variant="primary" onClick={ onGoToBrowse }>
-					{ __( 'Browse repositories', 'gitwire' ) }
+				<h2>{ __( 'No repositories yet.', 'gitwire' ) }</h2>
+				<p className="gitwire-installed-empty__hint">
+					{ __(
+						'Install plugins and themes directly from GitHub, GitLab, or Bitbucket.',
+						'gitwire'
+					) }
+				</p>
+				<Button variant="primary" onClick={ () => onOpenAddRepo() }>
+					{ __( 'Add Repository', 'gitwire' ) }
 				</Button>
 			</div>
 		);

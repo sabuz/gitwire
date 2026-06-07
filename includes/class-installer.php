@@ -96,12 +96,13 @@ class Installer {
 	 * Installs or updates a repository as a WordPress plugin.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner    Git owner or organisation.
-	 * @param string $repo     Repository name.
-	 * @param string $branch   Branch, tag, or SHA.
-	 * @param string $slug     Desired directory slug (defaults to sanitised repo name).
-	 * @param string $provider Git provider: 'github' or 'gitlab'.
-	 * @param bool   $replace  Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string      $owner         Git owner or organisation.
+	 * @param string      $repo          Repository name.
+	 * @param string      $branch        Branch, tag, or SHA.
+	 * @param string      $slug          Desired directory slug (defaults to sanitised repo name).
+	 * @param string      $provider      Git provider: 'github' or 'gitlab'.
+	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_plugin(
@@ -110,7 +111,8 @@ class Installer {
 		string $branch,
 		string $slug = '',
 		string $provider = 'github',
-		bool $replace = false
+		bool $replace = false,
+		?string $connection_id = null
 	): array|\WP_Error {
 		if ( ! $slug ) {
 			$slug = sanitize_title( $repo );
@@ -118,19 +120,20 @@ class Installer {
 
 		$destination = WP_PLUGIN_DIR . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'plugin', $provider, $replace );
+		return self::run( $owner, $repo, $branch, $slug, $destination, 'plugin', $provider, $replace, $connection_id );
 	}
 
 	/**
 	 * Installs or updates a repository as a WordPress theme.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner    Git owner or organisation.
-	 * @param string $repo     Repository name.
-	 * @param string $branch   Branch, tag, or SHA.
-	 * @param string $slug     Desired directory slug (defaults to sanitised repo name).
-	 * @param string $provider Git provider: 'github' or 'gitlab'.
-	 * @param bool   $replace  Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string      $owner         Git owner or organisation.
+	 * @param string      $repo          Repository name.
+	 * @param string      $branch        Branch, tag, or SHA.
+	 * @param string      $slug          Desired directory slug (defaults to sanitised repo name).
+	 * @param string      $provider      Git provider: 'github' or 'gitlab'.
+	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_theme(
@@ -139,7 +142,8 @@ class Installer {
 		string $branch,
 		string $slug = '',
 		string $provider = 'github',
-		bool $replace = false
+		bool $replace = false,
+		?string $connection_id = null
 	): array|\WP_Error {
 		if ( ! $slug ) {
 			$slug = sanitize_title( $repo );
@@ -147,7 +151,7 @@ class Installer {
 
 		$destination = get_theme_root() . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'theme', $provider, $replace );
+		return self::run( $owner, $repo, $branch, $slug, $destination, 'theme', $provider, $replace, $connection_id );
 	}
 
 	/**
@@ -167,13 +171,25 @@ class Installer {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
-		$rec    = $installed[ $key ];
-		$parts  = explode( '/', $full_name );
-		$owner  = $parts[0];
-		$repo   = $parts[1];
-		$method = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
+		$rec           = $installed[ $key ];
+		$parts         = explode( '/', $full_name );
+		$owner         = $parts[0];
+		$repo          = $parts[1];
+		$method        = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
+		$connection_id = $rec['connection_id'] ?? null;
+		$creds         = null !== $connection_id
+			? Connections::get_credentials( $connection_id )
+			: Connections::get_default_credentials( $provider );
 
-		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider );
+		if ( null === $creds ) {
+			return new \WP_Error(
+				'gitwire_no_connection',
+				'The connection used to install this repository no longer exists. Reconnect in Settings to pull updates.',
+				[ 'status' => 400 ]
+			);
+		}
+
+		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider, false, $connection_id );
 
 		return $result;
 	}
@@ -202,6 +218,28 @@ class Installer {
 			self::init_fs();
 			global $wp_filesystem;
 			$wp_filesystem->delete( $path, true );
+		}
+
+		unset( $installed[ $key ] );
+		update_option( 'gitwire_installed', $installed );
+
+		return true;
+	}
+
+	/**
+	 * Removes the tracking record for a repository without deleting its files.
+	 *
+	 * @since 3.0.0
+	 * @param string $provider  Git provider key.
+	 * @param string $full_name Repository full name (owner/repo).
+	 * @return true|\WP_Error True on success, WP_Error when not found.
+	 */
+	public static function untrack( string $provider, string $full_name ): bool|\WP_Error {
+		$installed = self::get_installed();
+		$key       = $provider . ':' . $full_name;
+
+		if ( ! isset( $installed[ $key ] ) ) {
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
 		unset( $installed[ $key ] );
@@ -721,8 +759,8 @@ class Installer {
 			return null;
 		}
 
-		$settings = (array) get_option( 'gitwire_settings', [] );
-		$api      = Provider_Factory::make( $settings, $provider );
+		$connection_id = $rec['connection_id'] ?? null;
+		$api           = Provider_Factory::make( $provider, $connection_id );
 
 		return self::fetch_remote_head_sha( $api, $parts[0], $parts[1], $branch );
 	}
@@ -781,14 +819,15 @@ class Installer {
 	 * Core install routine: downloads, backs up, extracts, and records a repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner        Git owner or organisation.
-	 * @param string $repo         Repository name.
-	 * @param string $branch       Branch, tag, or SHA.
-	 * @param string $slug         Directory slug for the installation.
-	 * @param string $install_path Absolute filesystem path for the installation.
-	 * @param string $type         Installation type: "plugin" or "theme".
-	 * @param string $provider     Git provider: 'github' or 'gitlab'.
-	 * @param bool   $replace      Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string      $owner         Git owner or organisation.
+	 * @param string      $repo          Repository name.
+	 * @param string      $branch        Branch, tag, or SHA.
+	 * @param string      $slug          Directory slug for the installation.
+	 * @param string      $install_path  Absolute filesystem path for the installation.
+	 * @param string      $type          Installation type: "plugin" or "theme".
+	 * @param string      $provider      Git provider: 'github' or 'gitlab'.
+	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
 	private static function run(
@@ -799,13 +838,13 @@ class Installer {
 		string $install_path,
 		string $type,
 		string $provider = 'github',
-		bool $replace = false
+		bool $replace = false,
+		?string $connection_id = null
 	): array|\WP_Error {
 		self::init_fs();
 
-		$settings  = (array) get_option( 'gitwire_settings', [] );
 		$full_name = $owner . '/' . $repo;
-		$api       = Provider_Factory::make( $settings, $provider );
+		$api       = Provider_Factory::make( $provider, $connection_id );
 
 		// Auto-rename if the target directory exists but doesn't belong to this exact record.
 		// Covers both conflicts with other git-managed installs and unmanaged directories
@@ -934,18 +973,19 @@ class Installer {
 
 		// Save record.
 		$record = [
-			'slug'         => $slug,
-			'repo'         => $repo,
-			'owner'        => $owner,
-			'full_name'    => $full_name,
-			'branch'       => $branch,
-			'type'         => $type,
-			'provider'     => $provider,
-			'install_path' => $install_path,
-			'plugin_file'  => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
-			'installed_at' => time(),
-			'updated_at'   => time(),
-			'slug_renamed' => $slug_renamed,
+			'slug'          => $slug,
+			'repo'          => $repo,
+			'owner'         => $owner,
+			'full_name'     => $full_name,
+			'branch'        => $branch,
+			'type'          => $type,
+			'provider'      => $provider,
+			'connection_id' => $connection_id,
+			'install_path'  => $install_path,
+			'plugin_file'   => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
+			'installed_at'  => time(),
+			'updated_at'    => time(),
+			'slug_renamed'  => $slug_renamed,
 		];
 
 		$record_key             = $provider . ':' . $full_name;

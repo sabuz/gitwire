@@ -2,6 +2,10 @@
 
 WordPress plugin that installs GitHub/GitLab repositories as plugins or themes directly from the WP admin.
 
+## Docs
+
+- `docs/ux-add-repository-flow.md` — Installed-first UI, Add repository flow, connections, Free/Pro UX scope
+
 ## Stack
 
 - **PHP** — WordPress plugin, PSR-4 via `autoload.php`, namespace `Gitwire\`

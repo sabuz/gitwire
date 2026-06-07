@@ -105,10 +105,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function run_connection_check(): void {
-		$settings = Settings::get_raw();
-		if ( $settings ) {
-			REST::test_connection();
-		}
+		REST::refresh_all_connections();
 	}
 
 	/**
@@ -118,6 +115,9 @@ final class Plugin {
 	 */
 	public function run_maintenance(): void {
 		REST::sync_installed();
+		if ( Settings::is_logging_enabled() ) {
+			Logger::get_instance()->trim_old_entries();
+		}
 	}
 
 	/**
@@ -160,9 +160,13 @@ final class Plugin {
 			add_option(
 				'gitwire_settings',
 				[
-					'token'         => '',
-					'username'      => '',
-					'smart_install' => true,
+					'token'               => '',
+					'username'            => '',
+					'smart_install'       => true,
+					'show_repo_label'     => true,
+					'enable_logging'      => false,
+					'log_retention_days'  => 30,
+					'log_level'           => 'activity',
 				]
 			);
 		}

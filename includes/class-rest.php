@@ -62,41 +62,48 @@ class REST {
 
 		register_rest_route(
 			$ns,
-			'/connection',
+			'/connections',
+			[
+				[
+					'methods'             => 'GET',
+					'callback'            => [ self::class, 'list_connections' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+				[
+					'methods'             => 'POST',
+					'callback'            => [ self::class, 'create_connection' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/connections/(?P<id>[^/]+)/test',
 			[
 				'methods'             => 'POST',
-				'callback'            => [ self::class, 'test_connection' ],
+				'callback'            => [ self::class, 'test_existing_connection' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
-				'args'                => [
-					'provider'            => [
-						'type'    => 'string',
-						'default' => '',
-					],
-					'username'            => [
-						'type'    => 'string',
-						'default' => '',
-					],
-					'token'               => [
-						'type'    => 'string',
-						'default' => '',
-					],
-					'gitlab_token'        => [
-						'type'    => 'string',
-						'default' => '',
-					],
-					'gitlab_url'          => [
-						'type'    => 'string',
-						'default' => '',
-					],
-					'bitbucket_email'     => [
-						'type'    => 'string',
-						'default' => '',
-					],
-					'bitbucket_api_token' => [
-						'type'    => 'string',
-						'default' => '',
-					],
-				],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/connections/(?P<id>[^/]+)/set-default',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'set_default_connection' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/connections/(?P<id>[^/]+)',
+			[
+				'methods'             => 'DELETE',
+				'callback'            => [ self::class, 'delete_connection' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
 			]
 		);
 
@@ -107,6 +114,13 @@ class REST {
 				'methods'             => 'GET',
 				'callback'            => [ self::class, 'get_repos' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'connection_id' => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+				],
 			]
 		);
 
@@ -311,6 +325,17 @@ class REST {
 
 		register_rest_route(
 			$ns,
+			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/untrack',
+			[
+				'methods'             => 'DELETE',
+				'callback'            => [ self::class, 'untrack_installed' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [ 'provider' => $provider_arg ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
 			'/activation-status',
 			[
 				[
@@ -333,6 +358,81 @@ class REST {
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'verify_bootstrap' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/repos/resolve',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'resolve_repo' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'url' => [
+						'required' => true,
+						'type'     => 'string',
+					],
+				],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/logs',
+			[
+				[
+					'methods'             => 'GET',
+					'callback'            => [ self::class, 'get_logs' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+					'args'                => [
+						'from'   => [
+							'type'              => 'string',
+							'default'           => '',
+							'sanitize_callback' => 'sanitize_text_field',
+						],
+						'to'     => [
+							'type'              => 'string',
+							'default'           => '',
+							'sanitize_callback' => 'sanitize_text_field',
+						],
+						'level'  => [
+							'type'    => 'string',
+							'default' => '',
+							'enum'    => [ '', 'activity', 'error' ],
+						],
+						'actors' => [
+							'type'    => 'array',
+							'default' => [],
+							'items'   => [
+								'type'              => 'string',
+								'sanitize_callback' => 'sanitize_text_field',
+							],
+						],
+					],
+				],
+				[
+					'methods'             => 'DELETE',
+					'callback'            => [ self::class, 'clear_logs' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/log-actors',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'get_log_actors' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'search' => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+				],
 			]
 		);
 	}
@@ -458,115 +558,229 @@ class REST {
 	 */
 	public static function save_settings( \WP_REST_Request $req ): array|\WP_Error {
 		$incoming = [];
-		foreach ( [ 'token', 'username', 'smart_install', 'gitlab_token', 'gitlab_url', 'bitbucket_email', 'bitbucket_api_token' ] as $key ) {
-			if ( null !== $req->get_param( $key ) ) {
-				$incoming[ $key ] = $req->get_param( $key );
-			}
+		if ( null !== $req->get_param( 'smart_install' ) ) {
+			$incoming['smart_install'] = $req->get_param( 'smart_install' );
+		}
+		if ( null !== $req->get_param( 'show_repo_label' ) ) {
+			$incoming['show_repo_label'] = $req->get_param( 'show_repo_label' );
+		}
+		if ( null !== $req->get_param( 'enable_logging' ) ) {
+			$incoming['enable_logging'] = $req->get_param( 'enable_logging' );
+		}
+		if ( null !== $req->get_param( 'log_retention_days' ) ) {
+			$incoming['log_retention_days'] = $req->get_param( 'log_retention_days' );
+		}
+		if ( null !== $req->get_param( 'log_level' ) ) {
+			$incoming['log_level'] = $req->get_param( 'log_level' );
 		}
 
-		$merged = Settings::merge_save( $incoming );
-
-		if ( ! empty( $merged['gitlab_url'] ) && ! Settings::is_allowed_gitlab_url( $merged['gitlab_url'] ) ) {
-			return new \WP_Error(
-				'invalid_gitlab_url',
-				__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'gitwire' ),
-				[ 'status' => 400 ]
-			);
-		}
-
+		$was_logging = Settings::is_logging_enabled();
+		$merged      = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
 
+		$now_logging = (bool) ( $merged['enable_logging'] ?? false );
+		if ( ! $was_logging && $now_logging ) {
+			Logger::log( 'Logging enabled' );
+		}
+
 		return [
-			'saved'         => true,
-			'smart_install' => $merged['smart_install'],
-			'settings'      => Settings::get_public(),
+			'saved'    => true,
+			'settings' => Settings::get_public(),
 		];
 	}
 
 	/**
-	 * Tests the configured API connection and caches the result.
-	 * When called without a request (e.g. from cron) tests all configured providers.
+	 * Returns all connections as a public-safe list.
 	 *
-	 * @since 1.0.0
-	 * @param \WP_REST_Request|null $req REST request object, or null for cron.
-	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
+	 * @since 2.0.0
+	 * @return array<string, mixed>
 	 */
-	public static function test_connection( ?\WP_REST_Request $req = null ): array|\WP_Error {
-		$settings = (array) get_option( 'gitwire_settings', [] );
-
-		if ( null === $req ) {
-			// Cron path — test every provider that has saved credentials.
-			if ( ! empty( $settings['token'] ) || ! empty( $settings['username'] ) ) {
-				self::run_provider_test( 'github', $settings );
-			}
-			if ( ! empty( $settings['gitlab_token'] ) ) {
-				self::run_provider_test( 'gitlab', $settings );
-			}
-			if ( ! empty( $settings['bitbucket_email'] ) && ! empty( $settings['bitbucket_api_token'] ) ) {
-				self::run_provider_test( 'bitbucket', $settings );
-			}
-			return [];
-		}
-
-		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
-			$provider = 'github';
-		}
-
-		if ( 'bitbucket' === $provider ) {
-			$overrides = [
-				'bitbucket_email'     => $req->get_param( 'bitbucket_email' ),
-				'bitbucket_api_token' => $req->get_param( 'bitbucket_api_token' ),
-			];
-		} elseif ( 'gitlab' === $provider ) {
-			$overrides = [
-				'gitlab_token' => $req->get_param( 'gitlab_token' ),
-				'gitlab_url'   => $req->get_param( 'gitlab_url' ),
-			];
-		} else {
-			$overrides = [
-				'token'    => $req->get_param( 'token' ),
-				'username' => $req->get_param( 'username' ),
-			];
-		}
-
-		return self::run_provider_test( $provider, $settings, $overrides );
+	public static function list_connections(): array {
+		return [ 'connections' => Connections::get_public_list() ];
 	}
 
 	/**
-	 * Runs a connection test for a single provider and updates the cache slot.
+	 * Creates a new connection: tests credentials then persists them encrypted.
 	 *
-	 * @since 1.0.0
-	 * @param string $provider  Provider key: 'github', 'gitlab', or 'bitbucket'.
-	 * @param array  $settings  Saved plugin settings.
-	 * @param array  $overrides Optional credential overrides from the request.
-	 * @return array<string, mixed>|\WP_Error Connection data, or WP_Error on failure.
+	 * @since 2.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error
 	 */
-	private static function run_provider_test( string $provider, array $settings, array $overrides = [] ): array|\WP_Error {
+	public static function create_connection( \WP_REST_Request $req ): array|\WP_Error {
+		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
+			return new \WP_Error( 'invalid_provider', 'Invalid provider.', [ 'status' => 400 ] );
+		}
+
+		$creds = self::extract_credentials( $provider, $req );
+
+		if ( 'gitlab' === $provider && ! empty( $creds['gitlab_url'] ) ) {
+			if ( ! Settings::is_allowed_gitlab_url( $creds['gitlab_url'] ) ) {
+				return new \WP_Error(
+					'invalid_gitlab_url',
+					__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'gitwire' ),
+					[ 'status' => 400 ]
+				);
+			}
+		}
+
+		$test = self::run_credentials_test( $provider, $creds );
+		if ( is_wp_error( $test ) ) {
+			return $test;
+		}
+
+		$login = $test['login'] ?? '';
+		if ( '' !== $login && null !== Connections::find_by_username( $provider, $login ) ) {
+			return new \WP_Error(
+				'duplicate_connection',
+				/* translators: %s: username/login of the existing connection */
+				sprintf( __( 'A connection for @%s already exists.', 'gitwire' ), $login ),
+				[ 'status' => 409 ]
+			);
+		}
+
+		$existing_default = Connections::get_default( $provider );
+		$label            = sanitize_text_field( $req->get_param( 'label' ) ?? '' );
+		$scope            = 'user' === $req->get_param( 'scope' ) ? 'user' : 'site';
+
+		$record = [
+			'provider'    => $provider,
+			'label'       => $label,
+			'scope'       => $scope,
+			'is_default'  => null === $existing_default,
+			'username'    => $login,
+			'gitlab_url'  => $creds['gitlab_url'] ?? '',
+			'credentials' => $creds,
+		];
+
+		if ( 'user' === $scope ) {
+			$record['user_id'] = get_current_user_id();
+		}
+
+		$conn = Connections::upsert( $record );
+
+		self::set_connection_cache( $conn['id'], array_merge( $test, [ 'connection_id' => $conn['id'] ] ) );
+
+		Logger::log( sprintf( '[%s] Connected%s', $provider, '' !== $login ? ' @' . $login : '' ) );
+
+		return [
+			'connection' => Connections::get_public_list(),
+			'profile'    => array_merge( $test, [ 'connection_id' => $conn['id'] ] ),
+		];
+	}
+
+	/**
+	 * Deletes a stored connection.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function delete_connection( \WP_REST_Request $req ): array|\WP_Error {
+		$id   = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
+		$conn = Connections::find( $id );
+		if ( ! $conn || ! Connections::delete( $id ) ) {
+			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
+		}
+		self::set_connection_cache( $id, null );
+		$identity = $conn['username'] ?? $conn['email'] ?? $conn['label'] ?? '';
+		Logger::log( sprintf( '[%s] Disconnected%s', $conn['provider'] ?? 'unknown', $identity ? ' @' . $identity : '' ) );
+		return [ 'connections' => Connections::get_public_list() ];
+	}
+
+	/**
+	 * Marks a connection as the default for its provider.
+	 *
+	 * @since 3.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function set_default_connection( \WP_REST_Request $req ): array|\WP_Error {
+		$id   = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
+		$conn = Connections::find( $id );
+		if ( null === $conn ) {
+			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
+		}
+		Connections::upsert( array_merge( $conn, [ 'is_default' => true ] ) );
+		return [ 'connections' => Connections::get_public_list() ];
+	}
+
+	/**
+	 * Re-tests an existing stored connection.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function test_existing_connection( \WP_REST_Request $req ): array|\WP_Error {
+		$id   = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
+		$conn = Connections::find( $id );
+		if ( null === $conn ) {
+			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
+		}
+
+		$creds    = Connections::get_credentials( $id ) ?? [];
+		$provider = $conn['provider'] ?? 'github';
+		$result   = self::run_credentials_test( $provider, $creds );
+
+		if ( is_wp_error( $result ) ) {
+			self::set_connection_cache(
+				$id,
+				[
+					'provider'      => $provider,
+					'error'         => $result->get_error_message(),
+					'connection_id' => $id,
+				]
+			);
+			return $result;
+		}
+
+		self::set_connection_cache( $id, array_merge( $result, [ 'connection_id' => $id ] ) );
+		return $result;
+	}
+
+	/**
+	 * Cron path: re-tests every stored connection and refreshes the cache.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public static function refresh_all_connections(): void {
+		foreach ( Connections::all() as $conn ) {
+			$id       = $conn['id'] ?? '';
+			$provider = $conn['provider'] ?? '';
+			$creds    = Connections::get_credentials( $id ) ?? [];
+			$result   = self::run_credentials_test( $provider, $creds );
+			$cache    = is_wp_error( $result )
+				? [
+					'provider'      => $provider,
+					'error'         => $result->get_error_message(),
+					'connection_id' => $id,
+				]
+				: array_merge( $result, [ 'connection_id' => $id ] );
+			self::set_connection_cache( $id, $cache );
+		}
+	}
+
+	/**
+	 * Tests raw credentials for a provider without persisting anything.
+	 *
+	 * @since 2.0.0
+	 * @param string               $provider Provider key.
+	 * @param array<string, mixed> $creds    Plaintext credential array.
+	 * @return array<string, mixed>|\WP_Error Profile data on success.
+	 */
+	private static function run_credentials_test( string $provider, array $creds ): array|\WP_Error {
 		if ( 'bitbucket' === $provider ) {
-			$saved_email     = $settings['bitbucket_email'] ?? '';
-			$saved_api_token = $settings['bitbucket_api_token'] ?? '';
-			$bb_email        = sanitize_email( $overrides['bitbucket_email'] ?? $saved_email );
-			$bb_api_token    = sanitize_text_field( $overrides['bitbucket_api_token'] ?? $saved_api_token );
-			$cache_this      = ( $saved_email === $bb_email && $saved_api_token === $bb_api_token );
-
-			$api    = new Bitbucket_API( $bb_email, $bb_api_token );
+			$api    = new Bitbucket_API(
+				sanitize_email( $creds['email'] ?? '' ),
+				sanitize_text_field( $creds['api_token'] ?? '' )
+			);
 			$result = $api->test_connection();
-
 			if ( is_wp_error( $result ) ) {
-				if ( $cache_this ) {
-					self::set_connection_cache(
-						'bitbucket',
-						[
-							'provider' => 'bitbucket',
-							'error'    => $result->get_error_message(),
-						]
-					);
-				}
 				return $result;
 			}
-
-			$data = [
+			return [
 				'provider'       => 'bitbucket',
 				'authenticated'  => true,
 				'login'          => $result['login'] ?? '',
@@ -577,36 +791,18 @@ class REST {
 				'rate_reset'     => 0,
 				'checked_at'     => time(),
 			];
-
-			self::set_connection_cache( 'bitbucket', $data );
-
-			return $data;
 		}
 
 		if ( 'gitlab' === $provider ) {
-			$saved_token = $settings['gitlab_token'] ?? '';
-			$saved_url   = $settings['gitlab_url'] ?? '';
-			$token       = sanitize_text_field( $overrides['gitlab_token'] ?? $saved_token );
-			$gitlab_url  = esc_url_raw( $overrides['gitlab_url'] ?? $saved_url );
-			$cache_this  = ( $saved_token === $token && $saved_url === $gitlab_url );
-
-			$api    = new GitLab_API( $token, $gitlab_url );
+			$api    = new GitLab_API(
+				sanitize_text_field( $creds['token'] ?? '' ),
+				esc_url_raw( $creds['gitlab_url'] ?? '' )
+			);
 			$result = $api->test_connection();
-
 			if ( is_wp_error( $result ) ) {
-				if ( $cache_this ) {
-					self::set_connection_cache(
-						'gitlab',
-						[
-							'provider' => 'gitlab',
-							'error'    => $result->get_error_message(),
-						]
-					);
-				}
 				return $result;
 			}
-
-			$data = [
+			return [
 				'provider'       => 'gitlab',
 				'authenticated'  => true,
 				'login'          => $result['login'] ?? '',
@@ -617,35 +813,16 @@ class REST {
 				'rate_reset'     => $result['rate_reset'] ?? 0,
 				'checked_at'     => time(),
 			];
-
-			self::set_connection_cache( 'gitlab', $data );
-
-			return $data;
 		}
 
-		$saved_token    = $settings['token'] ?? '';
-		$saved_username = $settings['username'] ?? '';
-		$token          = sanitize_text_field( $overrides['token'] ?? $saved_token );
-		$username       = sanitize_text_field( $overrides['username'] ?? $saved_username );
-		$cache_this     = ( $saved_token === $token && $saved_username === $username );
-
-		$api    = new API( $token );
-		$result = $api->test_connection( $username );
-
+		$token    = sanitize_text_field( $creds['token'] ?? '' );
+		$username = sanitize_text_field( $creds['username'] ?? '' );
+		$api      = new API( $token );
+		$result   = $api->test_connection( $username );
 		if ( is_wp_error( $result ) ) {
-			if ( $cache_this ) {
-				self::set_connection_cache(
-					'github',
-					[
-						'provider' => 'github',
-						'error'    => $result->get_error_message(),
-					]
-				);
-			}
 			return $result;
 		}
-
-		$data = [
+		return [
 			'provider'       => 'github',
 			'authenticated'  => ! empty( $token ),
 			'login'          => $result['login'] ?? '',
@@ -656,23 +833,46 @@ class REST {
 			'rate_reset'     => $result['rate_reset'] ?? 0,
 			'checked_at'     => time(),
 		];
-
-		self::set_connection_cache( 'github', $data );
-
-		return $data;
 	}
 
 	/**
-	 * Updates a single provider slot in the connection cache.
+	 * Extracts plain credential fields from the request for the given provider.
+	 *
+	 * @since 2.0.0
+	 * @param string           $provider Provider key.
+	 * @param \WP_REST_Request $req      Request object.
+	 * @return array<string, string>
+	 */
+	private static function extract_credentials( string $provider, \WP_REST_Request $req ): array {
+		if ( 'bitbucket' === $provider ) {
+			return [
+				'email'     => sanitize_email( (string) ( $req->get_param( 'bitbucket_email' ) ?? '' ) ),
+				'api_token' => sanitize_text_field( (string) ( $req->get_param( 'bitbucket_api_token' ) ?? '' ) ),
+			];
+		}
+		if ( 'gitlab' === $provider ) {
+			return [
+				'token'      => sanitize_text_field( (string) ( $req->get_param( 'gitlab_token' ) ?? '' ) ),
+				'gitlab_url' => esc_url_raw( (string) ( $req->get_param( 'gitlab_url' ) ?? '' ) ),
+			];
+		}
+		return [
+			'token'    => sanitize_text_field( (string) ( $req->get_param( 'token' ) ?? '' ) ),
+			'username' => sanitize_text_field( (string) ( $req->get_param( 'username' ) ?? '' ) ),
+		];
+	}
+
+	/**
+	 * Updates a single connection slot in the connection cache.
 	 *
 	 * @since 1.0.0
-	 * @param string     $provider Provider key.
-	 * @param array|null $data     Connection data, or null to clear.
+	 * @param string     $connection_id Connection ID key.
+	 * @param array|null $data          Connection data, or null to clear.
 	 * @return void
 	 */
-	private static function set_connection_cache( string $provider, ?array $data ): void {
-		$cache              = (array) get_option( 'gitwire_connection_cache', [] );
-		$cache[ $provider ] = $data;
+	private static function set_connection_cache( string $connection_id, ?array $data ): void {
+		$cache                   = (array) get_option( 'gitwire_connection_cache', [] );
+		$cache[ $connection_id ] = $data;
 		update_option( 'gitwire_connection_cache', $cache, false );
 	}
 
@@ -684,25 +884,34 @@ class REST {
 	 * @return array<string, mixed>|\WP_Error Repository payload on success, WP_Error on failure.
 	 */
 	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
-		$settings = (array) get_option( 'gitwire_settings', [] );
 		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 			$provider = 'github';
 		}
 		$page = max( 1, (int) ( $req->get_param( 'page' ) ?? 1 ) );
 
-		$cached = Repo_Cache::get_repos_page( $provider, $page );
+		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
+		if ( '' === $connection_id ) {
+			$default       = Connections::get_default( $provider );
+			$connection_id = $default['id'] ?? '';
+		}
+
+		if ( '' === $connection_id ) {
+			return new \WP_Error( 'no_connection', 'No connection found for this provider.', [ 'status' => 400 ] );
+		}
+
+		$cached = Repo_Cache::get_repos_page( $connection_id, $page );
 		if ( is_array( $cached ) ) {
 			return self::enrich_repos_payload( $cached, $provider );
 		}
 
-		$payload = self::build_repos_page( $settings, $provider, $page );
+		$payload = self::build_repos_page( $provider, $page, $connection_id );
 		if ( is_wp_error( $payload ) ) {
-			Repo_Cache::clear_repos( $provider );
+			Repo_Cache::clear_repos( $connection_id );
 			return $payload;
 		}
 
-		Repo_Cache::set_repos_page( $provider, $page, $payload );
+		Repo_Cache::set_repos_page( $connection_id, $page, $payload );
 
 		return self::enrich_repos_payload( $payload, $provider );
 	}
@@ -711,21 +920,22 @@ class REST {
 	 * Builds a paginated repository list payload from the Git provider API.
 	 *
 	 * @since 1.2.0
-	 * @param array<string, mixed> $settings Plugin settings.
-	 * @param string               $provider Provider key: github or gitlab.
-	 * @param int                  $page     Page number.
+	 * @param string $provider      Provider key: github, gitlab, or bitbucket.
+	 * @param int    $page          Page number.
+	 * @param string $connection_id Connection ID to use for credentials.
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	public static function build_repos_page( array $settings, string $provider, int $page ) {
-		if ( 'bitbucket' === $provider ) {
-			$bb_email     = sanitize_email( $settings['bitbucket_email'] ?? '' );
-			$bb_api_token = $settings['bitbucket_api_token'] ?? '';
+	public static function build_repos_page( string $provider, int $page, string $connection_id = '' ) {
+		$creds = '' !== $connection_id
+			? Connections::get_credentials( $connection_id )
+			: Connections::get_default_credentials( $provider );
 
-			if ( ! $bb_email || ! $bb_api_token ) {
+		if ( 'bitbucket' === $provider ) {
+			if ( ! $creds || empty( $creds['email'] ) || empty( $creds['api_token'] ) ) {
 				return new \WP_Error( 'missing_config', 'Configure Bitbucket credentials first.', [ 'status' => 400 ] );
 			}
 
-			$api = new Bitbucket_API( $bb_email, $bb_api_token );
+			$api = new Bitbucket_API( sanitize_email( $creds['email'] ), $creds['api_token'] );
 			// Pass empty string — get_repos auto-discovers workspaces via /user/workspaces.
 			$result    = $api->get_repos( '', $page );
 			$installed = Installer::get_installed();
@@ -763,11 +973,11 @@ class REST {
 		}
 
 		if ( 'gitlab' === $provider ) {
-			if ( ! ( $settings['gitlab_token'] ?? '' ) ) {
+			if ( ! $creds || empty( $creds['token'] ) ) {
 				return new \WP_Error( 'missing_config', 'Configure a GitLab token first.', [ 'status' => 400 ] );
 			}
 
-			$api       = new GitLab_API( $settings['gitlab_token'] ?? '', $settings['gitlab_url'] ?? '' );
+			$api       = new GitLab_API( $creds['token'], $creds['gitlab_url'] ?? '' );
 			$result    = $api->get_repos( '', $page );
 			$installed = Installer::get_installed();
 
@@ -804,13 +1014,14 @@ class REST {
 			];
 		}
 
-		$username = sanitize_text_field( $settings['username'] ?? '' );
+		$creds    = $creds ?? [];
+		$username = sanitize_text_field( $creds['username'] ?? '' );
 
-		if ( ! $username && ! ( $settings['token'] ?? '' ) ) {
+		if ( ! $username && empty( $creds['token'] ) ) {
 			return new \WP_Error( 'missing_config', 'Configure a GitHub username or token first.', [ 'status' => 400 ] );
 		}
 
-		$api       = new API( $settings['token'] ?? '' );
+		$api       = new API( $creds['token'] ?? '' );
 		$result    = $api->get_repos( $username, $page );
 		$installed = Installer::get_installed();
 
@@ -848,23 +1059,15 @@ class REST {
 	/**
 	 * Detects repository type via the provider API.
 	 *
-	 * @since 1.2.0
-	 * @param array<string, mixed> $settings Plugin settings.
-	 * @param string               $provider Provider key.
-	 * @param string               $owner    Repository owner.
-	 * @param string               $repo     Repository name.
-	 * @param string               $branch   Branch name.
+	 * @since 2.0.0
+	 * @param string $provider Provider key.
+	 * @param string $owner    Repository owner.
+	 * @param string $repo     Repository name.
+	 * @param string $branch   Branch name.
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	public static function detect_type_for_repo( array $settings, string $provider, string $owner, string $repo, string $branch ) {
-		$api    = self::make_api( $settings, $provider );
-		$result = $api->detect_type( $owner, $repo, $branch );
-
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-
-		return $result;
+	public static function detect_type_for_repo( string $provider, string $owner, string $repo, string $branch ) {
+		return self::make_api( $provider )->detect_type( $owner, $repo, $branch );
 	}
 
 	/**
@@ -878,9 +1081,7 @@ class REST {
 		$owner    = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo     = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		$settings = (array) get_option( 'gitwire_settings', [] );
-		$api      = self::make_api( $settings, $provider );
-		$result   = $api->get_branches( $owner, $repo );
+		$result   = self::make_api( $provider )->get_branches( $owner, $repo );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -907,8 +1108,7 @@ class REST {
 			return $cached;
 		}
 
-		$settings = (array) get_option( 'gitwire_settings', [] );
-		$result   = self::detect_type_for_repo( $settings, $provider, $owner, $repo, $branch );
+		$result = self::detect_type_for_repo( $provider, $owner, $repo, $branch );
 
 		if ( is_wp_error( $result ) ) {
 			$result = [
@@ -949,6 +1149,8 @@ class REST {
 
 		$settings      = Settings::get_raw();
 		$smart_install = $settings['smart_install'] ?? true;
+		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
+		$connection_id = '' !== $connection_id ? $connection_id : null;
 
 		if ( $smart_install && ! $force_type ) {
 			$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
@@ -956,7 +1158,7 @@ class REST {
 				$provider = 'github';
 			}
 
-			$api      = self::make_api( $settings, $provider );
+			$api      = self::make_api( $provider, $connection_id );
 			$detected = $api->detect_type( $owner, $repo, $branch );
 
 			if ( is_wp_error( $detected ) ) {
@@ -999,10 +1201,12 @@ class REST {
 			$provider = 'github';
 		}
 
-		$method = 'theme' === $type ? 'install_theme' : 'install_plugin';
-		$result = Installer::$method( $owner, $repo, $branch, $slug, $provider, $replace );
+		$method    = 'theme' === $type ? 'install_theme' : 'install_plugin';
+		$is_update = null !== Installer::get_record( $provider, $owner . '/' . $repo );
+		$result    = Installer::$method( $owner, $repo, $branch, $slug, $provider, $replace, $connection_id );
 
 		if ( is_wp_error( $result ) ) {
+			Logger::log( sprintf( '[%s] %s failed — %s/%s: %s', $provider, $is_update ? 'Update' : 'Install', $owner, $repo, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 
@@ -1010,6 +1214,12 @@ class REST {
 
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
+
+		if ( $is_update ) {
+			Logger::log( sprintf( '[%s] Updated %s/%s (%s) on branch %s', $provider, $owner, $repo, $type, $branch ) );
+		} else {
+			Logger::log( sprintf( '[%s] Installed %s/%s as %s on branch %s', $provider, $owner, $repo, $type, $branch ) );
+		}
 
 		return $result;
 	}
@@ -1073,7 +1283,6 @@ class REST {
 		$records  = Installer::get_installed();
 		$orphaned = [];
 		$pruned   = false;
-		$settings = Settings::get_raw();
 
 		$pending       = get_option( 'gitwire_pending_update' );
 		$pending_key   = '';
@@ -1113,7 +1322,7 @@ class REST {
 				}
 
 				$provider  = $rec['provider'] ?? 'github';
-				$api       = self::make_api( $settings, $provider );
+				$api       = self::make_api( $provider, $rec['connection_id'] ?? null );
 				$commits   = $api->get_commits( $rec['owner'], $rec['repo'], $rec['branch'], 1 );
 				$full_name = $rec['full_name'] ?? ( $rec['owner'] . '/' . $rec['repo'] );
 				if ( ! is_wp_error( $commits ) && ! empty( $commits[0]['sha'] ) ) {
@@ -1125,7 +1334,7 @@ class REST {
 
 			$record_key = ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' );
 			if ( ! $pending_guard || $record_key !== $pending_key ) {
-				$remote_head = self::fetch_remote_head( $rec, $settings );
+				$remote_head = self::fetch_remote_head( $rec );
 				if ( $remote_head ) {
 					set_transient(
 						'gitwire_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) ),
@@ -1167,6 +1376,12 @@ class REST {
 		foreach ( $records as $key => &$rec ) {
 			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 				$rec['provider'] = 'github';
+			}
+
+			// Flag when the stamped connection no longer exists in the store.
+			$conn_id = $rec['connection_id'] ?? null;
+			if ( $conn_id && null === Connections::find( $conn_id ) ) {
+				$rec['needs_reconnect'] = true;
 			}
 
 			if ( 'plugin' === ( $rec['type'] ?? '' ) ) {
@@ -1236,17 +1451,16 @@ class REST {
 	 * Fetches the latest remote commit SHA for an installed record.
 	 *
 	 * @since 1.2.0
-	 * @param array<string, mixed> $rec      Installed record.
-	 * @param array<string, mixed> $settings Plugin settings.
+	 * @param array<string, mixed> $rec Installed record.
 	 * @return string|null Remote HEAD SHA or null on failure.
 	 */
-	private static function fetch_remote_head( array $rec, array $settings ): ?string {
+	private static function fetch_remote_head( array $rec ): ?string {
 		if ( empty( $rec['owner'] ) || empty( $rec['repo'] ) || empty( $rec['branch'] ) ) {
 			return null;
 		}
 
 		$provider = $rec['provider'] ?? 'github';
-		$api      = self::make_api( $settings, $provider );
+		$api      = self::make_api( $provider, $rec['connection_id'] ?? null );
 		$commits  = $api->get_commits( $rec['owner'], $rec['repo'], $rec['branch'], 1 );
 
 		if ( is_wp_error( $commits ) || empty( $commits[0]['sha'] ) ) {
@@ -1264,9 +1478,8 @@ class REST {
 	 * @return array<string, array<string, mixed>> Map of detection keys to results.
 	 */
 	public static function detect_batch( \WP_REST_Request $req ): array {
-		$repos    = $req->get_param( 'repos' );
-		$settings = Settings::get_raw();
-		$results  = [];
+		$repos   = $req->get_param( 'repos' );
+		$results = [];
 
 		if ( ! is_array( $repos ) ) {
 			return [ 'detections' => $results ];
@@ -1299,13 +1512,10 @@ class REST {
 				continue;
 			}
 
-			$result = self::detect_type_for_repo( $settings, $provider, $owner, $repo, $branch );
+			$result = self::detect_type_for_repo( $provider, $owner, $repo, $branch );
 
 			if ( is_wp_error( $result ) ) {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( '[Gitwire] Could not detect repository type for ' . $key . ': ' . $result->get_error_message() );
-				}
+				Logger::log( sprintf( 'Detection failed — %s: %s', $key, $result->get_error_message() ), 'error' );
 				$result = [
 					'type'       => 'unknown',
 					'subtype'    => null,
@@ -1334,6 +1544,7 @@ class REST {
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
+		$record    = Installer::get_record( $provider, $full_name );
 
 		Error_Handler::clear_stale_activation_guard();
 
@@ -1342,6 +1553,7 @@ class REST {
 		} catch ( \Throwable $e ) {
 			// guard was armed before activation — clean up before returning.
 			Error_Handler::abort_pending_guard();
+			Logger::log( sprintf( '[%s] Activation failed — %s/%s: fatal error', $provider, $owner, $repo ), 'error' );
 			return new \WP_Error(
 				'gitwire_activation_fatal',
 				__( 'Plugin could not be activated because it triggered a fatal error.', 'gitwire' ),
@@ -1350,8 +1562,11 @@ class REST {
 		}
 
 		if ( is_wp_error( $result ) ) {
+			Logger::log( sprintf( '[%s] Activation failed — %s/%s: %s', $provider, $owner, $repo, $result->get_error_message() ), 'error' );
 			return $result;
 		}
+
+		Logger::log( sprintf( '[%s] Activated %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
 
 		return [ 'activated' => true ];
 	}
@@ -1368,11 +1583,14 @@ class REST {
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
+		$record    = Installer::get_record( $provider, $full_name );
 		$result    = Installer::deactivate( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
+
+		Logger::log( sprintf( '[%s] Deactivated %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
 
 		return [ 'deactivated' => true ];
 	}
@@ -1399,15 +1617,28 @@ class REST {
 
 		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$full_name = $owner . '/' . $repo;
-		$result    = Installer::switch_branch( $provider, $full_name, $branch );
+
+		$existing_record = Installer::get_record( $provider, $full_name );
+		$is_pull         = $existing_record && ( $existing_record['branch'] ?? '' ) === $branch;
+
+		$result = Installer::switch_branch( $provider, $full_name, $branch );
 
 		if ( is_wp_error( $result ) ) {
+			$action = $is_pull ? 'Pull' : 'Switch branch';
+			Logger::log( sprintf( '[%s] %s failed — %s/%s: %s', $provider, $action, $owner, $repo, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 
 		delete_transient( 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $branch ) );
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider );
+
+		$type = $existing_record['type'] ?? 'plugin';
+		if ( $is_pull ) {
+			Logger::log( sprintf( '[%s] Pulled %s/%s (%s) on branch %s', $provider, $owner, $repo, $type, $branch ) );
+		} else {
+			Logger::log( sprintf( '[%s] Switched %s/%s (%s) to branch %s', $provider, $owner, $repo, $type, $branch ) );
+		}
 
 		return $result;
 	}
@@ -1457,7 +1688,33 @@ class REST {
 
 		Repo_Cache::clear_repos();
 
+		Logger::log( sprintf( '[%s] Uninstalled %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
+
 		return [ 'removed' => true ];
+	}
+
+	/**
+	 * Removes the Gitwire tracking record without deleting the files from disk.
+	 *
+	 * @since 3.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function untrack_installed( \WP_REST_Request $req ): array|\WP_Error {
+		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
+		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
+		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$full_name = $owner . '/' . $repo;
+
+		$result = Installer::untrack( $provider, $full_name );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		Repo_Cache::clear_repos();
+
+		return [ 'untracked' => true ];
 	}
 
 	/**
@@ -1536,15 +1793,15 @@ class REST {
 	}
 
 	/**
-	 * Returns an API client instance for the given provider.
+	 * Returns an API client instance for the given provider and optional connection ID.
 	 *
-	 * @since 1.1.0
-	 * @param array<string, mixed> $settings Plugin settings array.
-	 * @param string               $provider Provider key: 'github' or 'gitlab'.
-	 * @return API|GitLab_API|Bitbucket_API Appropriate API client.
+	 * @since 2.0.0
+	 * @param string      $provider      Provider key: 'github', 'gitlab', or 'bitbucket'.
+	 * @param string|null $connection_id Specific connection ID, or null for the default.
+	 * @return Git_Provider_Interface Appropriate API client.
 	 */
-	private static function make_api( array $settings, string $provider = 'github' ): Git_Provider_Interface {
-		return Provider_Factory::make( $settings, $provider );
+	private static function make_api( string $provider = 'github', ?string $connection_id = null ): Git_Provider_Interface {
+		return Provider_Factory::make( $provider, $connection_id );
 	}
 
 	/**
@@ -1604,6 +1861,221 @@ class REST {
 	}
 
 	/**
+	 * Parses a repository URL and attempts an anonymous type detection.
+	 *
+	 * Returns provider/owner/repo/branch, whether the repo is publicly readable,
+	 * and the detection result when public.
+	 *
+	 * @since 1.3.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error Resolve payload or WP_Error on bad URL.
+	 */
+	public static function resolve_repo( \WP_REST_Request $req ): array|\WP_Error {
+		$url    = sanitize_text_field( (string) $req->get_param( 'url' ) );
+		$parsed = self::parse_repo_url( $url );
+
+		if ( is_wp_error( $parsed ) ) {
+			return $parsed;
+		}
+
+		$provider = $parsed['provider'];
+		$owner    = $parsed['owner'];
+		$repo     = $parsed['repo'];
+		$branch   = $parsed['branch'];
+
+		$anon_api  = self::make_anon_api( $parsed );
+		$detect_br = '' !== $branch ? $branch : 'HEAD';
+		$detected  = $anon_api->detect_type( $owner, $repo, $detect_br );
+		$is_public = ! is_wp_error( $detected );
+
+		return [
+			'provider'  => $provider,
+			'owner'     => $owner,
+			'repo'      => $repo,
+			'branch'    => '' !== $branch ? $branch : null,
+			'is_public' => $is_public,
+			'detection' => $is_public ? $detected : null,
+		];
+	}
+
+	/**
+	 * Parses a GitHub, GitLab, or Bitbucket URL into its components.
+	 *
+	 * Handles .git suffix, /tree/<branch>, trailing slashes, and GitLab
+	 * nested namespaces. Self-hosted GitLab is matched against the saved
+	 * gitlab_url setting.
+	 *
+	 * @since 1.3.0
+	 * @param string $url Raw URL from the client.
+	 * @return array<string, string>|\WP_Error Parsed components or WP_Error.
+	 */
+	private static function parse_repo_url( string $url ): array|\WP_Error {
+		$invalid = new \WP_Error(
+			'invalid_url',
+			/* translators: shown when the pasted URL is not a GitHub/GitLab/Bitbucket repo link */
+			__( "We couldn't recognize this link. Use GitHub, GitLab, or Bitbucket.", 'gitwire' ),
+			[ 'status' => 400 ]
+		);
+
+		$url   = trim( $url );
+		$parts = wp_parse_url( $url );
+
+		if ( empty( $parts['host'] ) || empty( $parts['path'] ) ) {
+			return $invalid;
+		}
+
+		$host = strtolower( $parts['host'] );
+		$path = rtrim( $parts['path'], '/' );
+		$path = (string) preg_replace( '/\.git$/i', '', $path );
+
+		if ( 'github.com' === $host ) {
+			if ( ! preg_match( '#^/([^/]+)/([^/]+)(?:/tree/(.+))?$#', $path, $m ) ) {
+				return $invalid;
+			}
+			return [
+				'provider'   => 'github',
+				'owner'      => $m[1],
+				'repo'       => $m[2],
+				'branch'     => isset( $m[3] ) ? trim( $m[3], '/' ) : '',
+				'gitlab_url' => '',
+			];
+		}
+
+		if ( 'bitbucket.org' === $host ) {
+			if ( ! preg_match( '#^/([^/]+)/([^/]+)#', $path, $m ) ) {
+				return $invalid;
+			}
+			$branch = '';
+			if ( preg_match( '#/src/([^/]+)#', $path, $bm ) ) {
+				$branch = $bm[1];
+			}
+			return [
+				'provider'   => 'bitbucket',
+				'owner'      => $m[1],
+				'repo'       => $m[2],
+				'branch'     => $branch,
+				'gitlab_url' => '',
+			];
+		}
+
+		// GitLab.com or self-hosted GitLab.
+		$settings      = Settings::get_raw();
+		$is_gitlab_com = 'gitlab.com' === $host;
+		$custom_url    = rtrim( $settings['gitlab_url'] ?? '', '/' );
+		$custom_host   = '';
+		if ( $custom_url ) {
+			$parsed_custom = wp_parse_url( $custom_url );
+			$custom_host   = strtolower( $parsed_custom['host'] ?? '' );
+		}
+		$is_custom_gitlab = $custom_host && $host === $custom_host;
+
+		if ( $is_gitlab_com || $is_custom_gitlab ) {
+			// Strip /-/tree/branch or /tree/branch.
+			$branch = '';
+			if ( preg_match( '#^(.+)/-/tree/(.+)$#', $path, $m ) ) {
+				$path   = rtrim( $m[1], '/' );
+				$branch = trim( $m[2], '/' );
+			} elseif ( preg_match( '#^(.+)/tree/([^/].+)$#', $path, $m ) ) {
+				$path   = rtrim( $m[1], '/' );
+				$branch = trim( $m[2], '/' );
+			}
+
+			$segments = array_values( array_filter( explode( '/', ltrim( $path, '/' ) ) ) );
+			if ( count( $segments ) < 2 ) {
+				return $invalid;
+			}
+
+			$repo_name = array_pop( $segments );
+			$owner     = implode( '/', $segments );
+
+			return [
+				'provider'   => 'gitlab',
+				'owner'      => $owner,
+				'repo'       => $repo_name,
+				'branch'     => $branch,
+				'gitlab_url' => $is_custom_gitlab ? $custom_url : '',
+			];
+		}
+
+		return $invalid;
+	}
+
+	/**
+	 * Returns an anonymous (no-token) API client for the given parsed URL components.
+	 *
+	 * @since 1.3.0
+	 * @param array<string, string> $parsed Output of parse_repo_url().
+	 * @return Git_Provider_Interface
+	 */
+	private static function make_anon_api( array $parsed ): Git_Provider_Interface {
+		$provider = $parsed['provider'] ?? 'github';
+
+		if ( 'gitlab' === $provider ) {
+			return new GitLab_API( '', $parsed['gitlab_url'] ?? '' );
+		}
+
+		if ( 'bitbucket' === $provider ) {
+			return new Bitbucket_API( '', '' );
+		}
+
+		return new API( '' );
+	}
+
+	/**
+	 * Returns the raw log file contents.
+	 *
+	 * @since 1.3.0
+	 * @return array<string, mixed>
+	 */
+	public static function get_logs( \WP_REST_Request $req ): array {
+		$from   = sanitize_text_field( $req->get_param( 'from' ) ?? '' );
+		$to     = sanitize_text_field( $req->get_param( 'to' ) ?? '' );
+		$level  = sanitize_key( $req->get_param( 'level' ) ?? '' );
+		$actors = array_values( array_filter( array_map( 'sanitize_text_field', (array) ( $req->get_param( 'actors' ) ?? [] ) ) ) );
+
+		return [
+			'entries'        => Logger::get_instance()->get_entries( $from, $to, $level, $actors ),
+			'enable_logging' => Settings::is_logging_enabled(),
+		];
+	}
+
+	/**
+	 * Returns WP usernames for users with manage_options, optionally filtered by search.
+	 *
+	 * @since 1.3.0
+	 * @param \WP_REST_Request $req Request object.
+	 * @return string[]
+	 */
+	public static function get_log_actors( \WP_REST_Request $req ): array {
+		$search = sanitize_text_field( $req->get_param( 'search' ) ?? '' );
+		$args   = [
+			'capability__in' => [ 'manage_options' ],
+			'fields'         => [ 'user_login' ],
+			'number'         => 20,
+			'orderby'        => 'user_login',
+		];
+		if ( '' !== $search ) {
+			$args['search']         = '*' . $search . '*';
+			$args['search_columns'] = [ 'user_login', 'display_name' ];
+		}
+		return array_column( (array) get_users( $args ), 'user_login' );
+	}
+
+	/**
+	 * Clears the log file.
+	 *
+	 * @since 1.3.0
+	 * @return array<string, bool>
+	 */
+	public static function clear_logs(): array {
+		$cleared = Logger::get_instance()->clear();
+		if ( $cleared ) {
+			Logger::log( 'Log cleared' );
+		}
+		return [ 'cleared' => $cleared ];
+	}
+
+	/**
 	 * Fetches the latest commit SHA for a branch and stores it on the installed record.
 	 * Runs fire-and-forget after install/switch — failures are silently ignored.
 	 *
@@ -1615,8 +2087,7 @@ class REST {
 	 * @return void
 	 */
 	private static function store_head( string $owner, string $repo, string $branch, string $provider ): void {
-		$settings  = (array) get_option( 'gitwire_settings', [] );
-		$api       = self::make_api( $settings, $provider );
+		$api       = self::make_api( $provider );
 		$commits   = $api->get_commits( $owner, $repo, $branch, 1 );
 		$full_name = $owner . '/' . $repo;
 		if ( ! is_wp_error( $commits ) && ! empty( $commits ) ) {
