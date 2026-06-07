@@ -82,7 +82,7 @@ class Logger {
 	 * @param string $level Level to keep ('activity', 'error'), or empty for all.
 	 * @return array<int, array{timestamp: string, level: string, message: string}>
 	 */
-	public function get_entries( string $from = '', string $to = '', string $level = '' ): array {
+	public function get_entries( string $from = '', string $to = '', string $level = '', array $actors = [] ): array {
 		if ( ! file_exists( $this->log_file ) ) {
 			return [];
 		}
@@ -106,6 +106,9 @@ class Logger {
 				continue;
 			}
 			if ( '' !== $level && $entry['level'] !== $level ) {
+				continue;
+			}
+			if ( ! empty( $actors ) && ! in_array( ltrim( $entry['actor'], '@' ), $actors, true ) ) {
 				continue;
 			}
 			$entries[] = $entry;

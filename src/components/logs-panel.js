@@ -11,6 +11,7 @@ import {
 	Flex,
 	FlexBlock,
 	FlexItem,
+	FormTokenField,
 	Popover,
 	Spinner,
 	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
@@ -71,36 +72,6 @@ function LevelBadge( { level } ) {
 	);
 }
 
-function FilterGroup( { label, options, value, onChange } ) {
-	return (
-		<div>
-			<p
-				style={ {
-					fontSize: 11,
-					fontWeight: 600,
-					textTransform: 'uppercase',
-					letterSpacing: '0.05em',
-					color: '#757575',
-					margin: '0 0 8px',
-				} }
-			>
-				{ label }
-			</p>
-			<Flex gap={ 1 } wrap>
-				{ options.map( ( opt ) => (
-					<Button
-						key={ opt.value }
-						size="compact"
-						variant={ value === opt.value ? 'primary' : 'secondary' }
-						onClick={ () => onChange( opt.value ) }
-					>
-						{ opt.label }
-					</Button>
-				) ) }
-			</Flex>
-		</div>
-	);
-}
 
 /**
  * @param {Object}   props              Component props.
@@ -114,13 +85,19 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 	const [ levelFilter, setLevelFilter ] = useState( '' );
 	const [ dateRange, setDateRange ] = useState( 'today' );
 	const [ isFilterOpen, setIsFilterOpen ] = useState( false );
+	const [ userFilter, setUserFilter ] = useState( [] );
+	const [ actorSuggestions, setActorSuggestions ] = useState( [] );
 
-	const fetchLogs = useCallback( async ( level, range ) => {
+	const loggingEnabled =
+		settings?.enable_logging !== false && !! settings?.enable_logging;
+
+	const fetchLogs = useCallback( async ( level, range, actors ) => {
 		setLoading( true );
 		try {
 			const result = await api.getLogs( {
 				from: fromDateForRange( range ),
 				level,
+				actors,
 			} );
 			setEntries( result.entries ?? [] );
 		} catch ( e ) {
@@ -131,8 +108,20 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 	}, [] );
 
 	useEffect( () => {
-		fetchLogs( levelFilter, dateRange );
-	}, [ fetchLogs, levelFilter, dateRange ] );
+		fetchLogs( levelFilter, dateRange, userFilter );
+	}, [ fetchLogs, levelFilter, dateRange, userFilter ] );
+
+	useEffect( () => {
+		if ( ! loggingEnabled ) return;
+		api.getLogActors( '' ).then( setActorSuggestions ).catch( () => {} );
+	}, [ loggingEnabled ] );
+
+	const handleActorInputChange = useCallback( async ( text ) => {
+		try {
+			const logins = await api.getLogActors( text );
+			setActorSuggestions( logins );
+		} catch ( _ ) {}
+	}, [] );
 
 	const handleClear = async () => {
 		setClearing( true );
@@ -147,10 +136,9 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 		}
 	};
 
-	const loggingEnabled =
-		settings?.enable_logging !== false && !! settings?.enable_logging;
 	const hasEntries = entries && entries.length > 0;
-	const hasActiveFilter = '' !== levelFilter || 'today' !== dateRange;
+	const hasActiveFilter =
+		'' !== levelFilter || 'today' !== dateRange || userFilter.length > 0;
 
 	return (
 		<div style={ { maxWidth: 760, margin: '0 auto' } }>
@@ -270,6 +258,25 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 												/>
 											) ) }
 										</ToggleGroupControl>
+										<Spacer marginTop={ 4 } />
+										<FormTokenField
+											__nextHasNoMarginBottom
+											__next40pxDefaultSize
+											label={ __(
+												'User',
+												'gitwire'
+											) }
+											placeholder={ __(
+												'All users',
+												'gitwire'
+											) }
+											suggestions={ actorSuggestions }
+											value={ userFilter }
+											onChange={ setUserFilter }
+											onInputChange={
+												handleActorInputChange
+											}
+										/>
 									</div>
 								</Popover>
 							) }
