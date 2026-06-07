@@ -1621,6 +1621,8 @@ class REST {
 		$result = Installer::switch_branch( $provider, $full_name, $branch );
 
 		if ( is_wp_error( $result ) ) {
+			$action = $is_pull ? 'Pull' : 'Switch branch';
+			Logger::log( sprintf( '[%s] %s failed — %s/%s: %s', $provider, $action, $owner, $repo, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 

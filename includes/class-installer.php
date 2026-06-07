@@ -177,6 +177,17 @@ class Installer {
 		$repo          = $parts[1];
 		$method        = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
 		$connection_id = $rec['connection_id'] ?? null;
+		$creds         = null !== $connection_id
+			? Connections::get_credentials( $connection_id )
+			: Connections::get_default_credentials( $provider );
+
+		if ( null === $creds ) {
+			return new \WP_Error(
+				'gitwire_no_connection',
+				'The connection used to install this repository no longer exists. Reconnect in Settings to pull updates.',
+				[ 'status' => 400 ]
+			);
+		}
 
 		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider, false, $connection_id );
 
