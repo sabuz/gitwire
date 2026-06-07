@@ -137,7 +137,9 @@ class Logger {
 	 * @return void
 	 */
 	private function write( string $message, string $level ): void {
-		$line = '[' . gmdate( 'Y-m-d H:i:s' ) . '] [' . $level . '] ' . $message . PHP_EOL;
+		$user  = wp_get_current_user();
+		$actor = $user->exists() ? '@' . $user->user_login . ' ' : '';
+		$line  = '[' . gmdate( 'Y-m-d H:i:s' ) . '] [' . $level . '] ' . $actor . $message . PHP_EOL;
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 		file_put_contents( $this->log_file, $line, FILE_APPEND | LOCK_EX );
 		$this->maybe_trim_retention();
