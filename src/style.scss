@@ -792,13 +792,17 @@ body.gitwire-admin-page {
 
 	&__private {
 		margin-bottom: 16px;
-		padding: 16px;
-		border: 1px solid #dcdcde;
-		border-radius: 4px;
-		background: #f6f7f7;
 
 		p {
-			margin: 0 0 12px;
+			margin: 0 0 10px;
+
+			&:last-child {
+				margin-bottom: 0;
+			}
+		}
+
+		.gitwire-import-url__message {
+			color: #9a6700;
 		}
 	}
 
@@ -807,7 +811,45 @@ body.gitwire-admin-page {
 		color: #57606a;
 	}
 
+	&__conn-dropdown {
+
+		.components-popover__content {
+			padding: 0;
+		}
+	}
+
 	&__install-form {
 		padding-top: 4px;
 	}
 }
+
+
+.gitwire-conn-popover {
+	min-width: 140px;
+	margin: 0;
+	padding: 4px;
+	list-style: none;
+}
+
+.gitwire-conn-option {
+	display: block;
+	width: 100%;
+	padding: 6px 10px;
+	border: none;
+	border-radius: 3px;
+	background: none;
+	font-size: 13px;
+	text-align: left;
+	color: #1d2327;
+	cursor: pointer;
+
+	&:hover {
+		background: #f0f0f0;
+	}
+
+	&.is-active {
+		font-weight: 600;
+		color: var(--wp-admin-theme-color, #3858e9);
+	}
+}
+

@@ -1098,17 +1098,22 @@ class REST {
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
 	public static function detect_repo( \WP_REST_Request $req ): array|\WP_Error {
-		$owner  = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo   = sanitize_text_field( $req->get_param( 'repo' ) );
-		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? 'HEAD' );
+		$owner         = sanitize_text_field( $req->get_param( 'owner' ) );
+		$repo          = sanitize_text_field( $req->get_param( 'repo' ) );
+		$branch        = sanitize_text_field( $req->get_param( 'branch' ) ?? 'HEAD' );
+		$provider      = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 
-		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		$cached   = Repo_Cache::get_type( $provider, $owner, $repo, $branch );
-		if ( is_array( $cached ) ) {
-			return $cached;
+		// Only use cache for unauthenticated lookups; a specific connection may access private repos.
+		if ( '' === $connection_id ) {
+			$cached = Repo_Cache::get_type( $provider, $owner, $repo, $branch );
+			if ( is_array( $cached ) ) {
+				return $cached;
+			}
 		}
 
-		$result = self::detect_type_for_repo( $provider, $owner, $repo, $branch );
+		$api    = self::make_api( $provider, '' !== $connection_id ? $connection_id : null );
+		$result = $api->detect_type( $owner, $repo, $branch );
 
 		if ( is_wp_error( $result ) ) {
 			$result = [
@@ -1119,7 +1124,9 @@ class REST {
 			];
 		}
 
-		Repo_Cache::set_type( $provider, $owner, $repo, $branch, $result );
+		if ( '' === $connection_id ) {
+			Repo_Cache::set_type( $provider, $owner, $repo, $branch, $result );
+		}
 
 		return $result;
 	}

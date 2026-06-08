@@ -44,11 +44,11 @@ export const getBranches = ( owner, repo, provider = 'github' ) =>
 		path: `${ BASE }/repos/${ owner }/${ repo }/branches?provider=${ provider }`,
 	} );
 
-export const detectRepo = ( owner, repo, branch, provider = 'github' ) =>
+export const detectRepo = ( owner, repo, branch, provider = 'github', connectionId = '' ) =>
 	apiFetch( {
-		path: `${ BASE }/repos/${ owner }/${ repo }/detect?branch=${ encodeURIComponent(
-			branch
-		) }&provider=${ provider }`,
+		path:
+			`${ BASE }/repos/${ owner }/${ repo }/detect?branch=${ encodeURIComponent( branch ) }&provider=${ provider }` +
+			( connectionId ? `&connection_id=${ encodeURIComponent( connectionId ) }` : '' ),
 	} );
 
 export const install = ( data ) =>
