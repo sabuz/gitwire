@@ -310,19 +310,21 @@ export default function ImportFromUrl( {
 		step === 'checking' || step === 'verifying-conn' || isInstalling;
 
 	// Connection info for the detected provider (private path, Phase 1: one per provider).
-	const hasProviderConn = resolved
-		? !! connections?.find( ( c ) => c.provider === resolved.provider )
-		: false;
-	const existingConn = hasProviderConn
-		? connection?.[ resolved.provider ] ?? {}
+	const providerConnRec = resolved
+		? ( connections?.find( ( c ) => c.provider === resolved.provider ) ?? null )
 		: null;
-	const connLabel = existingConn?.authenticated
-		? sprintf(
-				/* translators: 1: provider name, 2: username */
-				__( '%1$s (@%2$s)', 'gitwire' ),
-				providerLabel( resolved?.provider ),
-				existingConn.login
-		  )
+	const existingConnProfile = providerConnRec
+		? ( connection?.[ providerConnRec.id ] ?? null )
+		: null;
+	const connLabel = providerConnRec
+		? existingConnProfile?.login
+			? sprintf(
+					/* translators: 1: provider name, 2: username */
+					__( '%1$s (@%2$s)', 'gitwire' ),
+					providerLabel( resolved.provider ),
+					existingConnProfile.login
+			  )
+			: providerLabel( resolved.provider )
 		: null;
 
 	return (
