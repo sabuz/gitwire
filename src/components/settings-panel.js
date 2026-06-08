@@ -226,9 +226,7 @@ export default function SettingsPanel( {
 						) }
 						label={
 							<>
-								<strong>
-									{ __( 'Smart Install', 'gitwire' ) }
-								</strong>{ ' ' }
+								{ __( 'Smart Install', 'gitwire' ) }{ ' ' }
 								<span className="gitwire-badge-recommended">
 									{ __( 'Recommended', 'gitwire' ) }
 								</span>
@@ -244,9 +242,7 @@ export default function SettingsPanel( {
 							'Shows a [Gitwire] label next to managed plugin and theme names on the Plugins and Themes screens.',
 							'gitwire'
 						) }
-						label={
-							<strong>{ __( 'Repo Label', 'gitwire' ) }</strong>
-						}
+						label={ __( 'Repo Label', 'gitwire' ) }
 						onChange={ handleShowRepoLabelChange }
 					/>
 				</CardBody>
@@ -269,21 +265,12 @@ export default function SettingsPanel( {
 							'Record installs, removals, activations, and connection changes to the Logs page.',
 							'gitwire'
 						) }
-						label={
-							<strong>
-								{ __( 'Enable Logging', 'gitwire' ) }
-							</strong>
-						}
+						label={ __( 'Enable Logging', 'gitwire' ) }
 						onChange={ handleEnableLoggingChange }
 					/>
 					{ enableLogging && (
-						<div
-							style={ {
-								marginTop: 16,
-								paddingLeft: 16,
-								borderLeft: '3px solid #e0e0e0',
-							} }
-						>
+						<>
+							<Spacer marginTop={ 4 } />
 							<SelectControl
 								__next40pxDefaultSize
 								__nextHasNoMarginBottom
@@ -348,7 +335,7 @@ export default function SettingsPanel( {
 								value={ logRetentionDays }
 								onChange={ handleLogRetentionChange }
 							/>
-						</div>
+						</>
 					) }
 				</CardBody>
 			</Card>
