@@ -414,7 +414,7 @@ export default function ImportFromUrl( {
 												aria-haspopup="listbox"
 												className="gitwire-conn-btn"
 												size="small"
-												variant="link"
+												variant="secondary"
 												onClick={ onToggle }
 											>
 												{ activeLabel }
