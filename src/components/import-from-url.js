@@ -540,6 +540,16 @@ export default function ImportFromUrl( {
 						style={ { marginTop: 24 } }
 					>
 						<Button
+							disabled={ isInstalling }
+							variant="tertiary"
+							onClick={ () => {
+								setStep( 'idle' );
+								setResolved( null );
+							} }
+						>
+							{ __( 'Cancel', 'gitwire' ) }
+						</Button>
+						<Button
 							disabled={ ! canInstall || isInstalling }
 							isBusy={ isInstalling || slugChecking }
 							variant="primary"
