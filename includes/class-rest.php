@@ -25,6 +25,38 @@ class REST {
 	private const NS = 'gitwire/v1';
 
 	/**
+	 * Request-scoped cache for the gitwire_pending_update option.
+	 *
+	 * @var array<string, mixed>|false|null null = not yet loaded, false = loaded + absent.
+	 */
+	private static mixed $pending_cache = null;
+
+	/**
+	 * Returns the pending update option, reading the DB at most once per request.
+	 *
+	 * @since 1.2.0
+	 * @return array<string, mixed>|false
+	 */
+	private static function get_pending_update(): mixed {
+		if ( null === self::$pending_cache ) {
+			self::$pending_cache = get_option( 'gitwire_pending_update' );
+		}
+		return self::$pending_cache;
+	}
+
+	/**
+	 * Clears the pending update cache and persists the new value.
+	 *
+	 * @since 1.2.0
+	 * @param array<string, mixed> $pending New pending update value.
+	 * @return void
+	 */
+	private static function set_pending_update( array $pending ): void {
+		self::$pending_cache = $pending;
+		update_option( 'gitwire_pending_update', $pending, false );
+	}
+
+	/**
 	 * Registers the rest_api_init hook.
 	 *
 	 * @since 1.0.0
@@ -210,12 +242,12 @@ class REST {
 				'callback'            => [ self::class, 'check_slug' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [
-					'slug'     => [
+					'slug' => [
 						'required'          => true,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_file_name',
 					],
-					'type'     => [
+					'type' => [
 						'type'    => 'string',
 						'default' => 'plugin',
 						'enum'    => [ 'plugin', 'theme' ],
@@ -450,7 +482,7 @@ class REST {
 			);
 		}
 
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = self::get_pending_update();
 		if (
 			is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true )
@@ -503,7 +535,7 @@ class REST {
 			);
 		}
 
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = self::get_pending_update();
 		if (
 			! is_array( $pending )
 			|| ! in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true )
@@ -1262,7 +1294,7 @@ class REST {
 		$orphaned = [];
 		$pruned   = false;
 
-		$pending       = get_option( 'gitwire_pending_update' );
+		$pending       = self::get_pending_update();
 		$pending_key   = '';
 		$pending_guard = is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
@@ -1326,6 +1358,7 @@ class REST {
 
 		if ( $pruned ) {
 			update_option( 'gitwire_installed', $records );
+			Installer::invalidate_installed_cache();
 		}
 
 		return [
@@ -1347,9 +1380,14 @@ class REST {
 		}
 
 		$active_theme  = get_stylesheet();
-		$pending       = get_option( 'gitwire_pending_update' );
+		$pending       = self::get_pending_update();
 		$pending_guard = is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
+
+		$all_connections = [];
+		foreach ( Connections::all() as $conn ) {
+			$all_connections[ $conn['id'] ] = true;
+		}
 
 		foreach ( $records as $key => &$rec ) {
 			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
@@ -1358,7 +1396,7 @@ class REST {
 
 			// Flag when the stamped connection no longer exists in the store.
 			$conn_id = $rec['connection_id'] ?? null;
-			if ( $conn_id && null === Connections::find( $conn_id ) ) {
+			if ( $conn_id && ! isset( $all_connections[ $conn_id ] ) ) {
 				$rec['needs_reconnect'] = true;
 			}
 
@@ -1659,7 +1697,7 @@ class REST {
 			return $result;
 		}
 
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = self::get_pending_update();
 		if ( is_array( $pending ) && ( $pending['full_name'] ?? '' ) === $full_name ) {
 			Error_Handler::abort_pending_guard();
 		}
@@ -2084,7 +2122,7 @@ class REST {
 	 * @return void
 	 */
 	private static function stage_pending_head( string $owner, string $repo, string $branch, string $provider ): void {
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = self::get_pending_update();
 		if ( ! is_array( $pending ) || ! is_array( $pending['pending_record'] ?? null ) ) {
 			return;
 		}
@@ -2097,6 +2135,6 @@ class REST {
 		}
 
 		$pending['pending_record']['head'] = $commits[0]['sha'];
-		update_option( 'gitwire_pending_update', $pending, false );
+		self::set_pending_update( $pending );
 	}
 }

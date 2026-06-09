@@ -19,6 +19,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Installer {
 
 	/**
+	 * Request-scoped cache for the gitwire_installed option.
+	 *
+	 * @var array<string, mixed>|null
+	 */
+	private static ?array $installed_cache = null;
+
+	/**
+	 * Clears the request-scope installed cache after a write.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	public static function invalidate_installed_cache(): void {
+		self::$installed_cache = null;
+	}
+
+	/**
 	 * Registers hooks that clean up installation records when a plugin or theme
 	 * is deleted through the standard WordPress interface.
 	 *
@@ -58,6 +75,7 @@ class Installer {
 
 		if ( $dirty ) {
 			update_option( 'gitwire_installed', $installed );
+			self::invalidate_installed_cache();
 		}
 	}
 
@@ -89,6 +107,7 @@ class Installer {
 
 		if ( $dirty ) {
 			update_option( 'gitwire_installed', $installed );
+			self::invalidate_installed_cache();
 		}
 	}
 
@@ -222,6 +241,7 @@ class Installer {
 
 		unset( $installed[ $key ] );
 		update_option( 'gitwire_installed', $installed );
+		self::invalidate_installed_cache();
 
 		return true;
 	}
@@ -244,6 +264,7 @@ class Installer {
 
 		unset( $installed[ $key ] );
 		update_option( 'gitwire_installed', $installed );
+		self::invalidate_installed_cache();
 
 		return true;
 	}
@@ -280,6 +301,7 @@ class Installer {
 					if ( $plugin_file ) {
 						$installed[ $key ]['plugin_file'] = $plugin_file;
 						update_option( 'gitwire_installed', $installed );
+						self::invalidate_installed_cache();
 					}
 				}
 			}
@@ -456,6 +478,7 @@ class Installer {
 				if ( $plugin_file ) {
 					$installed[ $key ]['plugin_file'] = $plugin_file;
 					update_option( 'gitwire_installed', $installed );
+					self::invalidate_installed_cache();
 				}
 			}
 		}
@@ -481,6 +504,10 @@ class Installer {
 	 * @return array<string, mixed> Map of "provider:full_name" => record.
 	 */
 	public static function get_installed(): array {
+		if ( null !== self::$installed_cache ) {
+			return self::$installed_cache;
+		}
+
 		$raw      = (array) get_option( 'gitwire_installed', [] );
 		$result   = [];
 		$migrated = false;
@@ -498,6 +525,7 @@ class Installer {
 			update_option( 'gitwire_installed', $result );
 		}
 
+		self::$installed_cache = $result;
 		return $result;
 	}
 
@@ -529,6 +557,7 @@ class Installer {
 		if ( isset( $installed[ $key ] ) ) {
 			$installed[ $key ]['head'] = $sha;
 			update_option( 'gitwire_installed', $installed );
+			self::invalidate_installed_cache();
 		}
 	}
 
@@ -807,6 +836,7 @@ class Installer {
 		}
 
 		update_option( 'gitwire_installed', $installed );
+		self::invalidate_installed_cache();
 
 		if ( ! empty( $evicted ) ) {
 			$record['_evicted'] = $evicted;
