@@ -81,11 +81,10 @@ export default function ImportFromUrl( {
 	onGoToSettings,
 } ) {
 	const [ url, setUrl ] = useState( '' );
-	// step: idle | checking | error | resolved | private | verifying-conn | conn-error | installing
+	// step: idle | checking | error | resolved | private | verifying-conn | installing
 	const [ step, setStep ] = useState( 'idle' );
 	const [ checkError, setCheckError ] = useState( null );
 	const [ resolved, setResolved ] = useState( null );
-	const [ connError, setConnError ] = useState( null );
 
 	// Install-form state (populated once resolve succeeds or connection verified).
 	const [ allBranches, setAllBranches ] = useState( [] );
@@ -143,7 +142,6 @@ export default function ImportFromUrl( {
 			setStep( 'idle' );
 			setResolved( null );
 			setCheckError( null );
-			setConnError( null );
 		}
 	};
 
@@ -184,7 +182,6 @@ export default function ImportFromUrl( {
 		}
 		const connId = ( typeof passedConnId === 'string' ? passedConnId : null ) ?? providerConns[ 0 ]?.id ?? null;
 		setStep( 'verifying-conn' );
-		setConnError( null );
 		try {
 			const detectBranch = resolved.branch || 'HEAD';
 			const d = await api.detectRepo(
@@ -205,14 +202,7 @@ export default function ImportFromUrl( {
 			} );
 			setStep( 'resolved' );
 		} catch ( e ) {
-			setConnError(
-				e.message ||
-					__(
-						"Repository not found or you don't have access.",
-						'gitwire'
-					)
-			);
-			setStep( 'conn-error' );
+			setStep( 'private' );
 		}
 	}, [ resolved, providerConns, initInstallForm ] );
 
@@ -350,11 +340,11 @@ export default function ImportFromUrl( {
 					<Button
 						__next40pxDefaultSize
 						disabled={ ! url.trim() || isBusy }
-						isBusy={ step === 'checking' }
+						isBusy={ step === 'checking' || step === 'verifying-conn' }
 						variant="primary"
 						onClick={ handleCheck }
 					>
-						{ step === 'checking'
+						{ step === 'checking' || step === 'verifying-conn'
 							? __( 'Checking…', 'gitwire' )
 							: __( 'Check Repository', 'gitwire' ) }
 					</Button>
@@ -369,7 +359,7 @@ export default function ImportFromUrl( {
 			) }
 
 			{ /* Private / not-found state */ }
-			{ step === 'private' && resolved && (
+			{ ( step === 'private' || step === 'verifying-conn' ) && resolved && (
 				<div className="gitwire-import-url__private">
 					<Notice isDismissible={ false } status="warning">
 						{ __(
@@ -380,28 +370,23 @@ export default function ImportFromUrl( {
 					<p>
 						{ hasProviderConns && (
 							<>
-								{ __( 'Try to connect with a saved account:', 'gitwire' ) }{ ' ' }
+								{ __( 'Try to connect with a', 'gitwire' ) }{ ' ' }
 								<Dropdown
 									popoverProps={ {
 										placement: 'bottom-start',
 										className: 'gitwire-conn-dropdown',
 										focusOnMount: 'container',
 									} }
-									renderToggle={ ( { isOpen, onToggle } ) => {
-										const primaryConn = providerConns[ 0 ];
-										const profile = connection?.[ primaryConn?.id ] ?? null;
-										const login = profile?.login || primaryConn?.username;
-										return (
-											<Button
-												aria-expanded={ isOpen }
-												aria-haspopup="listbox"
-												variant="link"
-												onClick={ onToggle }
-											>
-												{ login ? `@${ login }` : providerLabel( resolved.provider ) }
-											</Button>
-										);
-									} }
+									renderToggle={ ( { isOpen, onToggle } ) => (
+										<Button
+											aria-expanded={ isOpen }
+											aria-haspopup="listbox"
+											variant="link"
+											onClick={ onToggle }
+										>
+											{ __( 'saved account', 'gitwire' ) }
+										</Button>
+									) }
 									renderContent={ ( { onClose } ) => (
 										<ul className="gitwire-conn-popover" role="listbox">
 											{ providerConns.map( ( c ) => {
@@ -466,32 +451,7 @@ export default function ImportFromUrl( {
 				</div>
 			) }
 
-			{ /* Verifying spinner */ }
-			{ step === 'verifying-conn' && (
-				<div className="gitwire-import-url__private">
-					<Flex align="center" gap={ 2 }>
-						<Spinner />
-						<span>{ __( 'Verifying access…', 'gitwire' ) }</span>
-					</Flex>
-				</div>
-			) }
-
-			{ /* Connection error */ }
-			{ step === 'conn-error' && (
-				<div className="gitwire-import-url__private">
-					<p className="gitwire-import-url__message is-error">
-						{ connError }
-					</p>
-					<Button
-						variant="secondary"
-						onClick={ () => setStep( 'private' ) }
-					>
-						{ __( 'Back', 'gitwire' ) }
-					</Button>
-				</div>
-			) }
-
-			{ /* Inline install form (public path or post-connection verify) */ }
+{ /* Inline install form (public path or post-connection verify) */ }
 			{ showInstallForm && resolved && (
 				<div className="gitwire-import-url__install-form">
 					<ResolvedBadge
