@@ -77,33 +77,37 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 
 	return (
 		<>
-			<p style={ { margin: '0 0 12px' } }>
+			<p style={ { margin: '0 0 16px', fontSize: 13, color: '#57606a' } }>
 				{ sprintf(
 					/* translators: %s: repository full name */
 					__( 'What would you like to do with %s?', 'gitwire' ),
 					item.full_name
 				) }
 			</p>
-			<div className="gitwire-delete-options">
-				<div className="gitwire-delete-option">
-					<strong>{ __( 'Remove from Gitwire', 'gitwire' ) }</strong>
-					<p>
+			<Flex direction="column" gap={ 4 }>
+				<div>
+					<p style={ { margin: '0 0 4px', fontWeight: 600, fontSize: 13 } }>
+						{ __( 'Remove from Gitwire', 'gitwire' ) }
+					</p>
+					<p style={ { margin: 0, fontSize: 13, color: '#57606a' } }>
 						{ __(
 							'Stops tracking this repository. The plugin or theme files stay on the server and remain usable.',
 							'gitwire'
 						) }
 					</p>
 				</div>
-				<div className="gitwire-delete-option gitwire-delete-option--destructive">
-					<strong>{ __( 'Delete files', 'gitwire' ) }</strong>
-					<p>
+				<div>
+					<p style={ { margin: '0 0 4px', fontWeight: 600, fontSize: 13, color: '#cf222e' } }>
+						{ __( 'Delete files', 'gitwire' ) }
+					</p>
+					<p style={ { margin: 0, fontSize: 13, color: '#57606a' } }>
 						{ __(
 							'Removes the tracking record and permanently deletes all files from the server. This cannot be undone.',
 							'gitwire'
 						) }
 					</p>
 				</div>
-			</div>
+			</Flex>
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
 				<Button
 					disabled={ !! busy }
