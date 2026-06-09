@@ -1116,6 +1116,10 @@ class REST {
 		$result = $api->detect_type( $owner, $repo, $branch );
 
 		if ( is_wp_error( $result ) ) {
+			if ( '' !== $connection_id ) {
+				$status = (int) ( $result->get_error_data()['status'] ?? 400 );
+				return new \WP_Error( $result->get_error_code(), $result->get_error_message(), [ 'status' => $status ] );
+			}
 			$result = [
 				'type'       => 'unknown',
 				'subtype'    => null,

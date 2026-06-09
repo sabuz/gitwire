@@ -15,6 +15,7 @@ import {
 	ComboboxControl,
 	Dropdown,
 	Flex,
+	Notice,
 	SelectControl,
 	Spinner,
 	TextControl,
@@ -85,7 +86,6 @@ export default function ImportFromUrl( {
 	const [ checkError, setCheckError ] = useState( null );
 	const [ resolved, setResolved ] = useState( null );
 	const [ connError, setConnError ] = useState( null );
-	const [ selectedConnId, setSelectedConnId ] = useState( null );
 
 	// Install-form state (populated once resolve succeeds or connection verified).
 	const [ allBranches, setAllBranches ] = useState( [] );
@@ -144,7 +144,6 @@ export default function ImportFromUrl( {
 			setResolved( null );
 			setCheckError( null );
 			setConnError( null );
-			setSelectedConnId( null );
 		}
 	};
 
@@ -179,11 +178,11 @@ export default function ImportFromUrl( {
 		}
 	}, [ url, initInstallForm ] );
 
-	const handleConnectAndContinue = useCallback( async () => {
+	const handleConnectAndContinue = useCallback( async ( passedConnId ) => {
 		if ( ! resolved ) {
 			return;
 		}
-		const connId = selectedConnId ?? providerConns[ 0 ]?.id ?? null;
+		const connId = ( typeof passedConnId === 'string' ? passedConnId : null ) ?? providerConns[ 0 ]?.id ?? null;
 		setStep( 'verifying-conn' );
 		setConnError( null );
 		try {
@@ -215,7 +214,7 @@ export default function ImportFromUrl( {
 			);
 			setStep( 'conn-error' );
 		}
-	}, [ resolved, selectedConnId, providerConns, initInstallForm ] );
+	}, [ resolved, providerConns, initInstallForm ] );
 
 	// Debounced slug conflict check — only active while showing the install form.
 	useEffect( () => {
@@ -369,107 +368,85 @@ export default function ImportFromUrl( {
 				</p>
 			) }
 
-			{ /* Private / not-found state — show connection picker */ }
+			{ /* Private / not-found state */ }
 			{ step === 'private' && resolved && (
 				<div className="gitwire-import-url__private">
-					<p className="gitwire-import-url__message">
+					<Notice isDismissible={ false } status="warning">
 						{ __(
 							"Repository not found or you don't have access.",
 							'gitwire'
 						) }
-					</p>
-					{ hasProviderConns && ( () => {
-						const activeId = selectedConnId ?? providerConns[ 0 ]?.id;
-						const activeProfile = connection?.[ activeId ] ?? null;
-						const activeLogin = activeProfile?.login || providerConns.find( ( c ) => c.id === activeId )?.username;
-						const activeLabel = activeLogin ? `@${ activeLogin }` : providerLabel( resolved.provider );
-
-						return (
-							<Flex
-								align="center"
-								gap={ 2 }
-								justify="flex-start"
-								style={ { marginBottom: 10 } }
-								wrap
-							>
-								<span className="gitwire-import-url__conn-hint">
-									{ providerConns.length > 1
-										? __( 'Try with saved connection', 'gitwire' )
-										: sprintf(
-												/* translators: %s: connection label */
-												__( 'Try with saved connection: %s', 'gitwire' ),
-												activeLabel
-										  ) }
-								</span>
-								{ providerConns.length > 1 && (
-									<Dropdown
-										popoverProps={ {
-											placement: 'bottom-start',
-											className: 'gitwire-conn-dropdown',
-											focusOnMount: 'container',
-										} }
-										renderToggle={ ( { isOpen, onToggle } ) => (
+					</Notice>
+					<p>
+						{ hasProviderConns && (
+							<>
+								{ __( 'Try to connect with a saved account:', 'gitwire' ) }{ ' ' }
+								<Dropdown
+									popoverProps={ {
+										placement: 'bottom-start',
+										className: 'gitwire-conn-dropdown',
+										focusOnMount: 'container',
+									} }
+									renderToggle={ ( { isOpen, onToggle } ) => {
+										const primaryConn = providerConns[ 0 ];
+										const profile = connection?.[ primaryConn?.id ] ?? null;
+										const login = profile?.login || primaryConn?.username;
+										return (
 											<Button
 												aria-expanded={ isOpen }
 												aria-haspopup="listbox"
-												className="gitwire-conn-btn"
-												size="small"
-												variant="secondary"
+												variant="link"
 												onClick={ onToggle }
 											>
-												{ activeLabel }
+												{ login ? `@${ login }` : providerLabel( resolved.provider ) }
 											</Button>
-										) }
-										renderContent={ ( { onClose } ) => (
-											<ul
-												className="gitwire-conn-popover"
-												role="listbox"
-											>
-												{ providerConns.map( ( c ) => {
-													const profile = connection?.[ c.id ] ?? null;
-													const login = profile?.login || c.username;
-													const label = login ? `@${ login }` : ( c.email || c.id );
-													const isActive = c.id === activeId;
-													return (
-														<li key={ c.id } role="option" aria-selected={ isActive }>
-															<button
-																className={ `gitwire-conn-option${ isActive ? ' is-active' : '' }` }
-																type="button"
-																onClick={ () => {
-																	setSelectedConnId( c.id );
-																	onClose();
-																} }
-															>
-																{ label }
-															</button>
-														</li>
-													);
-												} ) }
-											</ul>
-										) }
-									/>
-								) }
-								<Button
-									size="small"
-									variant="primary"
-									onClick={ handleConnectAndContinue }
-								>
-									{ __( 'Connect', 'gitwire' ) }
-								</Button>
-							</Flex>
-						);
-					} )() }
-					<p className="gitwire-import-url__conn-hint">
+										);
+									} }
+									renderContent={ ( { onClose } ) => (
+										<ul className="gitwire-conn-popover" role="listbox">
+											{ providerConns.map( ( c ) => {
+												const profile = connection?.[ c.id ] ?? null;
+												const login = profile?.login || c.username;
+												const label = login ? `@${ login }` : ( c.email || c.id );
+												return (
+													<li
+														key={ c.id }
+														className="gitwire-conn-popover__item"
+														role="option"
+													>
+														<span className="gitwire-conn-popover__name">
+															{ label }
+														</span>
+														<Button
+															className="gitwire-conn-popover__connect"
+															size="small"
+															variant="tertiary"
+															onClick={ () => {
+																onClose();
+																handleConnectAndContinue( c.id );
+															} }
+														>
+															{ __( 'Connect', 'gitwire' ) }
+														</Button>
+													</li>
+												);
+											} ) }
+										</ul>
+									) }
+								/>
+								{ ', ' }
+							</>
+						) }
 						{ createInterpolateElement(
 							sprintf(
 								/* translators: %s: Git provider name (e.g. GitHub) */
 								hasProviderConns
 									? __(
-											'Or add a %s connection in <a>Settings</a>.',
+											'or add a %s connection in <a>Settings</a>.',
 											'gitwire'
 									  )
 									: __(
-											'Check the URL, or add a %s connection in <a>Settings</a> if this is a private repository.',
+											'Add a %s connection in <a>Settings</a> to access private repositories.',
 											'gitwire'
 									  ),
 								providerLabel( resolved.provider )
