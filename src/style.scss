@@ -678,7 +678,7 @@ body.gitwire-admin-page {
 
 	&-note {
 		margin: 8px 0 0;
-		font-size: 12px;
+		font-size: 13px;
 		line-height: 1.5;
 
 		&.gitwire-detect-blocked {
@@ -791,10 +791,6 @@ body.gitwire-admin-page {
 	}
 
 	&__private {
-		.components-notice {
-			margin-bottom: 14px;
-		}
-
 		p {
 			margin: 0 0 10px;
 			font-size: 13px;

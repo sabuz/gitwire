@@ -15,7 +15,6 @@ import {
 	ComboboxControl,
 	Dropdown,
 	Flex,
-	Notice,
 	SelectControl,
 	Spinner,
 	TextControl,
@@ -160,7 +159,7 @@ export default function ImportFromUrl( {
 			const installedKey = `${ result.provider }:${ result.owner }/${ result.repo }`;
 			if ( installed?.[ installedKey ] ) {
 				setCheckError(
-					__( 'This repository is already installed. Use the Updates panel to pull the latest changes.', 'gitwire' )
+					__( 'This repository is already installed.', 'gitwire' )
 				);
 				setStep( 'error' );
 				return;
@@ -203,7 +202,7 @@ export default function ImportFromUrl( {
 			const installedKey = `${ resolved.provider }:${ resolved.owner }/${ resolved.repo }`;
 			if ( installed?.[ installedKey ] ) {
 				setCheckError(
-					__( 'This repository is already installed. Use the Updates panel to pull the latest changes.', 'gitwire' )
+					__( 'This repository is already installed.', 'gitwire' )
 				);
 				setStep( 'error' );
 				return;
@@ -365,14 +364,15 @@ export default function ImportFromUrl( {
 
 			{ /* Private / not-found state */ }
 			{ ( step === 'private' || step === 'verifying-conn' ) && resolved && (
-				<div className="gitwire-import-url__private">
-					<Notice isDismissible={ false } status="warning">
+				<>
+					<p className="gitwire-import-url__message is-error">
 						{ __(
 							"Repository not found or you don't have access.",
 							'gitwire'
 						) }
-					</Notice>
-					<p>
+					</p>
+					<div className="gitwire-import-url__private">
+						<p>
 						{ hasProviderConns && (
 							<>
 								{ __( 'Try to connect with a', 'gitwire' ) }{ ' ' }
@@ -452,8 +452,9 @@ export default function ImportFromUrl( {
 								),
 							}
 						) }
-					</p>
-				</div>
+						</p>
+					</div>
+				</>
 			) }
 
 { /* Inline install form (public path or post-connection verify) */ }
