@@ -210,30 +210,15 @@ class REST {
 				'callback'            => [ self::class, 'check_slug' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [
-					'slug'     => [
+					'slug' => [
 						'required'          => true,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_file_name',
 					],
-					'type'     => [
+					'type' => [
 						'type'    => 'string',
 						'default' => 'plugin',
 						'enum'    => [ 'plugin', 'theme' ],
-					],
-					'owner'    => [
-						'type'              => 'string',
-						'default'           => '',
-						'sanitize_callback' => 'sanitize_text_field',
-					],
-					'repo'     => [
-						'type'              => 'string',
-						'default'           => '',
-						'sanitize_callback' => 'sanitize_text_field',
-					],
-					'provider' => [
-						'type'    => 'string',
-						'default' => 'github',
-						'enum'    => [ 'github', 'gitlab', 'bitbucket' ],
 					],
 				],
 			]
@@ -1253,22 +1238,7 @@ class REST {
 			? get_theme_root() . '/' . $slug
 			: WP_PLUGIN_DIR . '/' . $slug;
 
-		if ( ! is_dir( $path ) ) {
-			return [ 'conflict' => false ];
-		}
-
-		if ( $owner && $repo_arg ) {
-			$full_name = $owner . '/' . $repo_arg;
-			$key       = $provider . ':' . $full_name;
-			$installed = Installer::get_installed();
-			$is_own    = isset( $installed[ $key ] ) &&
-				untrailingslashit( $installed[ $key ]['install_path'] ?? '' ) === untrailingslashit( $path );
-			if ( $is_own ) {
-				return [ 'conflict' => false ];
-			}
-		}
-
-		return [ 'conflict' => true ];
+		return [ 'conflict' => is_dir( $path ) ];
 	}
 
 	/**
