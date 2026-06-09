@@ -54,19 +54,9 @@ export const detectRepo = ( owner, repo, branch, provider = 'github', connection
 export const install = ( data ) =>
 	apiFetch( { path: `${ BASE }/install`, method: 'POST', data } );
 
-export const checkSlug = (
-	slug,
-	type = 'plugin',
-	owner = '',
-	repo = '',
-	provider = 'github'
-) =>
+export const checkSlug = ( slug, type = 'plugin' ) =>
 	apiFetch( {
-		path: `${ BASE }/check-slug?slug=${ encodeURIComponent(
-			slug
-		) }&type=${ type }&owner=${ encodeURIComponent(
-			owner
-		) }&repo=${ encodeURIComponent( repo ) }&provider=${ provider }`,
+		path: `${ BASE }/check-slug?slug=${ encodeURIComponent( slug ) }&type=${ type }`,
 	} );
 
 export const getCommits = ( owner, repo, provider = 'github' ) =>

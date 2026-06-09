@@ -210,12 +210,12 @@ class REST {
 				'callback'            => [ self::class, 'check_slug' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [
-					'slug' => [
+					'slug'     => [
 						'required'          => true,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_file_name',
 					],
-					'type' => [
+					'type'     => [
 						'type'    => 'string',
 						'default' => 'plugin',
 						'enum'    => [ 'plugin', 'theme' ],
@@ -1228,11 +1228,8 @@ class REST {
 	 * @return array<string, bool> Whether the slug conflicts with an existing directory.
 	 */
 	public static function check_slug( \WP_REST_Request $req ): array {
-		$slug     = sanitize_file_name( $req->get_param( 'slug' ) );
-		$type     = $req->get_param( 'type' ) ?? 'plugin';
-		$owner    = sanitize_text_field( $req->get_param( 'owner' ) ?? '' );
-		$repo_arg = sanitize_text_field( $req->get_param( 'repo' ) ?? '' );
-		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$slug = sanitize_file_name( $req->get_param( 'slug' ) );
+		$type = $req->get_param( 'type' ) ?? 'plugin';
 
 		$path = 'theme' === $type
 			? get_theme_root() . '/' . $slug

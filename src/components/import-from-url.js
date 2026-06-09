@@ -77,6 +77,7 @@ export default function ImportFromUrl( {
 	settings,
 	connections,
 	connection,
+	installed,
 	onPostInstall,
 	onGoToSettings,
 } ) {
@@ -156,6 +157,14 @@ export default function ImportFromUrl( {
 		try {
 			const result = await api.resolveRepo( trimmed );
 			setResolved( result );
+			const installedKey = `${ result.provider }:${ result.owner }/${ result.repo }`;
+			if ( installed?.[ installedKey ] ) {
+				setCheckError(
+					__( 'This repository is already installed. Use the Updates panel to pull the latest changes.', 'gitwire' )
+				);
+				setStep( 'error' );
+				return;
+			}
 			if ( result.is_public ) {
 				initInstallForm( {
 					provider: result.provider,
@@ -174,7 +183,7 @@ export default function ImportFromUrl( {
 			);
 			setStep( 'error' );
 		}
-	}, [ url, initInstallForm ] );
+	}, [ url, initInstallForm, installed ] );
 
 	const handleConnectAndContinue = useCallback( async ( passedConnId ) => {
 		if ( ! resolved ) {
@@ -191,6 +200,14 @@ export default function ImportFromUrl( {
 				resolved.provider,
 				connId
 			);
+			const installedKey = `${ resolved.provider }:${ resolved.owner }/${ resolved.repo }`;
+			if ( installed?.[ installedKey ] ) {
+				setCheckError(
+					__( 'This repository is already installed. Use the Updates panel to pull the latest changes.', 'gitwire' )
+				);
+				setStep( 'error' );
+				return;
+			}
 			const updatedResolved = { ...resolved, detection: d };
 			setResolved( updatedResolved );
 			initInstallForm( {
@@ -204,7 +221,7 @@ export default function ImportFromUrl( {
 		} catch ( e ) {
 			setStep( 'private' );
 		}
-	}, [ resolved, providerConns, initInstallForm ] );
+	}, [ resolved, providerConns, initInstallForm, installed ] );
 
 	// Debounced slug conflict check — only active while showing the install form.
 	useEffect( () => {
@@ -218,13 +235,7 @@ export default function ImportFromUrl( {
 		clearTimeout( debounceRef.current );
 		let cancelled = false;
 		debounceRef.current = setTimeout( () => {
-			api.checkSlug(
-				finalizeSlug( slug ),
-				type,
-				resolved.owner,
-				resolved.repo,
-				resolved.provider
-			)
+			api.checkSlug( finalizeSlug( slug ), type )
 				.then( ( r ) => {
 					if ( cancelled ) {
 						return;
@@ -255,13 +266,7 @@ export default function ImportFromUrl( {
 				detection?.type !== 'unknown' ? detection?.type : type;
 			const finalSlug = finalizeSlug( slug );
 
-			const check = await api.checkSlug(
-				finalSlug,
-				installType,
-				resolved.owner,
-				resolved.repo,
-				resolved.provider
-			);
+			const check = await api.checkSlug( finalSlug, installType );
 			if ( check.conflict && ! replace ) {
 				setSlugConflict( true );
 				setStep( 'resolved' );
