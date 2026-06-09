@@ -15,6 +15,7 @@ import {
 	ComboboxControl,
 	Dropdown,
 	Flex,
+	FlexBlock,
 	SelectControl,
 	Spinner,
 	TextControl,
@@ -321,26 +322,32 @@ export default function ImportFromUrl( {
 		<div className="gitwire-import-url">
 			{ /* URL input row — always shown unless actively installing */ }
 			{ ! isInstalling && (
-				<div className="gitwire-import-url__input-row">
-					<TextControl
-						__nextHasNoMarginBottom
-						className="gitwire-import-url__input"
-						disabled={ isBusy }
-						label={ __( 'Repository URL', 'gitwire' ) }
-						placeholder="https://github.com/owner/repo"
-						type="url"
-						value={ url }
-						onChange={ handleUrlChange }
-						onKeyDown={ ( ev ) => {
-							if (
-								ev.key === 'Enter' &&
-								url.trim() &&
-								! isBusy
-							) {
-								handleCheck();
-							}
-						} }
-					/>
+				<Flex
+					gap={ 3 }
+					align="flex-end"
+					className="gitwire-import-url__input-row"
+				>
+					<FlexBlock style={ { minWidth: 0 } }>
+						<TextControl
+							__nextHasNoMarginBottom
+							className="gitwire-import-url__input"
+							disabled={ isBusy }
+							label={ __( 'Repository URL', 'gitwire' ) }
+							placeholder="https://github.com/owner/repo"
+							type="url"
+							value={ url }
+							onChange={ handleUrlChange }
+							onKeyDown={ ( ev ) => {
+								if (
+									ev.key === 'Enter' &&
+									url.trim() &&
+									! isBusy
+								) {
+									handleCheck();
+								}
+							} }
+						/>
+					</FlexBlock>
 					<Button
 						__next40pxDefaultSize
 						disabled={ ! url.trim() || isBusy }
@@ -352,7 +359,7 @@ export default function ImportFromUrl( {
 							? __( 'Checking…', 'gitwire' )
 							: __( 'Check Repository', 'gitwire' ) }
 					</Button>
-				</div>
+				</Flex>
 			) }
 
 			{ /* Resolve error */ }
@@ -581,9 +588,10 @@ export default function ImportFromUrl( {
 function ResolvedBadge( { detection, smartInstall } ) {
 	if ( ! detection ) {
 		return (
-			<div className="gitwire-detect-row gitwire-detect-loading">
-				<Spinner /> { __( 'Detecting project type…', 'gitwire' ) }
-			</div>
+			<Flex gap={ 2 } align="center" className="gitwire-detect-row gitwire-detect-loading">
+				<Spinner />
+				{ __( 'Detecting project type…', 'gitwire' ) }
+			</Flex>
 		);
 	}
 

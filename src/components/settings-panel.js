@@ -760,13 +760,10 @@ function ConnectionsSummary( {
 
 			{ ! adding && connections.length > 0 && (
 				<CardBody>
-					<div
+					<Flex
+						direction="column"
+						gap={ 3 }
 						className="gitwire-connections-summary"
-						style={ {
-							display: 'flex',
-							flexDirection: 'column',
-							gap: 12,
-						} }
 					>
 						{ connections.map( ( rec ) => {
 							const profile = connection?.[ rec.id ] ?? null;
@@ -849,7 +846,7 @@ function ConnectionsSummary( {
 								</button>
 							);
 						} ) }
-					</div>
+					</Flex>
 				</CardBody>
 			) }
 

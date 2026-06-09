@@ -1,13 +1,14 @@
 import { toast } from '../toast';
 
 import { __ } from '@wordpress/i18n';
-import { useState, useEffect, useCallback } from '@wordpress/element';
+import { useState, useEffect, useCallback, useRef } from '@wordpress/element';
 import { cog } from '@wordpress/icons';
 import {
 	Button,
 	Card,
 	CardBody,
 	CardHeader,
+	Flex,
 	FormTokenField,
 	Popover,
 	Spinner,
@@ -84,6 +85,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 	const [ levelFilter, setLevelFilter ] = useState( '' );
 	const [ dateRange, setDateRange ] = useState( 'today' );
 	const [ isFilterOpen, setIsFilterOpen ] = useState( false );
+	const skipCloseRef = useRef( false );
 	const [ userFilter, setUserFilter ] = useState( [] );
 	const [ actorSuggestions, setActorSuggestions ] = useState( [] );
 
@@ -173,10 +175,14 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 						>
 							<Button
 								icon={ cog }
-								isPressed={ isFilterOpen || hasActiveFilter }
 								label={ __( 'View options', 'gitwire' ) }
 								showTooltip
 								size="compact"
+								onMouseDown={ () => {
+									if ( isFilterOpen ) {
+										skipCloseRef.current = true;
+									}
+								} }
 								onClick={ () =>
 									setIsFilterOpen( ( v ) => ! v )
 								}
@@ -186,6 +192,13 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 									offset={ 8 }
 									placement="bottom-end"
 									onClose={ () => setIsFilterOpen( false ) }
+									onFocusOutside={ () => {
+										if ( skipCloseRef.current ) {
+											skipCloseRef.current = false;
+											return;
+										}
+										setIsFilterOpen( false );
+									} }
 								>
 									<div
 										style={ {
@@ -250,15 +263,9 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 					) }
 
 					{ loggingEnabled && loading && (
-						<div
-							style={ {
-								display: 'flex',
-								justifyContent: 'center',
-								padding: '24px 0',
-							} }
-						>
+						<Flex justify="center" style={ { padding: '24px 0' } }>
 							<Spinner />
-						</div>
+						</Flex>
 					) }
 
 					{ loggingEnabled && ! loading && ! hasEntries && (

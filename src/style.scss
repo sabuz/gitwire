@@ -555,9 +555,6 @@ body.gitwire-admin-page {
 	}
 
 	&-spinner-row {
-		display: flex;
-		gap: 8px;
-		align-items: center;
 		margin-top: 8px;
 		font-size: 13px;
 		color: #57606a;
@@ -645,9 +642,6 @@ body.gitwire-admin-page {
 		margin-bottom: 4px;
 
 		&.gitwire-detect-loading {
-			display: flex;
-			gap: 8px;
-			align-items: center;
 			font-size: 13px;
 			color: #57606a;
 		}
@@ -768,20 +762,11 @@ body.gitwire-admin-page {
 	max-width: 680px;
 
 	&__input-row {
-		display: flex;
-		gap: 12px;
-		align-items: flex-end;
-		margin-bottom: 20px;
-
-		.components-base-control {
-			flex: 1;
-			min-width: 0;
-			margin-bottom: 0 !important;
-		}
+		margin-bottom: 12px;
 	}
 
 	&__message {
-		margin: 0 0 16px;
+		margin: 0 0 8px;
 		font-size: 13px;
 		color: #57606a;
 

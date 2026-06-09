@@ -1,6 +1,6 @@
 import { __ } from '@wordpress/i18n';
 import { useState, useEffect } from '@wordpress/element';
-import { Modal, Spinner, Tooltip } from '@wordpress/components';
+import { Flex, Modal, Spinner, Tooltip } from '@wordpress/components';
 
 import * as api from '../../api';
 
@@ -69,10 +69,10 @@ export default function CommitsModal( { item, onClose } ) {
 			onRequestClose={ onClose }
 		>
 			{ commits === null && (
-				<div className="gitwire-installed-spinner-row">
+				<Flex gap={ 2 } align="center" className="gitwire-installed-spinner-row">
 					<Spinner />
 					{ __( 'Loading commits…', 'gitwire' ) }
-				</div>
+				</Flex>
 			) }
 			{ commits !== null && commits.length === 0 && (
 				<p style={ { color: '#57606a', fontSize: 13 } }>
