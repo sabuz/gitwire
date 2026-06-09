@@ -69,9 +69,8 @@ export default function CommitsModal( { item, onClose } ) {
 			onRequestClose={ onClose }
 		>
 			{ commits === null && (
-				<Flex gap={ 2 } align="center" className="gitwire-installed-spinner-row">
+				<Flex justify="center" style={ { padding: '24px 0' } }>
 					<Spinner />
-					{ __( 'Loading commits…', 'gitwire' ) }
 				</Flex>
 			) }
 			{ commits !== null && commits.length === 0 && (

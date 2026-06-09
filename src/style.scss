@@ -554,17 +554,6 @@ body.gitwire-admin-page {
 		flex-wrap: wrap;
 	}
 
-	&-spinner-row {
-		margin-top: 8px;
-		font-size: 13px;
-		color: #57606a;
-
-		/* stylelint-disable-next-line no-descending-specificity */
-		.components-spinner {
-			margin: 0;
-		}
-	}
-
 	&-source,
 	&-date {
 		font-size: 12px;

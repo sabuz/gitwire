@@ -1724,9 +1724,8 @@ class REST {
 			);
 		}
 
-		$settings = (array) get_option( 'gitwire_settings', [] );
-		$api      = self::make_api( $settings, $provider );
-		$commits  = $api->get_commits( $owner, $repo, $record['branch'] );
+		$api     = self::make_api( $provider, $record['connection_id'] ?? null );
+		$commits = $api->get_commits( $owner, $repo, $record['branch'] );
 
 		if ( is_wp_error( $commits ) ) {
 			return $commits;
@@ -2090,9 +2089,8 @@ class REST {
 			return;
 		}
 
-		$settings = (array) get_option( 'gitwire_settings', [] );
-		$api      = self::make_api( $settings, $provider );
-		$commits  = $api->get_commits( $owner, $repo, $branch, 1 );
+		$api     = self::make_api( $provider, $pending['pending_record']['connection_id'] ?? null );
+		$commits = $api->get_commits( $owner, $repo, $branch, 1 );
 
 		if ( is_wp_error( $commits ) || empty( $commits ) ) {
 			return;
