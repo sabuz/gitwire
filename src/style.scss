@@ -765,6 +765,7 @@ body.gitwire-admin-page {
 	}
 
 	&__private {
+
 		p {
 			margin: 0 0 10px;
 			font-size: 13px;
@@ -811,11 +812,20 @@ body.gitwire-admin-page {
 			}
 		}
 
+		&__name {
+			font-size: 13px;
+			color: #1d2327;
+		}
+
+		&__connect {
+			visibility: hidden;
+		}
+
 		&__item {
 			display: flex;
-			align-items: center;
-			justify-content: space-between;
 			gap: 16px;
+			justify-content: space-between;
+			align-items: center;
 			padding: 6px 8px;
 			border-radius: 4px;
 
@@ -826,15 +836,6 @@ body.gitwire-admin-page {
 					visibility: visible;
 				}
 			}
-		}
-
-		&__name {
-			font-size: 13px;
-			color: #1d2327;
-		}
-
-		&__connect {
-			visibility: hidden;
 		}
 	}
 

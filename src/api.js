@@ -44,11 +44,21 @@ export const getBranches = ( owner, repo, provider = 'github' ) =>
 		path: `${ BASE }/repos/${ owner }/${ repo }/branches?provider=${ provider }`,
 	} );
 
-export const detectRepo = ( owner, repo, branch, provider = 'github', connectionId = '' ) =>
+export const detectRepo = (
+	owner,
+	repo,
+	branch,
+	provider = 'github',
+	connectionId = ''
+) =>
 	apiFetch( {
 		path:
-			`${ BASE }/repos/${ owner }/${ repo }/detect?branch=${ encodeURIComponent( branch ) }&provider=${ provider }` +
-			( connectionId ? `&connection_id=${ encodeURIComponent( connectionId ) }` : '' ),
+			`${ BASE }/repos/${ owner }/${ repo }/detect?branch=${ encodeURIComponent(
+				branch
+			) }&provider=${ provider }` +
+			( connectionId
+				? `&connection_id=${ encodeURIComponent( connectionId ) }`
+				: '' ),
 	} );
 
 export const install = ( data ) =>
@@ -56,7 +66,9 @@ export const install = ( data ) =>
 
 export const checkSlug = ( slug, type = 'plugin' ) =>
 	apiFetch( {
-		path: `${ BASE }/check-slug?slug=${ encodeURIComponent( slug ) }&type=${ type }`,
+		path: `${ BASE }/check-slug?slug=${ encodeURIComponent(
+			slug
+		) }&type=${ type }`,
 	} );
 
 export const getCommits = ( owner, repo, provider = 'github' ) =>

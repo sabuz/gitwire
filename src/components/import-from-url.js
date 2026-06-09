@@ -71,6 +71,7 @@ function installButtonLabel( installing, slugChecking ) {
  * @param {Object}   props.connection       Live connection cache per provider (for profile display).
  * @param {Function} props.onPostInstall    Called after a successful install.
  * @param {Function} [props.onGoToSettings] Navigates to the Settings tab.
+ * @param {Object}   props.installed        Map of installed repos keyed by provider:full_name.
  * @return {JSX.Element} The rendered import form.
  */
 export default function ImportFromUrl( {
@@ -104,7 +105,9 @@ export default function ImportFromUrl( {
 	const providerConns = useMemo(
 		() =>
 			resolved
-				? ( connections?.filter( ( c ) => c.provider === resolved.provider ) ?? [] )
+				? connections?.filter(
+						( c ) => c.provider === resolved.provider
+				  ) ?? []
 				: [],
 		[ resolved, connections ]
 	);
@@ -185,43 +188,49 @@ export default function ImportFromUrl( {
 		}
 	}, [ url, initInstallForm, installed ] );
 
-	const handleConnectAndContinue = useCallback( async ( passedConnId ) => {
-		if ( ! resolved ) {
-			return;
-		}
-		const connId = ( typeof passedConnId === 'string' ? passedConnId : null ) ?? providerConns[ 0 ]?.id ?? null;
-		setStep( 'verifying-conn' );
-		try {
-			const detectBranch = resolved.branch || 'HEAD';
-			const d = await api.detectRepo(
-				resolved.owner,
-				resolved.repo,
-				detectBranch,
-				resolved.provider,
-				connId
-			);
-			const installedKey = `${ resolved.provider }:${ resolved.owner }/${ resolved.repo }`;
-			if ( installed?.[ installedKey ] ) {
-				setCheckError(
-					__( 'This repository is already installed.', 'gitwire' )
-				);
-				setStep( 'error' );
+	const handleConnectAndContinue = useCallback(
+		async ( passedConnId ) => {
+			if ( ! resolved ) {
 				return;
 			}
-			const updatedResolved = { ...resolved, detection: d };
-			setResolved( updatedResolved );
-			initInstallForm( {
-				provider: resolved.provider,
-				owner: resolved.owner,
-				repo: resolved.repo,
-				branch: resolved.branch || 'main',
-				detection: d,
-			} );
-			setStep( 'resolved' );
-		} catch ( e ) {
-			setStep( 'private' );
-		}
-	}, [ resolved, providerConns, initInstallForm, installed ] );
+			const connId =
+				( typeof passedConnId === 'string' ? passedConnId : null ) ??
+				providerConns[ 0 ]?.id ??
+				null;
+			setStep( 'verifying-conn' );
+			try {
+				const detectBranch = resolved.branch || 'HEAD';
+				const d = await api.detectRepo(
+					resolved.owner,
+					resolved.repo,
+					detectBranch,
+					resolved.provider,
+					connId
+				);
+				const installedKey = `${ resolved.provider }:${ resolved.owner }/${ resolved.repo }`;
+				if ( installed?.[ installedKey ] ) {
+					setCheckError(
+						__( 'This repository is already installed.', 'gitwire' )
+					);
+					setStep( 'error' );
+					return;
+				}
+				const updatedResolved = { ...resolved, detection: d };
+				setResolved( updatedResolved );
+				initInstallForm( {
+					provider: resolved.provider,
+					owner: resolved.owner,
+					repo: resolved.repo,
+					branch: resolved.branch || 'main',
+					detection: d,
+				} );
+				setStep( 'resolved' );
+			} catch ( e ) {
+				setStep( 'private' );
+			}
+		},
+		[ resolved, providerConns, initInstallForm, installed ]
+	);
 
 	// Debounced slug conflict check — only active while showing the install form.
 	useEffect( () => {
@@ -351,7 +360,9 @@ export default function ImportFromUrl( {
 					<Button
 						__next40pxDefaultSize
 						disabled={ ! url.trim() || isBusy }
-						isBusy={ step === 'checking' || step === 'verifying-conn' }
+						isBusy={
+							step === 'checking' || step === 'verifying-conn'
+						}
 						variant="primary"
 						onClick={ handleCheck }
 					>
@@ -370,101 +381,140 @@ export default function ImportFromUrl( {
 			) }
 
 			{ /* Private / not-found state */ }
-			{ ( step === 'private' || step === 'verifying-conn' ) && resolved && (
-				<>
-					<p className="gitwire-import-url__message is-error">
-						{ __(
-							"Repository not found or you don't have access.",
-							'gitwire'
-						) }
-					</p>
-					<div className="gitwire-import-url__private">
-						<p>
-						{ hasProviderConns && (
-							<>
-								{ __( 'Try to connect with a', 'gitwire' ) }{ ' ' }
-								<Dropdown
-									popoverProps={ {
-										placement: 'bottom-start',
-										className: 'gitwire-conn-dropdown',
-										focusOnMount: 'container',
-									} }
-									renderToggle={ ( { isOpen, onToggle } ) => (
-										<Button
-											aria-expanded={ isOpen }
-											aria-haspopup="listbox"
-											variant="link"
-											onClick={ onToggle }
-										>
-											{ __( 'saved account', 'gitwire' ) }
-										</Button>
-									) }
-									renderContent={ ( { onClose } ) => (
-										<ul className="gitwire-conn-popover" role="listbox">
-											{ providerConns.map( ( c ) => {
-												const profile = connection?.[ c.id ] ?? null;
-												const login = profile?.login || c.username;
-												const label = login ? `@${ login }` : ( c.email || c.id );
-												return (
-													<li
-														key={ c.id }
-														className="gitwire-conn-popover__item"
-														role="option"
-													>
-														<span className="gitwire-conn-popover__name">
-															{ label }
-														</span>
-														<Button
-															className="gitwire-conn-popover__connect"
-															size="small"
-															variant="tertiary"
-															onClick={ () => {
-																onClose();
-																handleConnectAndContinue( c.id );
-															} }
-														>
-															{ __( 'Connect', 'gitwire' ) }
-														</Button>
-													</li>
-												);
-											} ) }
-										</ul>
-									) }
-								/>
-								{ ', ' }
-							</>
-						) }
-						{ createInterpolateElement(
-							sprintf(
-								/* translators: %s: Git provider name (e.g. GitHub) */
-								hasProviderConns
-									? __(
-											'or add a %s connection in <a>Settings</a>.',
-											'gitwire'
-									  )
-									: __(
-											'Add a %s connection in <a>Settings</a> to access private repositories.',
-											'gitwire'
-									  ),
-								providerLabel( resolved.provider )
-							),
-							{
-								a: onGoToSettings ? (
-									<Button
-										variant="link"
-										onClick={ onGoToSettings }
-									/>
-								) : (
-									<span />
-								),
-							}
-						) }
+			{ ( step === 'private' || step === 'verifying-conn' ) &&
+				resolved && (
+					<>
+						<p className="gitwire-import-url__message is-error">
+							{ __(
+								"Repository not found or you don't have access.",
+								'gitwire'
+							) }
 						</p>
-					</div>
-				</>
-			) }
+						<div className="gitwire-import-url__private">
+							<p>
+								{ hasProviderConns && (
+									<>
+										{ __(
+											'Try to connect with a',
+											'gitwire'
+										) }{ ' ' }
+										<Dropdown
+											popoverProps={ {
+												placement: 'bottom-start',
+												className:
+													'gitwire-conn-dropdown',
+												focusOnMount: 'container',
+											} }
+											renderToggle={ ( {
+												isOpen,
+												onToggle,
+											} ) => (
+												<Button
+													aria-expanded={ isOpen }
+													aria-haspopup="listbox"
+													variant="link"
+													onClick={ onToggle }
+												>
+													{ __(
+														'saved account',
+														'gitwire'
+													) }
+												</Button>
+											) }
+											renderContent={ ( { onClose } ) => (
+												<ul
+													className="gitwire-conn-popover"
+													role="listbox"
+												>
+													{ providerConns.map(
+														( c ) => {
+															const profile =
+																connection?.[
+																	c.id
+																] ?? null;
+															const login =
+																profile?.login ||
+																c.username;
+															const label = login
+																? `@${ login }`
+																: c.email ||
+																  c.id;
+															return (
+																<li
+																	key={ c.id }
+																	className="gitwire-conn-popover__item"
+																	role="option"
+																>
+																	<span className="gitwire-conn-popover__name">
+																		{
+																			label
+																		}
+																	</span>
+																	<Button
+																		className="gitwire-conn-popover__connect"
+																		size="small"
+																		variant="tertiary"
+																		onClick={ () => {
+																			onClose();
+																			handleConnectAndContinue(
+																				c.id
+																			);
+																		} }
+																	>
+																		{ __(
+																			'Connect',
+																			'gitwire'
+																		) }
+																	</Button>
+																</li>
+															);
+														}
+													) }
+												</ul>
+											) }
+										/>
+										{ ', ' }
+									</>
+								) }
+								{ createInterpolateElement(
+									hasProviderConns
+										? sprintf(
+												/* translators: %s: Git provider name (e.g. GitHub) */
+												__(
+													'or add a %s connection in <a>Settings</a>.',
+													'gitwire'
+												),
+												providerLabel(
+													resolved.provider
+												)
+										  )
+										: sprintf(
+												/* translators: %s: Git provider name (e.g. GitHub) */
+												__(
+													'Add a %s connection in <a>Settings</a> to access private repositories.',
+													'gitwire'
+												),
+												providerLabel(
+													resolved.provider
+												)
+										  ),
+									{
+										a: onGoToSettings ? (
+											<Button
+												variant="link"
+												onClick={ onGoToSettings }
+											/>
+										) : (
+											<span />
+										),
+									}
+								) }
+							</p>
+						</div>
+					</>
+				) }
 
-{ /* Inline install form (public path or post-connection verify) */ }
+			{ /* Inline install form (public path or post-connection verify) */ }
 			{ showInstallForm && resolved && (
 				<div className="gitwire-import-url__install-form">
 					<ResolvedBadge
@@ -588,7 +638,11 @@ export default function ImportFromUrl( {
 function ResolvedBadge( { detection, smartInstall } ) {
 	if ( ! detection ) {
 		return (
-			<Flex gap={ 2 } align="center" className="gitwire-detect-row gitwire-detect-loading">
+			<Flex
+				gap={ 2 }
+				align="center"
+				className="gitwire-detect-row gitwire-detect-loading"
+			>
 				<Spinner />
 				{ __( 'Detecting project type…', 'gitwire' ) }
 			</Flex>

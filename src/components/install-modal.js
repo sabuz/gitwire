@@ -369,7 +369,11 @@ function InstallButtonLabel( { installing, slugChecking } ) {
 function DetectionBadge( { detection, smartInstall } ) {
 	if ( ! detection ) {
 		return (
-			<Flex gap={ 2 } align="center" className="gitwire-detect-row gitwire-detect-loading">
+			<Flex
+				gap={ 2 }
+				align="center"
+				className="gitwire-detect-row gitwire-detect-loading"
+			>
 				<Spinner />
 				{ __( 'Detecting project type…', 'gitwire' ) }
 			</Flex>

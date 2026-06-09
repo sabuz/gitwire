@@ -86,7 +86,13 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 			</p>
 			<Flex direction="column" gap={ 4 }>
 				<div>
-					<p style={ { margin: '0 0 4px', fontWeight: 600, fontSize: 13 } }>
+					<p
+						style={ {
+							margin: '0 0 4px',
+							fontWeight: 600,
+							fontSize: 13,
+						} }
+					>
 						{ __( 'Remove from Gitwire', 'gitwire' ) }
 					</p>
 					<p style={ { margin: 0, fontSize: 13, color: '#57606a' } }>
@@ -97,7 +103,14 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 					</p>
 				</div>
 				<div>
-					<p style={ { margin: '0 0 4px', fontWeight: 600, fontSize: 13, color: '#cf222e' } }>
+					<p
+						style={ {
+							margin: '0 0 4px',
+							fontWeight: 600,
+							fontSize: 13,
+							color: '#cf222e',
+						} }
+					>
 						{ __( 'Delete files', 'gitwire' ) }
 					</p>
 					<p style={ { margin: 0, fontSize: 13, color: '#57606a' } }>
