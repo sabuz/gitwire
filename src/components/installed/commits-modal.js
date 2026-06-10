@@ -5,6 +5,7 @@ import { Flex, Modal, Spinner, Tooltip } from '@wordpress/components';
 import * as api from '../../api';
 
 const commitsCache = new Map();
+const COMMITS_CACHE_TTL = 5 * 60 * 1000;
 
 /**
  * Read-only modal showing the last 10 commits for an installed repository.
@@ -24,8 +25,9 @@ export default function CommitsModal( { item, onClose } ) {
 		if ( ! item || ! cacheKey ) {
 			return;
 		}
-		if ( commitsCache.has( cacheKey ) ) {
-			setCommits( commitsCache.get( cacheKey ) );
+		const cached = commitsCache.get( cacheKey );
+		if ( cached && Date.now() < cached.expiresAt ) {
+			setCommits( cached.data );
 			return;
 		}
 		setCommits( null );
@@ -35,7 +37,10 @@ export default function CommitsModal( { item, onClose } ) {
 				if ( cancelled ) {
 					return;
 				}
-				commitsCache.set( cacheKey, data );
+				commitsCache.set( cacheKey, {
+					data,
+					expiresAt: Date.now() + COMMITS_CACHE_TTL,
+				} );
 				setCommits( data );
 			} )
 			.catch( () => {

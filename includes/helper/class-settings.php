@@ -30,7 +30,7 @@ class Settings {
 	/**
 	 * Returns a client-safe settings payload.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return array<string, mixed>
 	 */
 	public static function get_public(): array {
@@ -47,7 +47,7 @@ class Settings {
 	/**
 	 * Merges incoming save params with stored settings.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $incoming Request body fields.
 	 * @return array<string, mixed> Full settings array to persist.
 	 */

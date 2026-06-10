@@ -74,7 +74,7 @@ class Installer {
 		}
 
 		if ( $dirty ) {
-			update_option( 'gitwire_installed', $installed );
+			update_option( 'gitwire_installed', $installed, false );
 			self::invalidate_installed_cache();
 		}
 	}
@@ -106,7 +106,7 @@ class Installer {
 		}
 
 		if ( $dirty ) {
-			update_option( 'gitwire_installed', $installed );
+			update_option( 'gitwire_installed', $installed, false );
 			self::invalidate_installed_cache();
 		}
 	}
@@ -119,7 +119,7 @@ class Installer {
 	 * @param string      $repo          Repository name.
 	 * @param string      $branch        Branch, tag, or SHA.
 	 * @param string      $slug          Desired directory slug (defaults to sanitised repo name).
-	 * @param string      $provider      Git provider: 'github' or 'gitlab'.
+	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
@@ -150,7 +150,7 @@ class Installer {
 	 * @param string      $repo          Repository name.
 	 * @param string      $branch        Branch, tag, or SHA.
 	 * @param string      $slug          Desired directory slug (defaults to sanitised repo name).
-	 * @param string      $provider      Git provider: 'github' or 'gitlab'.
+	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
@@ -177,7 +177,7 @@ class Installer {
 	 * Switches the active branch for an already-installed repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider   Git provider: 'github' or 'gitlab'.
+	 * @param string $provider   Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name  Repository full name (owner/repo).
 	 * @param string $new_branch Branch to switch to.
 	 * @return array<string, mixed>|WP_Error Updated record on success, WP_Error on failure.
@@ -218,7 +218,7 @@ class Installer {
 	 * Does NOT deactivate the plugin or theme first.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider  Git provider: 'github' or 'gitlab'.
+	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return true|WP_Error True on success, WP_Error on failure.
 	 */
@@ -240,7 +240,7 @@ class Installer {
 		}
 
 		unset( $installed[ $key ] );
-		update_option( 'gitwire_installed', $installed );
+		update_option( 'gitwire_installed', $installed, false );
 		self::invalidate_installed_cache();
 
 		return true;
@@ -249,7 +249,7 @@ class Installer {
 	/**
 	 * Removes the tracking record for a repository without deleting its files.
 	 *
-	 * @since 3.0.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider key.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return true|\WP_Error True on success, WP_Error when not found.
@@ -263,7 +263,7 @@ class Installer {
 		}
 
 		unset( $installed[ $key ] );
-		update_option( 'gitwire_installed', $installed );
+		update_option( 'gitwire_installed', $installed, false );
 		self::invalidate_installed_cache();
 
 		return true;
@@ -273,7 +273,7 @@ class Installer {
 	 * Activates an installed plugin or switches to an installed theme.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider  Git provider: 'github' or 'gitlab'.
+	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
@@ -300,7 +300,7 @@ class Installer {
 					$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
 					if ( $plugin_file ) {
 						$installed[ $key ]['plugin_file'] = $plugin_file;
-						update_option( 'gitwire_installed', $installed );
+						update_option( 'gitwire_installed', $installed, false );
 						self::invalidate_installed_cache();
 					}
 				}
@@ -447,7 +447,7 @@ class Installer {
 	 * Deactivates an installed plugin. Themes cannot be deactivated this way.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider  Git provider: 'github' or 'gitlab'.
+	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
@@ -477,7 +477,7 @@ class Installer {
 				$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
 				if ( $plugin_file ) {
 					$installed[ $key ]['plugin_file'] = $plugin_file;
-					update_option( 'gitwire_installed', $installed );
+					update_option( 'gitwire_installed', $installed, false );
 					self::invalidate_installed_cache();
 				}
 			}
@@ -498,7 +498,6 @@ class Installer {
 
 	/**
 	 * Returns all currently installed repository records, keyed by provider:full_name.
-	 * Migrates legacy keys (full_name only) on first read.
 	 *
 	 * @since 1.0.0
 	 * @return array<string, mixed> Map of "provider:full_name" => record.
@@ -508,32 +507,15 @@ class Installer {
 			return self::$installed_cache;
 		}
 
-		$raw      = (array) get_option( 'gitwire_installed', [] );
-		$result   = [];
-		$migrated = false;
-
-		foreach ( $raw as $key => $rec ) {
-			if ( strpos( $key, ':' ) === false ) {
-				$provider = $rec['provider'] ?? 'github';
-				$key      = $provider . ':' . $key;
-				$migrated = true;
-			}
-			$result[ $key ] = $rec;
-		}
-
-		if ( $migrated ) {
-			update_option( 'gitwire_installed', $result );
-		}
-
-		self::$installed_cache = $result;
-		return $result;
+		self::$installed_cache = (array) get_option( 'gitwire_installed', [] );
+		return self::$installed_cache;
 	}
 
 	/**
 	 * Returns a single installation record by provider and full name.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider  Git provider: 'github' or 'gitlab'.
+	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return array<string, mixed>|null Record array, or null if not found.
 	 */
@@ -546,7 +528,7 @@ class Installer {
 	 * Stores the installed HEAD commit SHA for a repository record.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider  Git provider: 'github' or 'gitlab'.
+	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @param string $sha       Short commit SHA (7 characters).
 	 * @return void
@@ -556,7 +538,7 @@ class Installer {
 		$key       = $provider . ':' . $full_name;
 		if ( isset( $installed[ $key ] ) ) {
 			$installed[ $key ]['head'] = $sha;
-			update_option( 'gitwire_installed', $installed );
+			update_option( 'gitwire_installed', $installed, false );
 			self::invalidate_installed_cache();
 		}
 	}
@@ -835,7 +817,7 @@ class Installer {
 			}
 		}
 
-		update_option( 'gitwire_installed', $installed );
+		update_option( 'gitwire_installed', $installed, false );
 		self::invalidate_installed_cache();
 
 		if ( ! empty( $evicted ) ) {
@@ -855,7 +837,7 @@ class Installer {
 	 * @param string      $slug          Directory slug for the installation.
 	 * @param string      $install_path  Absolute filesystem path for the installation.
 	 * @param string      $type          Installation type: "plugin" or "theme".
-	 * @param string      $provider      Git provider: 'github' or 'gitlab'.
+	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
@@ -1009,6 +991,7 @@ class Installer {
 			'full_name'     => $full_name,
 			'branch'        => $branch,
 			'type'          => $type,
+			'subtype'       => 'plugin' === $type ? 'plugin' : ( file_exists( $install_path . '/theme.json' ) ? 'block' : 'classic' ),
 			'provider'      => $provider,
 			'connection_id' => $connection_id,
 			'install_path'  => $install_path,

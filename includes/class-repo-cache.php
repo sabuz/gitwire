@@ -3,7 +3,7 @@
  * Persistent option-based cache for repository lists and type detections.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -181,47 +181,45 @@ class Repo_Cache {
 	/**
 	 * Fetches repos from the API and stores them in the options cache.
 	 *
-	 * @since 1.2.0
-	 * @param string $provider Provider key.
-	 * @param int    $page     Page number.
+	 * @since 1.0.0
+	 * @param string $provider      Provider key.
+	 * @param int    $page          Page number.
+	 * @param string $connection_id Connection ID to use for credentials.
 	 * @return array<string, mixed>|\WP_Error Stored payload on success.
 	 */
-	public static function fetch_repos_page( string $provider, int $page ) {
-		$settings = (array) get_option( 'gitwire_settings', [] );
-		$payload  = REST::build_repos_page( $settings, $provider, $page );
+	public static function fetch_repos_page( string $provider, int $page, string $connection_id ): array|\WP_Error {
+		$payload = REST::build_repos_page( $provider, $page, $connection_id );
 
 		if ( is_wp_error( $payload ) ) {
-			self::clear_repos( $provider );
+			self::clear_repos( $connection_id );
 			return $payload;
 		}
 
-		self::set_repos_page( $provider, $page, $payload );
+		self::set_repos_page( $connection_id, $page, $payload );
 
 		return $payload;
 	}
 
 	/**
-	 * Refreshes cached repo list pages for configured providers.
+	 * Refreshes cached repo list pages for all stored connections.
 	 *
-	 * @since 1.2.0
-	 * @return true|\WP_Error True on success, WP_Error when all configured providers fail.
+	 * @since 1.0.0
+	 * @return true|\WP_Error True on success, WP_Error when every connection fails.
 	 */
-	public static function cron_refresh_repos() {
-		$settings = (array) get_option( 'gitwire_settings', [] );
-		$ran      = false;
-		$last_err = null;
+	public static function cron_refresh_repos(): true|\WP_Error {
+		$connections = Connections::all();
+		$ran         = false;
+		$last_err    = null;
 
-		if ( ! empty( $settings['username'] ) || ! empty( $settings['token'] ) ) {
-			$ran    = true;
-			$result = self::fetch_repos_page( 'github', 1 );
-			if ( is_wp_error( $result ) ) {
-				$last_err = $result;
+		foreach ( $connections as $conn ) {
+			$id       = $conn['id'] ?? '';
+			$provider = $conn['provider'] ?? '';
+			if ( ! $id || ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
+				continue;
 			}
-		}
 
-		if ( ! empty( $settings['gitlab_token'] ) ) {
 			$ran    = true;
-			$result = self::fetch_repos_page( 'gitlab', 1 );
+			$result = self::fetch_repos_page( $provider, 1, $id );
 			if ( is_wp_error( $result ) ) {
 				$last_err = $result;
 			}
@@ -237,10 +235,10 @@ class Repo_Cache {
 	/**
 	 * Re-detects repository types for cached and installed repos.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
 	 */
-	public static function cron_refresh_types() {
+	public static function cron_refresh_types(): true|\WP_Error {
 		$settings = Settings::get_raw();
 		if ( ! $settings ) {
 			return true;
@@ -284,15 +282,17 @@ class Repo_Cache {
 			}
 			$full_branch = substr( $rest, $at + 1 );
 			$full_name   = substr( $rest, 0, $at );
-			$name_parts  = explode( '/', $full_name, 2 );
-			if ( count( $name_parts ) < 2 ) {
+			$slash       = strrpos( $full_name, '/' );
+			if ( false === $slash ) {
 				continue;
 			}
+			$owner = substr( $full_name, 0, $slash );
+			$repo  = substr( $full_name, $slash + 1 );
 
 			$result = REST::detect_type_for_repo(
 				$provider,
-				$name_parts[0],
-				$name_parts[1],
+				$owner,
+				$repo,
 				$full_branch
 			);
 			if ( is_wp_error( $result ) ) {
@@ -300,7 +300,7 @@ class Repo_Cache {
 				continue;
 			}
 
-			self::set_type( $provider, $name_parts[0], $name_parts[1], $full_branch, $result );
+			self::set_type( $provider, $owner, $repo, $full_branch, $result );
 		}
 
 		if ( $last_err && count( $keys ) === 1 ) {

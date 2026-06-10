@@ -3,7 +3,7 @@
  * Connection store — CRUD, encryption, and resolution for provider credentials.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -27,7 +27,7 @@ class Connections {
 	/**
 	 * Returns all stored connection records (credentials still encrypted).
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function all(): array {
@@ -37,7 +37,7 @@ class Connections {
 	/**
 	 * Returns a public-safe list — no raw credentials, masked previews only.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function get_public_list(): array {
@@ -57,7 +57,7 @@ class Connections {
 	/**
 	 * Finds a single connection by ID.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return array<string, mixed>|null
 	 */
@@ -73,7 +73,7 @@ class Connections {
 	/**
 	 * Returns an existing connection that matches the provider and username, if any.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @param string $username Login/username to match.
 	 * @return array<string, mixed>|null
@@ -96,7 +96,7 @@ class Connections {
 	/**
 	 * Returns the default connection for a provider, or the first one if none is marked default.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
 	 * @return array<string, mixed>|null
 	 */
@@ -115,7 +115,7 @@ class Connections {
 	/**
 	 * Returns decrypted credentials for a connection.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return array<string, mixed>|null Null when the connection does not exist.
 	 */
@@ -135,7 +135,7 @@ class Connections {
 	/**
 	 * Returns decrypted credentials for the default connection of a provider.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @return array<string, mixed>|null Null when no connection exists for the provider.
 	 */
@@ -151,7 +151,7 @@ class Connections {
 	 * Creates or updates a connection. Pass 'id' to update; omit to create.
 	 * The 'credentials' key must be a plain array — it will be encrypted here.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $data Connection data.
 	 * @return array<string, mixed> Saved record (credentials encrypted).
 	 */
@@ -194,14 +194,14 @@ class Connections {
 			$all[] = $data;
 		}
 
-		update_option( self::OPTION, array_values( $all ) );
+		update_option( self::OPTION, array_values( $all ), false );
 		return $data;
 	}
 
 	/**
 	 * Deletes a connection by ID.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return bool True when deleted, false when not found.
 	 */
@@ -232,14 +232,14 @@ class Connections {
 			unset( $conn );
 		}
 
-		update_option( self::OPTION, $filtered );
+		update_option( self::OPTION, $filtered, false );
 		return true;
 	}
 
 	/**
 	 * Strips raw credentials and adds masked previews for client delivery.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $conn Raw connection record.
 	 * @return array<string, mixed>
 	 */
@@ -280,7 +280,7 @@ class Connections {
 	/**
 	 * Generates a unique connection ID.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return string
 	 */
 	private static function make_id(): string {
@@ -290,7 +290,7 @@ class Connections {
 	/**
 	 * Encrypts a string using AES-256-CBC with a key derived from wp_salt('auth').
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $plain Plaintext.
 	 * @return string Base64-encoded IV + ciphertext, or empty string on failure.
 	 */
@@ -310,7 +310,7 @@ class Connections {
 	/**
 	 * Decrypts a value produced by encrypt().
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $cipher Base64-encoded IV + ciphertext.
 	 * @return string Plaintext, or empty string on failure.
 	 */

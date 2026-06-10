@@ -160,21 +160,29 @@ final class Plugin {
 			add_option(
 				'gitwire_settings',
 				[
-					'token'              => '',
-					'username'           => '',
 					'smart_install'      => true,
 					'show_repo_label'    => true,
 					'enable_logging'     => false,
 					'log_retention_days' => 30,
 					'log_level'          => 'activity',
-				]
+				],
+				'',
+				false
 			);
 		}
 		set_transient( 'gitwire_first_activation', true, 60 );
-		wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_auto_check_connection' );
-		wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_maintenance' );
-		wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_repos_cache' );
-		wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
+		if ( ! wp_next_scheduled( 'gitwire_auto_check_connection' ) ) {
+			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_auto_check_connection' );
+		}
+		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
+			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_maintenance' );
+		}
+		if ( ! wp_next_scheduled( 'gitwire_refresh_repos_cache' ) ) {
+			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_repos_cache' );
+		}
+		if ( ! wp_next_scheduled( 'gitwire_refresh_repo_types' ) ) {
+			wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
+		}
 	}
 
 	/**

@@ -380,8 +380,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 			if ( 403 === $code && str_contains( $message, 'privilege scopes' ) ) {
 				$message = 'Your API token lacks Bitbucket access. When creating the token at id.atlassian.com, choose Scopes → Bitbucket → Read (or use a Classic API token).';
 			}
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[Gitwire Bitbucket] HTTP ' . $code . ' on ' . $this->base . $endpoint . ' — ' . $message );
+			Logger::log( sprintf( '[bitbucket] HTTP %d on %s%s — %s', $code, $this->base, $endpoint, $message ), 'error' );
 			return new \WP_Error( 'gitwire_api_error', $message, [ 'status' => $code ] );
 		}
 

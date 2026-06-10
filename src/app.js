@@ -255,7 +255,9 @@ export default function App( { initialData } ) {
 					applyInstalled( result );
 				} )
 				.finally( () => setLoading( false ) );
+			return;
 		}
+		api.syncInstalled().then( applyInstalled );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const applyInstalled = useCallback( ( result ) => {

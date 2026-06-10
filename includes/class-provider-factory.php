@@ -23,7 +23,7 @@ class Provider_Factory {
 	 * When $connection_id is null the default connection for the provider is used.
 	 * When no connection exists at all, an unauthenticated client is returned.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string      $provider      Provider key: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string|null $connection_id Specific connection ID, or null for the default.
 	 * @return Git_Provider_Interface
@@ -38,7 +38,7 @@ class Provider_Factory {
 		/**
 		 * Filters the resolved credentials before a provider client is built.
 		 *
-		 * @since 2.0.0
+		 * @since 1.0.0
 		 * @param array       $creds         Decrypted credential array.
 		 * @param string      $provider      Provider key.
 		 * @param string|null $connection_id Connection ID, or null for the default.

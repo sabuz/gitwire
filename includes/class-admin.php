@@ -198,9 +198,9 @@ class Admin {
 		$has_config  = ! empty( $connections );
 		$connection  = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
 		Error_Handler::clear_stale_activation_guard();
-		$installed_result = REST::sync_installed();
+		$installed_result = REST::get_installed();
 		$installed        = $installed_result['installed'];
-		$orphaned         = $installed_result['orphaned'];
+		$orphaned         = [];
 		$fatal_notice     = get_option( 'gitwire_fatal_notice' );
 		if ( $fatal_notice ) {
 			delete_option( 'gitwire_fatal_notice' );
@@ -277,7 +277,7 @@ class Admin {
 	/**
 	 * Appends a [Gitwire] label to managed plugin names in the plugins list table.
 	 *
-	 * @since 3.0.0
+	 * @since 1.0.0
 	 * @param array<string, array<string, string>> $all_plugins All installed plugins keyed by plugin file.
 	 * @return array<string, array<string, string>>
 	 */
@@ -300,7 +300,7 @@ class Admin {
 	/**
 	 * Appends a [Gitwire] label to managed theme names in the themes browser.
 	 *
-	 * @since 3.0.0
+	 * @since 1.0.0
 	 * @param array<string, array<string, mixed>> $prepared Themes data prepared for JS.
 	 * @return array<string, array<string, mixed>>
 	 */
@@ -330,7 +330,7 @@ class Admin {
 	 * Blocks deletion of a Gitwire-managed plugin via the native Plugins screen,
 	 * showing a clear notice rather than silently deleting.
 	 *
-	 * @since 3.0.0
+	 * @since 1.0.0
 	 * @param bool|null $pre        Short-circuit value (null to proceed normally).
 	 * @param string    $plugin_file Plugin file path relative to plugins dir.
 	 * @return bool|null|\WP_Error WP_Error to cancel deletion with a message, null to allow.
@@ -362,7 +362,7 @@ class Admin {
 	/**
 	 * Displays the blocked-theme-delete error as an admin notice on the Themes screen.
 	 *
-	 * @since 3.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function show_theme_delete_notice(): void {
@@ -385,7 +385,7 @@ class Admin {
 	 * Intercepts before themes.php processes the delete action and redirects
 	 * with a clear admin notice.
 	 *
-	 * @since 3.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function guard_theme_delete(): void {

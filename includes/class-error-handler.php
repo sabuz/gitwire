@@ -443,7 +443,7 @@ class Error_Handler {
 		$record_key               = $provider . ':' . $full_name;
 		$installed                = Installer::get_installed();
 		$installed[ $record_key ] = $pending_record;
-		update_option( 'gitwire_installed', $installed );
+		update_option( 'gitwire_installed', $installed, false );
 	}
 
 	/**
@@ -465,7 +465,7 @@ class Error_Handler {
 		$record_key               = $provider . ':' . $full_name;
 		$installed                = Installer::get_installed();
 		$installed[ $record_key ] = $prev_record;
-		update_option( 'gitwire_installed', $installed );
+		update_option( 'gitwire_installed', $installed, false );
 	}
 
 	/**
