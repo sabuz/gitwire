@@ -139,22 +139,14 @@ export default function BrowsePanel( {
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 
-	const connectionsByProviderRef = useRef( connectionsByProvider );
-	connectionsByProviderRef.current = connectionsByProvider;
+	const connectionsRef = useRef( connections );
+	connectionsRef.current = connections;
 
 	const { detections, runBatch, seedFromRepos, reset } = useRepoDetection();
 
 	const [ repos, setRepos ] = useState( [] );
-	const [ pagesLoaded, setPagesLoaded ] = useState( {
-		github: 0,
-		gitlab: 0,
-		bitbucket: 0,
-	} );
-	const [ hasMore, setHasMore ] = useState( {
-		github: false,
-		gitlab: false,
-		bitbucket: false,
-	} );
+	const [ pagesLoaded, setPagesLoaded ] = useState( {} );
+	const [ hasMore, setHasMore ] = useState( {} );
 	const [ loading, setLoading ] = useState( false );
 	const [ modal, setModal ] = useState( null );
 	const [ search, setSearch ] = useState( '' );
@@ -163,69 +155,33 @@ export default function BrowsePanel( {
 	const handleRefreshRef = useRef( null );
 
 	const loadRepos = useCallback(
-		async ( ghPage, glPage, bbPage, append = false ) => {
+		async ( connectionPages, append = false ) => {
 			setLoading( true );
-			const byProvider = connectionsByProviderRef.current;
-			const getDefaultId = ( provider ) => {
-				const list = byProvider[ provider ] ?? [];
-				return (
-					list.find( ( c ) => c.is_default )?.id ??
-					list[ 0 ]?.id ??
-					''
-				);
-			};
-			const sel = {
-				github: getDefaultId( 'github' ),
-				gitlab: getDefaultId( 'gitlab' ),
-				bitbucket: getDefaultId( 'bitbucket' ),
-			};
+			const allConns = connectionsRef.current ?? [];
+			const connMap = {};
+			allConns.forEach( ( c ) => {
+				connMap[ c.id ] = c;
+			} );
 			try {
-				const fetches = [];
-				if ( ghPage > 0 ) {
-					fetches.push(
-						api
-							.getRepos( ghPage, 'github', sel.github )
+				const fetches = Object.entries( connectionPages )
+					.filter( ( [ , page ] ) => page > 0 )
+					.map( ( [ connId, page ] ) => {
+						const conn = connMap[ connId ];
+						const provider = conn?.provider ?? 'github';
+						return api
+							.getRepos( page, provider, connId )
 							.then( ( d ) => ( {
 								...d,
-								provider: 'github',
-								page: ghPage,
+								provider,
+								page,
+								connectionId: connId,
 							} ) )
 							.catch( ( e ) => ( {
 								error: e.message,
-								provider: 'github',
-							} ) )
-					);
-				}
-				if ( glPage > 0 ) {
-					fetches.push(
-						api
-							.getRepos( glPage, 'gitlab', sel.gitlab )
-							.then( ( d ) => ( {
-								...d,
-								provider: 'gitlab',
-								page: glPage,
-							} ) )
-							.catch( ( e ) => ( {
-								error: e.message,
-								provider: 'gitlab',
-							} ) )
-					);
-				}
-				if ( bbPage > 0 ) {
-					fetches.push(
-						api
-							.getRepos( bbPage, 'bitbucket', sel.bitbucket )
-							.then( ( d ) => ( {
-								...d,
-								provider: 'bitbucket',
-								page: bbPage,
-							} ) )
-							.catch( ( e ) => ( {
-								error: e.message,
-								provider: 'bitbucket',
-							} ) )
-					);
-				}
+								provider,
+								connectionId: connId,
+							} ) );
+					} );
 
 				const results = await Promise.all( fetches );
 
@@ -244,11 +200,11 @@ export default function BrowsePanel( {
 					newRepos = [ ...newRepos, ...tagged ];
 					setHasMore( ( prev ) => ( {
 						...prev,
-						[ result.provider ]: result.has_more,
+						[ result.connectionId ]: result.has_more,
 					} ) );
 					setPagesLoaded( ( prev ) => ( {
 						...prev,
-						[ result.provider ]: result.page,
+						[ result.connectionId ]: result.page,
 					} ) );
 				}
 
@@ -303,37 +259,44 @@ export default function BrowsePanel( {
 	);
 
 	useEffect( () => {
-		loadRepos( hasGitHub ? 1 : 0, hasGitLab ? 1 : 0, hasBitbucket ? 1 : 0 );
+		const pages = {};
+		( connections ?? [] ).forEach( ( c ) => {
+			pages[ c.id ] = 1;
+		} );
+		loadRepos( pages );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleRefresh = useCallback( async () => {
 		setLoading( true );
 		setRepos( [] );
-		setHasMore( { github: false, gitlab: false, bitbucket: false } );
-		setPagesLoaded( { github: 0, gitlab: 0, bitbucket: 0 } );
+		setHasMore( {} );
+		setPagesLoaded( {} );
 		try {
 			await api.clearCache();
 			reset();
-			await loadRepos(
-				hasGitHub ? 1 : 0,
-				hasGitLab ? 1 : 0,
-				hasBitbucket ? 1 : 0
-			);
+			const pages = {};
+			( connectionsRef.current ?? [] ).forEach( ( c ) => {
+				pages[ c.id ] = 1;
+			} );
+			await loadRepos( pages );
 		} catch ( e ) {
 			toast.error(
 				e.message || __( 'Failed to refresh repositories.', 'gitwire' )
 			);
 			setLoading( false );
 		}
-	}, [ hasGitHub, hasGitLab, hasBitbucket, loadRepos, reset ] );
+	}, [ loadRepos, reset ] );
 
 	handleRefreshRef.current = handleRefresh;
 
 	const handleLoadMore = () => {
-		const ghPage = hasMore.github ? pagesLoaded.github + 1 : 0;
-		const glPage = hasMore.gitlab ? pagesLoaded.gitlab + 1 : 0;
-		const bbPage = hasMore.bitbucket ? pagesLoaded.bitbucket + 1 : 0;
-		loadRepos( ghPage, glPage, bbPage, true );
+		const pages = {};
+		Object.entries( hasMore ).forEach( ( [ connId, more ] ) => {
+			if ( more ) {
+				pages[ connId ] = ( pagesLoaded[ connId ] ?? 0 ) + 1;
+			}
+		} );
+		loadRepos( pages, true );
 	};
 
 	const smartInstall = settings?.smart_install !== false;
@@ -668,7 +631,7 @@ export default function BrowsePanel( {
 				</div>
 			) }
 
-			{ ( hasMore.github || hasMore.gitlab ) && ! search && (
+			{ Object.values( hasMore ).some( Boolean ) && ! search && (
 				<div style={ { textAlign: 'center', marginTop: 24 } }>
 					<Button
 						disabled={ loading }
