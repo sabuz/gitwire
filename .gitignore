@@ -8,6 +8,7 @@ composer.lock
 
 # Build output (compiled by wp-scripts, not committed)
 build/
+*.zip
 
 # PHPUnit
 .phpunit.result.cache
