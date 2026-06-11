@@ -188,36 +188,48 @@ class Repo_Cache {
 	 * @return array<string, mixed>|\WP_Error Stored payload on success.
 	 */
 	public static function fetch_repos_page( string $provider, int $page, string $connection_id ): array|\WP_Error {
-		$payload = REST::build_repos_page( $provider, $page, $connection_id );
+		$cache_id = '' !== $connection_id ? $connection_id : 'public:' . $provider;
+		$payload  = REST::build_repos_page( $provider, $page, $connection_id );
 
 		if ( is_wp_error( $payload ) ) {
-			self::clear_repos( $connection_id );
+			self::clear_repos( $cache_id );
 			return $payload;
 		}
 
-		self::set_repos_page( $connection_id, $page, $payload );
+		self::set_repos_page( $cache_id, $page, $payload );
 
 		return $payload;
 	}
 
 	/**
-	 * Refreshes cached repo list pages for all stored connections.
+	 * Refreshes cached repo list pages for all stored connections and public browse accounts.
 	 *
 	 * @since 1.0.0
-	 * @return true|\WP_Error True on success, WP_Error when every connection fails.
+	 * @return true|\WP_Error True on success, WP_Error when every source fails.
 	 */
 	public static function cron_refresh_repos(): true|\WP_Error {
-		$connections = Connections::all();
-		$ran         = false;
-		$last_err    = null;
+		$sources = [];
 
-		foreach ( $connections as $conn ) {
+		foreach ( Connection_Resolver::all() as $conn ) {
 			$id       = $conn['id'] ?? '';
 			$provider = $conn['provider'] ?? '';
-			if ( ! $id || ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
-				continue;
+			if ( $id && in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
+				$sources[] = [ $provider, $id ];
 			}
+		}
 
+		foreach ( [ 'github', 'gitlab', 'bitbucket' ] as $provider ) {
+			$public   = Settings::public_credentials( $provider );
+			$identity = $public['username'] ?? $public['workspace'] ?? '';
+			if ( '' !== $identity ) {
+				$sources[] = [ $provider, '' ];
+			}
+		}
+
+		$ran      = false;
+		$last_err = null;
+
+		foreach ( $sources as [ $provider, $id ] ) {
 			$ran    = true;
 			$result = self::fetch_repos_page( $provider, 1, $id );
 			if ( is_wp_error( $result ) ) {

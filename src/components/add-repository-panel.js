@@ -10,10 +10,9 @@ const BrowsePanel = lazy( () => import( './browse-panel' ) );
  * Add Repository page — Browse panel with an Import from URL modal action.
  *
  * @param {Object}   props                Component props.
- * @param {Array}    props.connections    Connection records array.
+ * @param {Array}    props.connections    Browse source records array.
  * @param {Object}   props.installed      Map of installed repositories.
  * @param {Object}   props.settings       Plugin settings.
- * @param {Object}   props.connection     Live connection cache per provider.
  * @param {Function} props.onPostInstall  Called after a successful install.
  * @param {Function} props.onGoToSettings Navigates to the Settings tab.
  * @return {JSX.Element} The rendered page.
@@ -22,7 +21,6 @@ export default function AddRepositoryPanel( {
 	connections,
 	installed,
 	settings,
-	connection,
 	onPostInstall,
 	onGoToSettings,
 } ) {
@@ -60,8 +58,6 @@ export default function AddRepositoryPanel( {
 					onRequestClose={ () => setUrlImportOpen( false ) }
 				>
 					<ImportFromUrl
-						connection={ connection }
-						connections={ connections }
 						installed={ installed }
 						settings={ settings }
 						onGoToSettings={ onGoToSettings }

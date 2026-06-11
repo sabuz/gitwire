@@ -99,19 +99,29 @@ The free plugin defines **extension hooks** (PHP filters/actions + JS filters vi
 
 ### PHP filters
 
+All filter access in the free plugin goes through `includes/class-connection-resolver.php`, a static seam with the same method shape the old `Connections` class had. Call sites use `Connection_Resolver::find()` etc.; only the resolver touches `apply_filters`.
+
 ```php
-// Resolve a single connection by ID.
-// Pro returns the decrypted credential array; free returns null (falls back to public API).
+// Connection record by ID — Pro returns the record; free gets null (public fallback).
 apply_filters( 'gitwire_find_connection', null, $connection_id );
 
-// Return all token-based connections visible to the current user.
-// Free always returns []; Pro returns the full connection list.
+// Default connection for a provider.
+apply_filters( 'gitwire_connection_for_provider', null, $provider );
+
+// All raw connection records (cron, annotate, URL parsing).
+apply_filters( 'gitwire_connections_all', [] );
+
+// Public-safe connection list for the current user (boot data, pickers).
 apply_filters( 'gitwire_connections', [], $user_id );
 
-// Resolve credentials for an API call.
-// Free returns [] (provider classes fall back to public/username mode).
-apply_filters( 'gitwire_get_credentials', [], $provider, $connection_id );
+// Decrypted credentials by connection ID.
+apply_filters( 'gitwire_get_credentials', null, $connection_id );
+
+// Decrypted credentials for a provider's default connection.
+apply_filters( 'gitwire_provider_credentials', null, $provider );
 ```
+
+When credentials resolve to null/empty, `Provider_Factory` falls back to `Settings::public_credentials( $provider )` — the saved browse usernames. Repos for public sources are cached under `public:{provider}` cache ids; unknown `connection_id` values are normalized to null before being stored on installed records.
 
 ### PHP actions
 
@@ -122,6 +132,10 @@ do_action( 'gitwire_loaded' );
 
 // Fires when REST routes are registered — Pro adds its connection CRUD routes here.
 do_action( 'gitwire_rest_init' );
+
+// Fires after the free admin app's assets are enqueued — Pro enqueues its bundle
+// here with 'gitwire-app' as a dependency and localizes its own inline data.
+do_action( 'gitwire_enqueue_assets' );
 ```
 
 ### Plugin load order
@@ -150,10 +164,15 @@ The free plugin calls `applyFilters` from `@wordpress/hooks` inside React render
 
 | Filter | Free default | Pro provides |
 |--------|-------------|--------------|
-| `gitwire.settings.accountsSection` | `<FreeAccountsSection />` (username fields) | `<ConnectionsSection />` (full token UI) |
-| `gitwire.importUrl.privatePicker` | `null` | `<ConnectionPicker />` |
-| `gitwire.browse.connectionFilter` | `null` | `<BrowseConnectionFilter />` |
-| `gitwire.browse.sources` | sources derived from saved usernames | token connections |
+| `gitwire.settings.accountsSection` | `<BrowseAccounts />` (username fields) | `<ConnectionsSection />` (full token UI) |
+| `gitwire.importUrl.privatePicker` | `null` (passive Pro notice) | `<ConnectionPicker />` |
+| `gitwire.browse.sources` | sources derived from saved usernames (`public:{provider}` ids) | token connections |
+
+Action: `gitwire.sourcesChanged` — Pro fires it after add/delete (and once at bundle parse) so the free app recomputes sources and refreshes installed records. The free app listens via `addAction` in a passive effect.
+
+> A separate `gitwire.browse.connectionFilter` slot turned out to be unnecessary: the browse panel is keyed by source id and already renders provider filters from the sources array, so replacing sources covers Pro's needs.
+
+The free bundle exposes its sonner toast singleton as `window.Gitwire.toast`; the Pro bundle uses it so toasts render in the one mounted Toaster.
 
 ### Browse sources (JS data model)
 

@@ -95,43 +95,6 @@ class REST {
 
 		register_rest_route(
 			$ns,
-			'/connections',
-			[
-				[
-					'methods'             => 'GET',
-					'callback'            => [ self::class, 'list_connections' ],
-					'permission_callback' => [ self::class, 'can_manage' ],
-				],
-				[
-					'methods'             => 'POST',
-					'callback'            => [ self::class, 'create_connection' ],
-					'permission_callback' => [ self::class, 'can_manage' ],
-				],
-			]
-		);
-
-		register_rest_route(
-			$ns,
-			'/connections/(?P<id>[^/]+)/test',
-			[
-				'methods'             => 'POST',
-				'callback'            => [ self::class, 'test_existing_connection' ],
-				'permission_callback' => [ self::class, 'can_manage' ],
-			]
-		);
-
-		register_rest_route(
-			$ns,
-			'/connections/(?P<id>[^/]+)',
-			[
-				'methods'             => 'DELETE',
-				'callback'            => [ self::class, 'delete_connection' ],
-				'permission_callback' => [ self::class, 'can_manage' ],
-			]
-		);
-
-		register_rest_route(
-			$ns,
 			'/repos',
 			[
 				'methods'             => 'GET',
@@ -443,6 +406,15 @@ class REST {
 				],
 			]
 		);
+
+		/**
+		 * Fires after the core REST routes are registered.
+		 *
+		 * Gitwire Pro registers its connection routes here.
+		 *
+		 * @since 1.4.0
+		 */
+		do_action( 'gitwire_rest_init' );
 	}
 
 	/**
@@ -584,6 +556,19 @@ class REST {
 		if ( null !== $req->get_param( 'remove_data_on_uninstall' ) ) {
 			$incoming['remove_data_on_uninstall'] = $req->get_param( 'remove_data_on_uninstall' );
 		}
+		foreach ( [ 'github_username', 'gitlab_username', 'gitlab_url', 'bitbucket_workspace' ] as $account_field ) {
+			if ( null !== $req->get_param( $account_field ) ) {
+				$incoming[ $account_field ] = $req->get_param( $account_field );
+			}
+		}
+
+		if ( ! empty( $incoming['gitlab_url'] ) && ! Settings::is_allowed_gitlab_url( (string) $incoming['gitlab_url'] ) ) {
+			return new \WP_Error(
+				'invalid_gitlab_url',
+				__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'gitwire' ),
+				[ 'status' => 400 ]
+			);
+		}
 
 		$was_logging = Settings::is_logging_enabled();
 		$merged      = Settings::merge_save( $incoming );
@@ -598,283 +583,6 @@ class REST {
 			'saved'    => true,
 			'settings' => Settings::get_public(),
 		];
-	}
-
-	/**
-	 * Returns all connections as a public-safe list.
-	 *
-	 * @since 1.0.0
-	 * @return array<string, mixed>
-	 */
-	public static function list_connections(): array {
-		return [ 'connections' => Connections::get_public_list() ];
-	}
-
-	/**
-	 * Creates a new connection: tests credentials then persists them encrypted.
-	 *
-	 * @since 1.0.0
-	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<string, mixed>|\WP_Error
-	 */
-	public static function create_connection( \WP_REST_Request $req ): array|\WP_Error {
-		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
-			return new \WP_Error( 'invalid_provider', 'Invalid provider.', [ 'status' => 400 ] );
-		}
-
-		$creds = self::extract_credentials( $provider, $req );
-
-		if ( 'gitlab' === $provider && ! empty( $creds['gitlab_url'] ) ) {
-			if ( ! Settings::is_allowed_gitlab_url( $creds['gitlab_url'] ) ) {
-				return new \WP_Error(
-					'invalid_gitlab_url',
-					__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'gitwire' ),
-					[ 'status' => 400 ]
-				);
-			}
-		}
-
-		$test = self::run_credentials_test( $provider, $creds );
-		if ( is_wp_error( $test ) ) {
-			return $test;
-		}
-
-		$login = $test['login'] ?? '';
-		if ( '' !== $login && null !== Connections::find_by_username( $provider, $login ) ) {
-			return new \WP_Error(
-				'duplicate_connection',
-				/* translators: %s: username/login of the existing connection */
-				sprintf( __( 'A connection for @%s already exists.', 'gitwire' ), $login ),
-				[ 'status' => 409 ]
-			);
-		}
-
-		$label = sanitize_text_field( $req->get_param( 'label' ) ?? '' );
-		$scope = 'user' === $req->get_param( 'scope' ) ? 'user' : 'site';
-
-		$record = [
-			'provider'    => $provider,
-			'label'       => $label,
-			'scope'       => $scope,
-			'username'    => $login,
-			'gitlab_url'  => $creds['gitlab_url'] ?? '',
-			'credentials' => $creds,
-		];
-
-		if ( 'user' === $scope ) {
-			$record['user_id'] = get_current_user_id();
-		}
-
-		$conn = Connections::upsert( $record );
-
-		self::set_connection_cache( $conn['id'], array_merge( $test, [ 'connection_id' => $conn['id'] ] ) );
-
-		Logger::log( sprintf( '[%s] Connected%s', $provider, '' !== $login ? ' @' . $login : '' ) );
-
-		return [
-			'connection' => Connections::get_public_list(),
-			'profile'    => array_merge( $test, [ 'connection_id' => $conn['id'] ] ),
-		];
-	}
-
-	/**
-	 * Deletes a stored connection.
-	 *
-	 * @since 1.0.0
-	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<string, mixed>|\WP_Error
-	 */
-	public static function delete_connection( \WP_REST_Request $req ): array|\WP_Error {
-		$id   = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
-		$conn = Connections::find( $id );
-		if ( ! $conn ) {
-			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
-		}
-		if ( ( $conn['scope'] ?? 'site' ) === 'user' && (int) ( $conn['user_id'] ?? 0 ) !== get_current_user_id() ) {
-			return new \WP_Error( 'forbidden', 'You do not have permission to delete this connection.', [ 'status' => 403 ] );
-		}
-		if ( ! Connections::delete( $id ) ) {
-			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
-		}
-		self::set_connection_cache( $id, null );
-		$identity = $conn['username'] ?? $conn['email'] ?? $conn['label'] ?? '';
-		Logger::log( sprintf( '[%s] Disconnected%s', $conn['provider'] ?? 'unknown', $identity ? ' @' . $identity : '' ) );
-		return [ 'connections' => Connections::get_public_list() ];
-	}
-
-	/**
-	 * Re-tests an existing stored connection.
-	 *
-	 * @since 1.0.0
-	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<string, mixed>|\WP_Error
-	 */
-	public static function test_existing_connection( \WP_REST_Request $req ): array|\WP_Error {
-		$id   = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
-		$conn = Connections::find( $id );
-		if ( null === $conn ) {
-			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
-		}
-		if ( ( $conn['scope'] ?? 'site' ) === 'user' && (int) ( $conn['user_id'] ?? 0 ) !== get_current_user_id() ) {
-			return new \WP_Error( 'forbidden', 'You do not have permission to access this connection.', [ 'status' => 403 ] );
-		}
-
-		$creds    = Connections::get_credentials( $id ) ?? [];
-		$provider = $conn['provider'] ?? 'github';
-		$result   = self::run_credentials_test( $provider, $creds );
-
-		if ( is_wp_error( $result ) ) {
-			self::set_connection_cache(
-				$id,
-				[
-					'provider'      => $provider,
-					'error'         => $result->get_error_message(),
-					'connection_id' => $id,
-				]
-			);
-			return $result;
-		}
-
-		self::set_connection_cache( $id, array_merge( $result, [ 'connection_id' => $id ] ) );
-		return $result;
-	}
-
-	/**
-	 * Cron path: re-tests every stored connection and refreshes the cache.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function refresh_all_connections(): void {
-		foreach ( Connections::all() as $conn ) {
-			$id       = $conn['id'] ?? '';
-			$provider = $conn['provider'] ?? '';
-			$creds    = Connections::get_credentials( $id ) ?? [];
-			$result   = self::run_credentials_test( $provider, $creds );
-			$cache    = is_wp_error( $result )
-				? [
-					'provider'      => $provider,
-					'error'         => $result->get_error_message(),
-					'connection_id' => $id,
-				]
-				: array_merge( $result, [ 'connection_id' => $id ] );
-			self::set_connection_cache( $id, $cache );
-		}
-	}
-
-	/**
-	 * Tests raw credentials for a provider without persisting anything.
-	 *
-	 * @since 1.0.0
-	 * @param string               $provider Provider key.
-	 * @param array<string, mixed> $creds    Plaintext credential array.
-	 * @return array<string, mixed>|\WP_Error Profile data on success.
-	 */
-	private static function run_credentials_test( string $provider, array $creds ): array|\WP_Error {
-		if ( 'bitbucket' === $provider ) {
-			$api    = new Bitbucket_API(
-				sanitize_email( $creds['email'] ?? '' ),
-				sanitize_text_field( $creds['api_token'] ?? '' )
-			);
-			$result = $api->test_connection();
-			if ( is_wp_error( $result ) ) {
-				return $result;
-			}
-			return [
-				'provider'       => 'bitbucket',
-				'authenticated'  => true,
-				'login'          => $result['login'] ?? '',
-				'name'           => $result['name'] ?? '',
-				'avatar_url'     => $result['avatar_url'] ?? '',
-				'rate_limit'     => 0,
-				'rate_remaining' => 0,
-				'rate_reset'     => 0,
-				'checked_at'     => time(),
-			];
-		}
-
-		if ( 'gitlab' === $provider ) {
-			$api    = new GitLab_API(
-				sanitize_text_field( $creds['token'] ?? '' ),
-				esc_url_raw( $creds['gitlab_url'] ?? '' )
-			);
-			$result = $api->test_connection();
-			if ( is_wp_error( $result ) ) {
-				return $result;
-			}
-			return [
-				'provider'       => 'gitlab',
-				'authenticated'  => true,
-				'login'          => $result['login'] ?? '',
-				'name'           => $result['name'] ?? '',
-				'avatar_url'     => $result['avatar_url'] ?? '',
-				'rate_limit'     => $result['rate_limit'] ?? 0,
-				'rate_remaining' => $result['rate_remaining'] ?? 0,
-				'rate_reset'     => $result['rate_reset'] ?? 0,
-				'checked_at'     => time(),
-			];
-		}
-
-		$token    = sanitize_text_field( $creds['token'] ?? '' );
-		$username = sanitize_text_field( $creds['username'] ?? '' );
-		$api      = new API( $token );
-		$result   = $api->test_connection( $username );
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-		return [
-			'provider'       => 'github',
-			'authenticated'  => ! empty( $token ),
-			'login'          => $result['login'] ?? '',
-			'name'           => $result['name'] ?? '',
-			'avatar_url'     => $result['avatar_url'] ?? '',
-			'rate_limit'     => $result['rate_limit'] ?? 60,
-			'rate_remaining' => $result['rate_remaining'] ?? 0,
-			'rate_reset'     => $result['rate_reset'] ?? 0,
-			'checked_at'     => time(),
-		];
-	}
-
-	/**
-	 * Extracts plain credential fields from the request for the given provider.
-	 *
-	 * @since 1.0.0
-	 * @param string           $provider Provider key.
-	 * @param \WP_REST_Request $req      Request object.
-	 * @return array<string, string>
-	 */
-	private static function extract_credentials( string $provider, \WP_REST_Request $req ): array {
-		if ( 'bitbucket' === $provider ) {
-			return [
-				'email'     => sanitize_email( (string) ( $req->get_param( 'bitbucket_email' ) ?? '' ) ),
-				'api_token' => sanitize_text_field( (string) ( $req->get_param( 'bitbucket_api_token' ) ?? '' ) ),
-			];
-		}
-		if ( 'gitlab' === $provider ) {
-			return [
-				'token'      => sanitize_text_field( (string) ( $req->get_param( 'gitlab_token' ) ?? '' ) ),
-				'gitlab_url' => esc_url_raw( (string) ( $req->get_param( 'gitlab_url' ) ?? '' ) ),
-			];
-		}
-		return [
-			'token'    => sanitize_text_field( (string) ( $req->get_param( 'token' ) ?? '' ) ),
-			'username' => sanitize_text_field( (string) ( $req->get_param( 'username' ) ?? '' ) ),
-		];
-	}
-
-	/**
-	 * Updates a single connection slot in the connection cache.
-	 *
-	 * @since 1.0.0
-	 * @param string     $connection_id Connection ID key.
-	 * @param array|null $data          Connection data, or null to clear.
-	 * @return void
-	 */
-	private static function set_connection_cache( string $connection_id, ?array $data ): void {
-		$cache                   = (array) get_option( 'gitwire_connection_cache', [] );
-		$cache[ $connection_id ] = $data;
-		update_option( 'gitwire_connection_cache', $cache, false );
 	}
 
 	/**
@@ -893,26 +601,25 @@ class REST {
 
 		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 		if ( '' === $connection_id ) {
-			$first         = Connections::get_first_for_provider( $provider );
+			$first         = Connection_Resolver::get_first_for_provider( $provider );
 			$connection_id = $first['id'] ?? '';
 		}
 
-		if ( '' === $connection_id ) {
-			return new \WP_Error( 'no_connection', 'No connection found for this provider.', [ 'status' => 400 ] );
-		}
+		// No token connection — public mode, cached per provider.
+		$cache_id = '' !== $connection_id ? $connection_id : 'public:' . $provider;
 
-		$cached = Repo_Cache::get_repos_page( $connection_id, $page );
+		$cached = Repo_Cache::get_repos_page( $cache_id, $page );
 		if ( is_array( $cached ) ) {
 			return self::enrich_with_detections( $cached, $provider );
 		}
 
 		$payload = self::build_repos_page( $provider, $page, $connection_id );
 		if ( is_wp_error( $payload ) ) {
-			Repo_Cache::clear_repos( $connection_id );
+			Repo_Cache::clear_repos( $cache_id );
 			return $payload;
 		}
 
-		Repo_Cache::set_repos_page( $connection_id, $page, $payload );
+		Repo_Cache::set_repos_page( $cache_id, $page, $payload );
 
 		return self::enrich_with_detections( $payload, $provider );
 	}
@@ -928,17 +635,24 @@ class REST {
 	 */
 	public static function build_repos_page( string $provider, int $page, string $connection_id = '' ): array|\WP_Error {
 		$creds = '' !== $connection_id
-			? Connections::get_credentials( $connection_id )
-			: Connections::get_credentials_for_provider( $provider );
+			? Connection_Resolver::get_credentials( $connection_id )
+			: Connection_Resolver::get_credentials_for_provider( $provider );
 
 		if ( 'bitbucket' === $provider ) {
-			if ( ! $creds || empty( $creds['email'] ) || empty( $creds['api_token'] ) ) {
-				return new \WP_Error( 'missing_config', 'Configure Bitbucket credentials first.', [ 'status' => 400 ] );
+			$has_auth  = $creds && ! empty( $creds['email'] ) && ! empty( $creds['api_token'] );
+			$workspace = '';
+			if ( ! $has_auth ) {
+				$workspace = Settings::public_credentials( 'bitbucket' )['workspace'];
+				if ( '' === $workspace ) {
+					return new \WP_Error( 'missing_config', 'Save a Bitbucket workspace in Settings first.', [ 'status' => 400 ] );
+				}
 			}
 
-			$api = new Bitbucket_API( sanitize_email( $creds['email'] ), $creds['api_token'] );
-			// Pass empty string — get_repos auto-discovers workspaces via /user/workspaces.
-			$result    = $api->get_repos( '', $page );
+			$api = $has_auth
+				? new Bitbucket_API( sanitize_email( $creds['email'] ), $creds['api_token'] )
+				: new Bitbucket_API( '', '' );
+			// Authenticated: empty string — get_repos auto-discovers workspaces via /user/workspaces.
+			$result    = $api->get_repos( $workspace, $page );
 			$installed = Installer::get_installed();
 
 			if ( is_wp_error( $result ) ) {
@@ -974,12 +688,21 @@ class REST {
 		}
 
 		if ( 'gitlab' === $provider ) {
-			if ( ! $creds || empty( $creds['token'] ) ) {
-				return new \WP_Error( 'missing_config', 'Configure a GitLab token first.', [ 'status' => 400 ] );
+			$has_auth = $creds && ! empty( $creds['token'] );
+			$username = '';
+			$public   = Settings::public_credentials( 'gitlab' );
+			if ( ! $has_auth ) {
+				$username = $public['username'];
+				if ( '' === $username ) {
+					return new \WP_Error( 'missing_config', 'Save a GitLab username in Settings first.', [ 'status' => 400 ] );
+				}
 			}
 
-			$api       = new GitLab_API( $creds['token'], $creds['gitlab_url'] ?? '' );
-			$result    = $api->get_repos( '', $page );
+			$api = $has_auth
+				? new GitLab_API( $creds['token'], $creds['gitlab_url'] ?? '' )
+				: new GitLab_API( '', $public['gitlab_url'] );
+
+			$result    = $api->get_repos( $username, $page );
 			$installed = Installer::get_installed();
 
 			if ( is_wp_error( $result ) ) {
@@ -1019,7 +742,11 @@ class REST {
 		$username = sanitize_text_field( $creds['username'] ?? '' );
 
 		if ( ! $username && empty( $creds['token'] ) ) {
-			return new \WP_Error( 'missing_config', 'Configure a GitHub username or token first.', [ 'status' => 400 ] );
+			$username = Settings::public_credentials( 'github' )['username'];
+		}
+
+		if ( ! $username && empty( $creds['token'] ) ) {
+			return new \WP_Error( 'missing_config', 'Save a GitHub username in Settings first.', [ 'status' => 400 ] );
 		}
 
 		$api       = new API( $creds['token'] ?? '' );
@@ -1167,9 +894,13 @@ class REST {
 		$connection_id = '' !== $connection_id ? $connection_id : null;
 
 		if ( null !== $connection_id ) {
-			$conn = Connections::find( $connection_id );
+			$conn = Connection_Resolver::find( $connection_id );
 			if ( $conn && ( $conn['scope'] ?? 'site' ) === 'user' && (int) ( $conn['user_id'] ?? 0 ) !== get_current_user_id() ) {
 				return new \WP_Error( 'forbidden', 'You do not have permission to use this connection.', [ 'status' => 403 ] );
+			}
+			// Unknown ids (public sources, stale connections) install via the public path.
+			if ( ! $conn ) {
+				$connection_id = null;
 			}
 		}
 
@@ -1383,7 +1114,7 @@ class REST {
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
 
 		$all_connections = [];
-		foreach ( Connections::all() as $conn ) {
+		foreach ( Connection_Resolver::all() as $conn ) {
 			$all_connections[ $conn['id'] ] = true;
 		}
 
@@ -1392,8 +1123,9 @@ class REST {
 				$rec['provider'] = 'github';
 			}
 
+			// Without Pro there are no connections to reconnect to — updates fall back to public.
 			$conn_id = $rec['connection_id'] ?? null;
-			if ( $conn_id && ! isset( $all_connections[ $conn_id ] ) ) {
+			if ( $conn_id && ! empty( $all_connections ) && ! isset( $all_connections[ $conn_id ] ) ) {
 				$rec['needs_reconnect'] = true;
 			}
 
@@ -1979,11 +1711,16 @@ class REST {
 		$is_gitlab_com = 'gitlab.com' === $host;
 		$custom_url    = '';
 		$custom_host   = '';
-		foreach ( Connections::all() as $conn ) {
-			if ( 'gitlab' !== ( $conn['provider'] ?? '' ) || empty( $conn['gitlab_url'] ) ) {
-				continue;
+
+		$candidates = [ Settings::public_credentials( 'gitlab' )['gitlab_url'] ];
+		foreach ( Connection_Resolver::all() as $conn ) {
+			if ( 'gitlab' === ( $conn['provider'] ?? '' ) && ! empty( $conn['gitlab_url'] ) ) {
+				$candidates[] = $conn['gitlab_url'];
 			}
-			$candidate   = rtrim( $conn['gitlab_url'], '/' );
+		}
+
+		foreach ( array_filter( $candidates ) as $candidate ) {
+			$candidate   = rtrim( $candidate, '/' );
 			$parsed_cand = wp_parse_url( $candidate );
 			$cand_host   = strtolower( $parsed_cand['host'] ?? '' );
 			if ( $cand_host === $host ) {

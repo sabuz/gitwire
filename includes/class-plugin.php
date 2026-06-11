@@ -56,7 +56,6 @@ final class Plugin {
 
 		add_action( 'init', [ $this, 'load_textdomain' ], 0 );
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] );
-		add_action( 'gitwire_auto_check_connection', [ $this, 'run_connection_check' ] );
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
 		add_action( 'gitwire_refresh_repos_cache', [ Repo_Cache::class, 'cron_refresh_repos' ] );
 		add_action( 'gitwire_refresh_repo_types', [ Repo_Cache::class, 'cron_refresh_types' ] );
@@ -100,15 +99,6 @@ final class Plugin {
 	}
 
 	/**
-	 * Cron handler that refreshes connection cache.
-	 *
-	 * @return void
-	 */
-	public function run_connection_check(): void {
-		REST::refresh_all_connections();
-	}
-
-	/**
 	 * Cron handler that syncs installed records.
 	 *
 	 * @return void
@@ -134,10 +124,6 @@ final class Plugin {
 			Admin::init();
 		}
 
-		if ( ! wp_next_scheduled( 'gitwire_auto_check_connection' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_auto_check_connection' );
-		}
-
 		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
 			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_maintenance' );
 		}
@@ -149,6 +135,16 @@ final class Plugin {
 		if ( ! wp_next_scheduled( 'gitwire_refresh_repo_types' ) ) {
 			wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
 		}
+
+		/**
+		 * Fires after the free plugin finishes bootstrapping.
+		 *
+		 * Gitwire Pro registers its connection filters here, guaranteed
+		 * before any apply_filters call in the free plugin runs.
+		 *
+		 * @since 1.4.0
+		 */
+		do_action( 'gitwire_loaded' );
 	}
 
 	/**
@@ -172,9 +168,6 @@ final class Plugin {
 			);
 		}
 		set_transient( 'gitwire_first_activation', true, 60 );
-		if ( ! wp_next_scheduled( 'gitwire_auto_check_connection' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_auto_check_connection' );
-		}
 		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
 			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_maintenance' );
 		}
@@ -193,7 +186,6 @@ final class Plugin {
 	 */
 	public function deactivate(): void {
 		Repo_Cache::clear_all();
-		wp_clear_scheduled_hook( 'gitwire_auto_check_connection' );
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repo_types' );

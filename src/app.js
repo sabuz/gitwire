@@ -5,11 +5,13 @@ import {
 	useState,
 	useEffect,
 	useCallback,
+	useMemo,
 	Component,
 	lazy,
 	Suspense,
 } from '@wordpress/element';
 import { Button, Spinner } from '@wordpress/components';
+import { applyFilters, addAction, removeAction } from '@wordpress/hooks';
 
 import * as api from './api';
 import { showFatalNotice } from './fatal-notice';
@@ -66,6 +68,33 @@ const BASE_TABS = [
 	{ name: 'tools', label: __( 'Tools', 'gitwire' ) },
 	{ name: 'logs', label: __( 'Logs', 'gitwire' ) },
 ];
+
+function publicSources( settings ) {
+	const sources = [];
+	if ( settings?.github_username ) {
+		sources.push( {
+			id: 'public:github',
+			provider: 'github',
+			username: settings.github_username,
+		} );
+	}
+	if ( settings?.gitlab_username ) {
+		sources.push( {
+			id: 'public:gitlab',
+			provider: 'gitlab',
+			username: settings.gitlab_username,
+			gitlab_url: settings.gitlab_url || '',
+		} );
+	}
+	if ( settings?.bitbucket_workspace ) {
+		sources.push( {
+			id: 'public:bitbucket',
+			provider: 'bitbucket',
+			username: settings.bitbucket_workspace,
+		} );
+	}
+	return sources;
+}
 
 /**
  * @param {Object} item Orphaned repository record from sync.
@@ -132,16 +161,23 @@ function syncUrl( tabName ) {
 
 export default function App( { initialData } ) {
 	const [ settings, setSettings ] = useState( initialData.settings || null );
-	const [ connections, setConnections ] = useState(
-		initialData.connections || []
-	);
-	const [ connection, setConnection ] = useState(
-		initialData.connection || {}
-	);
 	const [ installed, setInstalled ] = useState( initialData.installed || {} );
 	const [ loading, setLoading ] = useState( ! initialData.settings );
 	const [ activeTab, setActiveTab ] = useState(
 		initialData.initial_tab || 'repositories'
+	);
+	const [ sourcesVersion, setSourcesVersion ] = useState( 0 );
+
+	// Pro replaces public username sources with its token connections;
+	// sourcesVersion forces a recompute when Pro fires gitwire.sourcesChanged
+	const connections = useMemo(
+		() =>
+			applyFilters(
+				'gitwire.browse.sources',
+				publicSources( settings ),
+				settings
+			),
+		[ settings, sourcesVersion ] // eslint-disable-line react-hooks/exhaustive-deps
 	);
 
 	useEffect( () => {
@@ -247,14 +283,9 @@ export default function App( { initialData } ) {
 
 	useEffect( () => {
 		if ( ! initialData.settings ) {
-			Promise.all( [
-				api.getSettings(),
-				api.getConnections(),
-				api.syncInstalled(),
-			] )
-				.then( ( [ s, { connections: conns }, result ] ) => {
+			Promise.all( [ api.getSettings(), api.syncInstalled() ] )
+				.then( ( [ s, result ] ) => {
 					setSettings( s );
-					setConnections( conns || [] );
 					applyInstalled( result );
 				} )
 				.catch( ( e ) => {
@@ -282,6 +313,19 @@ export default function App( { initialData } ) {
 		const result = await api.syncInstalled();
 		applyInstalled( result );
 	}, [ applyInstalled ] );
+
+	useEffect( () => {
+		const handleSourcesChanged = () => {
+			setSourcesVersion( ( v ) => v + 1 );
+			refreshInstalled();
+		};
+		addAction(
+			'gitwire.sourcesChanged',
+			'gitwire/app',
+			handleSourcesChanged
+		);
+		return () => removeAction( 'gitwire.sourcesChanged', 'gitwire/app' );
+	}, [ refreshInstalled ] );
 
 	const handleGoToTab = useCallback( ( tabName ) => {
 		setActiveTab( tabName );
@@ -322,26 +366,6 @@ export default function App( { initialData } ) {
 		ev.preventDefault();
 		setActiveTab( tabName );
 		syncUrl( tabName );
-	}, [] );
-
-	const handleConnectionsChange = useCallback(
-		( conns ) => {
-			setConnections( conns || [] );
-			refreshInstalled();
-		},
-		[ refreshInstalled ]
-	);
-
-	const handleConnectionUpdate = useCallback( ( providerOrId, data ) => {
-		const id = data?.connection_id ?? providerOrId;
-		setConnection( ( prev ) => {
-			if ( ! data ) {
-				const next = { ...prev };
-				delete next[ providerOrId ];
-				return next;
-			}
-			return { ...( prev || {} ), [ id ]: data };
-		} );
 	}, [] );
 
 	const handleSettingsSave = useCallback( ( s ) => {
@@ -415,11 +439,7 @@ export default function App( { initialData } ) {
 			<div className="gitwire-page-content">
 				{ activeTab === 'settings' && (
 					<SettingsPanel
-						connection={ connection }
-						connections={ connections }
 						settings={ settings }
-						onConnectionsChange={ handleConnectionsChange }
-						onConnectionUpdate={ handleConnectionUpdate }
 						onSave={ handleSettingsSave }
 					/>
 				) }
@@ -437,7 +457,6 @@ export default function App( { initialData } ) {
 				) }
 				{ activeTab === 'add-repository' && (
 					<AddRepositoryPanel
-						connection={ connection }
 						connections={ connections }
 						installed={ installed }
 						settings={ settings }

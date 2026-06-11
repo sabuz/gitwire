@@ -200,27 +200,27 @@ class Installer {
 			$connection_id = $override_connection_id;
 		} else {
 			$connection_id = $rec['connection_id'] ?? null;
-			if ( null !== $connection_id && null === Connections::get_credentials( $connection_id ) ) {
+			if ( null !== $connection_id && null === Connection_Resolver::get_credentials( $connection_id ) ) {
 				$provider_conns = array_values(
-					array_filter( Connections::all(), static fn( $c ) => ( $c['provider'] ?? '' ) === $provider )
+					array_filter( Connection_Resolver::all(), static fn( $c ) => ( $c['provider'] ?? '' ) === $provider )
 				);
-				if ( 1 !== count( $provider_conns ) ) {
+				if ( 0 === count( $provider_conns ) ) {
+					// No connection system (or none left) — try the public path.
+					$connection_id = null;
+				} elseif ( 1 !== count( $provider_conns ) ) {
 					return new \WP_Error(
 						'gitwire_no_connection',
 						'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',
 						[ 'status' => 400 ]
 					);
+				} else {
+					$connection_id = $provider_conns[0]['id'];
+					$was_stale     = true;
 				}
-				$connection_id = $provider_conns[0]['id'];
-				$was_stale     = true;
 			}
 		}
 
-		$creds = null !== $connection_id
-			? Connections::get_credentials( $connection_id )
-			: Connections::get_credentials_for_provider( $provider );
-
-		if ( null === $creds && null !== $connection_id ) {
+		if ( null !== $connection_id && null === Connection_Resolver::get_credentials( $connection_id ) ) {
 			return new \WP_Error(
 				'gitwire_no_connection',
 				'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',
@@ -228,13 +228,9 @@ class Installer {
 			);
 		}
 
-		$no_auth_fallback = ! $was_stale
-			&& null === $connection_id
-			&& ( null === $creds || ( empty( $creds['token'] ?? '' ) && empty( $creds['api_token'] ?? '' ) ) );
-
 		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider, false, $connection_id );
 
-		if ( ( $was_stale || $no_auth_fallback ) && is_wp_error( $result ) ) {
+		if ( $was_stale && is_wp_error( $result ) ) {
 			return new \WP_Error(
 				'gitwire_no_connection',
 				'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',

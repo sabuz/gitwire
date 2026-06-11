@@ -382,10 +382,10 @@ export default function BrowsePanel( {
 					aria-hidden="true"
 					src={ window.Gitwire?.disconnected_url }
 				/>
-				<h2>{ __( 'No Account Connected', 'gitwire' ) }</h2>
+				<h2>{ __( 'No Account Added', 'gitwire' ) }</h2>
 				<p>
 					{ __(
-						'Connect a GitHub, GitLab, or Bitbucket account to browse and install from your repositories.',
+						'Add a GitHub, GitLab, or Bitbucket account in Settings to browse and install from its public repositories.',
 						'gitwire'
 					) }
 				</p>

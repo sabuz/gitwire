@@ -7,13 +7,12 @@ import {
 	useRef,
 	useMemo,
 	useCallback,
-	createInterpolateElement,
 } from '@wordpress/element';
+import { applyFilters } from '@wordpress/hooks';
 import {
 	Button,
 	CheckboxControl,
 	ComboboxControl,
-	Dropdown,
 	Flex,
 	FlexBlock,
 	SelectControl,
@@ -67,8 +66,6 @@ function installButtonLabel( installing, slugChecking ) {
  *
  * @param {Object}   props                  Component props.
  * @param {Object}   props.settings         Plugin settings.
- * @param {Array}    props.connections      Connection records array.
- * @param {Object}   props.connection       Live connection cache per provider (for profile display).
  * @param {Function} props.onPostInstall    Called after a successful install.
  * @param {Function} [props.onGoToSettings] Navigates to the Settings tab.
  * @param {Object}   props.installed        Map of installed repos keyed by provider:full_name.
@@ -76,8 +73,6 @@ function installButtonLabel( installing, slugChecking ) {
  */
 export default function ImportFromUrl( {
 	settings,
-	connections,
-	connection,
 	installed,
 	onPostInstall,
 	onGoToSettings,
@@ -102,16 +97,6 @@ export default function ImportFromUrl( {
 	const debounceRef = useRef( null );
 
 	const smartInstall = settings?.smart_install !== false;
-
-	const providerConns = useMemo(
-		() =>
-			resolved
-				? connections?.filter(
-						( c ) => c.provider === resolved.provider
-				  ) ?? []
-				: [],
-		[ resolved, connections ]
-	);
 
 	const initInstallForm = useCallback( ( info ) => {
 		const defaultBranch = info.branch || 'main';
@@ -200,9 +185,7 @@ export default function ImportFromUrl( {
 				return;
 			}
 			const selectedConnId =
-				( typeof passedConnId === 'string' ? passedConnId : null ) ??
-				providerConns[ 0 ]?.id ??
-				null;
+				typeof passedConnId === 'string' ? passedConnId : null;
 			setStep( 'verifying-conn' );
 			try {
 				const detectBranch = resolved.branch || 'HEAD';
@@ -237,7 +220,7 @@ export default function ImportFromUrl( {
 				setStep( 'private' );
 			}
 		},
-		[ resolved, providerConns, initInstallForm, installed ]
+		[ resolved, initInstallForm, installed ]
 	);
 
 	// Debounced slug conflict check — only active while showing the install form.
@@ -343,7 +326,14 @@ export default function ImportFromUrl( {
 	const isBusy =
 		step === 'checking' || step === 'verifying-conn' || isInstalling;
 
-	const hasProviderConns = providerConns.length > 0;
+	// Pro renders a connection picker here; free shows a passive notice
+	const privatePicker = resolved
+		? applyFilters( 'gitwire.importUrl.privatePicker', null, {
+				resolved,
+				onPick: handleConnectAndContinue,
+				onGoToSettings,
+		  } )
+		: null;
 
 	return (
 		<div className="gitwire-import-url">
@@ -409,125 +399,28 @@ export default function ImportFromUrl( {
 							) }
 						</p>
 						<div className="gitwire-import-url__private">
-							<p>
-								{ hasProviderConns && (
-									<>
-										{ __(
-											'Try to connect with a',
+							{ privatePicker ?? (
+								<p>
+									{ sprintf(
+										/* translators: %s: Git provider name (e.g. GitHub) */
+										__(
+											'If this is a private %s repository, you need an access token to install it.',
 											'gitwire'
-										) }{ ' ' }
-										<Dropdown
-											popoverProps={ {
-												placement: 'bottom-start',
-												className:
-													'gitwire-conn-dropdown',
-												focusOnMount: 'container',
-											} }
-											renderToggle={ ( {
-												isOpen,
-												onToggle,
-											} ) => (
-												<Button
-													aria-expanded={ isOpen }
-													aria-haspopup="listbox"
-													variant="link"
-													onClick={ onToggle }
-												>
-													{ __(
-														'saved account',
-														'gitwire'
-													) }
-												</Button>
-											) }
-											renderContent={ ( { onClose } ) => (
-												<ul
-													className="gitwire-conn-popover"
-													role="listbox"
-												>
-													{ providerConns.map(
-														( c ) => {
-															const profile =
-																connection?.[
-																	c.id
-																] ?? null;
-															const login =
-																profile?.login ||
-																c.username;
-															const label = login
-																? `@${ login }`
-																: c.email ||
-																  c.id;
-															return (
-																<li
-																	key={ c.id }
-																	className="gitwire-conn-popover__item"
-																	role="option"
-																>
-																	<span className="gitwire-conn-popover__name">
-																		{
-																			label
-																		}
-																	</span>
-																	<Button
-																		className="gitwire-conn-popover__connect"
-																		size="small"
-																		variant="tertiary"
-																		onClick={ () => {
-																			onClose();
-																			handleConnectAndContinue(
-																				c.id
-																			);
-																		} }
-																	>
-																		{ __(
-																			'Connect',
-																			'gitwire'
-																		) }
-																	</Button>
-																</li>
-															);
-														}
-													) }
-												</ul>
-											) }
-										/>
-										{ ', ' }
-									</>
-								) }
-								{ createInterpolateElement(
-									hasProviderConns
-										? sprintf(
-												/* translators: %s: Git provider name (e.g. GitHub) */
-												__(
-													'or add a %s connection in <a>Settings</a>.',
-													'gitwire'
-												),
-												providerLabel(
-													resolved.provider
-												)
-										  )
-										: sprintf(
-												/* translators: %s: Git provider name (e.g. GitHub) */
-												__(
-													'Add a %s connection in <a>Settings</a> to access private repositories.',
-													'gitwire'
-												),
-												providerLabel(
-													resolved.provider
-												)
-										  ),
-									{
-										a: onGoToSettings ? (
-											<Button
-												variant="link"
-												onClick={ onGoToSettings }
-											/>
-										) : (
-											<span />
 										),
-									}
-								) }
-							</p>
+										providerLabel( resolved.provider )
+									) }{ ' ' }
+									<a
+										href="https://gitwire.app/pro"
+										rel="noopener noreferrer"
+										target="_blank"
+									>
+										{ __(
+											'Gitwire Pro supports private repositories.',
+											'gitwire'
+										) }
+									</a>
+								</p>
+							) }
 						</div>
 					</>
 				) }

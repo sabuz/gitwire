@@ -202,10 +202,7 @@ class Admin {
 
 		wp_set_script_translations( 'gitwire-app', 'gitwire', GITWIRE_DIR . 'languages' );
 
-		$settings    = Settings::get_public();
-		$connections = Connections::get_public_list();
-		$has_config  = ! empty( $connections );
-		$connection  = $has_config ? (array) get_option( 'gitwire_connection_cache', [] ) : [];
+		$settings = Settings::get_public();
 		Error_Handler::clear_stale_activation_guard();
 		$installed_result = REST::get_installed();
 		$installed        = $installed_result['installed'];
@@ -257,8 +254,6 @@ class Admin {
 					'verify_admin_url'      => admin_url( 'admin.php?page=gitwire&gitwire_verify_activation=1' ),
 					'initial_tab'           => $initial_tab,
 					'settings'              => $settings,
-					'connections'           => $connections,
-					'connection'            => $connection,
 					'installed'             => $installed ? $installed : (object) [],
 					'orphaned'              => $orphaned,
 					'fatal_notice'          => $fatal_notice ? $fatal_notice : null,
@@ -268,6 +263,15 @@ class Admin {
 			) . ';',
 			'before'
 		);
+
+		/**
+		 * Fires after the Gitwire admin app assets are enqueued.
+		 *
+		 * Gitwire Pro enqueues its bundle here with 'gitwire-app' as a dependency.
+		 *
+		 * @since 1.4.0
+		 */
+		do_action( 'gitwire_enqueue_assets' );
 	}
 
 	/**

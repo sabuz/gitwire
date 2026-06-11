@@ -29,9 +29,9 @@ class Provider_Factory {
 	 * @return Git_Provider_Interface
 	 */
 	public static function make( string $provider = 'github', ?string $connection_id = null ): Git_Provider_Interface {
-		$creds = null === $connection_id
-			? Connections::get_credentials_for_provider( $provider )
-			: Connections::get_credentials( $connection_id );
+		$creds = null === $connection_id || '' === $connection_id
+			? Connection_Resolver::get_credentials_for_provider( $provider )
+			: Connection_Resolver::get_credentials( $connection_id );
 
 		$creds = $creds ?? [];
 
@@ -44,6 +44,11 @@ class Provider_Factory {
 		 * @param string|null $connection_id Connection ID, or null for the default.
 		 */
 		$creds = (array) apply_filters( 'gitwire_provider_factory_auth', $creds, $provider, $connection_id );
+
+		// No token connection — public mode using the saved browse account.
+		if ( empty( $creds ) ) {
+			$creds = Settings::public_credentials( $provider );
+		}
 
 		if ( 'gitlab' === $provider ) {
 			return new GitLab_API(

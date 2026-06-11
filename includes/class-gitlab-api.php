@@ -102,14 +102,22 @@ class GitLab_API implements Git_Provider_Interface {
 	}
 
 	/**
-	 * Returns projects accessible to the authenticated user.
+	 * Returns projects accessible to the authenticated user, or a user's public
+	 * projects when a username is given and no token is set.
 	 *
 	 * @since 1.1.0
-	 * @param string $username Unused for GitLab (token always required).
+	 * @param string $username GitLab username for public-mode listing.
 	 * @param int    $page     Page number for paginated results.
 	 * @return array<int, mixed>|\WP_Error Project list on success, WP_Error on failure.
 	 */
 	public function get_repos( string $username, int $page = 1 ): array|\WP_Error {
+		if ( '' === $this->token && '' !== $username ) {
+			return $this->get(
+				'/users/' . rawurlencode( $username ) . '/projects?per_page=100&page=' . $page
+				. '&order_by=last_activity_at&sort=desc'
+			);
+		}
+
 		return $this->get(
 			'/projects?membership=true&per_page=100&page=' . $page
 			. '&order_by=last_activity_at&sort=desc'
