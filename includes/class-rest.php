@@ -1373,7 +1373,6 @@ class REST {
 				$rec['provider'] = 'github';
 			}
 
-			// Flag when the stamped connection no longer exists in the store.
 			$conn_id = $rec['connection_id'] ?? null;
 			if ( $conn_id && ! isset( $all_connections[ $conn_id ] ) ) {
 				$rec['needs_reconnect'] = true;
