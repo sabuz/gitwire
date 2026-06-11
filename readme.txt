@@ -4,7 +4,7 @@ Tags: github, gitlab, git, plugins, themes, deploy
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.2.0
+Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -86,22 +86,10 @@ Yes. Enter your self-hosted GitLab instance URL in the Settings tab alongside yo
 
 == Changelog ==
 
-= 1.2.0 =
-* Rebranded to Gitwire (https://gitwire.app).
-* Renamed main plugin file to `gitwire.php` and standardized `gitwire_*` option, cron, and REST keys.
-
-= 1.1.0 =
-* Added GitLab support (cloud and self-hosted).
-* Added branch switching for installed repositories.
-* Added activate / deactivate actions in the Installed panel.
-* Added auto-discovery of plugin main file when the stored path is stale.
-* Increased repository list cache TTL to 30 minutes.
-* Fatal-error shutdown handler now restores backup and deactivates the plugin automatically.
-
 = 1.0.0 =
-* Initial release — GitHub repository browser, one-click install as plugin or theme, backup and restore on failed installs.
+* Initial release.
 
 == Upgrade Notice ==
 
-= 1.2.0 =
-Rebranded to Gitwire. Reactivate the plugin if WordPress lists the previous main file as missing.
+= 1.0.0 =
+Initial release.

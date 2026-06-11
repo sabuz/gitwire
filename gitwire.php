@@ -3,7 +3,7 @@
  * Plugin Name: Gitwire
  * Plugin URI:  https://gitwire.app
  * Description: Install and update plugins and themes from any Git repository. Switch branches and auto-recover from fatal errors.
- * Version:     1.2.0
+ * Version:     1.0.0
  * Requires at least: 6.9
  * Requires PHP: 8.1
  * Author:      Nazmul Sabuz

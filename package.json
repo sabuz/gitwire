@@ -1,6 +1,6 @@
 {
 	"name": "gitwire",
-	"version": "1.2.0",
+	"version": "1.0.0",
 	"description": "Install and manage WordPress plugins and themes directly from Git repositories.",
 	"private": true,
 	"author": "nazsabuz",
