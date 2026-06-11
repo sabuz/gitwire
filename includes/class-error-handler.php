@@ -281,6 +281,10 @@ class Error_Handler {
 			return;
 		}
 
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		set_transient( 'gitwire_frontend_bootstrap_ok', $fingerprint, MINUTE_IN_SECONDS );
 	}
 
