@@ -260,31 +260,32 @@ class Connections {
 	}
 
 	/**
-	 * Encrypts a string using AES-256-CBC with a key derived from wp_salt('auth').
+	 * Encrypts a string using AES-256-GCM with a key derived from wp_salt('auth').
 	 *
 	 * @since 1.0.0
 	 * @param string $plain Plaintext.
-	 * @return string Base64-encoded IV + ciphertext, or empty string on failure.
+	 * @return string Base64-encoded nonce + tag + ciphertext, or empty string on failure.
 	 */
 	private static function encrypt( string $plain ): string {
 		if ( '' === $plain ) {
 			return '';
 		}
-		$key = substr( hash( 'sha256', wp_salt( 'auth' ), true ), 0, 32 );
-		$iv  = random_bytes( 16 );
-		$enc = openssl_encrypt( $plain, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv );
+		$key   = substr( hash( 'sha256', wp_salt( 'auth' ), true ), 0, 32 );
+		$nonce = random_bytes( 12 );
+		$tag   = '';
+		$enc   = openssl_encrypt( $plain, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $nonce, $tag, '', 16 );
 		if ( false === $enc ) {
 			return '';
 		}
-		return base64_encode( $iv . $enc ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		return base64_encode( $nonce . $tag . $enc ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 	}
 
 	/**
 	 * Decrypts a value produced by encrypt().
 	 *
 	 * @since 1.0.0
-	 * @param string $cipher Base64-encoded IV + ciphertext.
-	 * @return string Plaintext, or empty string on failure.
+	 * @param string $cipher Base64-encoded nonce + tag + ciphertext.
+	 * @return string Plaintext, or empty string on failure or tampered data.
 	 */
 	private static function decrypt( string $cipher ): string {
 		if ( '' === $cipher ) {
@@ -292,12 +293,13 @@ class Connections {
 		}
 		$key  = substr( hash( 'sha256', wp_salt( 'auth' ), true ), 0, 32 );
 		$data = base64_decode( $cipher, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
-		if ( false === $data || strlen( $data ) <= 16 ) {
+		if ( false === $data || strlen( $data ) <= 28 ) {
 			return '';
 		}
-		$iv  = substr( $data, 0, 16 );
-		$enc = substr( $data, 16 );
-		$dec = openssl_decrypt( $enc, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv );
+		$nonce = substr( $data, 0, 12 );
+		$tag   = substr( $data, 12, 16 );
+		$enc   = substr( $data, 28 );
+		$dec   = openssl_decrypt( $enc, 'AES-256-GCM', $key, OPENSSL_RAW_DATA, $nonce, $tag );
 		return ( false === $dec ) ? '' : $dec;
 	}
 }

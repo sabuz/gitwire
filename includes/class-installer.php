@@ -1601,6 +1601,27 @@ class Installer {
 	}
 
 	/**
+	 * Removes any leftover --gitwire-bak-* and --gitwire-failed-* directories
+	 * under the plugins and themes roots. Called from the maintenance cron.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function purge_orphaned_backups(): void {
+		foreach ( [ WP_PLUGIN_DIR, get_theme_root() ] as $parent ) {
+			foreach ( [ '--gitwire-bak-', '--gitwire-failed-' ] as $marker ) {
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				$matches = @glob( $parent . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
+				if ( is_array( $matches ) ) {
+					foreach ( $matches as $dir ) {
+						self::rmdir_recursive( $dir );
+					}
+				}
+			}
+		}
+	}
+
+	/**
 	 * Pure-PHP recursive directory delete.
 	 * Safe to call from the shutdown handler where WP Filesystem may not be available.
 	 *

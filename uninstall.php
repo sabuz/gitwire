@@ -45,3 +45,4 @@ $wpdb->query(
 		$wpdb->esc_like( '_transient_timeout_gitwire_' ) . '%'
 	)
 );
+

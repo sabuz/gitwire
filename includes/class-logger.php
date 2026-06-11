@@ -191,13 +191,13 @@ class Logger {
 	 * @return array{timestamp: string, level: string, actor: string, message: string}|null
 	 */
 	private static function parse_line( string $line ): ?array {
-		if ( ! preg_match( '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(activity|error)\] \[(@[^\]]+)\] (.+)$/', $line, $m ) ) {
+		if ( ! preg_match( '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(activity|error)\](?: \[(@[^\]]+)\])? (.+)$/', $line, $m ) ) {
 			return null;
 		}
 		return [
 			'timestamp' => $m[1],
 			'level'     => $m[2],
-			'actor'     => $m[3],
+			'actor'     => '' !== $m[3] ? $m[3] : 'system',
 			'message'   => $m[4],
 		];
 	}
@@ -218,6 +218,12 @@ class Logger {
 		if ( ! file_exists( $htaccess ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 			file_put_contents( $htaccess, 'Deny from all' );
+		}
+
+		$index = $dir . '/index.php';
+		if ( ! file_exists( $index ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+			file_put_contents( $index, '<?php // Silence is golden.' );
 		}
 	}
 }
