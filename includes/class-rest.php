@@ -1510,13 +1510,15 @@ class REST {
 
 			if ( is_wp_error( $result ) ) {
 				Logger::log( sprintf( 'Detection failed — %s: %s', $key, $result->get_error_message() ), 'error' );
-				$result = [
+				$result          = [
 					'type'       => 'unknown',
 					'subtype'    => null,
 					'confidence' => 'none',
 					'name'       => '',
 					'error_code' => $result->get_error_code(),
 				];
+				$results[ $key ] = $result;
+				continue;
 			}
 
 			Repo_Cache::set_type( $provider, $owner, $repo, $branch, $result );

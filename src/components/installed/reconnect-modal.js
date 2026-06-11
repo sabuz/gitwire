@@ -27,7 +27,6 @@ export default function ReconnectModal( {
 		( c ) => c.provider === ( item.provider ?? 'github' )
 	);
 
-	// Per-connection test state: null = testing, true = accessible, false = no access.
 	const [ results, setResults ] = useState( {} );
 	const [ pulling, setPulling ] = useState( null );
 

@@ -61,6 +61,7 @@ export function useRepoDetection() {
 						repo: repo.name,
 						branch: repo.default_branch,
 						provider: repo.provider,
+						connection_id: repo.connectionId || '',
 					} ) )
 				);
 				dispatch( { type: 'set_batch', payload: batch } );

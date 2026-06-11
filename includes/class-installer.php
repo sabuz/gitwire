@@ -197,14 +197,10 @@ class Installer {
 		$repo      = $parts[1];
 		$method    = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
 		$was_stale = false;
-		// Explicit override from the reconnect flow takes priority over the stored connection.
 		if ( null !== $override_connection_id ) {
 			$connection_id = $override_connection_id;
 		} else {
 			$connection_id = $rec['connection_id'] ?? null;
-
-			// When the stored connection is gone, auto-resolve only when exactly one connection
-			// remains for this provider (unambiguous re-add). Zero or multiple = require reconnect.
 			if ( null !== $connection_id && null === Connections::get_credentials( $connection_id ) ) {
 				$provider_conns = array_values(
 					array_filter( Connections::all(), static fn( $c ) => ( $c['provider'] ?? '' ) === $provider )
@@ -233,9 +229,6 @@ class Installer {
 			);
 		}
 
-		// True when no connection is stored in the record and the fallback has no auth token.
-		// Failures on this path are indistinguishable from "not found" to the API but almost
-		// always mean the repo is private and a connection is needed.
 		$no_auth_fallback = ! $was_stale
 			&& null === $connection_id
 			&& empty( $creds['token'] ?? '' )
