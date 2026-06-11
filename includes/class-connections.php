@@ -94,21 +94,16 @@ class Connections {
 	}
 
 	/**
-	 * Returns the default connection for a provider, or the first one if none is marked default.
+	 * Returns the first stored connection for a provider, or null if none exists.
 	 *
 	 * @since 1.0.0
 	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
 	 * @return array<string, mixed>|null
 	 */
-	public static function get_default( string $provider ): ?array {
+	public static function get_first_for_provider( string $provider ): ?array {
 		$for_provider = array_values(
 			array_filter( self::all(), static fn( $c ) => ( $c['provider'] ?? '' ) === $provider )
 		);
-		foreach ( $for_provider as $conn ) {
-			if ( $conn['is_default'] ?? false ) {
-				return $conn;
-			}
-		}
 		return $for_provider[0] ?? null;
 	}
 
@@ -133,14 +128,14 @@ class Connections {
 	}
 
 	/**
-	 * Returns decrypted credentials for the default connection of a provider.
+	 * Returns decrypted credentials for the first stored connection of a provider.
 	 *
 	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @return array<string, mixed>|null Null when no connection exists for the provider.
 	 */
-	public static function get_default_credentials( string $provider ): ?array {
-		$conn = self::get_default( $provider );
+	public static function get_credentials_for_provider( string $provider ): ?array {
+		$conn = self::get_first_for_provider( $provider );
 		if ( null === $conn ) {
 			return null;
 		}
@@ -164,16 +159,6 @@ class Connections {
 
 		if ( isset( $data['credentials'] ) && is_array( $data['credentials'] ) ) {
 			$data['credentials'] = self::encrypt( (string) wp_json_encode( $data['credentials'] ) );
-		}
-
-		// Clear other defaults for this provider when this one is being set as default.
-		if ( $data['is_default'] ?? false ) {
-			foreach ( $all as &$conn ) {
-				if ( ( $conn['provider'] ?? '' ) === $provider && ( $conn['id'] ?? '' ) !== $id ) {
-					$conn['is_default'] = false;
-				}
-			}
-			unset( $conn );
 		}
 
 		$found = false;
@@ -220,18 +205,6 @@ class Connections {
 
 		$filtered = array_values( array_filter( $all, static fn( $c ) => ( $c['id'] ?? '' ) !== $id ) );
 
-		// When the deleted connection was the default, promote the next one for that provider.
-		if ( $deleted['is_default'] ?? false ) {
-			$provider = $deleted['provider'] ?? '';
-			foreach ( $filtered as &$conn ) {
-				if ( ( $conn['provider'] ?? '' ) === $provider ) {
-					$conn['is_default'] = true;
-					break;
-				}
-			}
-			unset( $conn );
-		}
-
 		update_option( self::OPTION, $filtered, false );
 		return true;
 	}
@@ -257,7 +230,6 @@ class Connections {
 			'label'      => $conn['label'] ?? '',
 			'scope'      => $conn['scope'] ?? 'site',
 			'user_id'    => (int) ( $conn['user_id'] ?? 0 ),
-			'is_default' => $conn['is_default'] ?? false,
 			'username'   => $conn['username'] ?? '',
 			'gitlab_url' => $conn['gitlab_url'] ?? '',
 		];

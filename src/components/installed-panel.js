@@ -12,6 +12,7 @@ import BranchModal from './installed/branch-modal';
 import CommitsModal, { clearCommitsCache } from './installed/commits-modal';
 import DeleteModal from './installed/delete-modal';
 import HeadCell from './installed/head-cell';
+import ReconnectModal from './installed/reconnect-modal';
 import SourceCell from './installed/source-cell';
 import TypeBadge from './installed/type-badge';
 import {
@@ -43,6 +44,7 @@ const DEFAULT_VIEW = {
 };
 
 export default function InstalledPanel( {
+	connections,
 	installed,
 	settings,
 	onRefresh,
@@ -53,6 +55,7 @@ export default function InstalledPanel( {
 	const [ view, setView ] = useState( DEFAULT_VIEW );
 	const [ branchModalItem, setBranchModalItem ] = useState( null );
 	const [ commitsModalItem, setCommitsModalItem ] = useState( null );
+	const [ reconnectItem, setReconnectItem ] = useState( null );
 
 	const handleOpenBranch = useCallback( ( item ) => {
 		setBranchModalItem( item );
@@ -134,16 +137,9 @@ export default function InstalledPanel( {
 							</span>
 						) }
 						{ item.needs_reconnect && (
-							<Tooltip
-								text={ __(
-									'The connection used to install this repository no longer exists. Go to Settings → Connections to reconnect.',
-									'gitwire'
-								) }
-							>
-								<span className="gitwire-badge gitwire-badge--warning is-needs-reconnect">
-									{ __( 'Needs Connection', 'gitwire' ) }
-								</span>
-							</Tooltip>
+							<span className="gitwire-badge gitwire-badge--warning is-needs-reconnect">
+								{ __( 'Connection Needed', 'gitwire' ) }
+							</span>
 						) }
 						{ item.update_available &&
 							( hasKnownFatalUpdate( item ) ? (
@@ -214,6 +210,13 @@ export default function InstalledPanel( {
 
 	const actions = useMemo(
 		() => [
+			{
+				id: 'reconnect',
+				label: __( 'Reconnect', 'gitwire' ),
+				icon: <Icon icon="migrate" />,
+				isEligible: ( item ) => !! item.needs_reconnect,
+				callback: ( [ item ] ) => setReconnectItem( item ),
+			},
 			{
 				id: 'activate',
 				label: __( 'Activate', 'gitwire' ),
@@ -300,7 +303,7 @@ export default function InstalledPanel( {
 				),
 			},
 		],
-		[ onRefresh ]
+		[ onRefresh, setReconnectItem ]
 	);
 
 	const { data: shownData, paginationInfo } = useMemo(
@@ -352,6 +355,17 @@ export default function InstalledPanel( {
 				item={ commitsModalItem }
 				onClose={ () => setCommitsModalItem( null ) }
 			/>
+			{ reconnectItem && (
+				<ReconnectModal
+					connections={ connections ?? [] }
+					item={ reconnectItem }
+					onClose={ () => setReconnectItem( null ) }
+					onRefresh={ () => {
+						setReconnectItem( null );
+						onRefresh();
+					} }
+				/>
+			) }
 		</div>
 	);
 }

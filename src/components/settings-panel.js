@@ -545,32 +545,9 @@ function ConnectionList( {
 		[ onConnectionsChange, onConnectionUpdate ]
 	);
 
-	const handleSetDefault = useCallback(
-		async ( id ) => {
-			setBusyId( id );
-			try {
-				const result = await api.setDefaultConnection( id );
-				onConnectionsChange( result.connections );
-			} catch ( e ) {
-				toast.error(
-					e.message || __( 'Failed to set default.', 'gitwire' )
-				);
-			} finally {
-				setBusyId( null );
-			}
-		},
-		[ onConnectionsChange ]
-	);
-
 	if ( ! connections.length ) {
 		return null;
 	}
-
-	const providerCounts = {};
-	connections.forEach( ( c ) => {
-		providerCounts[ c.provider ] =
-			( providerCounts[ c.provider ] || 0 ) + 1;
-	} );
 
 	return (
 		<div className="gitwire-connection-list">
@@ -660,29 +637,9 @@ function ConnectionList( {
 											: __( 'Public only', 'gitwire' ) }
 									</span>
 								) }
-								{ rec.is_default &&
-									providerCounts[ rec.provider ] > 1 && (
-										<span className="gitwire-badge gitwire-badge--info">
-											{ __( 'Default', 'gitwire' ) }
-										</span>
-									) }
 							</Flex>
 
 							{ /* Actions */ }
-							{ ! rec.is_default &&
-								providerCounts[ rec.provider ] > 1 && (
-									<Button
-										disabled={ !! busyId }
-										isBusy={ isBusy }
-										size="small"
-										variant="tertiary"
-										onClick={ () =>
-											handleSetDefault( rec.id )
-										}
-									>
-										{ __( 'Set default', 'gitwire' ) }
-									</Button>
-								) }
 							<Button
 								disabled={ !! busyId }
 								isBusy={ isBusy }

@@ -177,12 +177,13 @@ class Installer {
 	 * Switches the active branch for an already-installed repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider   Git provider: 'github', 'gitlab', or 'bitbucket'.
-	 * @param string $full_name  Repository full name (owner/repo).
-	 * @param string $new_branch Branch to switch to.
+	 * @param string      $provider              Git provider: 'github', 'gitlab', or 'bitbucket'.
+	 * @param string      $full_name             Repository full name (owner/repo).
+	 * @param string      $new_branch            Branch to switch to.
+	 * @param string|null $override_connection_id Bypass stored connection and use this ID instead.
 	 * @return array<string, mixed>|WP_Error Updated record on success, WP_Error on failure.
 	 */
-	public static function switch_branch( string $provider, string $full_name, string $new_branch ): array|\WP_Error {
+	public static function switch_branch( string $provider, string $full_name, string $new_branch, ?string $override_connection_id = null ): array|\WP_Error {
 		$installed = self::get_installed();
 		$key       = $provider . ':' . $full_name;
 
@@ -190,25 +191,60 @@ class Installer {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
-		$rec           = $installed[ $key ];
-		$parts         = explode( '/', $full_name );
-		$owner         = $parts[0];
-		$repo          = $parts[1];
-		$method        = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
-		$connection_id = $rec['connection_id'] ?? null;
-		$creds         = null !== $connection_id
+		$rec       = $installed[ $key ];
+		$parts     = explode( '/', $full_name );
+		$owner     = $parts[0];
+		$repo      = $parts[1];
+		$method    = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
+		$was_stale = false;
+		// Explicit override from the reconnect flow takes priority over the stored connection.
+		if ( null !== $override_connection_id ) {
+			$connection_id = $override_connection_id;
+		} else {
+			$connection_id = $rec['connection_id'] ?? null;
+
+			// When the stored connection is gone, auto-resolve only when exactly one connection
+			// remains for this provider (unambiguous re-add). Zero or multiple = require reconnect.
+			if ( null !== $connection_id && null === Connections::get_credentials( $connection_id ) ) {
+				$provider_conns = array_values(
+					array_filter( Connections::all(), static fn( $c ) => ( $c['provider'] ?? '' ) === $provider )
+				);
+				if ( 1 !== count( $provider_conns ) ) {
+					return new \WP_Error(
+						'gitwire_no_connection',
+						'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',
+						[ 'status' => 400 ]
+					);
+				}
+				$connection_id = $provider_conns[0]['id'];
+				$was_stale     = true;
+			}
+		}
+
+		$creds = null !== $connection_id
 			? Connections::get_credentials( $connection_id )
-			: Connections::get_default_credentials( $provider );
+			: Connections::get_credentials_for_provider( $provider );
 
 		if ( null === $creds ) {
 			return new \WP_Error(
 				'gitwire_no_connection',
-				'The connection used to install this repository no longer exists. Reconnect in Settings to pull updates.',
+				'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',
 				[ 'status' => 400 ]
 			);
 		}
 
 		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider, false, $connection_id );
+
+		// When auto-resolving a stale connection, API failures (e.g. GitHub 404 for a private
+		// repo the replacement account cannot access) surface as "Not Found" which is opaque.
+		// Replace with a consistent message so the user knows to use the Reconnect action.
+		if ( $was_stale && is_wp_error( $result ) ) {
+			return new \WP_Error(
+				'gitwire_no_connection',
+				'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',
+				[ 'status' => 400 ]
+			);
+		}
 
 		return $result;
 	}

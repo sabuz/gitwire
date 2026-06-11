@@ -30,7 +30,7 @@ class Provider_Factory {
 	 */
 	public static function make( string $provider = 'github', ?string $connection_id = null ): Git_Provider_Interface {
 		$creds = null === $connection_id
-			? Connections::get_default_credentials( $provider )
+			? Connections::get_credentials_for_provider( $provider )
 			: Connections::get_credentials( $connection_id );
 
 		$creds = $creds ?? [];

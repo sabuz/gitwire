@@ -226,12 +226,7 @@ export default function BrowsePanel( {
 				} );
 
 				if ( errors.length ) {
-					toast.error( errors.join( ' · ' ), {
-						action: {
-							label: __( 'Retry', 'gitwire' ),
-							onClick: () => handleRefreshRef.current?.(),
-						},
-					} );
+					toast.error( errors.join( ' · ' ) );
 				}
 
 				seedFromRepos( newRepos );
@@ -242,14 +237,7 @@ export default function BrowsePanel( {
 				);
 			} catch ( e ) {
 				toast.error(
-					e.message ||
-						__( 'Failed to load repositories.', 'gitwire' ),
-					{
-						action: {
-							label: __( 'Retry', 'gitwire' ),
-							onClick: () => handleRefreshRef.current?.(),
-						},
-					}
+					e.message || __( 'Failed to load repositories.', 'gitwire' )
 				);
 			} finally {
 				setLoading( false );

@@ -122,16 +122,6 @@ class REST {
 
 		register_rest_route(
 			$ns,
-			'/connections/(?P<id>[^/]+)/set-default',
-			[
-				'methods'             => 'POST',
-				'callback'            => [ self::class, 'set_default_connection' ],
-				'permission_callback' => [ self::class, 'can_manage' ],
-			]
-		);
-
-		register_rest_route(
-			$ns,
 			'/connections/(?P<id>[^/]+)',
 			[
 				'methods'             => 'DELETE',
@@ -657,15 +647,13 @@ class REST {
 			);
 		}
 
-		$existing_default = Connections::get_default( $provider );
-		$label            = sanitize_text_field( $req->get_param( 'label' ) ?? '' );
-		$scope            = 'user' === $req->get_param( 'scope' ) ? 'user' : 'site';
+		$label = sanitize_text_field( $req->get_param( 'label' ) ?? '' );
+		$scope = 'user' === $req->get_param( 'scope' ) ? 'user' : 'site';
 
 		$record = [
 			'provider'    => $provider,
 			'label'       => $label,
 			'scope'       => $scope,
-			'is_default'  => null === $existing_default,
 			'username'    => $login,
 			'gitlab_url'  => $creds['gitlab_url'] ?? '',
 			'credentials' => $creds,
@@ -703,23 +691,6 @@ class REST {
 		self::set_connection_cache( $id, null );
 		$identity = $conn['username'] ?? $conn['email'] ?? $conn['label'] ?? '';
 		Logger::log( sprintf( '[%s] Disconnected%s', $conn['provider'] ?? 'unknown', $identity ? ' @' . $identity : '' ) );
-		return [ 'connections' => Connections::get_public_list() ];
-	}
-
-	/**
-	 * Marks a connection as the default for its provider.
-	 *
-	 * @since 1.0.0
-	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<string, mixed>|\WP_Error
-	 */
-	public static function set_default_connection( \WP_REST_Request $req ): array|\WP_Error {
-		$id   = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
-		$conn = Connections::find( $id );
-		if ( null === $conn ) {
-			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
-		}
-		Connections::upsert( array_merge( $conn, [ 'is_default' => true ] ) );
 		return [ 'connections' => Connections::get_public_list() ];
 	}
 
@@ -910,8 +881,8 @@ class REST {
 
 		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 		if ( '' === $connection_id ) {
-			$default       = Connections::get_default( $provider );
-			$connection_id = $default['id'] ?? '';
+			$first         = Connections::get_first_for_provider( $provider );
+			$connection_id = $first['id'] ?? '';
 		}
 
 		if ( '' === $connection_id ) {
@@ -946,7 +917,7 @@ class REST {
 	public static function build_repos_page( string $provider, int $page, string $connection_id = '' ): array|\WP_Error {
 		$creds = '' !== $connection_id
 			? Connections::get_credentials( $connection_id )
-			: Connections::get_default_credentials( $provider );
+			: Connections::get_credentials_for_provider( $provider );
 
 		if ( 'bitbucket' === $provider ) {
 			if ( ! $creds || empty( $creds['email'] ) || empty( $creds['api_token'] ) ) {
@@ -1638,13 +1609,15 @@ class REST {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
-		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		$full_name = $owner . '/' . $repo;
+		$provider    = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$full_name   = $owner . '/' . $repo;
+		$override_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
+		$override_id = '' !== $override_id ? $override_id : null;
 
 		$existing_record = Installer::get_record( $provider, $full_name );
 		$is_pull         = $existing_record && ( $existing_record['branch'] ?? '' ) === $branch;
 
-		$result = Installer::switch_branch( $provider, $full_name, $branch );
+		$result = Installer::switch_branch( $provider, $full_name, $branch, $override_id );
 
 		if ( is_wp_error( $result ) ) {
 			$action = $is_pull ? 'Pull' : 'Switch branch';
@@ -1654,7 +1627,8 @@ class REST {
 
 		delete_transient( 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $branch ) );
 		Repo_Cache::clear_repos();
-		self::store_head( $owner, $repo, $branch, $provider, $existing_record['connection_id'] ?? null );
+		$stored_conn_id = $override_id ?? ( $existing_record['connection_id'] ?? null );
+		self::store_head( $owner, $repo, $branch, $provider, $stored_conn_id );
 
 		$type = $existing_record['type'] ?? 'plugin';
 		if ( $is_pull ) {

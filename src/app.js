@@ -408,6 +408,7 @@ export default function App( { initialData } ) {
 				) }
 				{ activeTab === 'repositories' && (
 					<InstalledPanel
+						connections={ connections }
 						installed={ installed }
 						settings={ settings }
 						onGoToSettings={ () => handleGoToTab( 'settings' ) }

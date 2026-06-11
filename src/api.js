@@ -11,11 +11,7 @@ export const createConnection = ( data = {} ) =>
 	apiFetch( { path: `${ BASE }/connections`, method: 'POST', data } );
 export const deleteConnection = ( id ) =>
 	apiFetch( { path: `${ BASE }/connections/${ id }`, method: 'DELETE' } );
-export const setDefaultConnection = ( id ) =>
-	apiFetch( {
-		path: `${ BASE }/connections/${ id }/set-default`,
-		method: 'POST',
-	} );
+
 export const testConnection = ( id ) =>
 	apiFetch( { path: `${ BASE }/connections/${ id }/test`, method: 'POST' } );
 export const getRepos = ( page = 1, provider = 'github', connectionId = '' ) =>
@@ -83,11 +79,21 @@ export const getCommits = ( owner, repo, provider = 'github' ) =>
 		path: `${ BASE }/installed/${ owner }/${ repo }/commits?provider=${ provider }`,
 	} );
 
-export const switchBranch = ( owner, repo, branch, provider = 'github' ) =>
+export const switchBranch = (
+	owner,
+	repo,
+	branch,
+	provider = 'github',
+	connectionId = ''
+) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ owner }/${ repo }/branch`,
 		method: 'POST',
-		data: { branch, provider },
+		data: {
+			branch,
+			provider,
+			...( connectionId ? { connection_id: connectionId } : {} ),
+		},
 	} );
 
 export const activateInstalled = ( owner, repo, provider = 'github' ) =>
