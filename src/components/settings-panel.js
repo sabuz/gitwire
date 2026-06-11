@@ -226,8 +226,11 @@ export default function SettingsPanel( {
 						) }
 						label={
 							<>
-								{ __( 'Smart Install', 'gitwire' ) }{ ' ' }
-								<span className="gitwire-badge-recommended">
+								{ __( 'Smart install', 'gitwire' ) }{ ' ' }
+								<span
+									className="gitwire-badge gitwire-badge--success"
+									style={ { marginLeft: 4 } }
+								>
 									{ __( 'Recommended', 'gitwire' ) }
 								</span>
 							</>
@@ -242,7 +245,7 @@ export default function SettingsPanel( {
 							'Shows a [Gitwire] label next to managed plugin and theme names on the Plugins and Themes screens.',
 							'gitwire'
 						) }
-						label={ __( 'Repo Label', 'gitwire' ) }
+						label={ __( 'Repo label', 'gitwire' ) }
 						onChange={ handleShowRepoLabelChange }
 					/>
 				</CardBody>
@@ -265,7 +268,7 @@ export default function SettingsPanel( {
 							'Record installs, removals, activations, and connection changes to the Logs page.',
 							'gitwire'
 						) }
-						label={ __( 'Enable Logging', 'gitwire' ) }
+						label={ __( 'Enable logging', 'gitwire' ) }
 						onChange={ handleEnableLoggingChange }
 					/>
 					{ enableLogging && (
@@ -781,7 +784,7 @@ function ConnectionsSummary( {
 									</span>
 									{ 'user' === rec.scope && (
 										<span className="gitwire-badge gitwire-badge--info">
-											{ __( 'Personal', 'gitwire' ) }
+											{ __( 'Only me', 'gitwire' ) }
 										</span>
 									) }
 									{ profile && ! profile.error && (
@@ -882,7 +885,7 @@ function ConnectionCard( {
 					{ 'user' === rec.scope && (
 						<FlexItem>
 							<span className="gitwire-badge gitwire-badge--info">
-								{ __( 'Personal', 'gitwire' ) }
+								{ __( 'Only me', 'gitwire' ) }
 							</span>
 						</FlexItem>
 					) }
@@ -1061,7 +1064,7 @@ function rateNote( provider, rateLimit, rateReset ) {
  */
 function AddConnectionForm( { onCreated, onCancel } ) {
 	const [ provider, setProvider ] = useState( 'github' );
-	const [ personal, setPersonal ] = useState( false );
+	const [ sharedWithAll, setSharedWithAll ] = useState( true );
 	const [ saving, setSaving ] = useState( false );
 	const [ testing, setTesting ] = useState( false );
 
@@ -1142,7 +1145,7 @@ function AddConnectionForm( { onCreated, onCancel } ) {
 		try {
 			const result = await api.createConnection( {
 				...data,
-				scope: personal ? 'user' : 'site',
+				scope: sharedWithAll ? 'site' : 'user',
 			} );
 			toast.success(
 				( PROVIDER_LABELS[ provider ] ?? provider ) +
@@ -1406,13 +1409,13 @@ function AddConnectionForm( { onCreated, onCancel } ) {
 
 			<ToggleControl
 				__nextHasNoMarginBottom
-				checked={ personal }
+				checked={ sharedWithAll }
 				help={ __(
-					'Only you can see and use this connection. Site connections are shared with all administrators.',
+					'All administrators can see and use this connection. Turn off to make it available only to you.',
 					'gitwire'
 				) }
-				label={ __( 'Personal connection', 'gitwire' ) }
-				onChange={ setPersonal }
+				label={ __( 'Save for all admins', 'gitwire' ) }
+				onChange={ setSharedWithAll }
 			/>
 
 			<Spacer marginTop={ 4 } />
