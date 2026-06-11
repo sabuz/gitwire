@@ -39,9 +39,16 @@ export const detectBatch = ( repos ) =>
 		data: { repos },
 	} );
 
-export const getBranches = ( owner, repo, provider = 'github' ) =>
+export const getBranches = (
+	owner,
+	repo,
+	provider = 'github',
+	connectionId = ''
+) =>
 	apiFetch( {
-		path: `${ BASE }/repos/${ owner }/${ repo }/branches?provider=${ provider }`,
+		path:
+			`${ BASE }/repos/${ owner }/${ repo }/branches?provider=${ provider }` +
+			( connectionId ? `&connection_id=${ connectionId }` : '' ),
 	} );
 
 export const detectRepo = (

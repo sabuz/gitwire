@@ -98,6 +98,7 @@ export default function ImportFromUrl( {
 	const [ slugConflict, setSlugConflict ] = useState( false );
 	const [ slugChecking, setSlugChecking ] = useState( false );
 	const [ replace, setReplace ] = useState( false );
+	const [ connId, setConnId ] = useState( null );
 	const debounceRef = useRef( null );
 
 	const smartInstall = settings?.smart_install !== false;
@@ -129,7 +130,12 @@ export default function ImportFromUrl( {
 		setAllBranches( [] );
 		setBranchFilter( '' );
 
-		api.getBranches( info.owner, info.repo, info.provider )
+		api.getBranches(
+			info.owner,
+			info.repo,
+			info.provider,
+			info.connection_id || ''
+		)
 			.then( ( b ) => {
 				setAllBranches( b );
 				// if the hardcoded fallback branch doesn't exist, use the repo's real default
@@ -193,7 +199,7 @@ export default function ImportFromUrl( {
 			if ( ! resolved ) {
 				return;
 			}
-			const connId =
+			const selectedConnId =
 				( typeof passedConnId === 'string' ? passedConnId : null ) ??
 				providerConns[ 0 ]?.id ??
 				null;
@@ -205,7 +211,7 @@ export default function ImportFromUrl( {
 					resolved.repo,
 					detectBranch,
 					resolved.provider,
-					connId
+					selectedConnId
 				);
 				const installedKey = `${ resolved.provider }:${ resolved.owner }/${ resolved.repo }`;
 				if ( installed?.[ installedKey ] ) {
@@ -217,12 +223,14 @@ export default function ImportFromUrl( {
 				}
 				const updatedResolved = { ...resolved, detection: d };
 				setResolved( updatedResolved );
+				setConnId( selectedConnId );
 				initInstallForm( {
 					provider: resolved.provider,
 					owner: resolved.owner,
 					repo: resolved.repo,
 					branch: resolved.branch || 'main',
 					detection: d,
+					connection_id: selectedConnId,
 				} );
 				setStep( 'resolved' );
 			} catch ( e ) {
@@ -291,13 +299,23 @@ export default function ImportFromUrl( {
 				slug: finalSlug,
 				replace,
 				force_type: true,
+				connection_id: connId || undefined,
 			} );
 			onPostInstall( result, `${ resolved.owner }/${ resolved.repo }` );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Installation failed.', 'gitwire' ) );
 			setStep( 'resolved' );
 		}
-	}, [ resolved, detection, type, slug, branch, replace, onPostInstall ] );
+	}, [
+		resolved,
+		detection,
+		type,
+		slug,
+		branch,
+		replace,
+		onPostInstall,
+		connId,
+	] );
 
 	const branchOptions = useMemo( () => {
 		const filter = branchFilter.toLowerCase();
