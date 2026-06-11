@@ -311,9 +311,13 @@ export default function App( { initialData } ) {
 		syncUrl( tabName );
 	}, [] );
 
-	const handleConnectionsChange = useCallback( ( conns ) => {
-		setConnections( conns || [] );
-	}, [] );
+	const handleConnectionsChange = useCallback(
+		( conns ) => {
+			setConnections( conns || [] );
+			refreshInstalled();
+		},
+		[ refreshInstalled ]
+	);
 
 	const handleConnectionUpdate = useCallback( ( providerOrId, data ) => {
 		const id = data?.connection_id ?? providerOrId;

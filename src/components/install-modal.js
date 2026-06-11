@@ -35,6 +35,7 @@ function finalizeSlug( value ) {
  * @param {Object}      props                      Component props.
  * @param {Object}      props.repo                 Repository data object.
  * @param {string}      props.provider             Git provider.
+ * @param {string}      [props.connectionId]       Connection ID used to fetch this repo.
  * @param {boolean}     props.smartInstall         Whether smart install is enabled.
  * @param {Object|null} props.detection            Pre-fetched detection result, if any.
  * @param {Function}    props.onInstalled          Callback fired after a successful install.
@@ -46,6 +47,7 @@ function finalizeSlug( value ) {
 export function InstallForm( {
 	repo,
 	provider = 'github',
+	connectionId = '',
 	smartInstall,
 	detection: initialDetection = null,
 	onInstalled,
@@ -91,7 +93,7 @@ export function InstallForm( {
 	}, [ allBranches, branchFilter, branch, repo.default_branch ] );
 
 	useEffect( () => {
-		api.getBranches( repo.owner, repo.name, provider )
+		api.getBranches( repo.owner, repo.name, provider, connectionId )
 			.then( ( b ) => setAllBranches( b ) )
 			.catch( () => {} );
 
@@ -100,7 +102,8 @@ export function InstallForm( {
 				repo.owner,
 				repo.name,
 				repo.default_branch,
-				provider
+				provider,
+				connectionId
 			)
 				.then( ( d ) => {
 					setDetection( d );
@@ -188,6 +191,7 @@ export function InstallForm( {
 				provider,
 				slug: finalSlug,
 				replace,
+				...( connectionId ? { connection_id: connectionId } : {} ),
 			} );
 			onInstalled( result );
 		} catch ( e ) {
@@ -296,18 +300,20 @@ export function InstallForm( {
 /**
  * Install modal — wraps InstallForm in a WordPress Modal.
  *
- * @param {Object}      props              Component props.
- * @param {Object}      props.repo         Repository data object.
- * @param {boolean}     props.smartInstall Whether smart install is enabled.
- * @param {Function}    props.onClose      Callback fired when the modal is closed.
- * @param {Function}    props.onInstalled  Callback fired after a successful install.
- * @param {string}      props.provider     Git provider: 'github' or 'gitlab'.
- * @param {Object|null} props.detection    Pre-fetched detection result, if any.
+ * @param {Object}      props                Component props.
+ * @param {Object}      props.repo           Repository data object.
+ * @param {boolean}     props.smartInstall   Whether smart install is enabled.
+ * @param {string}      [props.connectionId] Connection ID used to fetch this repo.
+ * @param {Function}    props.onClose        Callback fired when the modal is closed.
+ * @param {Function}    props.onInstalled    Callback fired after a successful install.
+ * @param {string}      props.provider       Git provider: 'github' or 'gitlab'.
+ * @param {Object|null} props.detection      Pre-fetched detection result, if any.
  * @return {JSX.Element} The rendered install modal.
  */
 export default function InstallModal( {
 	repo,
 	provider = 'github',
+	connectionId = '',
 	smartInstall,
 	onClose,
 	onInstalled,
@@ -332,6 +338,7 @@ export default function InstallModal( {
 			onRequestClose={ installing ? undefined : onClose }
 		>
 			<InstallForm
+				connectionId={ connectionId }
 				detection={ detection }
 				provider={ provider }
 				repo={ repo }

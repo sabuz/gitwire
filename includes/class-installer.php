@@ -233,12 +233,17 @@ class Installer {
 			);
 		}
 
+		// True when no connection is stored in the record and the fallback has no auth token.
+		// Failures on this path are indistinguishable from "not found" to the API but almost
+		// always mean the repo is private and a connection is needed.
+		$no_auth_fallback = ! $was_stale
+			&& null === $connection_id
+			&& empty( $creds['token'] ?? '' )
+			&& empty( $creds['api_token'] ?? '' );
+
 		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider, false, $connection_id );
 
-		// When auto-resolving a stale connection, API failures (e.g. GitHub 404 for a private
-		// repo the replacement account cannot access) surface as "Not Found" which is opaque.
-		// Replace with a consistent message so the user knows to use the Reconnect action.
-		if ( $was_stale && is_wp_error( $result ) ) {
+		if ( ( $was_stale || $no_auth_fallback ) && is_wp_error( $result ) ) {
 			return new \WP_Error(
 				'gitwire_no_connection',
 				'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',

@@ -196,6 +196,7 @@ export default function BrowsePanel( {
 					const tagged = result.repos.map( ( r ) => ( {
 						...r,
 						provider: result.provider,
+						connectionId: result.connectionId,
 					} ) );
 					newRepos = [ ...newRepos, ...tagged ];
 					setHasMore( ( prev ) => ( {
@@ -634,6 +635,7 @@ export default function BrowsePanel( {
 
 			{ ! onInstallRequest && modal && (
 				<InstallModal
+					connectionId={ modal.connectionId }
 					detection={ detections[ detectionKey( modal ) ] }
 					provider={ modal.provider }
 					repo={ modal }
