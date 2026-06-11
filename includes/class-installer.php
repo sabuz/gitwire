@@ -221,7 +221,7 @@ class Installer {
 			? Connections::get_credentials( $connection_id )
 			: Connections::get_credentials_for_provider( $provider );
 
-		if ( null === $creds ) {
+		if ( null === $creds && null !== $connection_id ) {
 			return new \WP_Error(
 				'gitwire_no_connection',
 				'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',
@@ -231,8 +231,7 @@ class Installer {
 
 		$no_auth_fallback = ! $was_stale
 			&& null === $connection_id
-			&& empty( $creds['token'] ?? '' )
-			&& empty( $creds['api_token'] ?? '' );
+			&& ( null === $creds || ( empty( $creds['token'] ?? '' ) && empty( $creds['api_token'] ?? '' ) ) );
 
 		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider, false, $connection_id );
 
