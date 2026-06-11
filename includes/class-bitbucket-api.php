@@ -99,7 +99,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * @since 1.3.0
 	 * @param string $username Bitbucket workspace slug (falls back to configured username).
 	 * @param int    $page     Page number for paginated results.
-	 * @return array<int, mixed>|\WP_Error Repository list on success, WP_Error on failure.
+	 * @return array{repos: array<int, mixed>, has_more: bool}|\WP_Error
 	 */
 	public function get_repos( string $username, int $page = 1 ): array|\WP_Error {
 		$slugs = $username ? [ $username ] : $this->get_workspace_slugs();
@@ -108,6 +108,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 		}
 
 		$all      = [];
+		$has_more = false;
 		$last_err = null;
 		foreach ( $slugs as $slug ) {
 			$result = $this->get(
@@ -118,7 +119,11 @@ class Bitbucket_API implements Git_Provider_Interface {
 				$last_err = $result;
 				continue;
 			}
-			$all = array_merge( $all, $result['values'] ?? [] );
+			$values = $result['values'] ?? [];
+			$all    = array_merge( $all, $values );
+			if ( ! empty( $result['next'] ) || count( $values ) >= 100 ) {
+				$has_more = true;
+			}
 		}
 
 		if ( empty( $all ) && $last_err ) {
@@ -132,7 +137,10 @@ class Bitbucket_API implements Git_Provider_Interface {
 			}
 		);
 
-		return $all;
+		return [
+			'repos'    => $all,
+			'has_more' => $has_more,
+		];
 	}
 
 	/**

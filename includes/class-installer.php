@@ -192,9 +192,8 @@ class Installer {
 		}
 
 		$rec       = $installed[ $key ];
-		$parts     = explode( '/', $full_name );
-		$owner     = $parts[0];
-		$repo      = $parts[1];
+		$owner     = $rec['owner'];
+		$repo      = $rec['repo'];
 		$method    = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
 		$was_stale = false;
 		if ( null !== $override_connection_id ) {

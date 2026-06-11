@@ -936,7 +936,7 @@ class REST {
 			$repos = array_map(
 				static function ( $r ) use ( $installed ) {
 					$full_name = $r['full_name'] ?? '';
-					$parts     = explode( '/', $full_name );
+					$parts     = explode( '/', $full_name, 2 );
 					return [
 						'id'               => $r['uuid'] ?? $full_name,
 						'name'             => $r['slug'] ?? '',
@@ -951,12 +951,12 @@ class REST {
 						'installed'        => $installed[ 'bitbucket:' . $full_name ] ?? null,
 					];
 				},
-				$result
+				$result['repos']
 			);
 
 			return [
 				'repos'    => $repos,
-				'has_more' => count( $result ) === self::PAGE_SIZE,
+				'has_more' => $result['has_more'],
 				'page'     => $page,
 			];
 		}
