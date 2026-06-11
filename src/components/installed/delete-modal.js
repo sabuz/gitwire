@@ -10,7 +10,7 @@ import * as api from '../../api';
  * Modal body rendered by DataViews for the delete action.
  *
  * Offers two choices:
- *   - "Remove from Gitwire" — removes the tracking record only, files stay on disk.
+ *   - "Unlink from Gitwire" — removes the tracking record only, files stay on disk.
  *   - "Delete files"        — removes the record AND deletes files from the server.
  *
  * @param {Object}   props            Component props supplied by DataViews.
@@ -35,7 +35,7 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 				sprintf(
 					/* translators: %s: repository full name */
 					__(
-						'%s removed from Gitwire. Files remain on disk.',
+						'%s unlinked from Gitwire. Files remain on disk.',
 						'gitwire'
 					),
 					item.full_name
@@ -93,7 +93,7 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 							fontSize: 13,
 						} }
 					>
-						{ __( 'Remove from Gitwire', 'gitwire' ) }
+						{ __( 'Unlink from Gitwire', 'gitwire' ) }
 					</p>
 					<p style={ { margin: 0, fontSize: 13, color: '#57606a' } }>
 						{ __(
@@ -135,7 +135,7 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 					variant="secondary"
 					onClick={ handleUntrack }
 				>
-					{ __( 'Remove from Gitwire', 'gitwire' ) }
+					{ __( 'Unlink from Gitwire', 'gitwire' ) }
 				</Button>
 				<Button
 					disabled={ !! busy }
