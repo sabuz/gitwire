@@ -1676,6 +1676,19 @@ class REST {
 			}
 		}
 
+		if ( 'theme' === ( $record['type'] ?? '' ) ) {
+			$slug           = $record['slug'] ?? '';
+			$active_theme   = get_stylesheet();
+			$template_theme = get_template();
+			if ( $slug && ( $slug === $active_theme || $slug === $template_theme ) ) {
+				return new \WP_Error(
+					'gitwire_active',
+					__( 'Switch to a different theme before removing it.', 'gitwire' ),
+					[ 'status' => 409 ]
+				);
+			}
+		}
+
 		$result = Installer::remove( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
