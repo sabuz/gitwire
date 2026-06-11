@@ -257,6 +257,16 @@ export default function App( { initialData } ) {
 					setConnections( conns || [] );
 					applyInstalled( result );
 				} )
+				.catch( ( e ) => {
+					toast.error(
+						e?.message ||
+							__(
+								'Failed to load. Please reload the page.',
+								'gitwire'
+							)
+					);
+					setSettings( {} );
+				} )
 				.finally( () => setLoading( false ) );
 			return;
 		}

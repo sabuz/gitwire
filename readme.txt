@@ -1,6 +1,6 @@
 === Gitwire - Deploy WordPress Plugins & Themes from Git ===
 Contributors: nazsabuz
-Tags: github, gitlab, git, plugins, themes, deploy
+Tags: github, gitlab, bitbucket, git, plugins, themes, deploy
 Requires at least: 6.9
 Tested up to: 6.9
 Requires PHP: 8.1
@@ -12,11 +12,11 @@ Install and manage plugins and themes from any Git repository. Switch branches a
 
 == Description ==
 
-Gitwire lets you install and manage plugins and themes directly from your GitHub or GitLab repositories — no manual ZIP uploads, no FTP.
+Gitwire lets you install and manage plugins and themes directly from your GitHub, GitLab, or Bitbucket repositories — no manual ZIP uploads, no FTP.
 
 **Browse and install**
 
-Connect your GitHub or GitLab account, browse every repository you own or have access to, and install any of them as a plugin or theme with one click. Gitwire auto-detects the repository type (plugin, theme, or block theme) and places it in the right directory.
+Connect your GitHub, GitLab, or Bitbucket account, browse every repository you own or have access to, and install any of them as a plugin or theme with one click. Gitwire auto-detects the repository type (plugin, theme, or block theme) and places it in the right directory.
 
 **Keep up to date**
 
@@ -45,14 +45,14 @@ Repository lists are cached for 30 minutes and type-detection results for 1 hour
 1. Upload the `gitwire` folder to `/wp-content/plugins/`.
 2. Activate the plugin through the **Plugins** menu in WordPress.
 3. Go to **Gitwire** in the WordPress admin sidebar.
-4. Open the **Settings** tab and connect your GitHub and/or GitLab account.
+4. Open the **Settings** tab and connect your GitHub, GitLab, and/or Bitbucket account.
 5. Switch to the **Browse** tab to start installing repositories.
 
 == Frequently Asked Questions ==
 
 = Do I need a personal access token? =
 
-Yes. GitHub requires a classic or fine-grained personal access token with at least `repo` (read) scope. GitLab requires a personal access token with `read_api` scope. Tokens are stored in the WordPress database and are only used server-side.
+Yes. GitHub requires a classic or fine-grained personal access token with at least `repo` (read) scope. GitLab requires a personal access token with `read_api` scope. Bitbucket requires an App Password (or Atlassian API token) with `Repositories: Read` permission. Tokens are stored in the WordPress database and are only used server-side.
 
 = Can I install private repositories? =
 
@@ -82,7 +82,7 @@ Yes. Enter your self-hosted GitLab instance URL in the Settings tab alongside yo
 
 1. Browse panel — repositories listed from your connected accounts.
 2. Installed panel — manage installed plugins and themes.
-3. Settings panel — connect GitHub and GitLab accounts.
+3. Settings panel — connect GitHub, GitLab, and Bitbucket accounts.
 
 == Changelog ==
 

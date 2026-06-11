@@ -688,7 +688,13 @@ class REST {
 	public static function delete_connection( \WP_REST_Request $req ): array|\WP_Error {
 		$id   = sanitize_text_field( $req->get_param( 'id' ) ?? '' );
 		$conn = Connections::find( $id );
-		if ( ! $conn || ! Connections::delete( $id ) ) {
+		if ( ! $conn ) {
+			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
+		}
+		if ( ( $conn['scope'] ?? 'site' ) === 'user' && (int) ( $conn['user_id'] ?? 0 ) !== get_current_user_id() ) {
+			return new \WP_Error( 'forbidden', 'You do not have permission to delete this connection.', [ 'status' => 403 ] );
+		}
+		if ( ! Connections::delete( $id ) ) {
 			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
 		}
 		self::set_connection_cache( $id, null );
@@ -709,6 +715,9 @@ class REST {
 		$conn = Connections::find( $id );
 		if ( null === $conn ) {
 			return new \WP_Error( 'not_found', 'Connection not found.', [ 'status' => 404 ] );
+		}
+		if ( ( $conn['scope'] ?? 'site' ) === 'user' && (int) ( $conn['user_id'] ?? 0 ) !== get_current_user_id() ) {
+			return new \WP_Error( 'forbidden', 'You do not have permission to access this connection.', [ 'status' => 403 ] );
 		}
 
 		$creds    = Connections::get_credentials( $id ) ?? [];
@@ -1156,6 +1165,13 @@ class REST {
 		$smart_install = $settings['smart_install'] ?? true;
 		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 		$connection_id = '' !== $connection_id ? $connection_id : null;
+
+		if ( null !== $connection_id ) {
+			$conn = Connections::find( $connection_id );
+			if ( $conn && ( $conn['scope'] ?? 'site' ) === 'user' && (int) ( $conn['user_id'] ?? 0 ) !== get_current_user_id() ) {
+				return new \WP_Error( 'forbidden', 'You do not have permission to use this connection.', [ 'status' => 403 ] );
+			}
+		}
 
 		if ( $smart_install && ! $force_type ) {
 			$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
