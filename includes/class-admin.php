@@ -223,7 +223,7 @@ class Admin {
 
 		// Derive initial tab from path param, activation state, or setup status.
 		$path = sanitize_key( $_GET['path'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( $first_activation || ! $has_config ) {
+		if ( $first_activation ) {
 			$initial_tab = 'settings';
 		} elseif ( 'settings' === $path ) {
 			$initial_tab = 'settings';
