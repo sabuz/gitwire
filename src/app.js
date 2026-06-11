@@ -23,6 +23,7 @@ import AddRepositoryPanel from './components/add-repository-panel';
 import InstalledPanel from './components/installed-panel';
 
 const LogsPanel = lazy( () => import( './components/logs-panel' ) );
+const ToolsPanel = lazy( () => import( './components/tools-panel' ) );
 
 class ChunkErrorBoundary extends Component {
 	constructor( props ) {
@@ -62,6 +63,7 @@ const BASE_TABS = [
 	{ name: 'repositories', label: __( 'Repositories', 'gitwire' ) },
 	{ name: 'add-repository', label: __( 'Add Repository', 'gitwire' ) },
 	{ name: 'settings', label: __( 'Settings', 'gitwire' ) },
+	{ name: 'tools', label: __( 'Tools', 'gitwire' ) },
 	{ name: 'logs', label: __( 'Logs', 'gitwire' ) },
 ];
 
@@ -215,6 +217,7 @@ export default function App( { initialData } ) {
 			browse: 'add-repository', // back-compat
 			settings: 'settings',
 			logs: 'logs',
+			tools: 'tools',
 		};
 		function handleClick( ev ) {
 			const a = ev.target.closest( 'a' );
@@ -440,6 +443,16 @@ export default function App( { initialData } ) {
 								onGoToSettings={ () =>
 									handleGoToTab( 'settings' )
 								}
+							/>
+						</Suspense>
+					</ChunkErrorBoundary>
+				) }
+				{ activeTab === 'tools' && (
+					<ChunkErrorBoundary>
+						<Suspense fallback={ panelFallback }>
+							<ToolsPanel
+								settings={ settings }
+								onSave={ handleSettingsSave }
 							/>
 						</Suspense>
 					</ChunkErrorBoundary>

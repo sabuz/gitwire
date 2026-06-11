@@ -581,6 +581,9 @@ class REST {
 		if ( null !== $req->get_param( 'log_level' ) ) {
 			$incoming['log_level'] = $req->get_param( 'log_level' );
 		}
+		if ( null !== $req->get_param( 'remove_data_on_uninstall' ) ) {
+			$incoming['remove_data_on_uninstall'] = $req->get_param( 'remove_data_on_uninstall' );
+		}
 
 		$was_logging = Settings::is_logging_enabled();
 		$merged      = Settings::merge_save( $incoming );

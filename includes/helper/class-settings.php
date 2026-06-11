@@ -36,11 +36,12 @@ class Settings {
 	public static function get_public(): array {
 		$s = self::get_raw();
 		return [
-			'smart_install'      => $s['smart_install'] ?? true,
-			'show_repo_label'    => $s['show_repo_label'] ?? true,
-			'enable_logging'     => $s['enable_logging'] ?? false,
-			'log_retention_days' => $s['log_retention_days'] ?? 30,
-			'log_level'          => $s['log_level'] ?? 'activity',
+			'smart_install'            => $s['smart_install'] ?? true,
+			'show_repo_label'          => $s['show_repo_label'] ?? true,
+			'enable_logging'           => $s['enable_logging'] ?? false,
+			'log_retention_days'       => $s['log_retention_days'] ?? 30,
+			'log_level'                => $s['log_level'] ?? 'activity',
+			'remove_data_on_uninstall' => $s['remove_data_on_uninstall'] ?? false,
 		];
 	}
 
@@ -81,7 +82,12 @@ class Settings {
 			$log_level = in_array( $val, [ 'activity', 'error' ], true ) ? $val : 'activity';
 		}
 
-		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level' );
+		$remove_data_on_uninstall = (bool) ( $current['remove_data_on_uninstall'] ?? false );
+		if ( array_key_exists( 'remove_data_on_uninstall', $incoming ) && null !== $incoming['remove_data_on_uninstall'] ) {
+			$remove_data_on_uninstall = (bool) $incoming['remove_data_on_uninstall'];
+		}
+
+		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level', 'remove_data_on_uninstall' );
 	}
 
 	/**

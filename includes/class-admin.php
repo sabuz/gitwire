@@ -140,6 +140,15 @@ class Admin {
 			[ self::class, 'render_page' ],
 		);
 
+		add_submenu_page(
+			self::PAGE_SLUG,
+			__( 'Tools', 'gitwire' ),
+			__( 'Tools', 'gitwire' ),
+			'manage_options',
+			self::PAGE_SLUG . '&path=tools',
+			[ self::class, 'render_page' ],
+		);
+
 		if ( Settings::is_logging_enabled() ) {
 			add_submenu_page(
 				self::PAGE_SLUG,

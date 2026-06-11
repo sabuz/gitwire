@@ -9,6 +9,9 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
+$settings        = (array) get_option( 'gitwire_settings', [] );
+$remove_all_data = (bool) ( $settings['remove_data_on_uninstall'] ?? false );
+
 $options = [
 	'gitwire_settings',
 	'gitwire_connection_cache',
@@ -18,6 +21,10 @@ $options = [
 	'gitwire_repos_cache',
 	'gitwire_repo_types',
 ];
+
+if ( $remove_all_data ) {
+	$options[] = 'gitwire_connections';
+}
 
 foreach ( $options as $option ) {
 	delete_option( $option );
