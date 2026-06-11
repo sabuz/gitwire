@@ -38,7 +38,7 @@ If a slug is already taken by a different installation, the incoming repository 
 
 **Performance**
 
-Repository lists are cached for 30 minutes and type-detection results for 1 hour, so browsing stays fast even with large accounts.
+Repository lists are cached for 30 minutes and type-detection results for 24 hours, so browsing stays fast even with large accounts.
 
 == Installation ==
 

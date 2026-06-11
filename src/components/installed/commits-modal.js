@@ -20,6 +20,7 @@ export default function CommitsModal( { item, onClose } ) {
 		? ( item.provider ?? 'github' ) + ':' + item.full_name
 		: '';
 	const [ commits, setCommits ] = useState( null );
+	const [ fetchError, setFetchError ] = useState( false );
 
 	useEffect( () => {
 		if ( ! item || ! cacheKey ) {
@@ -28,9 +29,11 @@ export default function CommitsModal( { item, onClose } ) {
 		const cached = commitsCache.get( cacheKey );
 		if ( cached && Date.now() < cached.expiresAt ) {
 			setCommits( cached.data );
+			setFetchError( false );
 			return;
 		}
 		setCommits( null );
+		setFetchError( false );
 		let cancelled = false;
 		api.getCommits( item.owner, item.repo, item.provider ?? 'github' )
 			.then( ( data ) => {
@@ -45,6 +48,7 @@ export default function CommitsModal( { item, onClose } ) {
 			} )
 			.catch( () => {
 				if ( ! cancelled ) {
+					setFetchError( true );
 					setCommits( [] );
 				}
 			} );
@@ -80,7 +84,9 @@ export default function CommitsModal( { item, onClose } ) {
 			) }
 			{ commits !== null && commits.length === 0 && (
 				<p style={ { color: '#57606a', fontSize: 13 } }>
-					{ __( 'No commits found.', 'gitwire' ) }
+					{ fetchError
+						? __( 'Could not load commits.', 'gitwire' )
+						: __( 'No commits found.', 'gitwire' ) }
 				</p>
 			) }
 			{ commits !== null && commits.length > 0 && (

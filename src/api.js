@@ -43,8 +43,14 @@ export const getBranches = (
 ) =>
 	apiFetch( {
 		path:
-			`${ BASE }/repos/${ owner }/${ repo }/branches?provider=${ provider }` +
-			( connectionId ? `&connection_id=${ connectionId }` : '' ),
+			`${ BASE }/repos/${ encodeURIComponent(
+				owner
+			) }/${ encodeURIComponent(
+				repo
+			) }/branches?provider=${ provider }` +
+			( connectionId
+				? `&connection_id=${ encodeURIComponent( connectionId ) }`
+				: '' ),
 	} );
 
 export const detectRepo = (
@@ -56,7 +62,11 @@ export const detectRepo = (
 ) =>
 	apiFetch( {
 		path:
-			`${ BASE }/repos/${ owner }/${ repo }/detect?branch=${ encodeURIComponent(
+			`${ BASE }/repos/${ encodeURIComponent(
+				owner
+			) }/${ encodeURIComponent(
+				repo
+			) }/detect?branch=${ encodeURIComponent(
 				branch
 			) }&provider=${ provider }` +
 			( connectionId
@@ -76,7 +86,9 @@ export const checkSlug = ( slug, type = 'plugin' ) =>
 
 export const getCommits = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ owner }/${ repo }/commits?provider=${ provider }`,
+		path: `${ BASE }/installed/${ encodeURIComponent(
+			owner
+		) }/${ encodeURIComponent( repo ) }/commits?provider=${ provider }`,
 	} );
 
 export const switchBranch = (
@@ -87,7 +99,9 @@ export const switchBranch = (
 	connectionId = ''
 ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ owner }/${ repo }/branch`,
+		path: `${ BASE }/installed/${ encodeURIComponent(
+			owner
+		) }/${ encodeURIComponent( repo ) }/branch`,
 		method: 'POST',
 		data: {
 			branch,
@@ -98,14 +112,18 @@ export const switchBranch = (
 
 export const activateInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ owner }/${ repo }/activate`,
+		path: `${ BASE }/installed/${ encodeURIComponent(
+			owner
+		) }/${ encodeURIComponent( repo ) }/activate`,
 		method: 'POST',
 		data: { provider },
 	} );
 
 export const deactivateInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ owner }/${ repo }/deactivate`,
+		path: `${ BASE }/installed/${ encodeURIComponent(
+			owner
+		) }/${ encodeURIComponent( repo ) }/deactivate`,
 		method: 'POST',
 		data: { provider },
 	} );
@@ -121,7 +139,9 @@ export const verifyBootstrap = () =>
 
 export const removeInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ owner }/${ repo }?provider=${ encodeURIComponent(
+		path: `${ BASE }/installed/${ encodeURIComponent(
+			owner
+		) }/${ encodeURIComponent( repo ) }?provider=${ encodeURIComponent(
 			provider
 		) }`,
 		method: 'DELETE',
@@ -129,9 +149,11 @@ export const removeInstalled = ( owner, repo, provider = 'github' ) =>
 
 export const untrackInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ owner }/${ repo }/untrack?provider=${ encodeURIComponent(
-			provider
-		) }`,
+		path: `${ BASE }/installed/${ encodeURIComponent(
+			owner
+		) }/${ encodeURIComponent(
+			repo
+		) }/untrack?provider=${ encodeURIComponent( provider ) }`,
 		method: 'DELETE',
 	} );
 

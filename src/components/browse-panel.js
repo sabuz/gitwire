@@ -152,7 +152,7 @@ export default function BrowsePanel( {
 	const [ search, setSearch ] = useState( '' );
 	const [ activeTypeFilters, setActiveTypeFilters ] = useState( [] );
 	const [ activeSourceFilters, setActiveSourceFilters ] = useState( [] );
-	const handleRefreshRef = useRef( null );
+	const prevConnIdsRef = useRef( null );
 
 	const loadRepos = useCallback(
 		async ( connectionPages, append = false ) => {
@@ -247,13 +247,26 @@ export default function BrowsePanel( {
 		[ installed, runBatch, seedFromRepos ]
 	);
 
+	const connIds = ( connections ?? [] ).map( ( c ) => c.id ).join( ',' );
+
 	useEffect( () => {
+		if (
+			prevConnIdsRef.current === connIds &&
+			prevConnIdsRef.current !== null
+		) {
+			return;
+		}
+		prevConnIdsRef.current = connIds;
 		const pages = {};
 		( connections ?? [] ).forEach( ( c ) => {
 			pages[ c.id ] = 1;
 		} );
+		setRepos( [] );
+		setHasMore( {} );
+		setPagesLoaded( {} );
+		reset();
 		loadRepos( pages );
-	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [ connIds ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleRefresh = useCallback( async () => {
 		setLoading( true );
@@ -275,8 +288,6 @@ export default function BrowsePanel( {
 			setLoading( false );
 		}
 	}, [ loadRepos, reset ] );
-
-	handleRefreshRef.current = handleRefresh;
 
 	const handleLoadMore = () => {
 		const pages = {};
@@ -347,7 +358,7 @@ export default function BrowsePanel( {
 		const type =
 			installedRec?.type ?? detections[ detectionKey( r ) ]?.type;
 		if ( ! type ) {
-			return false;
+			return true;
 		}
 		return activeTypeFilters.includes( type );
 	};
