@@ -141,7 +141,7 @@ export default function InstalledPanel( {
 								) }
 							>
 								<span className="gitwire-badge gitwire-badge--warning is-needs-reconnect">
-									{ __( 'Needs connection', 'gitwire' ) }
+									{ __( 'Needs Connection', 'gitwire' ) }
 								</span>
 							</Tooltip>
 						) }
@@ -154,7 +154,7 @@ export default function InstalledPanel( {
 								</Tooltip>
 							) : (
 								<span className="gitwire-badge gitwire-badge--warning is-update">
-									{ __( 'Update available', 'gitwire' ) }
+									{ __( 'Update Available', 'gitwire' ) }
 								</span>
 							) ) }
 					</Flex>

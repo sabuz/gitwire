@@ -33,7 +33,7 @@ export function knownFatalBadgeLabel( item ) {
 
 	return sprintf(
 		/* translators: %s: short commit SHA */
-		__( 'Update blocked (%s)', 'gitwire' ),
+		__( 'Update Blocked (%s)', 'gitwire' ),
 		shortSha
 	);
 }
