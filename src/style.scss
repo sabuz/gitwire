@@ -60,13 +60,20 @@ body.gitwire-admin-page {
 		padding: 16px 32px 0;
 		background-color: #fff;
 		box-shadow: inset 0 -1px 0 0 #ddd;
+
+		&__top {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 16px;
+		}
 	}
 
 	&-title {
 		display: flex;
 		gap: 8px;
 		align-items: center;
-		margin-bottom: 16px;
+		margin-bottom: 0;
 		font-size: 15px;
 		font-weight: 600;
 		color: #1d2327;
