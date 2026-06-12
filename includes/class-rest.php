@@ -442,6 +442,16 @@ class REST {
 
 		register_rest_route(
 			$ns,
+			'/public-connections/(?P<id>[^/]+)/rate-limit',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ self::class, 'get_public_connection_rate_limit' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
 			'/public-connections/(?P<id>[^/]+)',
 			[
 				'methods'             => 'DELETE',
@@ -620,6 +630,71 @@ class REST {
 		}
 
 		return [ 'deleted' => true ];
+	}
+
+	/**
+	 * Returns the current API rate limit for a public connection.
+	 *
+	 * Only GitHub supports an unauthenticated rate-limit endpoint. Other
+	 * providers either require auth or expose no dedicated endpoint.
+	 *
+	 * @since 1.5.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public static function get_public_connection_rate_limit( \WP_REST_Request $req ): \WP_REST_Response|\WP_Error {
+		$id   = sanitize_text_field( (string) $req->get_param( 'id' ) );
+		$conn = Public_Connections::find( $id );
+
+		if ( ! $conn ) {
+			return new \WP_Error( 'not_found', __( 'Connection not found.', 'gitwire' ), [ 'status' => 404 ] );
+		}
+
+		if ( 'github' !== ( $conn['provider'] ?? '' ) ) {
+			return new \WP_REST_Response( null, 204 );
+		}
+
+		$response = wp_remote_get(
+			'https://api.github.com/rate_limit',
+			[
+				'headers' => [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ],
+				'timeout' => 5,
+			]
+		);
+
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return new \WP_REST_Response( null, 204 );
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+		$core = $data['resources']['core'] ?? null;
+
+		if ( empty( $core ) ) {
+			return new \WP_REST_Response( null, 204 );
+		}
+
+		$name     = '';
+		$user_res = wp_remote_get(
+			'https://api.github.com/users/' . rawurlencode( $conn['username'] ?? '' ),
+			[
+				'headers' => [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ],
+				'timeout' => 5,
+			]
+		);
+		if ( ! is_wp_error( $user_res ) && 200 === wp_remote_retrieve_response_code( $user_res ) ) {
+			$user_data = json_decode( wp_remote_retrieve_body( $user_res ), true );
+			$name      = (string) ( $user_data['name'] ?? '' );
+		}
+
+		return new \WP_REST_Response(
+			[
+				'rate_limit'     => (int) $core['limit'],
+				'rate_remaining' => (int) $core['remaining'],
+				'rate_reset'     => (int) $core['reset'],
+				'name'           => $name,
+				'checked_at'     => time(),
+			]
+		);
 	}
 
 	/**

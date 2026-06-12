@@ -1,7 +1,7 @@
 import { toast } from '../toast';
 
 import { __ } from '@wordpress/i18n';
-import { useState, useCallback } from '@wordpress/element';
+import { useState, useCallback, useEffect } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import {
 	Button,
@@ -310,6 +310,19 @@ const PROVIDER_LABELS = {
 
 function PublicConnectionsCard( { connections, onChange } ) {
 	const [ selectedId, setSelectedId ] = useState( null );
+	const [ githubRateLimit, setGithubRateLimit ] = useState( null );
+
+	// Start the rate-limit fetch as soon as the list renders, not when the
+	// detail card opens, so the bar is ready by the time the user clicks in.
+	useEffect( () => {
+		const githubConn = connections.find( ( c ) => 'github' === c.provider );
+		if ( ! githubConn ) {
+			return;
+		}
+		api.getPublicConnectionRateLimit( githubConn.id )
+			.then( ( data ) => data && setGithubRateLimit( data ) )
+			.catch( () => {} );
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleCreated = useCallback(
 		( conn ) => onChange( [ ...connections, conn ] ),
@@ -345,6 +358,9 @@ function PublicConnectionsCard( { connections, onChange } ) {
 				</Flex>
 				{ rec && (
 					<PublicConnectionDetail
+						rateData={
+							'github' === rec.provider ? githubRateLimit : null
+						}
 						rec={ rec }
 						onRemoved={ handleRemoved }
 					/>
@@ -486,10 +502,39 @@ function PublicConnectionsSummary( { connections, onCreated, onSelect } ) {
 	);
 }
 
-function PublicConnectionDetail( { rec, onRemoved } ) {
+function unixTimeAgo( ts ) {
+	const s = Math.floor( Date.now() / 1000 ) - ts;
+	if ( s < 60 ) {
+		return __( 'just now', 'gitwire' );
+	}
+	const m = Math.floor( s / 60 );
+	if ( m < 60 ) {
+		return m + 'm ago';
+	}
+	const h = Math.floor( m / 60 );
+	if ( h < 24 ) {
+		return h + 'h ago';
+	}
+	return Math.floor( h / 24 ) + 'd ago';
+}
+
+function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 	const [ busy, setBusy ] = useState( false );
 	const [ confirming, setConfirming ] = useState( false );
 	const provLabel = PROVIDER_LABELS[ rec.provider ] ?? rec.provider;
+	const displayName = rateData?.name || rec.name || null;
+	const checkedAt = rateData?.checked_at ?? null;
+
+	const hasRateLimit = rateData && rateData.rate_limit > 0;
+	const pct = hasRateLimit
+		? Math.round( ( rateData.rate_remaining / rateData.rate_limit ) * 100 )
+		: 0;
+	let barColor = '#cf222e';
+	if ( pct > 50 ) {
+		barColor = '#4ac26b';
+	} else if ( pct > 20 ) {
+		barColor = '#e3b341';
+	}
 
 	const handleRemove = async () => {
 		setConfirming( false );
@@ -542,7 +587,18 @@ function PublicConnectionDetail( { rec, onRemoved } ) {
 						/>
 					) }
 					<FlexBlock>
-						<div style={ { fontWeight: 700, fontSize: 14 } }>
+						{ displayName && (
+							<div style={ { fontWeight: 700, fontSize: 14 } }>
+								{ displayName }
+							</div>
+						) }
+						<div
+							style={
+								displayName
+									? { fontSize: 12, color: '#57606a' }
+									: { fontWeight: 700, fontSize: 14 }
+							}
+						>
 							@{ rec.username }
 						</div>
 						{ rec.gitlab_url && (
@@ -550,25 +606,18 @@ function PublicConnectionDetail( { rec, onRemoved } ) {
 								{ rec.gitlab_url }
 							</div>
 						) }
-						<div
-							style={ {
-								fontSize: 11,
-								color: '#8c959f',
-								marginTop: 2,
-							} }
-						>
-							{ __( 'Public repositories only.', 'gitwire' ) }{ ' ' }
-							<a
-								href="https://gitwire.app/pro"
-								rel="noopener noreferrer"
-								target="_blank"
+						{ checkedAt && (
+							<div
+								style={ {
+									fontSize: 11,
+									color: '#8c959f',
+									marginTop: 2,
+								} }
 							>
-								{ __(
-									'Upgrade to Pro for private access.',
-									'gitwire'
-								) }
-							</a>
-						</div>
+								{ __( 'Connection verified', 'gitwire' ) }{ ' ' }
+								{ unixTimeAgo( checkedAt ) }
+							</div>
+						) }
 					</FlexBlock>
 					<FlexItem>
 						<Button
@@ -593,6 +642,81 @@ function PublicConnectionDetail( { rec, onRemoved } ) {
 						) }
 					</FlexItem>
 				</Flex>
+
+				<hr
+					className="gitwire-divider"
+					style={ { margin: '12px 0' } }
+				/>
+
+				<div style={ { fontSize: 12 } }>
+					{ hasRateLimit && (
+						<>
+							<Flex
+								justify="space-between"
+								style={ { marginBottom: 6 } }
+							>
+								<span style={ { color: '#50575e' } }>
+									{ __( 'API Usage', 'gitwire' ) }
+								</span>
+								<strong>
+									{ rateData.rate_remaining?.toLocaleString() }
+									{ ' / ' }
+									{ rateData.rate_limit?.toLocaleString() }
+								</strong>
+							</Flex>
+							<div className="gitwire-rate-track">
+								<div
+									className="gitwire-rate-fill"
+									style={ {
+										width: `${ pct }%`,
+										background: barColor,
+									} }
+								/>
+							</div>
+						</>
+					) }
+					<p
+						className="gitwire-rate-note"
+						style={ {
+							margin: hasRateLimit ? '6px 0 0' : 0,
+							color: '#757575',
+						} }
+					>
+						{ 'github' === rec.provider ? (
+							<>
+								{ __(
+									"Unauthenticated limit is shared by your server's IP.",
+									'gitwire'
+								) }{ ' ' }
+								<a
+									href="https://gitwire.app/pro"
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									{ __( 'Upgrade to Pro', 'gitwire' ) }
+								</a>{ ' ' }
+								{ __(
+									'to connect with a token for 5,000/hour.',
+									'gitwire'
+								) }
+							</>
+						) : (
+							<>
+								{ __(
+									'Public access only. Upgrade to Pro to add credentials for private repositories and higher rate limits.',
+									'gitwire'
+								) }{ ' ' }
+								<a
+									href="https://gitwire.app/pro"
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									{ __( 'Learn more.', 'gitwire' ) }
+								</a>
+							</>
+						) }
+					</p>
+				</div>
 			</CardBody>
 		</Card>
 	);

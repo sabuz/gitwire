@@ -11,6 +11,12 @@ export const deletePublicConnection = ( id ) =>
 		path: `${ BASE }/public-connections/${ encodeURIComponent( id ) }`,
 		method: 'DELETE',
 	} );
+export const getPublicConnectionRateLimit = ( id ) =>
+	apiFetch( {
+		path: `${ BASE }/public-connections/${ encodeURIComponent(
+			id
+		) }/rate-limit`,
+	} );
 
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>

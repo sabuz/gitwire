@@ -132,9 +132,12 @@ class Public_Connections {
 
 		if ( 'gitlab' === $provider ) {
 			$conn['gitlab_url'] = $gitlab_url;
-			$avatar             = self::resolve_gitlab_avatar( $username, $gitlab_url );
-			if ( '' !== $avatar ) {
-				$conn['avatar_url'] = $avatar;
+			$profile            = self::resolve_gitlab_profile( $username, $gitlab_url );
+			if ( '' !== ( $profile['avatar_url'] ?? '' ) ) {
+				$conn['avatar_url'] = $profile['avatar_url'];
+			}
+			if ( '' !== ( $profile['name'] ?? '' ) ) {
+				$conn['name'] = $profile['name'];
 			}
 		}
 
@@ -145,16 +148,16 @@ class Public_Connections {
 	}
 
 	/**
-	 * Fetches the avatar URL for a GitLab user via the unauthenticated API.
+	 * Fetches profile fields for a GitLab user via the unauthenticated API.
 	 *
-	 * Returns an empty string when the request fails or the user is not found.
+	 * Returns an empty array when the request fails or the user is not found.
 	 *
 	 * @since 1.5.0
 	 * @param string $username   GitLab username.
 	 * @param string $gitlab_url Self-hosted instance URL, or empty for gitlab.com.
-	 * @return string
+	 * @return array<string, string> Keys: avatar_url, name.
 	 */
-	private static function resolve_gitlab_avatar( string $username, string $gitlab_url ): string {
+	private static function resolve_gitlab_profile( string $username, string $gitlab_url ): array {
 		$base     = rtrim( $gitlab_url ? $gitlab_url : 'https://gitlab.com', '/' );
 		$response = wp_remote_get(
 			$base . '/api/v4/users?username=' . rawurlencode( $username ) . '&per_page=1',
@@ -162,11 +165,17 @@ class Public_Connections {
 		);
 
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return '';
+			return [];
 		}
 
 		$data = json_decode( wp_remote_retrieve_body( $response ), true );
-		return (string) ( $data[0]['avatar_url'] ?? '' );
+		if ( empty( $data[0] ) ) {
+			return [];
+		}
+		return [
+			'avatar_url' => (string) ( $data[0]['avatar_url'] ?? '' ),
+			'name'       => (string) ( $data[0]['name'] ?? '' ),
+		];
 	}
 
 	/**
