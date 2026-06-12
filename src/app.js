@@ -375,14 +375,6 @@ export default function App( { initialData } ) {
 			<div className="gitwire-page-header">
 				<div className="gitwire-page-header__top">
 					<h1 className="gitwire-page-title">
-						{ initialData.icon_url && (
-							<img
-								alt=""
-								aria-hidden="true"
-								className="gitwire-page-title__icon"
-								src={ initialData.icon_url }
-							/>
-						) }
 						{ __( 'Gitwire', 'gitwire' ) }
 					</h1>
 					{ applyFilters( 'gitwire.header.actions', null ) }

@@ -70,19 +70,10 @@ body.gitwire-admin-page {
 	}
 
 	&-title {
-		display: flex;
-		gap: 8px;
-		align-items: center;
 		margin-bottom: 0;
 		font-size: 15px;
 		font-weight: 600;
 		color: #1d2327;
-
-		&__icon {
-			flex-shrink: 0;
-			width: 20px;
-			height: 20px;
-		}
 	}
 
 	&-nav {
