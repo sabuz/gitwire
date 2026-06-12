@@ -69,33 +69,6 @@ const BASE_TABS = [
 	{ name: 'logs', label: __( 'Logs', 'gitwire' ) },
 ];
 
-function publicSources( settings ) {
-	const sources = [];
-	if ( settings?.github_username ) {
-		sources.push( {
-			id: 'public:github',
-			provider: 'github',
-			username: settings.github_username,
-		} );
-	}
-	if ( settings?.gitlab_username ) {
-		sources.push( {
-			id: 'public:gitlab',
-			provider: 'gitlab',
-			username: settings.gitlab_username,
-			gitlab_url: settings.gitlab_url || '',
-		} );
-	}
-	if ( settings?.bitbucket_workspace ) {
-		sources.push( {
-			id: 'public:bitbucket',
-			provider: 'bitbucket',
-			username: settings.bitbucket_workspace,
-		} );
-	}
-	return sources;
-}
-
 /**
  * @param {Object} item Orphaned repository record from sync.
  */
@@ -166,18 +139,22 @@ export default function App( { initialData } ) {
 	const [ activeTab, setActiveTab ] = useState(
 		initialData.initial_tab || 'repositories'
 	);
+	const [ publicConnections, setPublicConnections ] = useState(
+		initialData.public_connections || []
+	);
 	const [ sourcesVersion, setSourcesVersion ] = useState( 0 );
 
-	// Pro replaces public username sources with its token connections;
-	// sourcesVersion forces a recompute when Pro fires gitwire.sourcesChanged
+	// Free supplies public connections as the base; Pro merges its private
+	// connections on top via the filter. sourcesVersion triggers a recompute
+	// when Pro fires gitwire.sourcesChanged after its own connection changes.
 	const connections = useMemo(
 		() =>
 			applyFilters(
 				'gitwire.browse.sources',
-				publicSources( settings ),
+				publicConnections,
 				settings
 			),
-		[ settings, sourcesVersion ] // eslint-disable-line react-hooks/exhaustive-deps
+		[ publicConnections, settings, sourcesVersion ] // eslint-disable-line react-hooks/exhaustive-deps
 	);
 
 	useEffect( () => {
@@ -439,7 +416,9 @@ export default function App( { initialData } ) {
 			<div className="gitwire-page-content">
 				{ activeTab === 'settings' && (
 					<SettingsPanel
+						publicConnections={ publicConnections }
 						settings={ settings }
+						onConnectionsChange={ setPublicConnections }
 						onSave={ handleSettingsSave }
 					/>
 				) }

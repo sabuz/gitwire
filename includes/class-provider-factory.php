@@ -45,11 +45,6 @@ class Provider_Factory {
 		 */
 		$creds = (array) apply_filters( 'gitwire_provider_factory_auth', $creds, $provider, $connection_id );
 
-		// No token connection — public mode using the saved browse account.
-		if ( empty( $creds ) ) {
-			$creds = Settings::public_credentials( $provider );
-		}
-
 		if ( 'gitlab' === $provider ) {
 			return new GitLab_API(
 				$creds['token'] ?? '',

@@ -28,6 +28,7 @@ $class_map = [
 	'Gitwire\Git_Provider_Interface' => 'includes/interface-git-provider.php',
 	'Gitwire\Installer'              => 'includes/class-installer.php',
 	'Gitwire\Plugin'                 => 'includes/class-plugin.php',
+	'Gitwire\Public_Connections'     => 'includes/class-public-connections.php',
 	'Gitwire\Provider_Factory'       => 'includes/class-provider-factory.php',
 	'Gitwire\Repo_Cache'             => 'includes/class-repo-cache.php',
 	'Gitwire\Repo_Detector'          => 'includes/class-repo-detector.php',

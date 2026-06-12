@@ -2,6 +2,16 @@ import apiFetch from '@wordpress/api-fetch';
 
 const BASE = '/gitwire/v1';
 
+export const getPublicConnections = () =>
+	apiFetch( { path: `${ BASE }/public-connections` } );
+export const addPublicConnection = ( data ) =>
+	apiFetch( { path: `${ BASE }/public-connections`, method: 'POST', data } );
+export const deletePublicConnection = ( id ) =>
+	apiFetch( {
+		path: `${ BASE }/public-connections/${ encodeURIComponent( id ) }`,
+		method: 'DELETE',
+	} );
+
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>
 	apiFetch( { path: `${ BASE }/settings`, method: 'POST', data } );

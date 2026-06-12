@@ -246,6 +246,7 @@ class Admin {
 			'window.Gitwire = ' . wp_json_encode(
 				[
 					'nonce'                 => wp_create_nonce( 'wp_rest' ),
+					'public_connections'    => Public_Connections::all(),
 					'icon_url'              => GITWIRE_URL . 'assets/images/icon.svg',
 					'disconnected_url'      => GITWIRE_URL . 'assets/images/cloud-alert.svg',
 					'not_found_url'         => GITWIRE_URL . 'assets/images/folder-x.svg',

@@ -42,38 +42,6 @@ class Settings {
 			'log_retention_days'       => $s['log_retention_days'] ?? 30,
 			'log_level'                => $s['log_level'] ?? 'activity',
 			'remove_data_on_uninstall' => $s['remove_data_on_uninstall'] ?? false,
-			'github_username'          => $s['github_username'] ?? '',
-			'gitlab_username'          => $s['gitlab_username'] ?? '',
-			'gitlab_url'               => $s['gitlab_url'] ?? '',
-			'bitbucket_workspace'      => $s['bitbucket_workspace'] ?? '',
-		];
-	}
-
-	/**
-	 * Returns public-mode credentials for a provider from the saved browse accounts.
-	 *
-	 * @since 1.4.0
-	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
-	 * @return array<string, string>
-	 */
-	public static function public_credentials( string $provider ): array {
-		$s = self::get_raw();
-
-		if ( 'gitlab' === $provider ) {
-			return [
-				'username'   => sanitize_text_field( $s['gitlab_username'] ?? '' ),
-				'gitlab_url' => esc_url_raw( $s['gitlab_url'] ?? '' ),
-			];
-		}
-
-		if ( 'bitbucket' === $provider ) {
-			return [
-				'workspace' => sanitize_text_field( $s['bitbucket_workspace'] ?? '' ),
-			];
-		}
-
-		return [
-			'username' => sanitize_text_field( $s['github_username'] ?? '' ),
 		];
 	}
 
@@ -119,27 +87,7 @@ class Settings {
 			$remove_data_on_uninstall = (bool) $incoming['remove_data_on_uninstall'];
 		}
 
-		$github_username = (string) ( $current['github_username'] ?? '' );
-		if ( array_key_exists( 'github_username', $incoming ) && null !== $incoming['github_username'] ) {
-			$github_username = sanitize_text_field( (string) $incoming['github_username'] );
-		}
-
-		$gitlab_username = (string) ( $current['gitlab_username'] ?? '' );
-		if ( array_key_exists( 'gitlab_username', $incoming ) && null !== $incoming['gitlab_username'] ) {
-			$gitlab_username = sanitize_text_field( (string) $incoming['gitlab_username'] );
-		}
-
-		$gitlab_url = (string) ( $current['gitlab_url'] ?? '' );
-		if ( array_key_exists( 'gitlab_url', $incoming ) && null !== $incoming['gitlab_url'] ) {
-			$gitlab_url = esc_url_raw( (string) $incoming['gitlab_url'] );
-		}
-
-		$bitbucket_workspace = (string) ( $current['bitbucket_workspace'] ?? '' );
-		if ( array_key_exists( 'bitbucket_workspace', $incoming ) && null !== $incoming['bitbucket_workspace'] ) {
-			$bitbucket_workspace = sanitize_text_field( (string) $incoming['bitbucket_workspace'] );
-		}
-
-		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level', 'remove_data_on_uninstall', 'github_username', 'gitlab_username', 'gitlab_url', 'bitbucket_workspace' );
+		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level', 'remove_data_on_uninstall' );
 	}
 
 	/**

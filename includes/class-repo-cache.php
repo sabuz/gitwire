@@ -218,14 +218,6 @@ class Repo_Cache {
 			}
 		}
 
-		foreach ( [ 'github', 'gitlab', 'bitbucket' ] as $provider ) {
-			$public   = Settings::public_credentials( $provider );
-			$identity = $public['username'] ?? $public['workspace'] ?? '';
-			if ( '' !== $identity ) {
-				$sources[] = [ $provider, '' ];
-			}
-		}
-
 		$ran      = false;
 		$last_err = null;
 

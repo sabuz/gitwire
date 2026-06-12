@@ -407,6 +407,49 @@ class REST {
 			]
 		);
 
+		register_rest_route(
+			$ns,
+			'/public-connections',
+			[
+				[
+					'methods'             => 'GET',
+					'callback'            => [ self::class, 'list_public_connections' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+				],
+				[
+					'methods'             => 'POST',
+					'callback'            => [ self::class, 'add_public_connection' ],
+					'permission_callback' => [ self::class, 'can_manage' ],
+					'args'                => [
+						'provider'   => [
+							'required' => true,
+							'type'     => 'string',
+							'enum'     => [ 'github', 'gitlab', 'bitbucket' ],
+						],
+						'username'   => [
+							'required'          => true,
+							'type'              => 'string',
+							'sanitize_callback' => 'sanitize_text_field',
+						],
+						'gitlab_url' => [
+							'type'    => 'string',
+							'default' => '',
+						],
+					],
+				],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/public-connections/(?P<id>[^/]+)',
+			[
+				'methods'             => 'DELETE',
+				'callback'            => [ self::class, 'delete_public_connection' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+			]
+		);
+
 		/**
 		 * Fires after the core REST routes are registered.
 		 *
@@ -520,6 +563,66 @@ class REST {
 	}
 
 	/**
+	 * Returns all public (no-token) browse connections.
+	 *
+	 * @since 1.5.0
+	 * @return array<int, array<string, string>>
+	 */
+	public static function list_public_connections(): array {
+		return Public_Connections::all();
+	}
+
+	/**
+	 * Adds a new public browse connection.
+	 *
+	 * @since 1.5.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function add_public_connection( \WP_REST_Request $req ): array|\WP_Error {
+		$provider   = (string) $req->get_param( 'provider' );
+		$username   = sanitize_text_field( (string) $req->get_param( 'username' ) );
+		$gitlab_url = '';
+
+		if ( '' === $username ) {
+			return new \WP_Error( 'missing_username', __( 'Username is required.', 'gitwire' ), [ 'status' => 400 ] );
+		}
+
+		if ( 'gitlab' === $provider ) {
+			$raw_url    = (string) $req->get_param( 'gitlab_url' );
+			$gitlab_url = '' !== $raw_url ? esc_url_raw( $raw_url ) : '';
+			if ( '' !== $gitlab_url && ! Settings::is_allowed_gitlab_url( $gitlab_url ) ) {
+				return new \WP_Error(
+					'invalid_gitlab_url',
+					__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'gitwire' ),
+					[ 'status' => 400 ]
+				);
+			}
+		}
+
+		$conn = Public_Connections::add( $provider, $username, $gitlab_url );
+
+		return [ 'connection' => $conn ];
+	}
+
+	/**
+	 * Removes a public browse connection by ID.
+	 *
+	 * @since 1.5.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	public static function delete_public_connection( \WP_REST_Request $req ): array|\WP_Error {
+		$id = sanitize_text_field( (string) $req->get_param( 'id' ) );
+
+		if ( ! Public_Connections::delete( $id ) ) {
+			return new \WP_Error( 'not_found', __( 'Connection not found.', 'gitwire' ), [ 'status' => 404 ] );
+		}
+
+		return [ 'deleted' => true ];
+	}
+
+	/**
 	 * Returns the current plugin settings.
 	 *
 	 * @since 1.0.0
@@ -556,20 +659,6 @@ class REST {
 		if ( null !== $req->get_param( 'remove_data_on_uninstall' ) ) {
 			$incoming['remove_data_on_uninstall'] = $req->get_param( 'remove_data_on_uninstall' );
 		}
-		foreach ( [ 'github_username', 'gitlab_username', 'gitlab_url', 'bitbucket_workspace' ] as $account_field ) {
-			if ( null !== $req->get_param( $account_field ) ) {
-				$incoming[ $account_field ] = $req->get_param( $account_field );
-			}
-		}
-
-		if ( ! empty( $incoming['gitlab_url'] ) && ! Settings::is_allowed_gitlab_url( (string) $incoming['gitlab_url'] ) ) {
-			return new \WP_Error(
-				'invalid_gitlab_url',
-				__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'gitwire' ),
-				[ 'status' => 400 ]
-			);
-		}
-
 		$was_logging = Settings::is_logging_enabled();
 		$merged      = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
@@ -642,9 +731,9 @@ class REST {
 			$has_auth  = $creds && ! empty( $creds['email'] ) && ! empty( $creds['api_token'] );
 			$workspace = '';
 			if ( ! $has_auth ) {
-				$workspace = Settings::public_credentials( 'bitbucket' )['workspace'];
+				$workspace = $creds['workspace'] ?? '';
 				if ( '' === $workspace ) {
-					return new \WP_Error( 'missing_config', 'Save a Bitbucket workspace in Settings first.', [ 'status' => 400 ] );
+					return new \WP_Error( 'missing_config', 'Add a Bitbucket workspace in Settings first.', [ 'status' => 400 ] );
 				}
 			}
 
@@ -688,19 +777,20 @@ class REST {
 		}
 
 		if ( 'gitlab' === $provider ) {
-			$has_auth = $creds && ! empty( $creds['token'] );
-			$username = '';
-			$public   = Settings::public_credentials( 'gitlab' );
+			$has_auth   = $creds && ! empty( $creds['token'] );
+			$username   = '';
+			$gitlab_url = '';
 			if ( ! $has_auth ) {
-				$username = $public['username'];
+				$username   = $creds['username'] ?? '';
+				$gitlab_url = $creds['gitlab_url'] ?? '';
 				if ( '' === $username ) {
-					return new \WP_Error( 'missing_config', 'Save a GitLab username in Settings first.', [ 'status' => 400 ] );
+					return new \WP_Error( 'missing_config', 'Add a GitLab account in Settings first.', [ 'status' => 400 ] );
 				}
 			}
 
 			$api = $has_auth
 				? new GitLab_API( $creds['token'], $creds['gitlab_url'] ?? '' )
-				: new GitLab_API( '', $public['gitlab_url'] );
+				: new GitLab_API( '', $gitlab_url );
 
 			$result    = $api->get_repos( $username, $page );
 			$installed = Installer::get_installed();
@@ -742,11 +832,7 @@ class REST {
 		$username = sanitize_text_field( $creds['username'] ?? '' );
 
 		if ( ! $username && empty( $creds['token'] ) ) {
-			$username = Settings::public_credentials( 'github' )['username'];
-		}
-
-		if ( ! $username && empty( $creds['token'] ) ) {
-			return new \WP_Error( 'missing_config', 'Save a GitHub username in Settings first.', [ 'status' => 400 ] );
+			return new \WP_Error( 'missing_config', 'Add a GitHub account in Settings first.', [ 'status' => 400 ] );
 		}
 
 		$api       = new API( $creds['token'] ?? '' );
@@ -1712,7 +1798,7 @@ class REST {
 		$custom_url    = '';
 		$custom_host   = '';
 
-		$candidates = [ Settings::public_credentials( 'gitlab' )['gitlab_url'] ];
+		$candidates = [];
 		foreach ( Connection_Resolver::all() as $conn ) {
 			if ( 'gitlab' === ( $conn['provider'] ?? '' ) && ! empty( $conn['gitlab_url'] ) ) {
 				$candidates[] = $conn['gitlab_url'];

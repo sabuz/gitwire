@@ -1,13 +1,15 @@
 import { toast } from '../toast';
 
 import { __ } from '@wordpress/i18n';
-import { useState } from '@wordpress/element';
+import { useState, useCallback } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import {
 	Button,
 	Card,
 	CardBody,
 	CardHeader,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalConfirmDialog as ConfirmDialog,
 	Flex,
 	FlexBlock,
 	FlexItem,
@@ -18,19 +20,31 @@ import {
 	__experimentalHeading as Heading,
 	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalSpacer as Spacer,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalToggleGroupControl as ToggleGroupControl,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalToggleGroupControlOption as ToggleGroupControlOption,
 } from '@wordpress/components';
 
 import * as api from '../api';
+import { BitbucketIcon, GitHubIcon, GitLabIcon } from './provider-icons';
 
 /**
  * Settings panel — Browse accounts card + Smart Install card + Logging card.
  *
- * @param {Object}   props          Component props.
- * @param {Object}   props.settings Saved plugin settings.
- * @param {Function} props.onSave   Called with updated settings after save.
+ * @param {Object}   props                     Component props.
+ * @param {Array}    props.publicConnections   Current public connections list.
+ * @param {Object}   props.settings            Saved plugin settings.
+ * @param {Function} props.onConnectionsChange Called with updated connections array.
+ * @param {Function} props.onSave              Called with updated settings after save.
  * @return {JSX.Element} The rendered settings panel.
  */
-export default function SettingsPanel( { settings, onSave } ) {
+export default function SettingsPanel( {
+	publicConnections,
+	settings,
+	onConnectionsChange,
+	onSave,
+} ) {
 	const [ smartInstall, setSmartInstall ] = useState(
 		settings.smart_install !== false
 	);
@@ -132,11 +146,14 @@ export default function SettingsPanel( { settings, onSave } ) {
 		saveSetting( { log_level: newVal } ).catch( () => {} );
 	};
 
-	// Pro replaces the username-based Browse accounts with token connections
+	// Pro replaces the public connections card with its token connections UI
 	const accountsSection = applyFilters(
 		'gitwire.settings.accountsSection',
-		<BrowseAccounts settings={ settings } onSave={ onSave } />,
-		{ settings, onSave }
+		<PublicConnectionsCard
+			connections={ publicConnections }
+			onChange={ onConnectionsChange }
+		/>,
+		{ publicConnections, settings, onConnectionsChange, onSave }
 	);
 
 	return (
@@ -285,51 +302,72 @@ export default function SettingsPanel( { settings, onSave } ) {
 	);
 }
 
-/**
- * Browse accounts card — public usernames per provider, no tokens.
- *
- * @param {Object}   props          Component props.
- * @param {Object}   props.settings Saved plugin settings.
- * @param {Function} props.onSave   Called with updated settings after save.
- * @return {JSX.Element} The rendered card.
- */
-function BrowseAccounts( { settings, onSave } ) {
-	const [ ghUsername, setGhUsername ] = useState(
-		settings.github_username ?? ''
-	);
-	const [ glUsername, setGlUsername ] = useState(
-		settings.gitlab_username ?? ''
-	);
-	const [ glUrl, setGlUrl ] = useState( settings.gitlab_url ?? '' );
-	const [ bbWorkspace, setBbWorkspace ] = useState(
-		settings.bitbucket_workspace ?? ''
-	);
-	const [ saving, setSaving ] = useState( false );
+const PROVIDER_LABELS = {
+	github: 'GitHub',
+	gitlab: 'GitLab',
+	bitbucket: 'Bitbucket',
+};
 
-	const dirty =
-		ghUsername !== ( settings.github_username ?? '' ) ||
-		glUsername !== ( settings.gitlab_username ?? '' ) ||
-		glUrl !== ( settings.gitlab_url ?? '' ) ||
-		bbWorkspace !== ( settings.bitbucket_workspace ?? '' );
+function PublicConnectionsCard( { connections, onChange } ) {
+	const [ selectedId, setSelectedId ] = useState( null );
 
-	const handleSave = () => {
-		setSaving( true );
-		const p = api
-			.saveSettings( {
-				github_username: ghUsername.trim(),
-				gitlab_username: glUsername.trim(),
-				gitlab_url: glUrl.trim(),
-				bitbucket_workspace: bbWorkspace.trim(),
-			} )
-			.then( ( r ) => onSave( r.settings ) )
-			.finally( () => setSaving( false ) );
+	const handleCreated = useCallback(
+		( conn ) => onChange( [ ...connections, conn ] ),
+		[ connections, onChange ]
+	);
 
-		toast.promise( p, {
-			id: 'settings-save',
-			loading: __( 'Saving…', 'gitwire' ),
-			success: __( 'Saved.', 'gitwire' ),
-			error: ( e ) => e?.message || __( 'Save failed.', 'gitwire' ),
-		} );
+	const handleRemoved = useCallback(
+		( id ) => {
+			onChange( connections.filter( ( c ) => c.id !== id ) );
+			setSelectedId( null );
+		},
+		[ connections, onChange ]
+	);
+
+	if ( selectedId ) {
+		const rec = connections.find( ( c ) => c.id === selectedId );
+		return (
+			<>
+				<Flex align="center" gap={ 2 } style={ { marginBottom: 16 } }>
+					<FlexItem>
+						<Button
+							icon="arrow-left-alt2"
+							label={ __( 'Back to Connections', 'gitwire' ) }
+							variant="tertiary"
+							onClick={ () => setSelectedId( null ) }
+						/>
+					</FlexItem>
+					<FlexBlock>
+						<Heading level={ 4 } style={ { margin: 0 } }>
+							{ __( 'Connections', 'gitwire' ) }
+						</Heading>
+					</FlexBlock>
+				</Flex>
+				{ rec && (
+					<PublicConnectionDetail
+						rec={ rec }
+						onRemoved={ handleRemoved }
+					/>
+				) }
+			</>
+		);
+	}
+
+	return (
+		<PublicConnectionsSummary
+			connections={ connections }
+			onCreated={ handleCreated }
+			onSelect={ setSelectedId }
+		/>
+	);
+}
+
+function PublicConnectionsSummary( { connections, onCreated, onSelect } ) {
+	const [ adding, setAdding ] = useState( false );
+
+	const handleCreated = ( conn ) => {
+		onCreated( conn );
+		setAdding( false );
 	};
 
 	return (
@@ -338,101 +376,417 @@ function BrowseAccounts( { settings, onSave } ) {
 				<Flex align="center" gap={ 2 }>
 					<FlexBlock>
 						<Heading level={ 4 }>
-							{ __( 'Browse Accounts', 'gitwire' ) }
+							{ adding
+								? __( 'New Account', 'gitwire' )
+								: __( 'Connections', 'gitwire' ) }
 						</Heading>
 					</FlexBlock>
+					{ ! adding && (
+						<FlexItem>
+							<Button
+								size="compact"
+								variant="secondary"
+								onClick={ () => setAdding( true ) }
+							>
+								{ __( 'Add New', 'gitwire' ) }
+							</Button>
+						</FlexItem>
+					) }
+				</Flex>
+			</CardHeader>
+
+			{ ! adding && connections.length > 0 && (
+				<CardBody>
+					<Flex
+						direction="column"
+						gap={ 3 }
+						className="gitwire-connections-summary"
+					>
+						{ connections.map( ( conn ) => {
+							const provLabel =
+								PROVIDER_LABELS[ conn.provider ] ??
+								conn.provider;
+							return (
+								<button
+									key={ conn.id }
+									className="gitwire-connection-summary-row"
+									type="button"
+									onClick={ () => onSelect( conn.id ) }
+								>
+									{ conn.avatar_url ? (
+										<img
+											alt=""
+											aria-hidden="true"
+											height={ 24 }
+											src={ conn.avatar_url }
+											style={ {
+												borderRadius: '50%',
+												display: 'block',
+												flexShrink: 0,
+											} }
+											width={ 24 }
+										/>
+									) : (
+										<span
+											className="gitwire-connection-avatar is-placeholder"
+											style={ { width: 24, height: 24 } }
+										/>
+									) }
+									<span
+										style={ {
+											flex: 1,
+											fontSize: 13,
+											fontWeight: 500,
+											minWidth: 0,
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											whiteSpace: 'nowrap',
+										} }
+									>
+										@{ conn.username }
+										{ conn.gitlab_url && (
+											<span
+												style={ {
+													fontWeight: 400,
+													color: '#757575',
+													marginLeft: 4,
+												} }
+											>
+												({ conn.gitlab_url })
+											</span>
+										) }
+									</span>
+									<span
+										className={ `gitwire-badge gitwire-badge--${ conn.provider }` }
+									>
+										<ProviderIcon
+											provider={ conn.provider }
+										/>
+										{ provLabel }
+									</span>
+									<span className="gitwire-badge gitwire-badge--warning">
+										{ __( 'Public only', 'gitwire' ) }
+									</span>
+								</button>
+							);
+						} ) }
+					</Flex>
+				</CardBody>
+			) }
+
+			{ adding && (
+				<CardBody>
+					<AddPublicConnectionForm
+						onCancel={ () => setAdding( false ) }
+						onCreated={ handleCreated }
+					/>
+				</CardBody>
+			) }
+		</Card>
+	);
+}
+
+function PublicConnectionDetail( { rec, onRemoved } ) {
+	const [ busy, setBusy ] = useState( false );
+	const [ confirming, setConfirming ] = useState( false );
+	const provLabel = PROVIDER_LABELS[ rec.provider ] ?? rec.provider;
+
+	const handleRemove = async () => {
+		setConfirming( false );
+		setBusy( true );
+		try {
+			await api.deletePublicConnection( rec.id );
+			toast.success( __( 'Disconnected.', 'gitwire' ) );
+			onRemoved( rec.id );
+		} catch ( e ) {
+			setBusy( false );
+			toast.error( e?.message || __( 'Disconnect failed.', 'gitwire' ) );
+		}
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<Flex align="center" gap={ 2 }>
 					<FlexItem>
-						<Button
-							disabled={ ! dirty || saving }
-							isBusy={ saving }
-							size="compact"
-							variant="primary"
-							onClick={ handleSave }
-						>
-							{ __( 'Save', 'gitwire' ) }
-						</Button>
+						<ProviderIcon provider={ rec.provider } />
+					</FlexItem>
+					<FlexBlock>
+						<strong>{ provLabel }</strong>
+					</FlexBlock>
+					<FlexItem>
+						<span className="gitwire-badge gitwire-badge--warning">
+							{ __( 'Public only', 'gitwire' ) }
+						</span>
 					</FlexItem>
 				</Flex>
 			</CardHeader>
 			<CardBody>
-				<p
-					style={ {
-						margin: '0 0 16px',
-						color: '#757575',
-						fontSize: 13,
-					} }
-				>
-					{ __(
-						'Public repositories only. No token needed.',
-						'gitwire'
-					) }{ ' ' }
-					<a
-						href="https://gitwire.app/pro"
-						rel="noopener noreferrer"
-						target="_blank"
-					>
-						{ __(
-							'Gitwire Pro adds private repository access.',
-							'gitwire'
+				<Flex align="center" gap={ 3 }>
+					{ rec.avatar_url ? (
+						<img
+							alt={ `@${ rec.username }` }
+							height={ 44 }
+							src={ rec.avatar_url }
+							style={ {
+								borderRadius: '50%',
+								display: 'block',
+								flexShrink: 0,
+							} }
+							width={ 44 }
+						/>
+					) : (
+						<span
+							className="gitwire-connection-avatar is-placeholder"
+							style={ { width: 44, height: 44 } }
+						/>
+					) }
+					<FlexBlock>
+						<div style={ { fontWeight: 700, fontSize: 14 } }>
+							@{ rec.username }
+						</div>
+						{ rec.gitlab_url && (
+							<div style={ { fontSize: 12, color: '#57606a' } }>
+								{ rec.gitlab_url }
+							</div>
 						) }
-					</a>
-				</p>
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					help={ __(
-						'Your GitHub username or organization.',
-						'gitwire'
-					) }
-					label={ __( 'GitHub Username', 'gitwire' ) }
-					placeholder="your-github-username"
-					value={ ghUsername }
-					onChange={ setGhUsername }
-				/>
-				<Spacer marginTop={ 4 } />
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					help={ __( 'Your GitLab username.', 'gitwire' ) }
-					label={ __( 'GitLab Username', 'gitwire' ) }
-					placeholder="your-gitlab-username"
-					value={ glUsername }
-					onChange={ setGlUsername }
-				/>
-				<Spacer marginTop={ 4 } />
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					help={ __(
-						'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab.',
-						'gitwire'
-					) }
-					label={
-						<>
-							{ __( 'GitLab Instance URL', 'gitwire' ) }{ ' ' }
-							<span className="gitwire-label-optional">
-								{ __( '(Optional)', 'gitwire' ) }
-							</span>
-						</>
-					}
-					placeholder="https://gitlab.com"
-					value={ glUrl }
-					onChange={ setGlUrl }
-				/>
-				<Spacer marginTop={ 4 } />
-				<TextControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					help={ __(
-						'The Bitbucket workspace slug to browse.',
-						'gitwire'
-					) }
-					label={ __( 'Bitbucket Workspace', 'gitwire' ) }
-					placeholder="your-workspace"
-					value={ bbWorkspace }
-					onChange={ setBbWorkspace }
-				/>
+						<div
+							style={ {
+								fontSize: 11,
+								color: '#8c959f',
+								marginTop: 2,
+							} }
+						>
+							{ __( 'Public repositories only.', 'gitwire' ) }{ ' ' }
+							<a
+								href="https://gitwire.app/pro"
+								rel="noopener noreferrer"
+								target="_blank"
+							>
+								{ __(
+									'Upgrade to Pro for private access.',
+									'gitwire'
+								) }
+							</a>
+						</div>
+					</FlexBlock>
+					<FlexItem>
+						<Button
+							disabled={ busy }
+							isBusy={ busy }
+							isDestructive
+							variant="secondary"
+							onClick={ () => setConfirming( true ) }
+						>
+							{ __( 'Disconnect', 'gitwire' ) }
+						</Button>
+						{ confirming && (
+							<ConfirmDialog
+								onCancel={ () => setConfirming( false ) }
+								onConfirm={ handleRemove }
+							>
+								{ __(
+									'Disconnect this account? Gitwire will no longer browse its public repositories.',
+									'gitwire'
+								) }
+							</ConfirmDialog>
+						) }
+					</FlexItem>
+				</Flex>
 			</CardBody>
 		</Card>
+	);
+}
+
+/**
+ * Returns the small inline icon for a provider.
+ *
+ * @param {Object} props          Component props.
+ * @param {string} props.provider Provider key.
+ * @return {JSX.Element|null} The provider icon.
+ */
+function ProviderIcon( { provider } ) {
+	if ( 'github' === provider ) {
+		return <GitHubIcon />;
+	}
+	if ( 'gitlab' === provider ) {
+		return <GitLabIcon />;
+	}
+	if ( 'bitbucket' === provider ) {
+		return <BitbucketIcon />;
+	}
+	return null;
+}
+
+/**
+ * Inline add-account form for public (no-token) connections.
+ * Mirrors the Pro AddConnectionForm layout with token fields omitted.
+ *
+ * @param {Object}   props           Component props.
+ * @param {Function} props.onCreated Called with the new connection record after success.
+ * @param {Function} props.onCancel  Hides the form.
+ * @return {JSX.Element} The rendered form.
+ */
+function AddPublicConnectionForm( { onCreated, onCancel } ) {
+	const [ provider, setProvider ] = useState( 'github' );
+	const [ username, setUsername ] = useState( '' );
+	const [ gitlabUrl, setGitlabUrl ] = useState( '' );
+	const [ saving, setSaving ] = useState( false );
+	const [ usernameError, setUsernameError ] = useState( false );
+
+	const handleProviderChange = ( val ) => {
+		setProvider( val );
+		setUsername( '' );
+		setGitlabUrl( '' );
+		setUsernameError( false );
+	};
+
+	const handleSubmit = async () => {
+		const trimmed = username.trim();
+		if ( ! trimmed ) {
+			setUsernameError( true );
+			toast.error( __( 'Username is required.', 'gitwire' ) );
+			return;
+		}
+		setSaving( true );
+		setUsernameError( false );
+		try {
+			const result = await api.addPublicConnection( {
+				provider,
+				username: trimmed,
+				...( 'gitlab' === provider
+					? { gitlab_url: gitlabUrl.trim() }
+					: {} ),
+			} );
+			toast.success( __( 'Account added.', 'gitwire' ) );
+			onCreated( result.connection );
+		} catch ( e ) {
+			setUsernameError( true );
+			toast.error(
+				e?.message || __( 'Could not add account.', 'gitwire' )
+			);
+		} finally {
+			setSaving( false );
+		}
+	};
+
+	const usernamePlaceholder =
+		'bitbucket' === provider ? 'your-workspace' : 'your-username';
+	const usernameLabel =
+		'bitbucket' === provider
+			? __( 'Workspace Slug', 'gitwire' )
+			: __( 'Username', 'gitwire' );
+
+	return (
+		<div className="gitwire-add-connection-form">
+			<ToggleGroupControl
+				__nextHasNoMarginBottom
+				isBlock
+				label={ __( 'Provider', 'gitwire' ) }
+				value={ provider }
+				onChange={ handleProviderChange }
+			>
+				<ToggleGroupControlOption
+					label={
+						<Flex align="center" gap={ 1 } justify="center">
+							<GitHubIcon size={ 14 } variant="brand" />
+							<span>GitHub</span>
+						</Flex>
+					}
+					value="github"
+				/>
+				<ToggleGroupControlOption
+					label={
+						<Flex align="center" gap={ 1 } justify="center">
+							<GitLabIcon size={ 14 } variant="brand" />
+							<span>GitLab</span>
+						</Flex>
+					}
+					value="gitlab"
+				/>
+				<ToggleGroupControlOption
+					label={
+						<Flex align="center" gap={ 1 } justify="center">
+							<BitbucketIcon size={ 14 } variant="brand" />
+							<span>Bitbucket</span>
+						</Flex>
+					}
+					value="bitbucket"
+				/>
+			</ToggleGroupControl>
+
+			<Spacer marginTop={ 4 } />
+
+			<TextControl
+				__next40pxDefaultSize
+				__nextHasNoMarginBottom
+				className={ usernameError ? 'gitwire-input-error' : undefined }
+				label={ usernameLabel }
+				placeholder={ usernamePlaceholder }
+				value={ username }
+				onChange={ ( v ) => {
+					setUsername( v );
+					setUsernameError( false );
+				} }
+			/>
+
+			{ 'gitlab' === provider && (
+				<>
+					<Spacer marginTop={ 4 } />
+					<TextControl
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+						help={ __(
+							'Leave blank for gitlab.com. Enter your instance URL for self-hosted GitLab.',
+							'gitwire'
+						) }
+						label={
+							<>
+								{ __( 'GitLab Instance URL', 'gitwire' ) }{ ' ' }
+								<span className="gitwire-label-optional">
+									{ __( '(Optional)', 'gitwire' ) }
+								</span>
+							</>
+						}
+						placeholder="https://gitlab.com"
+						value={ gitlabUrl }
+						onChange={ setGitlabUrl }
+					/>
+				</>
+			) }
+
+			<Spacer marginTop={ 4 } />
+
+			<p style={ { margin: '0 0 16px', color: '#757575', fontSize: 13 } }>
+				{ __(
+					'Public repositories only. No token needed.',
+					'gitwire'
+				) }{ ' ' }
+				<a
+					href="https://gitwire.app/pro"
+					rel="noopener noreferrer"
+					target="_blank"
+				>
+					{ __(
+						'Gitwire Pro adds private repository access.',
+						'gitwire'
+					) }
+				</a>
+			</p>
+
+			<Flex gap={ 2 } justify="flex-end">
+				<Button variant="tertiary" onClick={ onCancel }>
+					{ __( 'Cancel', 'gitwire' ) }
+				</Button>
+				<Button
+					disabled={ saving }
+					isBusy={ saving }
+					variant="primary"
+					onClick={ handleSubmit }
+				>
+					{ __( 'Add Account', 'gitwire' ) }
+				</Button>
+			</Flex>
+		</div>
 	);
 }

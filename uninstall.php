@@ -11,6 +11,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 $options = [
 	'gitwire_settings',
+	'gitwire_public_connections',
 	'gitwire_installed',
 	'gitwire_pending_update',
 	'gitwire_fatal_notice',
