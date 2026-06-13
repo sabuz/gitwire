@@ -393,7 +393,7 @@ function PublicConnectionsSummary( { connections, onCreated, onSelect } ) {
 					<FlexBlock>
 						<Heading level={ 4 }>
 							{ adding
-								? __( 'New Account', 'gitwire' )
+								? __( 'New Connection', 'gitwire' )
 								: __( 'Connections', 'gitwire' ) }
 						</Heading>
 					</FlexBlock>
@@ -782,12 +782,12 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 					? { gitlab_url: gitlabUrl.trim() }
 					: {} ),
 			} );
-			toast.success( __( 'Account added.', 'gitwire' ) );
+			toast.success( __( 'Connection added.', 'gitwire' ) );
 			onCreated( result.connection );
 		} catch ( e ) {
 			setUsernameError( true );
 			toast.error(
-				e?.message || __( 'Could not add account.', 'gitwire' )
+				e?.message || __( 'Could not add connection.', 'gitwire' )
 			);
 		} finally {
 			setSaving( false );
@@ -908,7 +908,7 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 					variant="primary"
 					onClick={ handleSubmit }
 				>
-					{ __( 'Add Account', 'gitwire' ) }
+					{ __( 'Connect', 'gitwire' ) }
 				</Button>
 			</Flex>
 		</div>
