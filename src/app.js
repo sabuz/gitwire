@@ -378,7 +378,7 @@ export default function App( { initialData } ) {
 					<h1 className="gitwire-page-title">
 						{ __( 'Gitwire', 'gitwire' ) }
 					</h1>
-					<div style={ { display: 'flex', alignItems: 'center', gap: 8 } }>
+					<div style={ { display: 'flex', alignItems: 'center', gap: 16 } }>
 					<Button
 						href="https://gitwire.app/docs"
 						rel="noreferrer"

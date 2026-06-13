@@ -696,7 +696,7 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 									{ __( 'Upgrade to Pro', 'gitwire' ) }
 								</a>{ ' ' }
 								{ __(
-									'to connect with a token for 5,000/hour.',
+									'to connect with a token for 5,000 requests/hour.',
 									'gitwire'
 								) }
 							</>
