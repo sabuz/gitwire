@@ -10,7 +10,8 @@ import {
 	lazy,
 	Suspense,
 } from '@wordpress/element';
-import { Button, Spinner } from '@wordpress/components';
+import { Button, Icon, Spinner } from '@wordpress/components';
+import { external } from '@wordpress/icons';
 import { applyFilters, addAction, removeAction } from '@wordpress/hooks';
 
 import * as api from './api';
@@ -377,7 +378,22 @@ export default function App( { initialData } ) {
 					<h1 className="gitwire-page-title">
 						{ __( 'Gitwire', 'gitwire' ) }
 					</h1>
+					<div style={ { display: 'flex', alignItems: 'center', gap: 8 } }>
+					<Button
+						href="https://gitwire.app/docs"
+						rel="noreferrer"
+						target="_blank"
+						variant="link"
+					>
+						{ __( 'Docs', 'gitwire' ) }
+						<Icon
+							icon={ external }
+							size={ 14 }
+							style={ { marginLeft: 4 } }
+						/>
+					</Button>
 					{ applyFilters( 'gitwire.header.actions', null ) }
+				</div>
 				</div>
 
 				<nav
