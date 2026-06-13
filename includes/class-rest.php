@@ -1582,7 +1582,19 @@ class REST {
 		} catch ( \Throwable $e ) {
 			// guard was armed before activation — clean up before returning.
 			Error_Handler::abort_pending_guard();
-			Logger::log( sprintf( '[%s] Activation failed — %s/%s: fatal error', $provider, $owner, $repo ), 'error' );
+			Logger::log(
+				sprintf(
+					'[%s] Activation failed — %s/%s: %s: %s in %s on line %d',
+					$provider,
+					$owner,
+					$repo,
+					get_class( $e ),
+					$e->getMessage(),
+					$e->getFile(),
+					$e->getLine()
+				),
+				'error'
+			);
 			return new \WP_Error(
 				'gitwire_activation_fatal',
 				__( 'Plugin could not be activated because it triggered a fatal error.', 'gitwire' ),

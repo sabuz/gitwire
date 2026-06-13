@@ -215,6 +215,20 @@ class Error_Handler {
 		];
 
 		self::db_update_option( 'gitwire_fatal_notice', $notice );
+
+		Logger::log(
+			sprintf(
+				/* translators: 1: install or activation, 2: repository full name, 3: plugin or theme, 4: full error with file and line, 5: rollback outcome */
+				__( 'Fatal error during %1$s of "%2$s" (%3$s): %4$s. %5$s', 'gitwire' ),
+				$context,
+				$full_name,
+				$type,
+				$error_string,
+				$notice['restored'] ? __( 'Changes were rolled back.', 'gitwire' ) : __( 'Rollback failed.', 'gitwire' )
+			),
+			'error'
+		);
+
 		self::clear_pending_update();
 		self::clear_bootstrap_verified();
 
