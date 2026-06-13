@@ -570,7 +570,7 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 				<Flex align="center" gap={ 3 }>
 					{ rec.avatar_url ? (
 						<img
-							alt={ `@${ rec.username }` }
+							alt={ rec.username }
 							height={ 44 }
 							src={ rec.avatar_url }
 							style={ {
