@@ -164,8 +164,8 @@ final class Plugin {
 				[
 					'smart_install'      => true,
 					'show_repo_label'    => true,
-					'enable_logging'     => false,
-					'log_retention_days' => 30,
+					'enable_logging'     => true,
+					'log_retention_days' => 7,
 					'log_level'          => 'activity',
 				],
 				'',
