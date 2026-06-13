@@ -9,6 +9,11 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
+$settings = get_option( 'gitwire_settings', [] );
+if ( empty( $settings['remove_data_on_uninstall'] ) ) {
+	return;
+}
+
 $options = [
 	'gitwire_settings',
 	'gitwire_public_connections',
