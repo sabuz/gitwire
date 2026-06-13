@@ -59,6 +59,7 @@ final class Plugin {
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
 		add_action( 'gitwire_refresh_repos_cache', [ Repo_Cache::class, 'cron_refresh_repos' ] );
 		add_action( 'gitwire_refresh_repo_types', [ Repo_Cache::class, 'cron_refresh_types' ] );
+		add_action( 'gitwire_refresh_connections', [ REST::class, 'refresh_public_connections' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
 
 		if ( $this->file ) {
@@ -136,6 +137,10 @@ final class Plugin {
 			wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
 		}
 
+		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
+			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_connections' );
+		}
+
 		/**
 		 * Fires after the free plugin finishes bootstrapping.
 		 *
@@ -177,6 +182,9 @@ final class Plugin {
 		if ( ! wp_next_scheduled( 'gitwire_refresh_repo_types' ) ) {
 			wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
 		}
+		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
+			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_connections' );
+		}
 	}
 
 	/**
@@ -189,5 +197,6 @@ final class Plugin {
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repo_types' );
+		wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
 	}
 }

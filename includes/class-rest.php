@@ -656,30 +656,75 @@ class REST {
 			return new \WP_REST_Response( null, 204 );
 		}
 
-		$response = wp_remote_get(
+		$payload = self::fetch_github_profile( $conn['username'] ?? '' );
+
+		if ( null === $payload ) {
+			return new \WP_REST_Response( null, 204 );
+		}
+
+		self::save_public_rate_cache( $id, $payload );
+
+		return new \WP_REST_Response( $payload );
+	}
+
+	/**
+	 * Cron handler: refreshes the cached profile for every public connection.
+	 *
+	 * @since 1.5.0
+	 * @return void
+	 */
+	public static function refresh_public_connections(): void {
+		foreach ( Public_Connections::all() as $conn ) {
+			$id       = $conn['id'] ?? '';
+			$provider = $conn['provider'] ?? '';
+			$username = $conn['username'] ?? '';
+
+			if ( '' === $id || 'github' !== $provider ) {
+				continue;
+			}
+
+			$payload = self::fetch_github_profile( $username );
+			if ( null !== $payload ) {
+				self::save_public_rate_cache( $id, $payload );
+			}
+		}
+	}
+
+	/**
+	 * Fetches rate limit and display name for a GitHub username without auth.
+	 *
+	 * Returns null when the API call fails so the caller can decide how to handle it.
+	 *
+	 * @since 1.5.0
+	 * @param string $username GitHub username.
+	 * @return array<string, mixed>|null
+	 */
+	private static function fetch_github_profile( string $username ): ?array {
+		$headers  = [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ];
+		$rate_res = wp_remote_get(
 			'https://api.github.com/rate_limit',
 			[
-				'headers' => [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ],
+				'headers' => $headers,
 				'timeout' => 5,
 			]
 		);
 
-		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return new \WP_REST_Response( null, 204 );
+		if ( is_wp_error( $rate_res ) || 200 !== wp_remote_retrieve_response_code( $rate_res ) ) {
+			return null;
 		}
 
-		$data = json_decode( wp_remote_retrieve_body( $response ), true );
-		$core = $data['resources']['core'] ?? null;
+		$rate_data = json_decode( wp_remote_retrieve_body( $rate_res ), true );
+		$core      = $rate_data['resources']['core'] ?? null;
 
 		if ( empty( $core ) ) {
-			return new \WP_REST_Response( null, 204 );
+			return null;
 		}
 
 		$name     = '';
 		$user_res = wp_remote_get(
-			'https://api.github.com/users/' . rawurlencode( $conn['username'] ?? '' ),
+			'https://api.github.com/users/' . rawurlencode( $username ),
 			[
-				'headers' => [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ],
+				'headers' => $headers,
 				'timeout' => 5,
 			]
 		);
@@ -688,17 +733,26 @@ class REST {
 			$name      = (string) ( $user_data['name'] ?? '' );
 		}
 
-		$payload = [
+		return [
 			'rate_limit'     => (int) $core['limit'],
 			'rate_remaining' => (int) $core['remaining'],
 			'rate_reset'     => (int) $core['reset'],
 			'name'           => $name,
 			'checked_at'     => time(),
 		];
+	}
 
-		self::save_public_rate_cache( $id, $payload );
-
-		return new \WP_REST_Response( $payload );
+	/**
+	 * Returns the unified connection cache for boot data.
+	 *
+	 * Starts with the public rate cache; Pro injects authenticated profiles
+	 * via the gitwire_connection_cache filter.
+	 *
+	 * @since 1.5.0
+	 * @return array<string, mixed>
+	 */
+	public static function get_connection_cache(): array {
+		return (array) apply_filters( 'gitwire_connection_cache', self::get_public_rate_cache() );
 	}
 
 	/**

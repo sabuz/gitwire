@@ -156,7 +156,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 					style={ {
 						display: 'flex',
 						justifyContent: 'flex-end',
-						marginBottom: 8,
+						marginBottom: 16,
 						position: 'relative',
 					} }
 				>
