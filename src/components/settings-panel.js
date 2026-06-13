@@ -769,7 +769,11 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 		const trimmed = username.trim();
 		if ( ! trimmed ) {
 			setUsernameError( true );
-			toast.error( __( 'Username is required.', 'gitwire' ) );
+			toast.error(
+				'bitbucket' === provider
+					? __( 'Workspace is required.', 'gitwire' )
+					: __( 'Username is required.', 'gitwire' )
+			);
 			return;
 		}
 		setSaving( true );
