@@ -656,13 +656,11 @@ class REST {
 			return new \WP_REST_Response( null, 204 );
 		}
 
-		$payload = self::fetch_github_profile( $conn['username'] ?? '' );
+		$payload = self::get_public_github_rate( $id, $conn['username'] ?? '' );
 
 		if ( null === $payload ) {
 			return new \WP_REST_Response( null, 204 );
 		}
-
-		self::save_public_rate_cache( $id, $payload );
 
 		return new \WP_REST_Response( $payload );
 	}
@@ -688,6 +686,33 @@ class REST {
 				self::save_public_rate_cache( $id, $payload );
 			}
 		}
+	}
+
+	/**
+	 * Returns cached-or-fresh GitHub rate data for a public connection.
+	 *
+	 * Single source of truth for the 15-minute rate transient. Pro delegates here
+	 * for its public connections rather than re-fetching from GitHub.
+	 *
+	 * @since 1.5.0
+	 * @param string $id       Public connection ID.
+	 * @param string $username GitHub username.
+	 * @return array<string, mixed>|null Null when the GitHub request fails.
+	 */
+	public static function get_public_github_rate( string $id, string $username ): ?array {
+		$cached = get_transient( 'gitwire_rate_' . $id );
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		$payload = self::fetch_github_profile( $username );
+		if ( null === $payload ) {
+			return null;
+		}
+
+		self::save_public_rate_cache( $id, $payload );
+
+		return $payload;
 	}
 
 	/**
@@ -774,9 +799,10 @@ class REST {
 	 * @return void
 	 */
 	private static function save_public_rate_cache( string $id, array $data ): void {
-		$cache       = (array) get_option( 'gitwire_public_rate_cache', [] );
+		$cache        = (array) get_option( 'gitwire_public_rate_cache', [] );
 		$cache[ $id ] = $data;
 		update_option( 'gitwire_public_rate_cache', $cache, false );
+		set_transient( 'gitwire_rate_' . $id, $data, 15 * MINUTE_IN_SECONDS );
 	}
 
 	/**
@@ -790,6 +816,7 @@ class REST {
 		$cache = (array) get_option( 'gitwire_public_rate_cache', [] );
 		unset( $cache[ $id ] );
 		update_option( 'gitwire_public_rate_cache', $cache, false );
+		delete_transient( 'gitwire_rate_' . $id );
 	}
 
 	/**

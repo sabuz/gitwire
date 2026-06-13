@@ -311,7 +311,7 @@ const PROVIDER_LABELS = {
 function PublicConnectionsCard( { connections, onChange } ) {
 	const [ selectedId, setSelectedId ] = useState( null );
 	const [ rateCache, setRateCache ] = useState(
-		() => window.Gitwire?.public_rate_cache ?? {}
+		() => window.Gitwire?.connection_cache ?? {}
 	);
 
 	useEffect( () => {
@@ -329,7 +329,18 @@ function PublicConnectionsCard( { connections, onChange } ) {
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleCreated = useCallback(
-		( conn ) => onChange( [ ...connections, conn ] ),
+		( conn ) => {
+			onChange( [ ...connections, conn ] );
+			if ( 'github' === conn.provider ) {
+				api.getPublicConnectionRateLimit( conn.id )
+					.then( ( data ) => {
+						if ( data ) {
+							setRateCache( ( prev ) => ( { ...prev, [ conn.id ]: data } ) );
+						}
+					} )
+					.catch( () => {} );
+			}
+		},
 		[ connections, onChange ]
 	);
 
