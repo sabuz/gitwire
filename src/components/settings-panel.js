@@ -685,7 +685,7 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 						{ 'github' === rec.provider ? (
 							<>
 								{ __(
-									"Unauthenticated limit is shared by your server's IP.",
+									"Unauthenticated limit is shared by your server's IP. Connect with a token via",
 									'gitwire'
 								) }{ ' ' }
 								<a
@@ -693,26 +693,27 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 									rel="noopener noreferrer"
 									target="_blank"
 								>
-									{ __( 'Upgrade to Pro', 'gitwire' ) }
+									{ __( 'Gitwire Pro', 'gitwire' ) }
 								</a>{ ' ' }
 								{ __(
-									'to connect with a token for 5,000 requests/hour.',
+									'for 5,000 requests/hour.',
 									'gitwire'
 								) }
 							</>
 						) : (
 							<>
-								{ __(
-									'Public access only. Upgrade to Pro to add credentials for private repositories and higher rate limits.',
-									'gitwire'
-								) }{ ' ' }
+								{ __( 'Public access only.', 'gitwire' ) }{ ' ' }
 								<a
 									href="https://gitwire.app/pro"
 									rel="noopener noreferrer"
 									target="_blank"
 								>
-									{ __( 'Learn more.', 'gitwire' ) }
-								</a>
+									{ __( 'Gitwire Pro', 'gitwire' ) }
+								</a>{ ' ' }
+								{ __(
+									'adds credentials for private repositories and higher rate limits.',
+									'gitwire'
+								) }
 							</>
 						) }
 					</p>
@@ -895,11 +896,9 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 					rel="noopener noreferrer"
 					target="_blank"
 				>
-					{ __(
-						'Gitwire Pro adds private repository access.',
-						'gitwire'
-					) }
-				</a>
+					{ __( 'Gitwire Pro', 'gitwire' ) }
+				</a>{ ' ' }
+				{ __( 'adds private repository access.', 'gitwire' ) }
 			</p>
 
 			<Flex gap={ 2 } justify="flex-end">
