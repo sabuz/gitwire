@@ -687,7 +687,7 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 						{ 'github' === rec.provider ? (
 							<>
 								{ __(
-									"Unauthenticated limit is shared by your server's IP. Connect with a token via",
+									"Unauthenticated requests share your server's IP limit.",
 									'gitwire'
 								) }{ ' ' }
 								<a
@@ -698,7 +698,7 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 									{ __( 'Gitwire Pro', 'gitwire' ) }
 								</a>{ ' ' }
 								{ __(
-									'for 5,000 requests/hour.',
+									'lets you connect with a token for 5,000 requests/hour.',
 									'gitwire'
 								) }
 							</>
@@ -802,10 +802,14 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 	};
 
 	const usernamePlaceholder =
-		'bitbucket' === provider ? 'your-workspace' : 'your-username';
+		'github' === provider
+			? 'your-github-username'
+			: 'bitbucket' === provider
+			? 'your-workspace'
+			: 'your-gitlab-username';
 	const usernameLabel =
 		'bitbucket' === provider
-			? __( 'Workspace Slug', 'gitwire' )
+			? __( 'Workspace', 'gitwire' )
 			: __( 'Username', 'gitwire' );
 
 	return (
@@ -873,13 +877,13 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 						) }
 						label={
 							<>
-								{ __( 'GitLab Instance URL', 'gitwire' ) }{ ' ' }
+								{ __( 'Instance URL', 'gitwire' ) }{ ' ' }
 								<span className="gitwire-label-optional">
 									{ __( '(Optional)', 'gitwire' ) }
 								</span>
 							</>
 						}
-						placeholder="https://gitlab.com"
+						placeholder="https://git.yourdomain.com"
 						value={ gitlabUrl }
 						onChange={ setGitlabUrl }
 					/>
