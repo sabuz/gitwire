@@ -310,18 +310,22 @@ const PROVIDER_LABELS = {
 
 function PublicConnectionsCard( { connections, onChange } ) {
 	const [ selectedId, setSelectedId ] = useState( null );
-	const [ githubRateLimit, setGithubRateLimit ] = useState( null );
+	const [ rateCache, setRateCache ] = useState(
+		() => window.Gitwire?.public_rate_cache ?? {}
+	);
 
-	// Start the rate-limit fetch as soon as the list renders, not when the
-	// detail card opens, so the bar is ready by the time the user clicks in.
 	useEffect( () => {
-		const githubConn = connections.find( ( c ) => 'github' === c.provider );
-		if ( ! githubConn ) {
-			return;
-		}
-		api.getPublicConnectionRateLimit( githubConn.id )
-			.then( ( data ) => data && setGithubRateLimit( data ) )
-			.catch( () => {} );
+		connections
+			.filter( ( c ) => 'github' === c.provider )
+			.forEach( ( conn ) => {
+				api.getPublicConnectionRateLimit( conn.id )
+					.then( ( data ) => {
+						if ( data ) {
+							setRateCache( ( prev ) => ( { ...prev, [ conn.id ]: data } ) );
+						}
+					} )
+					.catch( () => {} );
+			} );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleCreated = useCallback(
@@ -358,9 +362,7 @@ function PublicConnectionsCard( { connections, onChange } ) {
 				</Flex>
 				{ rec && (
 					<PublicConnectionDetail
-						rateData={
-							'github' === rec.provider ? githubRateLimit : null
-						}
+						rateData={ rateCache[ rec.id ] ?? null }
 						rec={ rec }
 						onRemoved={ handleRemoved }
 					/>

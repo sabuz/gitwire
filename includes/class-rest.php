@@ -629,6 +629,8 @@ class REST {
 			return new \WP_Error( 'not_found', __( 'Connection not found.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
+		self::clear_public_rate_cache( $id );
+
 		return [ 'deleted' => true ];
 	}
 
@@ -686,15 +688,54 @@ class REST {
 			$name      = (string) ( $user_data['name'] ?? '' );
 		}
 
-		return new \WP_REST_Response(
-			[
-				'rate_limit'     => (int) $core['limit'],
-				'rate_remaining' => (int) $core['remaining'],
-				'rate_reset'     => (int) $core['reset'],
-				'name'           => $name,
-				'checked_at'     => time(),
-			]
-		);
+		$payload = [
+			'rate_limit'     => (int) $core['limit'],
+			'rate_remaining' => (int) $core['remaining'],
+			'rate_reset'     => (int) $core['reset'],
+			'name'           => $name,
+			'checked_at'     => time(),
+		];
+
+		self::save_public_rate_cache( $id, $payload );
+
+		return new \WP_REST_Response( $payload );
+	}
+
+	/**
+	 * Returns the full public rate cache for boot data.
+	 *
+	 * @since 1.5.0
+	 * @return array<string, mixed>
+	 */
+	public static function get_public_rate_cache(): array {
+		return (array) get_option( 'gitwire_public_rate_cache', [] );
+	}
+
+	/**
+	 * Persists a single connection's rate data to the cache.
+	 *
+	 * @since 1.5.0
+	 * @param string               $id   Connection ID.
+	 * @param array<string, mixed> $data Rate data to store.
+	 * @return void
+	 */
+	private static function save_public_rate_cache( string $id, array $data ): void {
+		$cache       = (array) get_option( 'gitwire_public_rate_cache', [] );
+		$cache[ $id ] = $data;
+		update_option( 'gitwire_public_rate_cache', $cache, false );
+	}
+
+	/**
+	 * Removes a connection's rate data from the cache.
+	 *
+	 * @since 1.5.0
+	 * @param string $id Connection ID.
+	 * @return void
+	 */
+	private static function clear_public_rate_cache( string $id ): void {
+		$cache = (array) get_option( 'gitwire_public_rate_cache', [] );
+		unset( $cache[ $id ] );
+		update_option( 'gitwire_public_rate_cache', $cache, false );
 	}
 
 	/**
