@@ -414,11 +414,9 @@ export default function ImportFromUrl( {
 										rel="noopener noreferrer"
 										target="_blank"
 									>
-										{ __(
-											'Gitwire Pro supports private repositories.',
-											'gitwire'
-										) }
-									</a>
+										{ __( 'Gitwire Pro', 'gitwire' ) }
+									</a>{ ' ' }
+									{ __( 'supports private repositories.', 'gitwire' ) }
 								</p>
 							) }
 						</div>
