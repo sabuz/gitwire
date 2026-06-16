@@ -438,7 +438,7 @@ class REST {
 		 *
 		 * Gitwire Pro registers its connection routes here.
 		 *
-		 * @since 1.4.0
+		 * @since 1.0.0
 		 */
 		do_action( 'gitwire_rest_init' );
 	}
@@ -456,7 +456,7 @@ class REST {
 	/**
 	 * Returns all public (no-token) browse connections.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @return array<int, array<string, string>>
 	 */
 	public static function list_public_connections(): array {
@@ -466,7 +466,7 @@ class REST {
 	/**
 	 * Adds a new public browse connection.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>|\WP_Error
 	 */
@@ -489,7 +489,7 @@ class REST {
 	/**
 	 * Removes a public browse connection by ID.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>|\WP_Error
 	 */
@@ -511,7 +511,7 @@ class REST {
 	 * Only GitHub supports an unauthenticated rate-limit endpoint. Other
 	 * providers either require auth or expose no dedicated endpoint.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return \WP_REST_Response|\WP_Error
 	 */
@@ -539,7 +539,7 @@ class REST {
 	/**
 	 * Cron handler: refreshes the cached profile for every public connection.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function refresh_public_connections(): void {
@@ -565,7 +565,7 @@ class REST {
 	 * Single source of truth for the 15-minute rate transient. Pro delegates here
 	 * for its public connections rather than re-fetching from GitHub.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param string $id       Public connection ID.
 	 * @param string $username GitHub username.
 	 * @return array<string, mixed>|null Null when the GitHub request fails.
@@ -591,7 +591,7 @@ class REST {
 	 *
 	 * Returns null when the API call fails so the caller can decide how to handle it.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param string $username GitHub username.
 	 * @return array<string, mixed>|null
 	 */
@@ -644,7 +644,7 @@ class REST {
 	 * Starts with the public rate cache; Pro injects authenticated profiles
 	 * via the gitwire_connection_cache filter.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @return array<string, mixed>
 	 */
 	public static function get_connection_cache(): array {
@@ -654,7 +654,7 @@ class REST {
 	/**
 	 * Returns the full public rate cache for boot data.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @return array<string, mixed>
 	 */
 	public static function get_public_rate_cache(): array {
@@ -664,7 +664,7 @@ class REST {
 	/**
 	 * Persists a single connection's rate data to the cache.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param string               $id   Connection ID.
 	 * @param array<string, mixed> $data Rate data to store.
 	 * @return void
@@ -679,7 +679,7 @@ class REST {
 	/**
 	 * Removes a connection's rate data from the cache.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return void
 	 */

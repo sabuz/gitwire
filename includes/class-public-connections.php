@@ -3,7 +3,7 @@
  * Manages public (no-token) browse accounts for the free plugin.
  *
  * @package Gitwire
- * @since 1.5.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -27,7 +27,7 @@ class Public_Connections {
 	/**
 	 * Returns all stored public connections, enriched with derived fields.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @return array<int, array<string, string>>
 	 */
 	public static function all(): array {
@@ -43,7 +43,7 @@ class Public_Connections {
 	 * them here rather than storing them, which means existing connections
 	 * get the field without any migration.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param array<string, string> $conn Stored connection record.
 	 * @return array<string, string>
 	 */
@@ -57,7 +57,7 @@ class Public_Connections {
 	/**
 	 * Finds a single connection by ID, or null when not found.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return array<string, string>|null
 	 */
@@ -73,7 +73,7 @@ class Public_Connections {
 	/**
 	 * Returns the first connection for a provider, or null when none exists.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
 	 * @return array<string, string>|null
 	 */
@@ -89,7 +89,7 @@ class Public_Connections {
 	/**
 	 * Converts a public connection record to the credential format used by API clients.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param array<string, string> $conn Public connection record.
 	 * @return array<string, string>
 	 */
@@ -152,7 +152,7 @@ class Public_Connections {
 	/**
 	 * Adds a new public connection and returns the stored record.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param string $provider   Provider key.
 	 * @param string $username   GitHub/GitLab username or Bitbucket workspace slug.
 	 * @param string $gitlab_url Optional self-hosted GitLab instance URL.
@@ -191,7 +191,7 @@ class Public_Connections {
 	 *
 	 * Returns an empty array when the request fails or the user is not found.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param string $username   GitLab username.
 	 * @param string $gitlab_url Self-hosted instance URL, or empty for gitlab.com.
 	 * @return array<string, string> Keys: avatar_url, name.
@@ -220,7 +220,7 @@ class Public_Connections {
 	/**
 	 * Removes a connection by ID.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return bool True when the connection was found and removed.
 	 */
@@ -245,7 +245,7 @@ class Public_Connections {
 	/**
 	 * Persists the connections array.
 	 *
-	 * @since 1.5.0
+	 * @since 1.0.0
 	 * @param array<int, array<string, string>> $connections Connections to store.
 	 * @return void
 	 */

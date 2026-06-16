@@ -256,7 +256,7 @@ class Admin {
 		 *
 		 * Gitwire Pro enqueues its bundle here with 'gitwire-app' as a dependency.
 		 *
-		 * @since 1.4.0
+		 * @since 1.0.0
 		 */
 		do_action( 'gitwire_enqueue_assets' );
 	}

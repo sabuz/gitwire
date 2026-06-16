@@ -147,7 +147,7 @@ final class Plugin {
 		 * Gitwire Pro registers its connection filters here, guaranteed
 		 * before any apply_filters call in the free plugin runs.
 		 *
-		 * @since 1.4.0
+		 * @since 1.0.0
 		 */
 		do_action( 'gitwire_loaded' );
 	}

@@ -4,7 +4,7 @@
  * Pro hooks in to add private (token) connections via the same filters.
  *
  * @package Gitwire
- * @since 1.4.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -22,7 +22,7 @@ class Connection_Resolver {
 	/**
 	 * Returns all stored connection records (public + Pro private).
 	 *
-	 * @since 1.4.0
+	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function all(): array {
@@ -32,7 +32,7 @@ class Connection_Resolver {
 	/**
 	 * Returns a public-safe connection list for the current user.
 	 *
-	 * @since 1.4.0
+	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function get_public_list(): array {
@@ -42,7 +42,7 @@ class Connection_Resolver {
 	/**
 	 * Finds a single connection by ID.
 	 *
-	 * @since 1.4.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return array<string, mixed>|null
 	 */
@@ -55,7 +55,7 @@ class Connection_Resolver {
 	/**
 	 * Returns the first connection for a provider, or null if none exists.
 	 *
-	 * @since 1.4.0
+	 * @since 1.0.0
 	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
 	 * @return array<string, mixed>|null
 	 */
@@ -69,7 +69,7 @@ class Connection_Resolver {
 	 * Returns credentials for a connection. Public connections return username/workspace;
 	 * Pro private connections return decrypted token credentials.
 	 *
-	 * @since 1.4.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return array<string, mixed>|null Null when the connection does not exist.
 	 */
@@ -83,7 +83,7 @@ class Connection_Resolver {
 	/**
 	 * Returns credentials for the default connection of a provider.
 	 *
-	 * @since 1.4.0
+	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @return array<string, mixed>|null Null when no connection exists for the provider.
 	 */
