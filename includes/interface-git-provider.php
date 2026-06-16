@@ -3,7 +3,7 @@
  * Git provider contract shared by GitHub and GitLab clients.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -67,7 +67,7 @@ interface Git_Provider_Interface {
 	/**
 	 * Downloads a repository ZIP archive to a local temp file.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $owner  Repository owner.
 	 * @param string $repo   Repository name.
 	 * @param string $branch Branch ref.

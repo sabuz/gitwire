@@ -35,7 +35,7 @@ class REST {
 	/**
 	 * Returns the pending update option, reading the DB at most once per request.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return array<string, mixed>|false
 	 */
 	private static function get_pending_update(): mixed {
@@ -48,7 +48,7 @@ class REST {
 	/**
 	 * Clears the pending update cache and persists the new value.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending New pending update value.
 	 * @return void
 	 */
@@ -784,7 +784,7 @@ class REST {
 	/**
 	 * Builds a paginated repository list payload from the Git provider API.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider      Provider key: github, gitlab, or bitbucket.
 	 * @param int    $page          Page number.
 	 * @param string $connection_id Connection ID to use for credentials.
@@ -1192,7 +1192,7 @@ class REST {
 	/**
 	 * Prunes missing directories, heals plugin files, and refreshes remote HEADs.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return array<string, mixed> Synced installed records and any orphaned entries.
 	 */
 	public static function sync_installed(): array {
@@ -1281,7 +1281,7 @@ class REST {
 	/**
 	 * Annotates installed records with live active state and update availability.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, array<string, mixed>> $records Raw installed records.
 	 * @return array<string, array<string, mixed>>
 	 */
@@ -1374,7 +1374,7 @@ class REST {
 	/**
 	 * Fetches the latest remote commit SHA for an installed record.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $rec Installed record.
 	 * @return string|null Remote HEAD SHA or null on failure.
 	 */
@@ -1397,7 +1397,7 @@ class REST {
 	/**
 	 * Detects repository types for a batch of repos.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, array<string, mixed>> Map of detection keys to results.
 	 */
@@ -1722,7 +1722,7 @@ class REST {
 	/**
 	 * Flags commits that recently failed active-theme fatal validation.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<int, array<string, mixed>> $commits   Commit list.
 	 * @param string                           $provider  Git provider.
 	 * @param string                           $full_name Repository full name.

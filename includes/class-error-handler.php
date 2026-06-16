@@ -236,7 +236,7 @@ class Error_Handler {
 	/**
 	 * Sends the admin back to Gitwire after an activation fatal was recovered.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function redirect_to_gitwire_admin(): void {
@@ -261,7 +261,7 @@ class Error_Handler {
 	/**
 	 * Restores the installed record snapshot stored on the pending guard.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending guard record.
 	 * @return void
 	 */
@@ -283,7 +283,7 @@ class Error_Handler {
 	/**
 	 * Clears the iframe bootstrap verified transient.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function clear_bootstrap_verified(): void {
@@ -294,7 +294,7 @@ class Error_Handler {
 	/**
 	 * Drops orphaned activation guards left when a switch was reverted.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function clear_stale_update_guard(): void {
@@ -315,7 +315,7 @@ class Error_Handler {
 	/**
 	 * Drops orphaned activation guards left when a switch was reverted.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function clear_stale_activation_guard(): void {
@@ -341,7 +341,7 @@ class Error_Handler {
 	/**
 	 * Rolls back and clears a pending guard when client verification times out.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return bool True when a pending guard was cleared.
 	 */
 	public static function abort_pending_guard(): bool {
@@ -388,7 +388,7 @@ class Error_Handler {
 	/**
 	 * Restores the previous theme after a guarded activation scrape fails.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending activation guard record.
 	 * @return void
 	 */
@@ -432,7 +432,7 @@ class Error_Handler {
 	/**
 	 * Restores a failed theme update and re-applies the active theme when needed.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending guard record.
 	 * @return bool True when install files were restored or already valid.
 	 */
@@ -455,7 +455,7 @@ class Error_Handler {
 	/**
 	 * Restores files from a pending update backup, including orphaned backups.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending guard record.
 	 * @return bool True when install files were restored or already valid.
 	 */
@@ -491,7 +491,7 @@ class Error_Handler {
 	/**
 	 * Re-applies the active theme after a guarded update rollback.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending guard record.
 	 * @return void
 	 */
@@ -512,7 +512,7 @@ class Error_Handler {
 	/**
 	 * Clears the pending update flag and any cached copy.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function clear_pending_update(): void {
@@ -586,7 +586,7 @@ class Error_Handler {
 	/**
 	 * Restores the previous active theme directly in the database.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string|null $stylesheet Previous stylesheet slug.
 	 * @param string|null $template   Previous template slug.
 	 * @return void

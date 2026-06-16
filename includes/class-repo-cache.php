@@ -25,7 +25,7 @@ class Repo_Cache {
 	/**
 	 * Returns a cached repos page payload when still fresh.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $connection_id Connection ID used for the fetch.
 	 * @param int    $page          Page number.
 	 * @return array<string, mixed>|null Cached payload or null when missing/stale.
@@ -48,7 +48,7 @@ class Repo_Cache {
 	/**
 	 * Stores a repos page payload.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string               $connection_id Connection ID used for the fetch.
 	 * @param int                  $page          Page number.
 	 * @param array<string, mixed> $payload       Repos payload.
@@ -76,7 +76,7 @@ class Repo_Cache {
 	/**
 	 * Builds the cache key for a repo type detection entry.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @param string $owner    Repository owner.
 	 * @param string $repo     Repository name.
@@ -90,7 +90,7 @@ class Repo_Cache {
 	/**
 	 * Returns a cached detection result when still fresh.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @param string $owner    Repository owner.
 	 * @param string $repo     Repository name.
@@ -114,7 +114,7 @@ class Repo_Cache {
 	/**
 	 * Stores a detection result.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string               $provider Provider key.
 	 * @param string               $owner    Repository owner.
 	 * @param string               $repo     Repository name.
@@ -138,7 +138,7 @@ class Repo_Cache {
 	/**
 	 * Clears cached repository list data.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string|null $connection_id Optional connection ID to clear one slot only. Null clears all.
 	 * @return void
 	 */
@@ -160,7 +160,7 @@ class Repo_Cache {
 	/**
 	 * Clears cached detection data.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function clear_types(): void {
@@ -170,7 +170,7 @@ class Repo_Cache {
 	/**
 	 * Clears all browse caches.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function clear_all(): void {
@@ -318,7 +318,7 @@ class Repo_Cache {
 	/**
 	 * Refreshes browse caches immediately (manual refresh).
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param bool $include_types Whether to refresh type detections too.
 	 * @return true|\WP_Error
 	 */

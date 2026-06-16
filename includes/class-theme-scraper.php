@@ -6,7 +6,7 @@
  * in the same request, like the theme file editor.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -23,7 +23,7 @@ class Theme_Scraper {
 	/**
 	 * Bootstraps the active theme in wp-admin, then on the frontend.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return true|\WP_Error True when both loopbacks succeed, WP_Error when rejected.
 	 */
 	public static function scrape_bootstrap(): bool|\WP_Error {
@@ -44,7 +44,7 @@ class Theme_Scraper {
 	/**
 	 * Validates a newly activated theme in wp-admin, then on the frontend.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return true|\WP_Error True when both loopbacks succeed, WP_Error when rejected.
 	 */
 	public static function scrape_activation(): bool|\WP_Error {
@@ -69,7 +69,7 @@ class Theme_Scraper {
 	 * include_once sandbox cannot re-run replaced code. A fresh loopback
 	 * request loads the new code and surfaces any fatal it introduces.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return true|\WP_Error True when both loopbacks succeed, WP_Error when rejected.
 	 */
 	public static function scrape_plugin_bootstrap(): bool|\WP_Error {
@@ -90,7 +90,7 @@ class Theme_Scraper {
 	/**
 	 * Returns whether a scrape payload reports a PHP fatal from the sandbox.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $result Scrape failure payload.
 	 * @return bool
 	 */
@@ -114,7 +114,7 @@ class Theme_Scraper {
 	/**
 	 * Returns whether a scrape payload indicates loopback infrastructure failure.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $result Scrape failure payload.
 	 * @return bool
 	 */
@@ -130,7 +130,7 @@ class Theme_Scraper {
 	 * Admin is scraped first; the homepage is only checked when admin succeeds,
 	 * matching wp_edit_theme_plugin_file().
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<int, string> $urls Absolute URLs to scrape.
 	 * @return true|array<string, mixed> True on success, scrape error payload on failure.
 	 */
@@ -199,7 +199,7 @@ class Theme_Scraper {
 	/**
 	 * Builds cookies for loopback requests, including auth for the current user.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return array<string, string>
 	 */
 	private static function get_loopback_cookies(): array {
@@ -237,7 +237,7 @@ class Theme_Scraper {
 	/**
 	 * Builds headers for loopback requests.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return array<string, string>
 	 */
 	private static function get_loopback_headers(): array {
@@ -256,7 +256,7 @@ class Theme_Scraper {
 	/**
 	 * Attempts a scrape request, retrying with alternate local URLs when needed.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string                $url          Absolute URL to scrape.
 	 * @param string                $scrape_key   Scrape session key.
 	 * @param string                $scrape_nonce Scrape session nonce.
@@ -313,7 +313,7 @@ class Theme_Scraper {
 	/**
 	 * Returns URL variants to try for local loopback requests.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $url Original absolute URL.
 	 * @return array<int, string>
 	 */
@@ -361,7 +361,7 @@ class Theme_Scraper {
 	/**
 	 * Performs a single loopback scrape request.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string|array<string, mixed> $url          Absolute URL or candidate array.
 	 * @param string                      $scrape_key   Scrape session key.
 	 * @param string                      $scrape_nonce Scrape session nonce.
@@ -423,7 +423,7 @@ class Theme_Scraper {
 	/**
 	 * Parses a loopback scrape HTTP response.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed>|\WP_Error $response     HTTP response.
 	 * @param string                         $needle_start Result start marker.
 	 * @param string                         $needle_end   Result end marker.
@@ -480,7 +480,7 @@ class Theme_Scraper {
 	/**
 	 * Converts a scrape failure payload into a REST-friendly WP_Error.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $result  Scrape failure payload.
 	 * @param string               $context Guard context: activation or update.
 	 * @param string               $subject Installation subject: theme or plugin.

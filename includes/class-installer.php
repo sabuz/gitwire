@@ -28,7 +28,7 @@ class Installer {
 	/**
 	 * Clears the request-scope installed cache after a write.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function invalidate_installed_cache(): void {
@@ -425,7 +425,7 @@ class Installer {
 	/**
 	 * Registers a pending activation record for the fatal-error shutdown handler.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $rec         Installed repository record.
 	 * @param string               $full_name   Repository full name.
 	 * @param string|null          $plugin_file Plugin bootstrap file, if any.
@@ -456,7 +456,7 @@ class Installer {
 	/**
 	 * Clears a pending activation guard when activation fails before bootstrap.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function clear_activation_guard(): void {
@@ -466,7 +466,7 @@ class Installer {
 	/**
 	 * Clears the activation guard after core has sandboxed a plugin activation.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function complete_plugin_activation_guard(): void {
@@ -576,7 +576,7 @@ class Installer {
 	/**
 	 * Fetches the latest remote commit SHA for a branch.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param Git_Provider_Interface $api    Provider API client.
 	 * @param string                 $owner  Repository owner.
 	 * @param string                 $repo   Repository name.
@@ -595,7 +595,7 @@ class Installer {
 	/**
 	 * Returns a transient key for a known-fatal remote HEAD on an active install.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $branch    Branch name.
@@ -608,7 +608,7 @@ class Installer {
 	/**
 	 * Returns a remote SHA recently rejected by the active fatal guard.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $branch    Branch name.
@@ -622,7 +622,7 @@ class Installer {
 	/**
 	 * Returns whether a remote SHA matches the known-fatal cache entry.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $branch    Branch name.
@@ -637,7 +637,7 @@ class Installer {
 	/**
 	 * User-facing message when the latest remote commit is skipped as known-fatal.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $type       Installation type: plugin or theme.
 	 * @param string $remote_sha Remote commit SHA.
 	 * @return string
@@ -667,7 +667,7 @@ class Installer {
 	 * attempts and retries read consistently across plugins and themes.
 	 * Infrastructure failures keep the scrape message that explains the revert.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param \WP_Error   $scrape     Scrape failure error.
 	 * @param string      $type       Installation type: plugin or theme.
 	 * @param string|null $remote_sha Remote commit SHA, if known.
@@ -698,7 +698,7 @@ class Installer {
 	/**
 	 * Returns whether a plugin activation error came from core's fatal sandbox scrape.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param \WP_Error $error Activation error.
 	 * @return bool
 	 */
@@ -714,7 +714,7 @@ class Installer {
 	/**
 	 * Remembers a remote SHA that failed active bootstrap validation.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $branch    Branch name.
@@ -732,7 +732,7 @@ class Installer {
 	/**
 	 * Stores a known-fatal remote SHA after a failed theme scrape.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string               $provider  Git provider.
 	 * @param string               $full_name Repository full name.
 	 * @param string               $branch    Branch name.
@@ -759,7 +759,7 @@ class Installer {
 	/**
 	 * Stores a known-fatal remote SHA after a failed plugin activation scrape.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string               $provider  Git provider.
 	 * @param string               $full_name Repository full name.
 	 * @param string               $branch    Branch name.
@@ -781,7 +781,7 @@ class Installer {
 	/**
 	 * Resolves the latest remote SHA for a record, falling back to the API.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $rec       Installed record.
 	 * @param string               $provider  Git provider.
 	 * @param string               $full_name Repository full name.
@@ -809,7 +809,7 @@ class Installer {
 	/**
 	 * Persists an installed record while preserving metadata such as head and installed_at.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string               $record_key Installed record key.
 	 * @param array<string, mixed> $record     New record payload.
 	 * @param string|null          $head_sha   Head SHA to store; null keeps the previous value.
@@ -1135,7 +1135,7 @@ class Installer {
 	/**
 	 * Reactivates a plugin using WordPress core's sandbox scrape.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $plugin_file Plugin bootstrap file relative to wp-content/plugins.
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
@@ -1156,7 +1156,7 @@ class Installer {
 	/**
 	 * Clears a successful update guard and its backup copy.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string|null $backup_path Absolute backup path.
 	 * @return void
 	 */
@@ -1168,7 +1168,7 @@ class Installer {
 	/**
 	 * Clears stale guard feedback before arming a new verify cycle.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function clear_guard_feedback(): void {
@@ -1179,7 +1179,7 @@ class Installer {
 	/**
 	 * Returns whether the installed plugin or theme is currently active.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string      $type        Installation type: "plugin" or "theme".
 	 * @param string      $slug        Directory slug.
 	 * @param string|null $plugin_file Plugin bootstrap file relative to wp-content/plugins.
@@ -1218,7 +1218,7 @@ class Installer {
 	/**
 	 * Deletes a temporary backup directory created during install or update.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string|null $backup_path Absolute backup path.
 	 * @return void
 	 */
@@ -1358,7 +1358,7 @@ class Installer {
 	/**
 	 * Finds the newest orphaned backup directory for an install path.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $install_path Absolute install path.
 	 * @return string|null Backup path or null when none exist.
 	 */
@@ -1379,7 +1379,7 @@ class Installer {
 	/**
 	 * Returns whether a path is inside the WordPress themes directory.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $install_path Absolute install path.
 	 * @return bool
 	 */
@@ -1396,7 +1396,7 @@ class Installer {
 	/**
 	 * Clears stale theme runtime state after files on disk change.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $install_path Theme directory path.
 	 * @param string $slug         Theme stylesheet slug.
 	 * @return void
@@ -1458,7 +1458,7 @@ class Installer {
 	 * paused-plugins list must be cleared for the loopback scrape to execute the
 	 * replaced files instead of the cached, still-working version.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $install_path Plugin directory path.
 	 * @param string $slug         Plugin directory slug.
 	 * @return void
@@ -1500,7 +1500,7 @@ class Installer {
 	/**
 	 * Checks whether theme files on disk are readable and error-free.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $rec Installed theme record.
 	 * @return true|\WP_Error True when the theme can be activated.
 	 */
@@ -1567,7 +1567,7 @@ class Installer {
 	/**
 	 * Validates an active theme pull using the same checks as theme activation.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $rec Installed theme record.
 	 * @return true|\WP_Error True when the updated theme can stay active.
 	 */

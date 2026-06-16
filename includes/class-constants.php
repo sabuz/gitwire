@@ -3,7 +3,7 @@
  * Plugin constants holder.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;

@@ -3,7 +3,7 @@
  * GitLab API client — wraps the GitLab REST API v4.
  *
  * @package Gitwire
- * @since 1.1.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -46,7 +46,7 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Constructor.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $token    Personal access token.
 	 * @param string $base_url GitLab instance base URL (defaults to gitlab.com).
 	 */
@@ -62,7 +62,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 * scope (common with read_api-only tokens), falls back to /projects to
 	 * confirm the token is valid, returning authenticated state without profile.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner Unused; kept for interface compatibility.
 	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
 	 */
@@ -105,7 +105,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 * Returns projects accessible to the authenticated user, or a user's public
 	 * projects when a username is given and no token is set.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $username GitLab username for public-mode listing.
 	 * @param int    $page     Page number for paginated results.
 	 * @return array<int, mixed>|\WP_Error Project list on success, WP_Error on failure.
@@ -129,7 +129,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 *
 	 * Uses the same detection heuristics as the GitHub API class.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner  GitLab namespace (group or username).
 	 * @param string $repo   Project path.
 	 * @param string $branch Branch, tag, or SHA to inspect.
@@ -166,7 +166,7 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Returns all branches for a project.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner GitLab namespace.
 	 * @param string $repo  Project path.
 	 * @return array<int, mixed>|\WP_Error Branch list on success, WP_Error on failure.
@@ -179,7 +179,7 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Returns the last N commits for a branch, normalised to a flat array.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner    GitLab namespace.
 	 * @param string $repo     Project path.
 	 * @param string $branch   Branch, tag, or SHA.
@@ -217,7 +217,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 * directly. We use wp_remote_get() with stream=true to avoid buffering
 	 * large repos in memory, and pass the auth header manually.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner  GitLab namespace.
 	 * @param string $repo   Project path.
 	 * @param string $branch Branch, tag, or SHA to download.
@@ -264,7 +264,7 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Fetches the raw content of a single file from a project.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner  Project namespace.
 	 * @param string $repo   Project path.
 	 * @param string $path   File path within the project.
@@ -298,7 +298,7 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Builds the HTTP headers array for GitLab API requests.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @return array<string, string> HTTP headers.
 	 */
 	private function headers(): array {
@@ -314,7 +314,7 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Makes a GET request to the GitLab API and returns the decoded response body.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $endpoint API endpoint path (e.g. "/user").
 	 * @return array<mixed>|\WP_Error Decoded JSON array on success, WP_Error on failure.
 	 */

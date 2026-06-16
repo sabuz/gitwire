@@ -3,7 +3,7 @@
  * Settings helpers — smart_install and token masking.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -20,7 +20,7 @@ class Settings {
 	/**
 	 * Returns raw settings from the database.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return array<string, mixed>
 	 */
 	public static function get_raw(): array {
@@ -127,7 +127,7 @@ class Settings {
 	/**
 	 * Masks a secret for display (first 4 + last 4 characters).
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $token Raw token.
 	 * @return string Masked preview or empty string.
 	 */
@@ -146,7 +146,7 @@ class Settings {
 	/**
 	 * Blocks private/reserved hosts for self-hosted GitLab URLs.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $url GitLab instance URL.
 	 * @return bool
 	 */

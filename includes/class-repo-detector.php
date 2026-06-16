@@ -3,7 +3,7 @@
  * Shared repository type detection logic.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -79,7 +79,7 @@ class Repo_Detector {
 	/**
 	 * Detects repository type from root file listing callbacks.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string   $repo_name         Repository slug used for main-file priority.
 	 * @param string   $branch            Branch ref to inspect.
 	 * @param callable $get_root_contents Callable returning root file list.
@@ -212,7 +212,7 @@ class Repo_Detector {
 	/**
 	 * Checks whether file content contains a WordPress-style header.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $content File contents.
 	 * @param string $header  Header name.
 	 * @return bool
@@ -224,7 +224,7 @@ class Repo_Detector {
 	/**
 	 * Extracts a WordPress-style header value from file content.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $content File contents.
 	 * @param string $header  Header name.
 	 * @return string
