@@ -206,14 +206,14 @@ class Admin {
 		if ( $fatal_notice ) {
 			delete_option( 'gitwire_fatal_notice' );
 		}
-		$update_success = get_transient( 'gitwire_update_success' );
+		$update_success = get_option( 'gitwire_update_success' );
 		if ( $update_success ) {
-			delete_transient( 'gitwire_update_success' );
+			delete_option( 'gitwire_update_success' );
 		}
 
-		$activation_success = get_transient( 'gitwire_activation_success' );
+		$activation_success = get_option( 'gitwire_activation_success' );
 		if ( $activation_success ) {
-			delete_transient( 'gitwire_activation_success' );
+			delete_option( 'gitwire_activation_success' );
 		}
 
 		// Derive initial tab from path param or setup status.

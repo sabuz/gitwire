@@ -226,7 +226,6 @@ class Error_Handler {
 		);
 
 		self::clear_pending_update();
-		self::clear_bootstrap_verified();
 
 		if ( 'activation' === $context && 'theme' !== $type ) {
 			self::redirect_to_gitwire_admin();
@@ -281,17 +280,6 @@ class Error_Handler {
 	}
 
 	/**
-	 * Clears the iframe bootstrap verified transient.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function clear_bootstrap_verified(): void {
-		delete_transient( 'gitwire_bootstrap_verified' );
-		delete_transient( 'gitwire_frontend_bootstrap_ok' );
-	}
-
-	/**
 	 * Drops orphaned activation guards left when a switch was reverted.
 	 *
 	 * @since 1.0.0
@@ -309,7 +297,6 @@ class Error_Handler {
 		}
 
 		delete_option( 'gitwire_pending_update' );
-		self::clear_bootstrap_verified();
 	}
 
 	/**
@@ -327,14 +314,14 @@ class Error_Handler {
 		$slug = $pending['slug'] ?? '';
 		if ( ! $slug || ! function_exists( 'get_stylesheet' ) ) {
 			delete_option( 'gitwire_pending_update' );
-			self::clear_bootstrap_verified();
+	
 			return;
 		}
 
 		$is_active = get_stylesheet() === $slug || get_template() === $slug;
 		if ( ! $is_active ) {
 			delete_option( 'gitwire_pending_update' );
-			self::clear_bootstrap_verified();
+	
 		}
 	}
 
@@ -347,14 +334,14 @@ class Error_Handler {
 	public static function abort_pending_guard(): bool {
 		$pending = get_option( 'gitwire_pending_update' );
 		if ( ! is_array( $pending ) ) {
-			self::clear_bootstrap_verified();
+	
 			return false;
 		}
 
 		$context = $pending['context'] ?? '';
 		if ( ! in_array( $context, [ 'activation', 'update' ], true ) ) {
 			delete_option( 'gitwire_pending_update' );
-			self::clear_bootstrap_verified();
+	
 			return true;
 		}
 
@@ -380,7 +367,7 @@ class Error_Handler {
 		self::restore_pending_installed_record( $pending );
 
 		delete_option( 'gitwire_pending_update' );
-		self::clear_bootstrap_verified();
+
 
 		return true;
 	}
@@ -406,7 +393,7 @@ class Error_Handler {
 		}
 
 		delete_option( 'gitwire_pending_update' );
-		self::clear_bootstrap_verified();
+
 	}
 
 	/**

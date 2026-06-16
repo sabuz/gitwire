@@ -1175,9 +1175,9 @@ class REST {
 			Installer::invalidate_installed_cache();
 		}
 
-		$recently_deleted = get_transient( 'gitwire_recently_deleted' );
+		$recently_deleted = get_option( 'gitwire_recently_deleted' );
 		if ( is_array( $recently_deleted ) && $recently_deleted ) {
-			delete_transient( 'gitwire_recently_deleted' );
+			delete_option( 'gitwire_recently_deleted' );
 			foreach ( $recently_deleted as $item ) {
 				$orphaned[] = $item;
 			}
@@ -1196,9 +1196,10 @@ class REST {
 	 * @return array<string, mixed> Synced installed records and any orphaned entries.
 	 */
 	public static function sync_installed(): array {
-		$records  = Installer::get_installed();
-		$orphaned = [];
-		$pruned   = false;
+		$records      = Installer::get_installed();
+		$orphaned     = [];
+		$pruned       = false;
+		$remote_heads = (array) get_option( 'gitwire_remote_heads', [] );
 
 		$pending       = self::get_pending_update();
 		$pending_key   = '';
@@ -1257,11 +1258,8 @@ class REST {
 			if ( ! $pending_guard || $record_key !== $pending_key ) {
 				$remote_head = self::fetch_remote_head( $rec );
 				if ( $remote_head ) {
-					set_transient(
-						'gitwire_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) ),
-						$remote_head,
-						HOUR_IN_SECONDS
-					);
+					$hash                    = md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
+					$remote_heads[ $hash ]   = $remote_head;
 				}
 			}
 		}
@@ -1271,6 +1269,8 @@ class REST {
 			update_option( 'gitwire_installed', $records, false );
 			Installer::invalidate_installed_cache();
 		}
+
+		update_option( 'gitwire_remote_heads', $remote_heads, false );
 
 		return [
 			'installed' => self::annotate_installed( $records ),
@@ -1294,6 +1294,7 @@ class REST {
 		$pending       = self::get_pending_update();
 		$pending_guard = is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
+		$remote_heads  = (array) get_option( 'gitwire_remote_heads', [] );
 
 		$all_connections = [];
 		foreach ( Connection_Resolver::all() as $conn ) {
@@ -1346,8 +1347,8 @@ class REST {
 				}
 			}
 
-			$remote_key  = 'gitwire_remote_' . md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
-			$remote_head = get_transient( $remote_key );
+			$remote_hash = md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
+			$remote_head = $remote_heads[ $remote_hash ] ?? false;
 			if ( false !== $remote_head ) {
 				$rec['remote_head']      = $remote_head;
 				$rec['update_available'] = ! empty( $rec['head'] ) && $remote_head !== $rec['head'];

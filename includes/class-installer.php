@@ -121,13 +121,13 @@ class Installer {
 	 * @return void
 	 */
 	private static function queue_deleted_notice( array $rec ): void {
-		$existing  = get_transient( 'gitwire_recently_deleted' );
+		$existing  = get_option( 'gitwire_recently_deleted' );
 		$pending   = is_array( $existing ) ? $existing : [];
 		$pending[] = [
 			'full_name' => $rec['full_name'] ?? '',
 			'provider'  => $rec['provider'] ?? 'github',
 		];
-		set_transient( 'gitwire_recently_deleted', $pending, HOUR_IN_SECONDS );
+		update_option( 'gitwire_recently_deleted', $pending, false );
 	}
 
 	/**
@@ -789,8 +789,9 @@ class Installer {
 	 * @return string|null
 	 */
 	private static function resolve_remote_head_for_record( array $rec, string $provider, string $full_name, string $branch ): ?string {
-		$remote_key = 'gitwire_remote_' . md5( $provider . ':' . $full_name . ':' . $branch );
-		$cached     = get_transient( $remote_key );
+		$hash         = md5( $provider . ':' . $full_name . ':' . $branch );
+		$remote_heads = (array) get_option( 'gitwire_remote_heads', [] );
+		$cached       = $remote_heads[ $hash ] ?? false;
 		if ( is_string( $cached ) && $cached ) {
 			return $cached;
 		}
@@ -802,8 +803,14 @@ class Installer {
 
 		$connection_id = $rec['connection_id'] ?? null;
 		$api           = Provider_Factory::make( $provider, $connection_id );
+		$sha           = self::fetch_remote_head_sha( $api, $parts[0], $parts[1], $branch );
 
-		return self::fetch_remote_head_sha( $api, $parts[0], $parts[1], $branch );
+		if ( $sha ) {
+			$remote_heads[ $hash ] = $sha;
+			update_option( 'gitwire_remote_heads', $remote_heads, false );
+		}
+
+		return $sha;
 	}
 
 	/**
@@ -1173,7 +1180,6 @@ class Installer {
 	 */
 	private static function clear_guard_feedback(): void {
 		delete_option( 'gitwire_fatal_notice' );
-		Error_Handler::clear_bootstrap_verified();
 	}
 
 	/**
