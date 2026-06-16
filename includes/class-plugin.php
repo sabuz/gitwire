@@ -173,7 +173,6 @@ final class Plugin {
 				false
 			);
 		}
-		set_transient( 'gitwire_first_activation', true, 60 );
 		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
 			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_maintenance' );
 		}

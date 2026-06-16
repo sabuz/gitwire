@@ -211,12 +211,6 @@ class Admin {
 		if ( $fatal_notice ) {
 			delete_option( 'gitwire_fatal_notice' );
 		}
-		$first_activation = (bool) get_transient( 'gitwire_first_activation' );
-
-		if ( $first_activation ) {
-			delete_transient( 'gitwire_first_activation' );
-		}
-
 		$update_success = get_transient( 'gitwire_update_success' );
 		if ( $update_success ) {
 			delete_transient( 'gitwire_update_success' );
@@ -227,11 +221,9 @@ class Admin {
 			delete_transient( 'gitwire_activation_success' );
 		}
 
-		// Derive initial tab from path param, activation state, or setup status.
+		// Derive initial tab from path param or setup status.
 		$path = sanitize_key( $_GET['path'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( $first_activation ) {
-			$initial_tab = (string) apply_filters( 'gitwire_first_activation_tab', 'repositories' );
-		} elseif ( 'settings' === $path ) {
+		if ( 'settings' === $path ) {
 			$initial_tab = 'settings';
 		} elseif ( 'logs' === $path ) {
 			$initial_tab = 'logs';
