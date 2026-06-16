@@ -8,7 +8,7 @@ Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Install and manage plugins and themes from any Git repository. Switch branches and auto-recover from fatal errors.
+Install and update WordPress plugins and themes from Git repositories. Switch branches when needed, and recover safely if an update causes a fatal error.
 
 == Description ==
 
