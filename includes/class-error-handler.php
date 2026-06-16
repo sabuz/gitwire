@@ -89,7 +89,7 @@ class Error_Handler {
 	/**
 	 * Registers Gitwire's exception handler after all plugins have set theirs.
 	 *
-	 * @since 1.2.1
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function register_exception_handler(): void {
@@ -99,7 +99,7 @@ class Error_Handler {
 	/**
 	 * Flags an uncaught exception before delegating to the next handler in the chain.
 	 *
-	 * @since 1.2.1
+	 * @since 1.0.0
 	 * @param \Throwable $e The uncaught exception or error.
 	 * @throws \Throwable When WordPress core scraping flow expects native fatal markers.
 	 * @return void
