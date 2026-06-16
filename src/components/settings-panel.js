@@ -28,6 +28,9 @@ import {
 
 import * as api from '../api';
 import { BitbucketIcon, GitHubIcon, GitLabIcon } from './provider-icons';
+import { PROVIDER_LABELS, ProviderIcon } from './provider';
+import { relativeTimeFromUnix } from '../relative-time';
+import { persistSetting } from '../save-setting';
 
 /**
  * Settings panel — Browse accounts card + Smart Install card + Logging card.
@@ -64,25 +67,8 @@ export default function SettingsPanel( {
 	);
 	const [ clearingLogs, setClearingLogs ] = useState( false );
 
-	const saveSetting = ( payload, rollback ) => {
-		const p = api
-			.saveSettings( payload )
-			.then( () => api.getSettings() )
-			.then( ( saved ) => onSave( saved ) )
-			.catch( ( e ) => {
-				rollback?.();
-				throw e;
-			} );
-
-		toast.promise( p, {
-			id: 'settings-save',
-			loading: __( 'Saving…', 'gitwire' ),
-			success: __( 'Saved.', 'gitwire' ),
-			error: ( e ) => e?.message || __( 'Save failed.', 'gitwire' ),
-		} );
-
-		return p;
-	};
+	const saveSetting = ( payload, rollback ) =>
+		persistSetting( payload, onSave, rollback );
 
 	const handleSmartInstallChange = ( newVal ) => {
 		setSmartInstall( newVal );
@@ -302,12 +288,6 @@ export default function SettingsPanel( {
 	);
 }
 
-const PROVIDER_LABELS = {
-	github: 'GitHub',
-	gitlab: 'GitLab',
-	bitbucket: 'Bitbucket',
-};
-
 function PublicConnectionsCard( { connections, onChange } ) {
 	const [ selectedId, setSelectedId ] = useState( null );
 	const [ rateCache, setRateCache ] = useState(
@@ -315,13 +295,22 @@ function PublicConnectionsCard( { connections, onChange } ) {
 	);
 
 	useEffect( () => {
+		const now = Math.floor( Date.now() / 1000 );
+		const fifteenMin = 15 * 60;
 		connections
 			.filter( ( c ) => 'github' === c.provider )
+			.filter( ( c ) => {
+				const checkedAt = rateCache[ c.id ]?.checked_at;
+				return ! checkedAt || now - checkedAt > fifteenMin;
+			} )
 			.forEach( ( conn ) => {
 				api.getPublicConnectionRateLimit( conn.id )
 					.then( ( data ) => {
 						if ( data ) {
-							setRateCache( ( prev ) => ( { ...prev, [ conn.id ]: data } ) );
+							setRateCache( ( prev ) => ( {
+								...prev,
+								[ conn.id ]: data,
+							} ) );
 						}
 					} )
 					.catch( () => {} );
@@ -335,7 +324,10 @@ function PublicConnectionsCard( { connections, onChange } ) {
 				api.getPublicConnectionRateLimit( conn.id )
 					.then( ( data ) => {
 						if ( data ) {
-							setRateCache( ( prev ) => ( { ...prev, [ conn.id ]: data } ) );
+							setRateCache( ( prev ) => ( {
+								...prev,
+								[ conn.id ]: data,
+							} ) );
 						}
 					} )
 					.catch( () => {} );
@@ -515,22 +507,6 @@ function PublicConnectionsSummary( { connections, onCreated, onSelect } ) {
 	);
 }
 
-function unixTimeAgo( ts ) {
-	const s = Math.floor( Date.now() / 1000 ) - ts;
-	if ( s < 60 ) {
-		return __( 'just now', 'gitwire' );
-	}
-	const m = Math.floor( s / 60 );
-	if ( m < 60 ) {
-		return m + 'm ago';
-	}
-	const h = Math.floor( m / 60 );
-	if ( h < 24 ) {
-		return h + 'h ago';
-	}
-	return Math.floor( h / 24 ) + 'd ago';
-}
-
 function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 	const [ busy, setBusy ] = useState( false );
 	const [ confirming, setConfirming ] = useState( false );
@@ -628,7 +604,7 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 								} }
 							>
 								{ __( 'Connection verified', 'gitwire' ) }{ ' ' }
-								{ unixTimeAgo( checkedAt ) }
+								{ relativeTimeFromUnix( checkedAt ) }
 							</div>
 						) }
 					</FlexBlock>
@@ -737,26 +713,6 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 }
 
 /**
- * Returns the small inline icon for a provider.
- *
- * @param {Object} props          Component props.
- * @param {string} props.provider Provider key.
- * @return {JSX.Element|null} The provider icon.
- */
-function ProviderIcon( { provider } ) {
-	if ( 'github' === provider ) {
-		return <GitHubIcon />;
-	}
-	if ( 'gitlab' === provider ) {
-		return <GitLabIcon />;
-	}
-	if ( 'bitbucket' === provider ) {
-		return <BitbucketIcon />;
-	}
-	return null;
-}
-
-/**
  * Inline add-account form for public (no-token) connections.
  * Mirrors the Pro AddConnectionForm layout with token fields omitted.
  *
@@ -812,12 +768,11 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 		}
 	};
 
-	const usernamePlaceholder =
-		'github' === provider
-			? 'your-github-username'
-			: 'bitbucket' === provider
-			? 'your-workspace'
-			: 'your-gitlab-username';
+	const usernamePlaceholder = {
+		github: 'your-github-username',
+		gitlab: 'your-gitlab-username',
+		bitbucket: 'your-workspace',
+	}[ provider ];
 	const usernameLabel =
 		'bitbucket' === provider
 			? __( 'Workspace', 'gitwire' )

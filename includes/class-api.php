@@ -281,7 +281,7 @@ class API implements Git_Provider_Interface {
 	private function headers(): array {
 		$h = [
 			'Accept'     => 'application/vnd.github.v3+json',
-			'User-Agent' => 'GitHub-for-WordPress/' . GITWIRE_VERSION,
+			'User-Agent' => 'Gitwire/' . GITWIRE_VERSION,
 		];
 		if ( $this->token ) {
 			$h['Authorization'] = 'Bearer ' . $this->token;

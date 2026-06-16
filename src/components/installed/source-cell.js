@@ -1,7 +1,6 @@
-import { __ } from '@wordpress/i18n';
 import { Flex } from '@wordpress/components';
 
-import { GitHubIcon, GitLabIcon, BitbucketIcon } from '../provider-icons';
+import { ProviderIcon, providerLabel } from '../provider';
 
 /**
  * Installed table cell showing the Git provider logo and label.
@@ -13,26 +12,6 @@ import { GitHubIcon, GitLabIcon, BitbucketIcon } from '../provider-icons';
 export default function SourceCell( { item } ) {
 	const provider = item.provider ?? 'github';
 
-	function ProviderIcon() {
-		if ( provider === 'gitlab' ) {
-			return <GitLabIcon size={ 14 } variant="brand" />;
-		}
-		if ( provider === 'bitbucket' ) {
-			return <BitbucketIcon size={ 14 } variant="brand" />;
-		}
-		return <GitHubIcon size={ 14 } variant="brand" />;
-	}
-
-	function providerLabel() {
-		if ( provider === 'gitlab' ) {
-			return __( 'GitLab', 'gitwire' );
-		}
-		if ( provider === 'bitbucket' ) {
-			return __( 'Bitbucket', 'gitwire' );
-		}
-		return __( 'GitHub', 'gitwire' );
-	}
-
 	return (
 		<Flex
 			align="center"
@@ -40,8 +19,8 @@ export default function SourceCell( { item } ) {
 			gap={ 1 }
 			justify="flex-start"
 		>
-			<ProviderIcon />
-			<span>{ providerLabel() }</span>
+			<ProviderIcon provider={ provider } size={ 14 } variant="brand" />
+			<span>{ providerLabel( provider ) }</span>
 		</Flex>
 	);
 }

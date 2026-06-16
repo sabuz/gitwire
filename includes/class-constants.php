@@ -69,7 +69,7 @@ final class Constants {
 		$this->dir      = plugin_dir_path( $file );
 		$this->url      = plugin_dir_url( $file );
 		$this->basename = plugin_basename( $file );
-		$this->version  = '1.2.0';
+		$this->version  = '1.0.0';
 	}
 
 	/**

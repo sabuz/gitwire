@@ -37,16 +37,6 @@ export function queuePendingToastAndReload( message ) {
 }
 
 /**
- * Reloads the Gitwire admin page so server-side finalize can complete the guard.
- */
-export function queueGuardFinalizeReload() {
-	clearPendingToast();
-	const url = new URL( window.location.href );
-	url.searchParams.set( 'page', 'gitwire' );
-	window.location.assign( url.toString() );
-}
-
-/**
  * @param {import('./toast').toast} toastApi Wrapped toast API.
  */
 export function showPendingToast( toastApi ) {

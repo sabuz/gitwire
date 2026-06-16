@@ -162,11 +162,11 @@ final class Plugin {
 			add_option(
 				'gitwire_settings',
 				[
-					'smart_install'           => true,
-					'show_repo_label'         => true,
-					'enable_logging'          => true,
-					'log_retention_days'      => 7,
-					'log_level'               => 'activity',
+					'smart_install'            => true,
+					'show_repo_label'          => true,
+					'enable_logging'           => true,
+					'log_retention_days'       => 7,
+					'log_level'                => 'activity',
 					'remove_data_on_uninstall' => false,
 				],
 				'',

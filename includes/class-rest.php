@@ -307,33 +307,6 @@ class REST {
 
 		register_rest_route(
 			$ns,
-			'/activation-status',
-			[
-				[
-					'methods'             => 'GET',
-					'callback'            => [ self::class, 'get_activation_status' ],
-					'permission_callback' => [ self::class, 'can_manage' ],
-				],
-				[
-					'methods'             => 'DELETE',
-					'callback'            => [ self::class, 'abort_activation_guard' ],
-					'permission_callback' => [ self::class, 'can_manage' ],
-				],
-			]
-		);
-
-		register_rest_route(
-			$ns,
-			'/verify-bootstrap',
-			[
-				'methods'             => 'POST',
-				'callback'            => [ self::class, 'verify_bootstrap' ],
-				'permission_callback' => [ self::class, 'can_manage' ],
-			]
-		);
-
-		register_rest_route(
-			$ns,
 			'/repos/resolve',
 			[
 				'methods'             => 'POST',
@@ -481,98 +454,6 @@ class REST {
 	}
 
 	/**
-	 * Returns whether a guarded activation finished, failed, or is still pending.
-	 *
-	 * @since 1.2.0
-	 * @return \WP_REST_Response
-	 */
-	public static function get_activation_status(): \WP_REST_Response {
-		$fatal = get_option( 'gitwire_fatal_notice' );
-		if ( $fatal ) {
-			delete_option( 'gitwire_fatal_notice' );
-			return rest_ensure_response(
-				[
-					'status' => 'fatal',
-					'notice' => $fatal,
-				]
-			);
-		}
-
-		$pending = self::get_pending_update();
-		if (
-			is_array( $pending )
-			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true )
-		) {
-			if ( Error_Handler::is_bootstrap_verified( $pending ) ) {
-				return rest_ensure_response(
-					[
-						'status'    => 'bootstrap_verified',
-						'full_name' => $pending['full_name'] ?? '',
-						'type'      => $pending['type'] ?? '',
-					]
-				);
-			}
-
-			return rest_ensure_response( [ 'status' => 'pending' ] );
-		}
-
-		return rest_ensure_response( [ 'status' => 'idle' ] );
-	}
-
-	/**
-	 * Clears a stuck pending guard after client verification times out.
-	 *
-	 * @since 1.2.0
-	 * @return \WP_REST_Response
-	 */
-	public static function abort_activation_guard(): \WP_REST_Response {
-		return rest_ensure_response(
-			[
-				'aborted' => Error_Handler::abort_pending_guard(),
-			]
-		);
-	}
-
-	/**
-	 * Bootstraps the active theme and marks the pending guard as verified.
-	 *
-	 * @since 1.2.0
-	 * @return \WP_REST_Response
-	 */
-	public static function verify_bootstrap(): \WP_REST_Response {
-		$fatal = get_option( 'gitwire_fatal_notice' );
-		if ( $fatal ) {
-			delete_option( 'gitwire_fatal_notice' );
-			return rest_ensure_response(
-				[
-					'status' => 'fatal',
-					'notice' => $fatal,
-				]
-			);
-		}
-
-		$pending = self::get_pending_update();
-		if (
-			! is_array( $pending )
-			|| ! in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true )
-		) {
-			return rest_ensure_response( [ 'status' => 'idle' ] );
-		}
-
-		if ( Error_Handler::is_bootstrap_verified( $pending ) ) {
-			return rest_ensure_response(
-				[
-					'status'    => 'bootstrap_verified',
-					'full_name' => $pending['full_name'] ?? '',
-					'type'      => $pending['type'] ?? '',
-				]
-			);
-		}
-
-		return rest_ensure_response( [ 'status' => 'pending' ] );
-	}
-
-	/**
 	 * Returns all public (no-token) browse connections.
 	 *
 	 * @since 1.5.0
@@ -595,7 +476,10 @@ class REST {
 		$gitlab_url = '';
 
 		if ( '' === $username ) {
-			return new \WP_Error( 'missing_username', __( 'Username is required.', 'gitwire' ), [ 'status' => 400 ] );
+			$message = 'bitbucket' === $provider
+				? __( 'Workspace is required.', 'gitwire' )
+				: __( 'Username is required.', 'gitwire' );
+			return new \WP_Error( 'missing_username', $message, [ 'status' => 400 ] );
 		}
 
 		if ( 'gitlab' === $provider ) {

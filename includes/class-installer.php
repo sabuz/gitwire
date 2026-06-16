@@ -445,23 +445,6 @@ class Installer {
 	}
 
 	/**
-	 * Stores the active theme slugs on the pending activation guard record.
-	 *
-	 * @since 1.2.0
-	 * @return void
-	 */
-	private static function sync_theme_activation_target(): void {
-		$pending = get_option( 'gitwire_pending_update' );
-		if ( ! is_array( $pending ) || 'theme' !== ( $pending['type'] ?? '' ) ) {
-			return;
-		}
-
-		$pending['target_stylesheet'] = get_stylesheet();
-		$pending['target_template']   = get_template();
-		update_option( 'gitwire_pending_update', $pending, false );
-	}
-
-	/**
 	 * Clears the activation guard after core has sandboxed a plugin activation.
 	 *
 	 * @since 1.2.0

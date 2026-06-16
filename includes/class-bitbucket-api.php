@@ -346,7 +346,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 */
 	private function headers(): array {
 		$h = [
-			'User-Agent' => 'GitHub-for-WordPress/' . GITWIRE_VERSION,
+			'User-Agent' => 'Gitwire/' . GITWIRE_VERSION,
 		];
 		if ( $this->email && $this->api_token ) {
 			// Atlassian API tokens use Basic auth with email:token.

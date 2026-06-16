@@ -84,8 +84,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 	const [ userFilter, setUserFilter ] = useState( [] );
 	const [ actorSuggestions, setActorSuggestions ] = useState( [] );
 
-	const loggingEnabled =
-		settings?.enable_logging !== false && !! settings?.enable_logging;
+	const loggingEnabled = !! settings?.enable_logging;
 
 	const fetchLogs = useCallback( async ( level, range, actors ) => {
 		setLoading( true );

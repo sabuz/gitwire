@@ -135,15 +135,6 @@ export const deactivateInstalled = ( owner, repo, provider = 'github' ) =>
 		data: { provider },
 	} );
 
-export const getActivationStatus = () =>
-	apiFetch( { path: `${ BASE }/activation-status` } );
-
-export const abortActivationGuard = () =>
-	apiFetch( { path: `${ BASE }/activation-status`, method: 'DELETE' } );
-
-export const verifyBootstrap = () =>
-	apiFetch( { path: `${ BASE }/verify-bootstrap`, method: 'POST' } );
-
 export const removeInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ encodeURIComponent(

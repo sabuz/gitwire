@@ -1,5 +1,3 @@
-import { toast } from '../toast';
-
 import { __ } from '@wordpress/i18n';
 import { useState } from '@wordpress/element';
 import {
@@ -13,7 +11,7 @@ import {
 	__experimentalSpacer as Spacer,
 } from '@wordpress/components';
 
-import * as api from '../api';
+import { persistSetting } from '../save-setting';
 
 /**
  * Tools panel — data management and advanced operations.
@@ -28,25 +26,8 @@ export default function ToolsPanel( { settings, onSave } ) {
 		!! settings.remove_data_on_uninstall
 	);
 
-	const saveSetting = ( payload, rollback ) => {
-		const p = api
-			.saveSettings( payload )
-			.then( () => api.getSettings() )
-			.then( ( saved ) => onSave( saved ) )
-			.catch( ( e ) => {
-				rollback?.();
-				throw e;
-			} );
-
-		toast.promise( p, {
-			id: 'settings-save',
-			loading: __( 'Saving…', 'gitwire' ),
-			success: __( 'Saved.', 'gitwire' ),
-			error: ( e ) => e?.message || __( 'Save failed.', 'gitwire' ),
-		} );
-
-		return p;
-	};
+	const saveSetting = ( payload, rollback ) =>
+		persistSetting( payload, onSave, rollback );
 
 	const handleRemoveDataOnUninstallChange = ( newVal ) => {
 		setRemoveDataOnUninstall( newVal );

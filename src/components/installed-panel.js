@@ -230,16 +230,6 @@ export default function InstalledPanel( {
 							item.repo,
 							item.provider ?? 'github'
 						);
-						if ( item.type === 'theme' ) {
-							queuePendingToastAndReload(
-								sprintf(
-									/* translators: %s: repository full name */
-									__( '%s activated.', 'gitwire' ),
-									item.full_name
-								)
-							);
-							return;
-						}
 						queuePendingToastAndReload(
 							sprintf(
 								/* translators: %s: repository full name */

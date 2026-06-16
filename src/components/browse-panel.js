@@ -25,7 +25,8 @@ import {
 import * as api from '../api';
 import { detectionKey, useRepoDetection } from '../hooks/use-repo-detection';
 import InstallModal from './install-modal';
-import { GitHubIcon, GitLabIcon, BitbucketIcon } from './provider-icons';
+import { ProviderIcon, providerLabel } from './provider';
+import { relativeTimeFromDate } from '../relative-time';
 
 const ListFilterIcon = () => (
 	<svg
@@ -723,22 +724,14 @@ const RepoCard = memo( function RepoCard( {
 					</FlexItem>
 				</Flex>
 				<div className="gitwire-repo-badges">
-					{ showSourceBadge && 'gitlab' === repo.provider && (
-						<span className="gitwire-badge gitwire-badge--gitlab">
-							<GitLabIcon />
-							{ __( 'GitLab', 'gitwire' ) }
-						</span>
-					) }
-					{ showSourceBadge && 'bitbucket' === repo.provider && (
-						<span className="gitwire-badge gitwire-badge--bitbucket">
-							<BitbucketIcon />
-							{ __( 'Bitbucket', 'gitwire' ) }
-						</span>
-					) }
-					{ showSourceBadge && 'github' === repo.provider && (
-						<span className="gitwire-badge gitwire-badge--github">
-							<GitHubIcon />
-							{ __( 'GitHub', 'gitwire' ) }
+					{ showSourceBadge && (
+						<span
+							className={ `gitwire-badge gitwire-badge--${
+								repo.provider ?? 'github'
+							}` }
+						>
+							<ProviderIcon provider={ repo.provider } />
+							{ providerLabel( repo.provider ?? 'github' ) }
 						</span>
 					) }
 					<span
@@ -782,7 +775,7 @@ const RepoCard = memo( function RepoCard( {
 									<circle cx="8" cy="8" r="6.25" />
 									<polyline points="8,4.5 8,8 10.5,10" />
 								</svg>
-								{ timeAgo( repo.updated_at ) }
+								{ relativeTimeFromDate( repo.updated_at ) }
 							</span>
 						</Tooltip>
 					) }
@@ -791,50 +784,6 @@ const RepoCard = memo( function RepoCard( {
 		</Card>
 	);
 } );
-
-function timeAgo( dateStr ) {
-	const s = Math.floor( ( Date.now() - new Date( dateStr ) ) / 1000 );
-	if ( s < 60 ) {
-		return __( 'just now', 'gitwire' );
-	}
-	const m = Math.floor( s / 60 );
-	if ( m < 60 ) {
-		return sprintf(
-			/* translators: %d: number of minutes */
-			__( '%dm ago', 'gitwire' ),
-			m
-		);
-	}
-	const h = Math.floor( m / 60 );
-	if ( h < 24 ) {
-		return sprintf(
-			/* translators: %d: number of hours */
-			__( '%dh ago', 'gitwire' ),
-			h
-		);
-	}
-	const d = Math.floor( h / 24 );
-	if ( d < 30 ) {
-		return sprintf(
-			/* translators: %d: number of days */
-			__( '%dd ago', 'gitwire' ),
-			d
-		);
-	}
-	const mo = Math.floor( d / 30 );
-	if ( mo < 12 ) {
-		return sprintf(
-			/* translators: %d: number of months */
-			__( '%dmo ago', 'gitwire' ),
-			mo
-		);
-	}
-	return sprintf(
-		/* translators: %d: number of years */
-		__( '%dy ago', 'gitwire' ),
-		Math.floor( mo / 12 )
-	);
-}
 
 function TypeBadge( { detection, installed } ) {
 	if ( installed ) {

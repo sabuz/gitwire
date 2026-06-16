@@ -1,16 +1,16 @@
 <?php
 /**
- * Plugin Name: Gitwire
- * Plugin URI:  https://gitwire.app
- * Description: Install and update plugins and themes from any Git repository. Switch branches and auto-recover from fatal errors.
- * Version:     1.0.0
+ * Plugin Name:       Gitwire
+ * Plugin URI:        https://gitwire.app
+ * Description:       Install and update plugins and themes from any Git repository. Switch branches and auto-recover from fatal errors.
+ * Version:           1.0.0
  * Requires at least: 6.9
- * Requires PHP: 8.1
- * Author:      Nazmul Sabuz
- * Author URI:  https://profiles.wordpress.org/nazsabuz
- * License:     GPL-2.0-or-later
- * Text Domain: gitwire
- * Domain Path: /languages
+ * Requires PHP:      8.1
+ * Author:            Gitwire
+ * Author URI:        https://gitwire.app
+ * License:           GPL-2.0-or-later
+ * Text Domain:       gitwire
+ * Domain Path:       /languages
  *
  * @package Gitwire
  */

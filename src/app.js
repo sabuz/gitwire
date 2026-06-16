@@ -378,22 +378,28 @@ export default function App( { initialData } ) {
 					<h1 className="gitwire-page-title">
 						{ __( 'Gitwire', 'gitwire' ) }
 					</h1>
-					<div style={ { display: 'flex', alignItems: 'center', gap: 16 } }>
-					<Button
-						href="https://gitwire.app/docs"
-						rel="noreferrer"
-						target="_blank"
-						variant="link"
+					<div
+						style={ {
+							display: 'flex',
+							alignItems: 'center',
+							gap: 16,
+						} }
 					>
-						{ __( 'Docs', 'gitwire' ) }
-						<Icon
-							icon={ external }
-							size={ 14 }
-							style={ { marginLeft: 4 } }
-						/>
-					</Button>
-					{ applyFilters( 'gitwire.header.actions', null ) }
-				</div>
+						<Button
+							href="https://gitwire.app/docs"
+							rel="noreferrer"
+							target="_blank"
+							variant="link"
+						>
+							{ __( 'Docs', 'gitwire' ) }
+							<Icon
+								icon={ external }
+								size={ 14 }
+								style={ { marginLeft: 4 } }
+							/>
+						</Button>
+						{ applyFilters( 'gitwire.header.actions', null ) }
+					</div>
 				</div>
 
 				<nav

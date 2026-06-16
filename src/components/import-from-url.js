@@ -16,35 +16,13 @@ import {
 	Flex,
 	FlexBlock,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 
 import * as api from '../api';
-
-function normalizeSlug( value ) {
-	return value
-		.toLowerCase()
-		.replace( /[^a-z0-9_-]+/g, '-' )
-		.replace( /[-_]*-[-_]*/g, '-' )
-		.replace( /__+/g, '_' );
-}
-
-function finalizeSlug( value ) {
-	return normalizeSlug( value ).replace( /^[-_]+|[-_]+$/g, '' );
-}
-
-/**
- * @param {string} provider 'github' | 'gitlab' | 'bitbucket'
- * @return {string} Display label.
- */
-function providerLabel( provider ) {
-	return (
-		{ github: 'GitHub', gitlab: 'GitLab', bitbucket: 'Bitbucket' }[
-			provider
-		] ?? provider
-	);
-}
+import { normalizeSlug, finalizeSlug } from '../slug';
+import { providerLabel } from './provider';
+import DetectionBadge from './detection-badge';
 
 /**
  * @param {boolean} installing   Install request in flight.
@@ -416,7 +394,10 @@ export default function ImportFromUrl( {
 									>
 										{ __( 'Gitwire Pro', 'gitwire' ) }
 									</a>{ ' ' }
-									{ __( 'supports private repositories.', 'gitwire' ) }
+									{ __(
+										'supports private repositories.',
+										'gitwire'
+									) }
 								</p>
 							) }
 						</div>
@@ -426,7 +407,7 @@ export default function ImportFromUrl( {
 			{ /* Inline install form (public path or post-connection verify) */ }
 			{ showInstallForm && resolved && (
 				<div className="gitwire-import-url__install-form">
-					<ResolvedBadge
+					<DetectionBadge
 						detection={ detection }
 						smartInstall={ smartInstall }
 					/>
@@ -531,91 +512,6 @@ export default function ImportFromUrl( {
 						</Button>
 					</Flex>
 				</div>
-			) }
-		</div>
-	);
-}
-
-/**
- * Badge shown above the install form after a successful URL check.
- *
- * @param {Object}      props              Component props.
- * @param {Object|null} props.detection    Detection result from the resolve endpoint.
- * @param {boolean}     props.smartInstall Whether smart install is enabled.
- * @return {JSX.Element} The rendered detection badge.
- */
-function ResolvedBadge( { detection, smartInstall } ) {
-	if ( ! detection ) {
-		return (
-			<Flex
-				gap={ 2 }
-				align="center"
-				className="gitwire-detect-row gitwire-detect-loading"
-			>
-				<Spinner />
-				{ __( 'Detecting project type…', 'gitwire' ) }
-			</Flex>
-		);
-	}
-
-	const { type, subtype, confidence, name } = detection;
-	let badgeClass, label;
-
-	if ( type === 'plugin' ) {
-		badgeClass = 'gitwire-detect-plugin';
-		label =
-			confidence === 'high'
-				? sprintf(
-						/* translators: %s: plugin name */
-						__( 'WordPress Plugin%s', 'gitwire' ),
-						name ? `: ${ name }` : ''
-				  )
-				: __( 'Likely a WordPress Plugin', 'gitwire' );
-	} else if ( type === 'theme' && subtype === 'block' ) {
-		badgeClass = 'gitwire-detect-theme';
-		label =
-			confidence === 'high'
-				? sprintf(
-						/* translators: %s: theme name */
-						__( 'Block Theme%s', 'gitwire' ),
-						name ? `: ${ name }` : ''
-				  )
-				: __( 'Likely a Block Theme', 'gitwire' );
-	} else if ( type === 'theme' ) {
-		badgeClass = 'gitwire-detect-theme';
-		label =
-			confidence === 'high'
-				? sprintf(
-						/* translators: %s: theme name */
-						__( 'Classic Theme%s', 'gitwire' ),
-						name ? `: ${ name }` : ''
-				  )
-				: __( 'Likely a Classic Theme', 'gitwire' );
-	} else {
-		badgeClass = 'gitwire-detect-unknown';
-		label = __( 'Not recognised as a WordPress project', 'gitwire' );
-	}
-
-	return (
-		<div className="gitwire-detect-row">
-			<span className={ `gitwire-detect-badge ${ badgeClass }` }>
-				{ label }
-			</span>
-			{ type === 'unknown' && smartInstall && (
-				<p className="gitwire-detect-note gitwire-detect-blocked">
-					{ __(
-						'Smart Install is enabled. Only verified plugins and themes can be installed. Disable it in Settings to override.',
-						'gitwire'
-					) }
-				</p>
-			) }
-			{ type === 'unknown' && ! smartInstall && (
-				<p className="gitwire-detect-note gitwire-detect-warn">
-					{ __(
-						'This repository was not recognised as a WordPress plugin or theme. You can still install it. Choose a type below.',
-						'gitwire'
-					) }
-				</p>
 			) }
 		</div>
 	);
