@@ -903,7 +903,7 @@ class REST {
 			return new \WP_Error( 'missing_config', 'Add a GitHub account in Settings first.', [ 'status' => 400 ] );
 		}
 
-		$api       = new API( $creds['token'] ?? '' );
+		$api       = new GitHub_API( $creds['token'] ?? '' );
 		$result    = $api->get_repos( $username, $page );
 		$installed = Installer::get_installed();
 
@@ -1974,7 +1974,7 @@ class REST {
 			return new Bitbucket_API( '', '' );
 		}
 
-		return new API( '' );
+		return new GitHub_API( '' );
 	}
 
 	/**

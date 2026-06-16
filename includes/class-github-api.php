@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Thin wrapper around the GitHub REST API v3.
  * Handles authentication, rate limiting, and response normalisation.
  */
-class API implements Git_Provider_Interface {
+class GitHub_API implements Git_Provider_Interface {
 
 	/**
 	 * Personal access token for authenticated requests.

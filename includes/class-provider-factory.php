@@ -59,6 +59,6 @@ class Provider_Factory {
 			);
 		}
 
-		return new API( $creds['token'] ?? '' );
+		return new GitHub_API( $creds['token'] ?? '' );
 	}
 }
