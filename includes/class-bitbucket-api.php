@@ -3,7 +3,7 @@
  * Bitbucket API client — wraps the Bitbucket Cloud REST API v2.
  *
  * @package Gitwire
- * @since 1.3.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -42,7 +42,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Constructor.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $email     Atlassian account email address.
 	 * @param string $api_token Atlassian API token (from id.atlassian.com/manage-profile/security/api-tokens).
 	 */
@@ -54,7 +54,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Tests the API connection and returns profile data.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $owner Unused; kept for interface compatibility.
 	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
 	 */
@@ -96,7 +96,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Returns repositories accessible to the authenticated user.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $username Bitbucket workspace slug (falls back to configured username).
 	 * @param int    $page     Page number for paginated results.
 	 * @return array{repos: array<int, mixed>, has_more: bool}|\WP_Error
@@ -146,7 +146,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Returns all workspace slugs for the authenticated user via the non-deprecated endpoint.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return array<int, string>|\WP_Error Workspace slugs on success, WP_Error on failure.
 	 */
 	private function get_workspace_slugs(): array|\WP_Error {
@@ -171,7 +171,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Returns all branches for a repository.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $owner Repository workspace slug.
 	 * @param string $repo  Repository slug.
 	 * @return array<int, mixed>|\WP_Error Branch list on success, WP_Error on failure.
@@ -192,7 +192,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Detects whether a repository is a WordPress plugin or theme.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $owner  Repository workspace slug.
 	 * @param string $repo   Repository slug.
 	 * @param string $branch Branch ref.
@@ -228,7 +228,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Returns the last N commits for a branch, normalised to a flat array.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $owner    Repository workspace slug.
 	 * @param string $repo     Repository slug.
 	 * @param string $branch   Branch, tag, or SHA.
@@ -264,7 +264,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 *
 	 * Uses the Bitbucket web archive URL with Basic auth for private repos.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $owner  Repository workspace slug.
 	 * @param string $repo   Repository slug.
 	 * @param string $branch Branch ref.
@@ -309,7 +309,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Fetches the raw content of a single file from a repository.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $owner  Repository workspace slug.
 	 * @param string $repo   Repository slug.
 	 * @param string $path   File path within the repository.
@@ -341,7 +341,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Builds the HTTP headers for Bitbucket API requests.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return array<string, string> HTTP headers.
 	 */
 	private function headers(): array {
@@ -359,7 +359,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Makes a GET request to the Bitbucket API and returns the decoded response body.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $endpoint API endpoint path (e.g. "/user").
 	 * @return array<mixed>|\WP_Error Decoded JSON array on success, WP_Error on failure.
 	 */

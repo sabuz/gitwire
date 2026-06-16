@@ -3,7 +3,7 @@
  * Activity logger — appends timestamped entries to a protected file in uploads.
  *
  * @package Gitwire
- * @since 1.3.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -34,7 +34,7 @@ class Logger {
 	/**
 	 * Returns the singleton, bootstrapping the log directory on first call.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return self
 	 */
 	public static function get_instance(): self {
@@ -57,7 +57,7 @@ class Logger {
 	/**
 	 * Appends a timestamped entry when logging is enabled and the level meets the minimum.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $message Human-readable description of the activity.
 	 * @param string $level   'activity' or 'error'.
 	 * @return void
@@ -76,7 +76,7 @@ class Logger {
 	/**
 	 * Returns log entries as structured arrays, newest first, with optional filters.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string   $from   ISO date string 'YYYY-MM-DD' or empty for no lower bound.
 	 * @param string   $to     ISO date string 'YYYY-MM-DD' or empty for no upper bound.
 	 * @param string   $level  Level to keep ('activity', 'error'), or empty for all.
@@ -121,7 +121,7 @@ class Logger {
 	/**
 	 * Empties the log file.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return bool True on success.
 	 */
 	public function clear(): bool {
@@ -135,7 +135,7 @@ class Logger {
 	/**
 	 * Appends a formatted line to the log file, then trims old entries if retention is set.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $message Log message.
 	 * @param string $level   Log level.
 	 * @return void
@@ -152,7 +152,7 @@ class Logger {
 	 * Removes entries older than the configured retention window, at most once per day.
 	 * Called from the maintenance cron — not triggered on every write.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function trim_old_entries(): void {
@@ -186,7 +186,7 @@ class Logger {
 	/**
 	 * Parses a single log line into a structured entry, or null if unrecognized.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $line Raw log line.
 	 * @return array{timestamp: string, level: string, actor: string, message: string}|null
 	 */
@@ -205,7 +205,7 @@ class Logger {
 	/**
 	 * Creates the log directory and blocks direct web access via .htaccess.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $dir Absolute path to the log directory.
 	 * @return void
 	 */

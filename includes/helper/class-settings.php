@@ -93,7 +93,7 @@ class Settings {
 	/**
 	 * Returns whether activity logging is currently enabled.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return bool
 	 */
 	public static function is_logging_enabled(): bool {
@@ -104,7 +104,7 @@ class Settings {
 	/**
 	 * Returns the number of days to retain log entries (0 = unlimited).
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return int
 	 */
 	public static function get_log_retention_days(): int {
@@ -115,7 +115,7 @@ class Settings {
 	/**
 	 * Returns the minimum log level to record ('activity' or 'error').
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return string
 	 */
 	public static function get_log_level(): string {

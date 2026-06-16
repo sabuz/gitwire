@@ -1809,7 +1809,7 @@ class REST {
 	 * Returns provider/owner/repo/branch, whether the repo is publicly readable,
 	 * and the detection result when public.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>|\WP_Error Resolve payload or WP_Error on bad URL.
 	 */
@@ -1848,7 +1848,7 @@ class REST {
 	 * nested namespaces. Self-hosted GitLab is matched against the saved
 	 * gitlab_url setting.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $url Raw URL from the client.
 	 * @return array<string, string>|\WP_Error Parsed components or WP_Error.
 	 */
@@ -1959,7 +1959,7 @@ class REST {
 	/**
 	 * Returns an anonymous (no-token) API client for the given parsed URL components.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param array<string, string> $parsed Output of parse_repo_url().
 	 * @return Git_Provider_Interface
 	 */
@@ -1980,7 +1980,7 @@ class REST {
 	/**
 	 * Returns the raw log file contents.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>
 	 */
@@ -1999,7 +1999,7 @@ class REST {
 	/**
 	 * Returns WP usernames for users with manage_options, optionally filtered by search.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param \WP_REST_Request $req Request object.
 	 * @return string[]
 	 */
@@ -2021,7 +2021,7 @@ class REST {
 	/**
 	 * Clears the log file.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return array<string, bool>
 	 */
 	public static function clear_logs(): array {
