@@ -325,5 +325,4 @@ class Admin {
 
 		return $prepared;
 	}
-
 }
