@@ -111,6 +111,45 @@ class Public_Connections {
 	}
 
 	/**
+	 * Validates and normalizes public connection input.
+	 *
+	 * Single source of truth shared by the free REST endpoint and Gitwire Pro,
+	 * so credential validation cannot drift between the two plugins.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider   Provider key.
+	 * @param string $username   GitHub/GitLab username or Bitbucket workspace slug.
+	 * @param string $gitlab_url Raw self-hosted GitLab instance URL.
+	 * @return array{username: string, gitlab_url: string}|\WP_Error Normalized fields, or WP_Error on invalid input.
+	 */
+	public static function validate( string $provider, string $username, string $gitlab_url = '' ): array|\WP_Error {
+		$username = sanitize_text_field( $username );
+		if ( '' === $username ) {
+			$message = 'bitbucket' === $provider
+				? __( 'Workspace is required.', 'gitwire' )
+				: __( 'Username is required.', 'gitwire' );
+			return new \WP_Error( 'missing_username', $message, [ 'status' => 400 ] );
+		}
+
+		$normalized_url = '';
+		if ( 'gitlab' === $provider && '' !== $gitlab_url ) {
+			$normalized_url = esc_url_raw( $gitlab_url );
+			if ( '' !== $normalized_url && ! Settings::is_allowed_gitlab_url( $normalized_url ) ) {
+				return new \WP_Error(
+					'invalid_gitlab_url',
+					__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'gitwire' ),
+					[ 'status' => 400 ]
+				);
+			}
+		}
+
+		return [
+			'username'   => $username,
+			'gitlab_url' => $normalized_url,
+		];
+	}
+
+	/**
 	 * Adds a new public connection and returns the stored record.
 	 *
 	 * @since 1.5.0

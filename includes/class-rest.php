@@ -471,30 +471,17 @@ class REST {
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function add_public_connection( \WP_REST_Request $req ): array|\WP_Error {
-		$provider   = (string) $req->get_param( 'provider' );
-		$username   = sanitize_text_field( (string) $req->get_param( 'username' ) );
-		$gitlab_url = '';
-
-		if ( '' === $username ) {
-			$message = 'bitbucket' === $provider
-				? __( 'Workspace is required.', 'gitwire' )
-				: __( 'Username is required.', 'gitwire' );
-			return new \WP_Error( 'missing_username', $message, [ 'status' => 400 ] );
+		$provider = (string) $req->get_param( 'provider' );
+		$valid    = Public_Connections::validate(
+			$provider,
+			(string) $req->get_param( 'username' ),
+			(string) $req->get_param( 'gitlab_url' )
+		);
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
 		}
 
-		if ( 'gitlab' === $provider ) {
-			$raw_url    = (string) $req->get_param( 'gitlab_url' );
-			$gitlab_url = '' !== $raw_url ? esc_url_raw( $raw_url ) : '';
-			if ( '' !== $gitlab_url && ! Settings::is_allowed_gitlab_url( $gitlab_url ) ) {
-				return new \WP_Error(
-					'invalid_gitlab_url',
-					__( 'GitLab URL must use HTTPS and cannot point to a private network address.', 'gitwire' ),
-					[ 'status' => 400 ]
-				);
-			}
-		}
-
-		$conn = Public_Connections::add( $provider, $username, $gitlab_url );
+		$conn = Public_Connections::add( $provider, $valid['username'], $valid['gitlab_url'] );
 
 		return [ 'connection' => $conn ];
 	}
