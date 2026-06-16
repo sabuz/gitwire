@@ -40,11 +40,6 @@ class Admin {
 		// Native list repo labels.
 		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
 		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'label_managed_themes' ] );
-
-		// Native screen delete guard.
-		add_filter( 'pre_delete_plugin', [ self::class, 'guard_plugin_delete' ], 10, 2 );
-		add_action( 'load-themes.php', [ self::class, 'guard_theme_delete' ], 1 );
-		add_action( 'admin_notices', [ self::class, 'show_theme_delete_notice' ] );
 	}
 
 	/**
@@ -206,7 +201,7 @@ class Admin {
 		Error_Handler::clear_stale_activation_guard();
 		$installed_result = REST::get_installed();
 		$installed        = $installed_result['installed'];
-		$orphaned         = [];
+		$orphaned         = $installed_result['orphaned'];
 		$fatal_notice     = get_option( 'gitwire_fatal_notice' );
 		if ( $fatal_notice ) {
 			delete_option( 'gitwire_fatal_notice' );
@@ -331,96 +326,4 @@ class Admin {
 		return $prepared;
 	}
 
-	/**
-	 * Blocks deletion of a Gitwire-managed plugin via the native Plugins screen,
-	 * showing a clear notice rather than silently deleting.
-	 *
-	 * @since 1.0.0
-	 * @param bool|null $pre        Short-circuit value (null to proceed normally).
-	 * @param string    $plugin_file Plugin file path relative to plugins dir.
-	 * @return bool|null|\WP_Error WP_Error to cancel deletion with a message, null to allow.
-	 */
-	public static function guard_plugin_delete( $pre, string $plugin_file ) {
-		$installed = Installer::get_installed();
-
-		foreach ( $installed as $rec ) {
-			if ( ( $rec['plugin_file'] ?? '' ) !== $plugin_file ) {
-				continue;
-			}
-
-			$full_name = $rec['full_name'] ?? '';
-
-			return new \WP_Error(
-				'gitwire_managed',
-				sprintf(
-					/* translators: 1: repository full name, 2: Gitwire admin URL */
-					__( '"%1$s" is managed by Gitwire. To delete it, go to <a href="%2$s">Gitwire &rsaquo; Repositories</a> and use the Delete action there.', 'gitwire' ),
-					esc_html( $full_name ),
-					esc_url( admin_url( 'admin.php?page=gitwire' ) )
-				)
-			);
-		}
-
-		return $pre;
-	}
-
-	/**
-	 * Displays the blocked-theme-delete error as an admin notice on the Themes screen.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function show_theme_delete_notice(): void {
-		$key     = 'gitwire_theme_delete_blocked_' . get_current_user_id();
-		$message = get_transient( $key );
-		if ( false === $message ) {
-			return;
-		}
-
-		delete_transient( $key );
-
-		printf(
-			'<div class="notice notice-error"><p>%s</p></div>',
-			wp_kses( $message, [ 'a' => [ 'href' => [] ] ] )
-		);
-	}
-
-	/**
-	 * Blocks deletion of a Gitwire-managed theme via the native Themes screen.
-	 * Intercepts before themes.php processes the delete action and redirects
-	 * with a clear admin notice.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function guard_theme_delete(): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-		if ( 'delete' !== sanitize_key( wp_unslash( $_GET['action'] ?? '' ) ) || ! isset( $_GET['stylesheet'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			return;
-		}
-
-		$stylesheet = sanitize_key( wp_unslash( $_GET['stylesheet'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$installed  = Installer::get_installed();
-
-		foreach ( $installed as $rec ) {
-			if ( ( $rec['type'] ?? '' ) !== 'theme' ) {
-				continue;
-			}
-			if ( ( $rec['slug'] ?? '' ) !== $stylesheet ) {
-				continue;
-			}
-
-			$full_name = $rec['full_name'] ?? $stylesheet;
-			$message   = sprintf(
-				/* translators: 1: repository full name, 2: Gitwire admin URL */
-				__( '"%1$s" is managed by Gitwire. To delete it, go to <a href="%2$s">Gitwire &rsaquo; Repositories</a> and use the Delete action there.', 'gitwire' ),
-				esc_html( $full_name ),
-				esc_url( admin_url( 'admin.php?page=gitwire' ) )
-			);
-
-			set_transient( 'gitwire_theme_delete_blocked_' . get_current_user_id(), $message, 60 );
-			wp_safe_redirect( admin_url( 'themes.php' ) );
-			exit;
-		}
-	}
 }

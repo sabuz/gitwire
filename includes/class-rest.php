@@ -1155,9 +1155,37 @@ class REST {
 	 * @return array<string, mixed> Installed records and empty orphaned list.
 	 */
 	public static function get_installed(): array {
+		$records  = Installer::get_installed();
+		$orphaned = [];
+		$pruned   = false;
+
+		foreach ( $records as $key => $rec ) {
+			if ( ! empty( $rec['install_path'] ) && ! is_dir( $rec['install_path'] ) ) {
+				$orphaned[] = [
+					'full_name' => $rec['full_name'] ?? '',
+					'provider'  => $rec['provider'] ?? 'github',
+				];
+				unset( $records[ $key ] );
+				$pruned = true;
+			}
+		}
+
+		if ( $pruned ) {
+			update_option( 'gitwire_installed', $records, false );
+			Installer::invalidate_installed_cache();
+		}
+
+		$recently_deleted = get_transient( 'gitwire_recently_deleted' );
+		if ( is_array( $recently_deleted ) && $recently_deleted ) {
+			delete_transient( 'gitwire_recently_deleted' );
+			foreach ( $recently_deleted as $item ) {
+				$orphaned[] = $item;
+			}
+		}
+
 		return [
-			'installed' => self::annotate_installed( Installer::get_installed() ),
-			'orphaned'  => [],
+			'installed' => self::annotate_installed( $records ),
+			'orphaned'  => $orphaned,
 		];
 	}
 

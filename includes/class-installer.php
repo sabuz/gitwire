@@ -67,6 +67,7 @@ class Installer {
 
 		foreach ( $installed as $key => $rec ) {
 			if ( untrailingslashit( $rec['install_path'] ?? '' ) === $deleted_dir ) {
+				self::queue_deleted_notice( $rec );
 				unset( $installed[ $key ] );
 				$dirty = true;
 				break;
@@ -99,6 +100,7 @@ class Installer {
 
 		foreach ( $installed as $key => $rec ) {
 			if ( untrailingslashit( $rec['install_path'] ?? '' ) === $deleted_dir ) {
+				self::queue_deleted_notice( $rec );
 				unset( $installed[ $key ] );
 				$dirty = true;
 				break;
@@ -109,6 +111,23 @@ class Installer {
 			update_option( 'gitwire_installed', $installed, false );
 			self::invalidate_installed_cache();
 		}
+	}
+
+	/**
+	 * Queues a deleted-record notice to surface on the next Gitwire page load.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed> $rec Installed record being removed.
+	 * @return void
+	 */
+	private static function queue_deleted_notice( array $rec ): void {
+		$existing  = get_transient( 'gitwire_recently_deleted' );
+		$pending   = is_array( $existing ) ? $existing : [];
+		$pending[] = [
+			'full_name' => $rec['full_name'] ?? '',
+			'provider'  => $rec['provider'] ?? 'github',
+		];
+		set_transient( 'gitwire_recently_deleted', $pending, HOUR_IN_SECONDS );
 	}
 
 	/**
