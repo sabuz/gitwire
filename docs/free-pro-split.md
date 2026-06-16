@@ -172,7 +172,7 @@ Action: `gitwire.sourcesChanged` — Pro fires it after add/delete (and once at 
 
 > A separate `gitwire.browse.connectionFilter` slot turned out to be unnecessary: the browse panel is keyed by source id and already renders provider filters from the sources array, so replacing sources covers Pro's needs.
 
-The free bundle exposes its sonner toast singleton as `window.Gitwire.toast`; the Pro bundle uses it so toasts render in the one mounted Toaster.
+The free bundle exposes its sonner toast singleton as `window.gitwire.toast`; the Pro bundle uses it so toasts render in the one mounted Toaster.
 
 ### Browse sources (JS data model)
 

@@ -276,7 +276,7 @@ export default function InstalledPanel( {
 				icon: <Icon icon="admin-appearance" />,
 				isEligible: ( item ) => item.active && item.type === 'theme',
 				callback: () => {
-					const themesUrl = window.Gitwire?.themes_url;
+					const themesUrl = window.gitwire?.themes_url;
 					if ( themesUrl ) {
 						window.location.href = themesUrl;
 					}
@@ -307,7 +307,7 @@ export default function InstalledPanel( {
 				<img
 					alt=""
 					aria-hidden="true"
-					src={ window.Gitwire?.not_found_url }
+					src={ window.gitwire?.not_found_url }
 				/>
 				<h2>{ __( 'No repositories yet.', 'gitwire' ) }</h2>
 				<p className="gitwire-installed-empty__hint">

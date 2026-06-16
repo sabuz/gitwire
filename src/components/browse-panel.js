@@ -381,7 +381,7 @@ export default function BrowsePanel( {
 				<img
 					alt=""
 					aria-hidden="true"
-					src={ window.Gitwire?.disconnected_url }
+					src={ window.gitwire?.disconnected_url }
 				/>
 				<h2>{ __( 'No Account Added', 'gitwire' ) }</h2>
 				<p>

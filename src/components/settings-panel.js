@@ -291,7 +291,7 @@ export default function SettingsPanel( {
 function PublicConnectionsCard( { connections, onChange } ) {
 	const [ selectedId, setSelectedId ] = useState( null );
 	const [ rateCache, setRateCache ] = useState(
-		() => window.Gitwire?.connection_cache ?? {}
+		() => window.gitwire?.connection_cache ?? {}
 	);
 
 	useEffect( () => {

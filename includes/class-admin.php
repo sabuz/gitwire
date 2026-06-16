@@ -235,7 +235,7 @@ class Admin {
 
 		wp_add_inline_script(
 			'gitwire-app',
-			'window.Gitwire = ' . wp_json_encode(
+			'window.gitwire = ' . wp_json_encode(
 				[
 					'nonce'              => wp_create_nonce( 'wp_rest' ),
 					'public_connections' => Public_Connections::all(),

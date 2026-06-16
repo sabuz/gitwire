@@ -11,14 +11,14 @@ import {
 import { relativeTimeFromUnix, relativeTimeFromDate } from './relative-time';
 import './style.scss';
 
-if ( window.Gitwire?.nonce ) {
-	apiFetch.use( apiFetch.createNonceMiddleware( window.Gitwire.nonce ) );
+if ( window.gitwire?.nonce ) {
+	apiFetch.use( apiFetch.createNonceMiddleware( window.gitwire.nonce ) );
 }
 
 // shared singletons — the Pro bundle reuses these instead of re-declaring them
-if ( window.Gitwire ) {
-	window.Gitwire.toast = toast;
-	window.Gitwire.ui = {
+if ( window.gitwire ) {
+	window.gitwire.toast = toast;
+	window.gitwire.ui = {
 		PROVIDER_LABELS,
 		providerLabel,
 		ProviderIcon,
@@ -30,6 +30,6 @@ if ( window.Gitwire ) {
 const container = document.getElementById( 'gitwire-app' );
 if ( container ) {
 	createRoot( container ).render(
-		<App initialData={ window.Gitwire || {} } />
+		<App initialData={ window.gitwire || {} } />
 	);
 }
