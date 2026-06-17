@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Repo_Cache {
 
-	public const REPOS_OPTION = 'gitwire_repos_cache';
+	public const REPOS_OPTION = 'gitwire_repos';
 	public const TYPES_OPTION = 'gitwire_repo_types';
 	public const REPOS_TTL    = 1800;
 	public const TYPES_TTL    = DAY_IN_SECONDS;

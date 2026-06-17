@@ -23,7 +23,7 @@ $options = [
 	'gitwire_update_success',
 	'gitwire_activation_success',
 	'gitwire_recently_deleted',
-	'gitwire_repos_cache',
+	'gitwire_repos',
 	'gitwire_repo_types',
 	'gitwire_public_rate_cache',
 	'gitwire_remote_heads',
