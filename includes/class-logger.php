@@ -49,7 +49,7 @@ class Logger {
 	 */
 	private function __construct() {
 		$upload_dir     = wp_upload_dir();
-		$dir            = $upload_dir['basedir'] . '/gitwire-logs';
+		$dir            = $upload_dir['basedir'] . '/gitwire';
 		$this->log_file = $dir . '/activity.log';
 		$this->ensure_dir( $dir );
 	}
@@ -149,18 +149,17 @@ class Logger {
 	}
 
 	/**
-	 * Removes entries older than the configured retention window, at most once per day.
+	 * Removes entries older than the configured retention window.
 	 * Called from the maintenance cron — not triggered on every write.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public function trim_old_entries(): void {
-		$days = Settings::get_log_retention_days();
-		if ( 0 === $days || get_transient( 'gitwire_log_trim' ) ) {
+		if ( ! Settings::is_logging_enabled() ) {
 			return;
 		}
-		set_transient( 'gitwire_log_trim', 1, DAY_IN_SECONDS );
+		$days = Settings::get_log_retention_days();
 
 		if ( ! file_exists( $this->log_file ) ) {
 			return;

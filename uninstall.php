@@ -25,7 +25,6 @@ $options = [
 	'gitwire_recently_deleted',
 	'gitwire_repos_cache',
 	'gitwire_repo_types',
-	'gitwire_public_rate_cache',
 	'gitwire_remote_heads',
 ];
 
@@ -43,8 +42,9 @@ global $wpdb;
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 $wpdb->query(
 	$wpdb->prepare(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s",
 		$wpdb->esc_like( '_transient_gitwire_' ) . '%',
-		$wpdb->esc_like( '_transient_timeout_gitwire_' ) . '%'
+		$wpdb->esc_like( '_transient_timeout_gitwire_' ) . '%',
+		$wpdb->esc_like( 'gitwire_commits_' ) . '%'
 	)
 );

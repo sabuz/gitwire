@@ -192,7 +192,6 @@ class Repo_Cache {
 		$payload  = REST::build_repos_page( $provider, $page, $connection_id );
 
 		if ( is_wp_error( $payload ) ) {
-			self::clear_repos( $cache_id );
 			return $payload;
 		}
 
@@ -248,9 +247,10 @@ class Repo_Cache {
 			return true;
 		}
 
-		$keys    = [];
-		$types   = get_option( self::TYPES_OPTION, [] );
-		$records = Installer::get_installed();
+		$keys           = [];
+		$connection_ids = [];
+		$types          = get_option( self::TYPES_OPTION, [] );
+		$records        = Installer::get_installed();
 
 		if ( is_array( $types ) ) {
 			foreach ( array_keys( $types ) as $key ) {
@@ -264,7 +264,11 @@ class Repo_Cache {
 			$repo     = $rec['repo'] ?? '';
 			$branch   = $rec['branch'] ?? 'main';
 			if ( $owner && $repo ) {
-				$keys[ self::type_key( $provider, $owner, $repo, $branch ) ] = true;
+				$key          = self::type_key( $provider, $owner, $repo, $branch );
+				$keys[ $key ] = true;
+				if ( ! empty( $rec['connection_id'] ) ) {
+					$connection_ids[ $key ] = $rec['connection_id'];
+				}
 			}
 		}
 
@@ -297,7 +301,8 @@ class Repo_Cache {
 				$provider,
 				$owner,
 				$repo,
-				$full_branch
+				$full_branch,
+				$connection_ids[ $key ] ?? null
 			);
 			if ( is_wp_error( $result ) ) {
 				$last_err = $result;
@@ -307,12 +312,7 @@ class Repo_Cache {
 			self::set_type( $provider, $owner, $repo, $full_branch, $result );
 		}
 
-		if ( $last_err && count( $keys ) === 1 ) {
-			self::clear_types();
-			return $last_err;
-		}
-
-		return true;
+		return $last_err ?? true;
 	}
 
 	/**

@@ -658,11 +658,19 @@ class REST {
 	 * @return array<string, mixed>
 	 */
 	public static function get_public_rate_cache(): array {
-		return (array) get_option( 'gitwire_public_rate_cache', [] );
+		$result = [];
+		foreach ( Public_Connections::all() as $conn ) {
+			$id     = $conn['id'] ?? '';
+			$cached = $id ? get_transient( 'gitwire_rate_' . $id ) : false;
+			if ( false !== $cached ) {
+				$result[ $id ] = $cached;
+			}
+		}
+		return $result;
 	}
 
 	/**
-	 * Persists a single connection's rate data to the cache.
+	 * Persists a single connection's rate data to the transient cache.
 	 *
 	 * @since 1.0.0
 	 * @param string               $id   Connection ID.
@@ -670,23 +678,17 @@ class REST {
 	 * @return void
 	 */
 	private static function save_public_rate_cache( string $id, array $data ): void {
-		$cache        = (array) get_option( 'gitwire_public_rate_cache', [] );
-		$cache[ $id ] = $data;
-		update_option( 'gitwire_public_rate_cache', $cache, false );
 		set_transient( 'gitwire_rate_' . $id, $data, 15 * MINUTE_IN_SECONDS );
 	}
 
 	/**
-	 * Removes a connection's rate data from the cache.
+	 * Removes a connection's rate data from the transient cache.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return void
 	 */
-	private static function clear_public_rate_cache( string $id ): void {
-		$cache = (array) get_option( 'gitwire_public_rate_cache', [] );
-		unset( $cache[ $id ] );
-		update_option( 'gitwire_public_rate_cache', $cache, false );
+	public static function clear_public_rate_cache( string $id ): void {
 		delete_transient( 'gitwire_rate_' . $id );
 	}
 
@@ -772,7 +774,6 @@ class REST {
 
 		$payload = self::build_repos_page( $provider, $page, $connection_id );
 		if ( is_wp_error( $payload ) ) {
-			Repo_Cache::clear_repos( $cache_id );
 			return $payload;
 		}
 
@@ -1120,6 +1121,7 @@ class REST {
 
 		Repo_Cache::clear_repos();
 		self::store_head( $owner, $repo, $branch, $provider, $connection_id );
+		self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $connection_id );
 
 		if ( $is_update ) {
 			Logger::log( sprintf( '[%s] Updated %s/%s (%s) on branch %s', $provider, $owner, $repo, $type, $branch ) );
@@ -1572,10 +1574,13 @@ class REST {
 			return $result;
 		}
 
-		delete_transient( 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $branch ) );
 		Repo_Cache::clear_repos();
 		$stored_conn_id = $override_id ?? ( $existing_record['connection_id'] ?? null );
 		self::store_head( $owner, $repo, $branch, $provider, $stored_conn_id );
+
+		if ( $is_pull ) {
+			self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $stored_conn_id );
+		}
 
 		$type = $existing_record['type'] ?? 'plugin';
 		if ( $is_pull ) {
@@ -1692,9 +1697,9 @@ class REST {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
 
-		$cache_key = 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $record['branch'] );
-		$cached    = get_transient( $cache_key );
-		if ( false !== $cached && is_array( $cached ) ) {
+		$option_key = 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $record['branch'] );
+		$cached     = get_option( $option_key );
+		if ( is_array( $cached ) && $cached ) {
 			return self::annotate_commits_with_fatal(
 				$cached,
 				$provider,
@@ -1710,7 +1715,7 @@ class REST {
 			return $commits;
 		}
 
-		set_transient( $cache_key, $commits, HOUR_IN_SECONDS );
+		update_option( $option_key, $commits, false );
 
 		return self::annotate_commits_with_fatal(
 			$commits,
@@ -2051,6 +2056,27 @@ class REST {
 		$full_name = $owner . '/' . $repo;
 		if ( ! is_wp_error( $commits ) && ! empty( $commits ) ) {
 			Installer::set_head( $provider, $full_name, $commits[0]['sha'] );
+		}
+	}
+
+	/**
+	 * Fetches commits and writes them to an option after a successful install or pull.
+	 *
+	 * @since 1.0.0
+	 * @param string      $provider      Provider key.
+	 * @param string      $owner         Repository owner.
+	 * @param string      $repo          Repository name.
+	 * @param string      $branch        Branch name.
+	 * @param string|null $connection_id Connection ID.
+	 * @return void
+	 */
+	private static function update_commit_history_after_pull( string $provider, string $owner, string $repo, string $branch, ?string $connection_id ): void {
+		$full_name  = $owner . '/' . $repo;
+		$option_key = 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $branch );
+		$api        = self::make_api( $provider, $connection_id );
+		$commits    = $api->get_commits( $owner, $repo, $branch );
+		if ( ! is_wp_error( $commits ) ) {
+			update_option( $option_key, $commits, false );
 		}
 	}
 }
