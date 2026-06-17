@@ -571,9 +571,9 @@ class REST {
 	 * @return array<string, mixed>|null Null when the GitHub request fails.
 	 */
 	public static function get_public_github_rate( string $id, string $username ): ?array {
-		$cached = get_transient( 'gitwire_rate_' . $id );
-		if ( false !== $cached ) {
-			return $cached;
+		$cache = (array) get_option( 'gitwire_public_rate_cache', [] );
+		if ( isset( $cache[ $id ] ) && is_array( $cache[ $id ] ) ) {
+			return $cache[ $id ];
 		}
 
 		$payload = self::fetch_github_profile( $username );
@@ -658,19 +658,11 @@ class REST {
 	 * @return array<string, mixed>
 	 */
 	public static function get_public_rate_cache(): array {
-		$result = [];
-		foreach ( Public_Connections::all() as $conn ) {
-			$id     = $conn['id'] ?? '';
-			$cached = $id ? get_transient( 'gitwire_rate_' . $id ) : false;
-			if ( false !== $cached ) {
-				$result[ $id ] = $cached;
-			}
-		}
-		return $result;
+		return (array) get_option( 'gitwire_public_rate_cache', [] );
 	}
 
 	/**
-	 * Persists a single connection's rate data to the transient cache.
+	 * Persists a single connection's rate data to the option cache.
 	 *
 	 * @since 1.0.0
 	 * @param string               $id   Connection ID.
@@ -678,18 +670,22 @@ class REST {
 	 * @return void
 	 */
 	private static function save_public_rate_cache( string $id, array $data ): void {
-		set_transient( 'gitwire_rate_' . $id, $data, 15 * MINUTE_IN_SECONDS );
+		$cache        = (array) get_option( 'gitwire_public_rate_cache', [] );
+		$cache[ $id ] = $data;
+		update_option( 'gitwire_public_rate_cache', $cache, false );
 	}
 
 	/**
-	 * Removes a connection's rate data from the transient cache.
+	 * Removes a connection's rate data from the option cache.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return void
 	 */
 	public static function clear_public_rate_cache( string $id ): void {
-		delete_transient( 'gitwire_rate_' . $id );
+		$cache = (array) get_option( 'gitwire_public_rate_cache', [] );
+		unset( $cache[ $id ] );
+		update_option( 'gitwire_public_rate_cache', $cache, false );
 	}
 
 	/**
@@ -1200,8 +1196,9 @@ class REST {
 	public static function sync_installed(): array {
 		$records      = Installer::get_installed();
 		$orphaned     = [];
-		$pruned       = false;
-		$remote_heads = (array) get_option( 'gitwire_remote_heads', [] );
+		$pruned        = false;
+		$heads_updated = false;
+		$remote_heads  = (array) get_option( 'gitwire_remote_heads', [] );
 
 		$pending       = self::get_pending_update();
 		$pending_key   = '';
@@ -1260,8 +1257,11 @@ class REST {
 			if ( ! $pending_guard || $record_key !== $pending_key ) {
 				$remote_head = self::fetch_remote_head( $rec );
 				if ( $remote_head ) {
-					$hash                    = md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
-					$remote_heads[ $hash ]   = $remote_head;
+					$hash = md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
+					if ( ( $remote_heads[ $hash ] ?? null ) !== $remote_head ) {
+						$remote_heads[ $hash ] = $remote_head;
+						$heads_updated         = true;
+					}
 				}
 			}
 		}
@@ -1272,7 +1272,9 @@ class REST {
 			Installer::invalidate_installed_cache();
 		}
 
-		update_option( 'gitwire_remote_heads', $remote_heads, false );
+		if ( $heads_updated ) {
+			update_option( 'gitwire_remote_heads', $remote_heads, false );
+		}
 
 		return [
 			'installed' => self::annotate_installed( $records ),

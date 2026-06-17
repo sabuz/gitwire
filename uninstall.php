@@ -25,6 +25,7 @@ $options = [
 	'gitwire_recently_deleted',
 	'gitwire_repos_cache',
 	'gitwire_repo_types',
+	'gitwire_public_rate_cache',
 	'gitwire_remote_heads',
 ];
 
@@ -33,6 +34,7 @@ foreach ( $options as $option ) {
 }
 
 wp_clear_scheduled_hook( 'gitwire_maintenance' );
+wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
 wp_clear_scheduled_hook( 'gitwire_refresh_repo_types' );
 wp_clear_scheduled_hook( 'gitwire_refresh_connections' );

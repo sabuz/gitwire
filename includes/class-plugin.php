@@ -57,6 +57,7 @@ final class Plugin {
 		add_action( 'init', [ $this, 'load_textdomain' ], 0 );
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] );
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
+		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
 		add_action( 'gitwire_refresh_repos_cache', [ Repo_Cache::class, 'cron_refresh_repos' ] );
 		add_action( 'gitwire_refresh_repo_types', [ Repo_Cache::class, 'cron_refresh_types' ] );
 		add_action( 'gitwire_refresh_connections', [ REST::class, 'refresh_public_connections' ] );
@@ -107,6 +108,15 @@ final class Plugin {
 	public function run_maintenance(): void {
 		REST::sync_installed();
 		Installer::purge_orphaned_backups();
+	}
+
+	/**
+	 * Cron handler that trims old log entries.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function trim_logs(): void {
 		Logger::get_instance()->trim_old_entries();
 	}
 
@@ -137,6 +147,10 @@ final class Plugin {
 
 		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
 			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_connections' );
+		}
+
+		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
+			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
 		}
 
 		/**
@@ -183,6 +197,9 @@ final class Plugin {
 		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
 			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_connections' );
 		}
+		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
+			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
+		}
 	}
 
 	/**
@@ -193,6 +210,7 @@ final class Plugin {
 	public function deactivate(): void {
 		Repo_Cache::clear_all();
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
+		wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repo_types' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
