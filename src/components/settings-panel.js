@@ -59,14 +59,14 @@ export default function SettingsPanel( {
 	);
 	const [ savingLog, setSavingLog ] = useState( false );
 	const [ logRetentionDays, setLogRetentionDays ] = useState(
-		String( settings.log_retention_days ?? 30 )
+		String( settings.log_retention_days ?? 7 )
 	);
 	const [ logLevel, setLogLevel ] = useState(
 		settings.log_level ?? 'activity'
 	);
 	const [ clearingLogs, setClearingLogs ] = useState( false );
 	const [ reposRefreshFrequency, setReposRefreshFrequency ] = useState(
-		settings.repos_refresh_frequency ?? 'hourly'
+		settings.repos_refresh_frequency ?? 'daily'
 	);
 
 	const saveSetting = ( payload, rollback ) =>
@@ -203,7 +203,7 @@ export default function SettingsPanel( {
 					<ToggleGroupControl
 						__nextHasNoMarginBottom
 						isBlock
-						label={ __( 'Browse refresh frequency', 'gitwire' ) }
+						label={ __( 'Repository list refresh frequency', 'gitwire' ) }
 						help={ __(
 							'How often the repository list is refreshed in the background.',
 							'gitwire'

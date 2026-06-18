@@ -201,7 +201,7 @@ final class Plugin {
 					'log_retention_days'      => 7,
 					'log_level'               => 'activity',
 					'remove_data_on_uninstall' => false,
-					'repos_refresh_frequency' => 'hourly',
+					'repos_refresh_frequency' => 'daily',
 				],
 				'',
 				false

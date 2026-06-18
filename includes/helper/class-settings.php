@@ -39,10 +39,10 @@ class Settings {
 			'smart_install'              => $s['smart_install'] ?? true,
 			'show_repo_label'            => $s['show_repo_label'] ?? true,
 			'enable_logging'             => $s['enable_logging'] ?? false,
-			'log_retention_days'         => $s['log_retention_days'] ?? 30,
+			'log_retention_days'         => $s['log_retention_days'] ?? 7,
 			'log_level'                  => $s['log_level'] ?? 'activity',
 			'remove_data_on_uninstall'   => $s['remove_data_on_uninstall'] ?? false,
-			'repos_refresh_frequency'    => $s['repos_refresh_frequency'] ?? 'hourly',
+			'repos_refresh_frequency'    => $s['repos_refresh_frequency'] ?? 'daily',
 		];
 	}
 
@@ -71,7 +71,7 @@ class Settings {
 			$enable_logging = (bool) $incoming['enable_logging'];
 		}
 
-		$log_retention_days = (int) ( $current['log_retention_days'] ?? 30 );
+		$log_retention_days = (int) ( $current['log_retention_days'] ?? 7 );
 		if ( array_key_exists( 'log_retention_days', $incoming ) && null !== $incoming['log_retention_days'] ) {
 			$val                = (int) $incoming['log_retention_days'];
 			$log_retention_days = in_array( $val, [ 7, 15, 30 ], true ) ? $val : 30;
@@ -88,7 +88,7 @@ class Settings {
 			$remove_data_on_uninstall = (bool) $incoming['remove_data_on_uninstall'];
 		}
 
-		$repos_refresh_frequency = $current['repos_refresh_frequency'] ?? 'hourly';
+		$repos_refresh_frequency = $current['repos_refresh_frequency'] ?? 'daily';
 		if ( array_key_exists( 'repos_refresh_frequency', $incoming ) && null !== $incoming['repos_refresh_frequency'] ) {
 			$val                     = (string) $incoming['repos_refresh_frequency'];
 			$repos_refresh_frequency = in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
@@ -139,7 +139,7 @@ class Settings {
 	 */
 	public static function get_repos_refresh_frequency(): string {
 		$s   = self::get_raw();
-		$val = $s['repos_refresh_frequency'] ?? 'hourly';
+		$val = $s['repos_refresh_frequency'] ?? 'daily';
 		return in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
 	}
 
