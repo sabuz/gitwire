@@ -26,6 +26,16 @@ class REST {
 	private const PAGE_SIZE = 100;
 
 	/**
+	 * Meta keys that belong to the profile cache.
+	 *
+	 * Config keys like gitlab_url live in the same table but are excluded from
+	 * cache operations so they are never accidentally cleared.
+	 *
+	 * @var string[]
+	 */
+	private const PROFILE_KEYS = [ 'provider', 'authenticated', 'username', 'name', 'avatar_url', 'rate_limit', 'rate_remaining', 'rate_reset', 'checked_at', 'error' ];
+
+	/**
 	 * Request-scoped cache for the gitwire_pending_update option.
 	 *
 	 * @var array<string, mixed>|false|null null = not yet loaded, false = loaded + absent.
@@ -716,21 +726,21 @@ class REST {
 	}
 
 	/**
-	 * Returns the connections metadata table name.
+	 * Returns the connection meta table name.
 	 *
 	 * @since 1.0.0
 	 * @return string
 	 */
-	private static function metadata_table(): string {
+	private static function meta_table(): string {
 		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_connections_metadata';
+		return $wpdb->base_prefix . 'gitwire_connection_meta';
 	}
 
 	/**
-	 * Returns all connections metadata keyed by connection_id for boot data.
+	 * Returns all profile-cache metadata keyed by connection_id.
 	 *
-	 * Reads the shared table — Pro authenticated profiles are written there too,
-	 * so no filter merge is needed.
+	 * Reads only PROFILE_KEYS rows; config keys like gitlab_url are excluded.
+	 * Pro's get_connection_cache() delegates here and filters by authenticated = '1'.
 	 *
 	 * @since 1.0.0
 	 * @return array<string, mixed>
@@ -738,18 +748,38 @@ class REST {
 	public static function get_connection_cache(): array {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$rows = $wpdb->get_results( 'SELECT * FROM ' . self::metadata_table(), ARRAY_A );
+		$in_sql = implode( ', ', array_fill( 0, count( self::PROFILE_KEYS ), '%s' ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT connection_id, meta_key, meta_value FROM ' . self::meta_table() . ' WHERE meta_key IN (' . $in_sql . ')',
+				...self::PROFILE_KEYS
+			),
+			ARRAY_A
+		);
 
 		if ( ! $rows ) {
 			return [];
 		}
 
-		return array_column( $rows, null, 'connection_id' );
+		$grouped = [];
+		foreach ( $rows as $row ) {
+			$grouped[ $row['connection_id'] ][ $row['meta_key'] ] = $row['meta_value'];
+		}
+
+		$result = [];
+		foreach ( $grouped as $id => $meta ) {
+			if ( ! isset( $meta['provider'] ) ) {
+				continue;
+			}
+			$result[ $id ] = self::cast_meta( $meta, $id );
+		}
+
+		return $result;
 	}
 
 	/**
-	 * Returns a single connection's metadata row, or null when not cached yet.
+	 * Returns a single connection's profile cache, or null when not cached yet.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
@@ -758,13 +788,52 @@ class REST {
 	public static function get_public_connections_metadata( string $id ): ?array {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::metadata_table() . ' WHERE connection_id = %s', $id ),
+		$in_sql = implode( ', ', array_fill( 0, count( self::PROFILE_KEYS ), '%s' ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT meta_key, meta_value FROM ' . self::meta_table() . ' WHERE connection_id = %s AND meta_key IN (' . $in_sql . ')',
+				$id,
+				...self::PROFILE_KEYS
+			),
 			ARRAY_A
 		);
 
-		return $row ?: null;
+		if ( ! $rows ) {
+			return null;
+		}
+
+		$meta = array_column( $rows, 'meta_value', 'meta_key' );
+
+		if ( ! isset( $meta['provider'] ) ) {
+			return null;
+		}
+
+		return self::cast_meta( $meta, $id );
+	}
+
+	/**
+	 * Casts raw EAV string values to the correct PHP types for profile cache fields.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, string> $meta Flat key-value map from the meta table.
+	 * @param string                $id   Connection ID.
+	 * @return array<string, mixed>
+	 */
+	private static function cast_meta( array $meta, string $id ): array {
+		return [
+			'connection_id'  => $id,
+			'provider'       => $meta['provider'] ?? '',
+			'authenticated'  => (int) ( $meta['authenticated'] ?? 0 ),
+			'username'       => $meta['username'] ?? '',
+			'name'           => $meta['name'] ?? '',
+			'avatar_url'     => $meta['avatar_url'] ?? '',
+			'rate_limit'     => (int) ( $meta['rate_limit'] ?? 0 ),
+			'rate_remaining' => (int) ( $meta['rate_remaining'] ?? 0 ),
+			'rate_reset'     => (int) ( $meta['rate_reset'] ?? 0 ),
+			'checked_at'     => (int) ( $meta['checked_at'] ?? 0 ),
+			'error'          => ( '' !== ( $meta['error'] ?? '' ) ) ? $meta['error'] : null,
+		];
 	}
 
 	/**
@@ -817,42 +886,54 @@ class REST {
 	}
 
 	/**
-	 * Upserts a single connection's metadata row.
+	 * Upserts all profile cache fields for a connection in a single SQL query.
 	 *
 	 * @since 1.0.0
 	 * @param string               $id   Connection ID.
 	 * @param array<string, mixed> $data Metadata fields to store.
 	 * @return void
 	 */
-	private static function save_public_connection_metadata( string $id, array $data ): void {
+	public static function save_public_connection_metadata( string $id, array $data ): void {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->replace(
-			self::metadata_table(),
-			array_merge(
-				[
-					'connection_id'  => $id,
-					'provider'       => '',
-					'authenticated'  => 0,
-					'username'       => '',
-					'name'           => '',
-					'avatar_url'     => '',
-					'rate_limit'     => 0,
-					'rate_remaining' => 0,
-					'rate_reset'     => 0,
-					'checked_at'     => 0,
-					'error'          => null,
-				],
-				$data,
-				[ 'connection_id' => $id ]
-			),
-			[ '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s' ]
-		);
+		$defaults = [
+			'provider'       => '',
+			'authenticated'  => 0,
+			'username'       => '',
+			'name'           => '',
+			'avatar_url'     => '',
+			'rate_limit'     => 0,
+			'rate_remaining' => 0,
+			'rate_reset'     => 0,
+			'checked_at'     => 0,
+			'error'          => '',
+		];
+		$meta = array_intersect_key( array_merge( $defaults, $data ), $defaults );
+
+		$value_parts = [];
+		$params      = [];
+
+		foreach ( $meta as $key => $value ) {
+			$value_parts[] = '(%s, %s, %s)';
+			$params[]      = $id;
+			$params[]      = $key;
+			$params[]      = match ( true ) {
+				is_bool( $value ) => $value ? '1' : '0',
+				null === $value   => '',
+				default           => (string) $value,
+			};
+		}
+
+		$sql = 'INSERT INTO ' . self::meta_table() . ' (connection_id, meta_key, meta_value) VALUES '
+			. implode( ', ', $value_parts )
+			. ' ON DUPLICATE KEY UPDATE meta_value = VALUES(meta_value)';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+		$wpdb->query( $wpdb->prepare( $sql, ...$params ) );
 	}
 
 	/**
-	 * Deletes a connection's metadata row.
+	 * Deletes all profile cache keys for a connection; leaves config keys intact.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
@@ -861,8 +942,15 @@ class REST {
 	public static function clear_public_connection_metadata( string $id ): void {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->delete( self::metadata_table(), [ 'connection_id' => $id ], [ '%s' ] );
+		$in_sql = implode( ', ', array_fill( 0, count( self::PROFILE_KEYS ), '%s' ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+		$wpdb->query(
+			$wpdb->prepare(
+				'DELETE FROM ' . self::meta_table() . ' WHERE connection_id = %s AND meta_key IN (' . $in_sql . ')',
+				$id,
+				...self::PROFILE_KEYS
+			)
+		);
 	}
 
 	/**

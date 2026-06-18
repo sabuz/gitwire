@@ -22,7 +22,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	const DB_VERSION = '1.1.0';
+	const DB_VERSION = '1.2.0';
 
 	/**
 	 * Option key used to track the installed schema version.
@@ -59,34 +59,14 @@ class Schema {
 			) $charset;"
 		);
 
-		// Provider-specific extras keyed by connection_id + meta_key.
-		// Current uses: gitlab_url, avatar_url, name for GitLab public connections;
-		// gitlab_url for Pro authenticated GitLab connections.
+		// Key-value store for all connection extras: gitlab_url (config) and
+		// profile cache fields (provider, username, avatar_url, rate data, etc.).
 		dbDelta(
 			"CREATE TABLE {$prefix}gitwire_connection_meta (
 				connection_id VARCHAR(64) NOT NULL,
 				meta_key VARCHAR(100) NOT NULL,
 				meta_value TEXT NOT NULL,
 				PRIMARY KEY  (connection_id, meta_key)
-			) $charset;"
-		);
-
-		// Profile + rate-limit data for all connections (public and authenticated).
-		// Shared by both free and Pro — keyed by connection_id.
-		dbDelta(
-			"CREATE TABLE {$prefix}gitwire_connections_metadata (
-				connection_id VARCHAR(64) NOT NULL,
-				provider VARCHAR(20) NOT NULL DEFAULT '',
-				authenticated TINYINT(1) NOT NULL DEFAULT 0,
-				username VARCHAR(255) NOT NULL DEFAULT '',
-				name VARCHAR(255) NOT NULL DEFAULT '',
-				avatar_url VARCHAR(500) NOT NULL DEFAULT '',
-				rate_limit INT NOT NULL DEFAULT 0,
-				rate_remaining INT NOT NULL DEFAULT 0,
-				rate_reset INT NOT NULL DEFAULT 0,
-				checked_at INT NOT NULL DEFAULT 0,
-				error TEXT NULL,
-				PRIMARY KEY  (connection_id)
 			) $charset;"
 		);
 
@@ -112,7 +92,7 @@ class Schema {
 	private static function tables_exist(): bool {
 		global $wpdb;
 		$prefix = $wpdb->base_prefix;
-		foreach ( [ 'gitwire_public_connections', 'gitwire_connection_meta', 'gitwire_connections_metadata' ] as $table ) {
+		foreach ( [ 'gitwire_public_connections', 'gitwire_connection_meta' ] as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . $table ) ) !== $prefix . $table ) {
 				return false;
@@ -134,8 +114,6 @@ class Schema {
 
 		$prefix = $wpdb->base_prefix;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
-		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_connections_metadata" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_connection_meta" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
