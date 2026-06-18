@@ -1,6 +1,6 @@
 <?php
 /**
- * Persistent option-based cache for repository lists and type detections.
+ * Transient-based cache for repository lists and type detections.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -13,14 +13,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Stores browse-repo lists and detection results in the options table.
+ * Stores browse-repo lists and detection results in transients.
+ *
+ * One transient per connection holds all browsed pages for that connection.
+ * One transient per detection key holds the type result.
+ * Both are isolated — no shared blob, no read-modify-write race between connections.
  */
 class Repo_Cache {
 
-	public const REPOS_OPTION = 'gitwire_repos';
-	public const TYPES_OPTION = 'gitwire_repo_types';
-	public const REPOS_TTL    = 1800;
-	public const TYPES_TTL    = DAY_IN_SECONDS;
+	public const TYPES_TTL = DAY_IN_SECONDS;
+
+	/**
+	 * Returns the transient key for a connection's repo pages.
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_id Connection ID or 'public:{provider}'.
+	 * @return string
+	 */
+	private static function repos_transient_key( string $connection_id ): string {
+		return 'gitwire_repos_' . md5( $connection_id );
+	}
+
+	/**
+	 * Returns the transient key for a type detection result.
+	 *
+	 * @since 1.0.0
+	 * @param string $type_key Canonical type key from type_key().
+	 * @return string
+	 */
+	private static function type_transient_key( string $type_key ): string {
+		return 'gitwire_type_' . md5( $type_key );
+	}
 
 	/**
 	 * Returns a cached repos page payload when still fresh.
@@ -31,18 +54,22 @@ class Repo_Cache {
 	 * @return array<string, mixed>|null Cached payload or null when missing/stale.
 	 */
 	public static function get_repos_page( string $connection_id, int $page ): ?array {
-		$cache = get_option( self::REPOS_OPTION, [] );
-		if ( ! is_array( $cache ) || empty( $cache[ $connection_id ]['pages'][ (string) $page ] ) ) {
+		$data = get_transient( self::repos_transient_key( $connection_id ) );
+		if ( ! is_array( $data ) ) {
 			return null;
 		}
 
-		$page_data = $cache[ $connection_id ]['pages'][ (string) $page ];
-		$fetched   = (int) ( $page_data['fetched_at'] ?? 0 );
-		if ( $fetched && ( time() - $fetched ) <= self::REPOS_TTL ) {
-			return $page_data;
+		$page_data = $data[ (string) $page ] ?? null;
+		if ( ! is_array( $page_data ) ) {
+			return null;
 		}
 
-		return null;
+		$fetched = (int) ( $page_data['fetched_at'] ?? 0 );
+		if ( ! $fetched || ( time() - $fetched ) > Settings::get_repos_max_age() ) {
+			return null;
+		}
+
+		return $page_data;
 	}
 
 	/**
@@ -55,26 +82,20 @@ class Repo_Cache {
 	 * @return void
 	 */
 	public static function set_repos_page( string $connection_id, int $page, array $payload ): void {
-		$cache = get_option( self::REPOS_OPTION, [] );
-		if ( ! is_array( $cache ) ) {
-			$cache = [];
-		}
-		if ( ! isset( $cache[ $connection_id ] ) || ! is_array( $cache[ $connection_id ] ) ) {
-			$cache[ $connection_id ] = [
-				'pages'      => [],
-				'updated_at' => 0,
-			];
+		$key  = self::repos_transient_key( $connection_id );
+		$data = get_transient( $key );
+		if ( ! is_array( $data ) ) {
+			$data = [];
 		}
 
-		$payload['fetched_at']                              = time();
-		$cache[ $connection_id ]['pages'][ (string) $page ] = $payload;
-		$cache[ $connection_id ]['updated_at']              = time();
+		$payload['fetched_at']  = time();
+		$data[ (string) $page ] = $payload;
 
-		update_option( self::REPOS_OPTION, $cache, false );
+		set_transient( $key, $data, WEEK_IN_SECONDS );
 	}
 
 	/**
-	 * Builds the cache key for a repo type detection entry.
+	 * Builds the canonical key for a repo type detection entry.
 	 *
 	 * @since 1.0.0
 	 * @param string $provider Provider key.
@@ -95,20 +116,11 @@ class Repo_Cache {
 	 * @param string $owner    Repository owner.
 	 * @param string $repo     Repository name.
 	 * @param string $branch   Branch name.
-	 * @return array<string, mixed>|null Cached detection or null when missing/stale.
+	 * @return array<string, mixed>|null Cached detection or null when missing/expired.
 	 */
 	public static function get_type( string $provider, string $owner, string $repo, string $branch ): ?array {
-		$key   = self::type_key( $provider, $owner, $repo, $branch );
-		$cache = get_option( self::TYPES_OPTION, [] );
-		if ( is_array( $cache ) && ! empty( $cache[ $key ] ) ) {
-			$entry   = $cache[ $key ];
-			$fetched = (int) ( $entry['fetched_at'] ?? 0 );
-			if ( $fetched && ( time() - $fetched ) <= self::TYPES_TTL ) {
-				return $entry;
-			}
-		}
-
-		return null;
+		$data = get_transient( self::type_transient_key( self::type_key( $provider, $owner, $repo, $branch ) ) );
+		return is_array( $data ) ? $data : null;
 	}
 
 	/**
@@ -123,16 +135,11 @@ class Repo_Cache {
 	 * @return void
 	 */
 	public static function set_type( string $provider, string $owner, string $repo, string $branch, array $result ): void {
-		$key   = self::type_key( $provider, $owner, $repo, $branch );
-		$cache = get_option( self::TYPES_OPTION, [] );
-		if ( ! is_array( $cache ) ) {
-			$cache = [];
-		}
-
-		$result['fetched_at'] = time();
-		$cache[ $key ]        = $result;
-
-		update_option( self::TYPES_OPTION, $cache, false );
+		set_transient(
+			self::type_transient_key( self::type_key( $provider, $owner, $repo, $branch ) ),
+			$result,
+			self::TYPES_TTL
+		);
 	}
 
 	/**
@@ -143,28 +150,38 @@ class Repo_Cache {
 	 * @return void
 	 */
 	public static function clear_repos( ?string $connection_id = null ): void {
-		if ( null === $connection_id ) {
-			delete_option( self::REPOS_OPTION );
+		if ( null !== $connection_id ) {
+			delete_transient( self::repos_transient_key( $connection_id ) );
 			return;
 		}
 
-		$cache = get_option( self::REPOS_OPTION, [] );
-		if ( ! is_array( $cache ) ) {
-			return;
-		}
-
-		unset( $cache[ $connection_id ] );
-		update_option( self::REPOS_OPTION, $cache, false );
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				$wpdb->esc_like( '_transient_gitwire_repos_' ) . '%',
+				$wpdb->esc_like( '_transient_timeout_gitwire_repos_' ) . '%'
+			)
+		);
 	}
 
 	/**
-	 * Clears cached detection data.
+	 * Clears all cached detection data.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function clear_types(): void {
-		delete_option( self::TYPES_OPTION );
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				$wpdb->esc_like( '_transient_gitwire_type_' ) . '%',
+				$wpdb->esc_like( '_transient_timeout_gitwire_type_' ) . '%'
+			)
+		);
 	}
 
 	/**
@@ -179,7 +196,7 @@ class Repo_Cache {
 	}
 
 	/**
-	 * Fetches repos from the API and stores them in the options cache.
+	 * Fetches repos from the API and stores them in the transient cache.
 	 *
 	 * @since 1.0.0
 	 * @param string $provider      Provider key.
@@ -201,12 +218,12 @@ class Repo_Cache {
 	}
 
 	/**
-	 * Refreshes cached repo list pages for all stored connections and public browse accounts.
+	 * Cron handler: refreshes repo lists for all connections then re-detects types.
 	 *
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when every source fails.
 	 */
-	public static function cron_refresh_repos(): true|\WP_Error {
+	public static function cron_refresh(): true|\WP_Error {
 		$sources = [];
 
 		foreach ( Connection_Resolver::all() as $conn ) {
@@ -232,7 +249,13 @@ class Repo_Cache {
 			return true;
 		}
 
-		return $last_err ?? true;
+		if ( $last_err ) {
+			return $last_err;
+		}
+
+		self::cron_refresh_types();
+
+		return true;
 	}
 
 	/**
@@ -242,21 +265,9 @@ class Repo_Cache {
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
 	 */
 	public static function cron_refresh_types(): true|\WP_Error {
-		$settings = Settings::get_raw();
-		if ( ! $settings ) {
-			return true;
-		}
-
 		$keys           = [];
 		$connection_ids = [];
-		$types          = get_option( self::TYPES_OPTION, [] );
 		$records        = Installer::get_installed();
-
-		if ( is_array( $types ) ) {
-			foreach ( array_keys( $types ) as $key ) {
-				$keys[ $key ] = true;
-			}
-		}
 
 		foreach ( $records as $rec ) {
 			$provider = $rec['provider'] ?? 'github';
@@ -323,7 +334,7 @@ class Repo_Cache {
 	 * @return true|\WP_Error
 	 */
 	public static function refresh_all( bool $include_types = true ) {
-		$repos = self::cron_refresh_repos();
+		$repos = self::cron_refresh();
 		if ( is_wp_error( $repos ) ) {
 			return $repos;
 		}

@@ -13,7 +13,6 @@ import {
 	Flex,
 	FlexBlock,
 	FlexItem,
-	SelectControl,
 	TextControl,
 	ToggleControl,
 	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
@@ -66,6 +65,9 @@ export default function SettingsPanel( {
 		settings.log_level ?? 'activity'
 	);
 	const [ clearingLogs, setClearingLogs ] = useState( false );
+	const [ reposRefreshFrequency, setReposRefreshFrequency ] = useState(
+		settings.repos_refresh_frequency ?? 'hourly'
+	);
 
 	const saveSetting = ( payload, rollback ) =>
 		persistSetting( payload, onSave, rollback );
@@ -132,6 +134,13 @@ export default function SettingsPanel( {
 		saveSetting( { log_level: newVal } ).catch( () => {} );
 	};
 
+	const handleReposRefreshFrequencyChange = ( newVal ) => {
+		setReposRefreshFrequency( newVal );
+		saveSetting( { repos_refresh_frequency: newVal }, () =>
+			setReposRefreshFrequency( reposRefreshFrequency )
+		).catch( () => {} );
+	};
+
 	// Pro replaces the public connections card with its token connections UI
 	const accountsSection = applyFilters(
 		'gitwire.settings.accountsSection',
@@ -190,6 +199,22 @@ export default function SettingsPanel( {
 						label={ __( 'Repo label', 'gitwire' ) }
 						onChange={ handleShowRepoLabelChange }
 					/>
+					<Spacer marginTop={ 4 } />
+					<ToggleGroupControl
+						__nextHasNoMarginBottom
+						isBlock
+						label={ __( 'Browse refresh frequency', 'gitwire' ) }
+						help={ __(
+							'How often the repository list is refreshed in the background.',
+							'gitwire'
+						) }
+						value={ reposRefreshFrequency }
+						onChange={ handleReposRefreshFrequencyChange }
+					>
+						<ToggleGroupControlOption label={ __( 'Hourly', 'gitwire' ) } value="hourly" />
+						<ToggleGroupControlOption label={ __( 'Daily', 'gitwire' ) } value="daily" />
+						<ToggleGroupControlOption label={ __( 'Weekly', 'gitwire' ) } value="weekly" />
+					</ToggleGroupControl>
 				</CardBody>
 			</Card>
 
@@ -216,31 +241,24 @@ export default function SettingsPanel( {
 					{ enableLogging && (
 						<>
 							<Spacer marginTop={ 4 } />
-							<SelectControl
-								__next40pxDefaultSize
+							<ToggleGroupControl
 								__nextHasNoMarginBottom
+								isBlock
 								label={ __( 'Log Level', 'gitwire' ) }
 								help={ __(
 									'Errors only records failed operations. All activity includes installs, activations, and connections.',
 									'gitwire'
 								) }
-								options={ [
-									{
-										label: __( 'All activity', 'gitwire' ),
-										value: 'activity',
-									},
-									{
-										label: __( 'Errors only', 'gitwire' ),
-										value: 'error',
-									},
-								] }
 								value={ logLevel }
 								onChange={ handleLogLevelChange }
-							/>
+							>
+								<ToggleGroupControlOption label={ __( 'All activity', 'gitwire' ) } value="activity" />
+								<ToggleGroupControlOption label={ __( 'Errors only', 'gitwire' ) } value="error" />
+							</ToggleGroupControl>
 							<Spacer marginTop={ 4 } />
-							<SelectControl
-								__next40pxDefaultSize
+							<ToggleGroupControl
 								__nextHasNoMarginBottom
+								isBlock
 								label={ __( 'Log Retention', 'gitwire' ) }
 								help={
 									<>
@@ -263,23 +281,13 @@ export default function SettingsPanel( {
 										) }
 									</>
 								}
-								options={ [
-									{
-										label: __( '7 days', 'gitwire' ),
-										value: '7',
-									},
-									{
-										label: __( '15 days', 'gitwire' ),
-										value: '15',
-									},
-									{
-										label: __( '30 days', 'gitwire' ),
-										value: '30',
-									},
-								] }
 								value={ logRetentionDays }
 								onChange={ handleLogRetentionChange }
-							/>
+							>
+								<ToggleGroupControlOption label={ __( '7 days', 'gitwire' ) } value="7" />
+								<ToggleGroupControlOption label={ __( '15 days', 'gitwire' ) } value="15" />
+								<ToggleGroupControlOption label={ __( '30 days', 'gitwire' ) } value="30" />
+							</ToggleGroupControl>
 						</>
 					) }
 				</CardBody>

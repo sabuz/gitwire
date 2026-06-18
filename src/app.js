@@ -162,31 +162,7 @@ export default function App( { initialData } ) {
 		if ( activeTab !== 'repositories' ) {
 			return;
 		}
-		if ( initialData.fatal_notice ) {
-			return;
-		}
-
-		if ( initialData.update_success?.full_name ) {
-			clearPendingToast();
-			toast.success(
-				sprintf(
-					/* translators: %s: repository full name */
-					__( '%s updated to latest.', 'gitwire' ),
-					initialData.update_success.full_name
-				)
-			);
-			return;
-		}
-
-		if ( initialData.activation_success?.full_name ) {
-			clearPendingToast();
-			toast.success(
-				sprintf(
-					/* translators: %s: repository full name */
-					__( '%s activated.', 'gitwire' ),
-					initialData.activation_success.full_name
-				)
-			);
+		if ( initialData.pending_msg?.type === 'fatal' ) {
 			return;
 		}
 
@@ -194,9 +170,9 @@ export default function App( { initialData } ) {
 	}, [ activeTab ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect( () => {
-		if ( initialData.fatal_notice ) {
+		if ( initialData.pending_msg?.type === 'fatal' ) {
 			clearPendingToast();
-			showFatalNotice( initialData.fatal_notice );
+			showFatalNotice( initialData.pending_msg.data );
 		}
 		( initialData.orphaned || [] ).forEach( showOrphanedNotice );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps

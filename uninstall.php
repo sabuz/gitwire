@@ -19,14 +19,9 @@ require_once plugin_dir_path( __FILE__ ) . 'autoload.php';
 $options = [
 	'gitwire_settings',
 	'gitwire_installed',
-	'gitwire_pending_update',
-	'gitwire_fatal_notice',
-	'gitwire_update_success',
-	'gitwire_activation_success',
-	'gitwire_recently_deleted',
-	'gitwire_repos',
-	'gitwire_repo_types',
-	'gitwire_remote_heads',
+	'gitwire_running_task',
+	'gitwire_pending_msg',
+	'gitwire_orphan_queue',
 ];
 
 foreach ( $options as $option ) {
@@ -38,7 +33,6 @@ foreach ( $options as $option ) {
 wp_clear_scheduled_hook( 'gitwire_maintenance' );
 wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
-wp_clear_scheduled_hook( 'gitwire_refresh_repo_types' );
 wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
 
 global $wpdb;

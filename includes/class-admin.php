@@ -202,18 +202,9 @@ class Admin {
 		$installed_result = REST::get_installed();
 		$installed        = $installed_result['installed'];
 		$orphaned         = $installed_result['orphaned'];
-		$fatal_notice     = get_option( 'gitwire_fatal_notice' );
-		if ( $fatal_notice ) {
-			delete_option( 'gitwire_fatal_notice' );
-		}
-		$update_success = get_option( 'gitwire_update_success' );
-		if ( $update_success ) {
-			delete_option( 'gitwire_update_success' );
-		}
-
-		$activation_success = get_option( 'gitwire_activation_success' );
-		if ( $activation_success ) {
-			delete_option( 'gitwire_activation_success' );
+		$pending_msg = get_option( 'gitwire_pending_msg' );
+		if ( $pending_msg ) {
+			delete_option( 'gitwire_pending_msg' );
 		}
 
 		// Derive initial tab from path param or setup status.
@@ -243,9 +234,7 @@ class Admin {
 					'settings'           => $settings,
 					'installed'          => $installed ? $installed : (object) [],
 					'orphaned'           => $orphaned,
-					'fatal_notice'       => $fatal_notice ? $fatal_notice : null,
-					'update_success'     => $update_success ? $update_success : null,
-					'activation_success' => $activation_success ? $activation_success : null,
+					'pending_msg'        => $pending_msg ?: null,
 				]
 			) . ';',
 			'before'

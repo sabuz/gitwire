@@ -36,7 +36,7 @@ class REST {
 	private const PROFILE_KEYS = [ 'provider', 'authenticated', 'username', 'name', 'avatar_url', 'rate_limit', 'rate_remaining', 'rate_reset', 'checked_at', 'error' ];
 
 	/**
-	 * Request-scoped cache for the gitwire_pending_update option.
+	 * Request-scoped cache for the gitwire_running_task option.
 	 *
 	 * @var array<string, mixed>|false|null null = not yet loaded, false = loaded + absent.
 	 */
@@ -48,9 +48,9 @@ class REST {
 	 * @since 1.0.0
 	 * @return array<string, mixed>|false
 	 */
-	private static function get_pending_update(): mixed {
+	private static function get_running_task(): mixed {
 		if ( null === self::$pending_cache ) {
-			self::$pending_cache = get_option( 'gitwire_pending_update' );
+			self::$pending_cache = get_option( 'gitwire_running_task' );
 		}
 		return self::$pending_cache;
 	}
@@ -62,9 +62,9 @@ class REST {
 	 * @param array<string, mixed> $pending New pending update value.
 	 * @return void
 	 */
-	private static function set_pending_update( array $pending ): void {
+	private static function set_running_task( array $pending ): void {
 		self::$pending_cache = $pending;
-		update_option( 'gitwire_pending_update', $pending, false );
+		update_option( 'gitwire_running_task', $pending, false );
 	}
 
 	/**
@@ -990,13 +990,23 @@ class REST {
 		if ( null !== $req->get_param( 'remove_data_on_uninstall' ) ) {
 			$incoming['remove_data_on_uninstall'] = $req->get_param( 'remove_data_on_uninstall' );
 		}
+		if ( null !== $req->get_param( 'repos_refresh_frequency' ) ) {
+			$incoming['repos_refresh_frequency'] = $req->get_param( 'repos_refresh_frequency' );
+		}
+
 		$was_logging = Settings::is_logging_enabled();
+		$prev_freq   = Settings::get_repos_refresh_frequency();
 		$merged      = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
 
 		$now_logging = (bool) ( $merged['enable_logging'] ?? false );
 		if ( ! $was_logging && $now_logging ) {
 			Logger::log( 'Logging enabled' );
+		}
+
+		if ( ( $merged['repos_refresh_frequency'] ?? 'hourly' ) !== $prev_freq ) {
+			Repo_Cache::clear_repos();
+			Plugin::instance()->schedule_repos_cron();
 		}
 
 		return [
@@ -1432,10 +1442,10 @@ class REST {
 			}
 		}
 
-		$recently_deleted = get_option( 'gitwire_recently_deleted' );
-		if ( is_array( $recently_deleted ) && $recently_deleted ) {
-			delete_option( 'gitwire_recently_deleted' );
-			foreach ( $recently_deleted as $item ) {
+		$pending_orphans = get_option( 'gitwire_orphan_queue' );
+		if ( is_array( $pending_orphans ) && $pending_orphans ) {
+			delete_option( 'gitwire_orphan_queue' );
+			foreach ( $pending_orphans as $item ) {
 				$orphaned[] = $item;
 			}
 		}
@@ -1456,7 +1466,7 @@ class REST {
 		$records   = Installer::get_installed();
 		$orphaned  = [];
 
-		$pending       = self::get_pending_update();
+		$pending       = self::get_running_task();
 		$pending_key   = '';
 		$pending_guard = is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
@@ -1539,7 +1549,7 @@ class REST {
 		}
 
 		$active_theme  = get_stylesheet();
-		$pending       = self::get_pending_update();
+		$pending       = self::get_running_task();
 		$pending_guard = is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
 
@@ -1888,7 +1898,7 @@ class REST {
 			return $result;
 		}
 
-		$pending = self::get_pending_update();
+		$pending = self::get_running_task();
 		if ( is_array( $pending ) && ( $pending['full_name'] ?? '' ) === $full_name ) {
 			Error_Handler::abort_pending_guard();
 		}

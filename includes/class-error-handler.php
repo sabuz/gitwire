@@ -151,7 +151,7 @@ class Error_Handler {
 		}
 
 		// Read the pending-update record directly from the DB.
-		$pending = self::db_get_option( 'gitwire_pending_update' );
+		$pending = self::db_get_option( 'gitwire_running_task' );
 		if ( ! $pending ) {
 			return;
 		}
@@ -210,7 +210,7 @@ class Error_Handler {
 			'restored'  => 'activation' === $context ? true : $restored,
 		];
 
-		self::db_update_option( 'gitwire_fatal_notice', $notice );
+		self::db_update_option( 'gitwire_pending_msg', [ 'type' => 'fatal', 'data' => $notice ] );
 
 		Logger::log(
 			sprintf(
@@ -225,7 +225,7 @@ class Error_Handler {
 			'error'
 		);
 
-		self::clear_pending_update();
+		self::clear_running_task();
 
 		if ( 'activation' === $context && 'theme' !== $type ) {
 			self::redirect_to_gitwire_admin();
@@ -283,7 +283,7 @@ class Error_Handler {
 	 * @return void
 	 */
 	public static function clear_stale_update_guard(): void {
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = get_option( 'gitwire_running_task' );
 		if ( ! is_array( $pending ) || 'update' !== ( $pending['context'] ?? '' ) ) {
 			return;
 		}
@@ -293,7 +293,7 @@ class Error_Handler {
 			return;
 		}
 
-		delete_option( 'gitwire_pending_update' );
+		delete_option( 'gitwire_running_task' );
 	}
 
 	/**
@@ -303,21 +303,21 @@ class Error_Handler {
 	 * @return void
 	 */
 	public static function clear_stale_activation_guard(): void {
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = get_option( 'gitwire_running_task' );
 		if ( ! is_array( $pending ) || 'activation' !== ( $pending['context'] ?? '' ) ) {
 			return;
 		}
 
 		$slug = $pending['slug'] ?? '';
 		if ( ! $slug || ! function_exists( 'get_stylesheet' ) ) {
-			delete_option( 'gitwire_pending_update' );
+			delete_option( 'gitwire_running_task' );
 	
 			return;
 		}
 
 		$is_active = get_stylesheet() === $slug || get_template() === $slug;
 		if ( ! $is_active ) {
-			delete_option( 'gitwire_pending_update' );
+			delete_option( 'gitwire_running_task' );
 	
 		}
 	}
@@ -329,7 +329,7 @@ class Error_Handler {
 	 * @return bool True when a pending guard was cleared.
 	 */
 	public static function abort_pending_guard(): bool {
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = get_option( 'gitwire_running_task' );
 		if ( ! is_array( $pending ) ) {
 	
 			return false;
@@ -337,7 +337,7 @@ class Error_Handler {
 
 		$context = $pending['context'] ?? '';
 		if ( ! in_array( $context, [ 'activation', 'update' ], true ) ) {
-			delete_option( 'gitwire_pending_update' );
+			delete_option( 'gitwire_running_task' );
 	
 			return true;
 		}
@@ -363,7 +363,7 @@ class Error_Handler {
 		// Restore the installed record that was overwritten before the guard was armed.
 		self::restore_pending_installed_record( $pending );
 
-		delete_option( 'gitwire_pending_update' );
+		delete_option( 'gitwire_running_task' );
 
 
 		return true;
@@ -389,7 +389,7 @@ class Error_Handler {
 			);
 		}
 
-		delete_option( 'gitwire_pending_update' );
+		delete_option( 'gitwire_running_task' );
 
 	}
 
@@ -499,13 +499,13 @@ class Error_Handler {
 	 * @since 1.0.0
 	 * @return void
 	 */
-	private static function clear_pending_update(): void {
+	private static function clear_running_task(): void {
 		if ( function_exists( 'delete_option' ) ) {
-			delete_option( 'gitwire_pending_update' );
+			delete_option( 'gitwire_running_task' );
 			return;
 		}
 
-		self::db_delete_option( 'gitwire_pending_update' );
+		self::db_delete_option( 'gitwire_running_task' );
 	}
 
 	/**

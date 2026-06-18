@@ -299,13 +299,13 @@ class Installer {
 	 * @return void
 	 */
 	private static function queue_deleted_notice( array $rec ): void {
-		$existing  = get_option( 'gitwire_recently_deleted' );
+		$existing  = get_option( 'gitwire_orphan_queue' );
 		$pending   = is_array( $existing ) ? $existing : [];
 		$pending[] = [
 			'full_name' => $rec['full_name'] ?? '',
 			'provider'  => $rec['provider'] ?? 'github',
 		];
-		update_option( 'gitwire_recently_deleted', $pending, false );
+		update_option( 'gitwire_orphan_queue', $pending, false );
 	}
 
 	/**
@@ -570,7 +570,7 @@ class Installer {
 			switch_theme( $rec['slug'] );
 			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
 
-			delete_option( 'gitwire_pending_update' );
+			delete_option( 'gitwire_running_task' );
 
 			$scrape = Theme_Scraper::scrape_activation();
 			if ( is_wp_error( $scrape ) ) {
@@ -617,7 +617,7 @@ class Installer {
 		}
 
 		self::clear_guard_feedback();
-		update_option( 'gitwire_pending_update', $pending, false );
+		update_option( 'gitwire_running_task', $pending, false );
 
 		return $pending;
 	}
@@ -629,7 +629,7 @@ class Installer {
 	 * @return void
 	 */
 	private static function clear_activation_guard(): void {
-		delete_option( 'gitwire_pending_update' );
+		delete_option( 'gitwire_running_task' );
 	}
 
 	/**
@@ -639,7 +639,7 @@ class Installer {
 	 * @return void
 	 */
 	private static function complete_plugin_activation_guard(): void {
-		delete_option( 'gitwire_pending_update' );
+		delete_option( 'gitwire_running_task' );
 	}
 
 	/**
@@ -1176,7 +1176,7 @@ class Installer {
 		if ( $is_active_update ) {
 			if ( 'theme' === $type ) {
 				self::clear_guard_feedback();
-				delete_option( 'gitwire_pending_update' );
+				delete_option( 'gitwire_running_task' );
 			}
 
 			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
@@ -1213,7 +1213,7 @@ class Installer {
 		];
 
 		if ( ! $sync_theme_guard ) {
-			update_option( 'gitwire_pending_update', $pending, false );
+			update_option( 'gitwire_running_task', $pending, false );
 		}
 
 		// Extract.
@@ -1224,7 +1224,7 @@ class Installer {
 			// Restore backup immediately (no fatal error needed).
 			self::restore_backup( $install_path, $backup_path );
 			if ( ! $sync_theme_guard ) {
-				delete_option( 'gitwire_pending_update' );
+				delete_option( 'gitwire_running_task' );
 			}
 			return $extracted;
 		}
@@ -1238,7 +1238,7 @@ class Installer {
 			$plugin_file            = self::find_plugin_file( $install_path, $slug );
 			$pending['plugin_file'] = $plugin_file;
 			if ( ! $sync_theme_guard ) {
-				update_option( 'gitwire_pending_update', $pending, false );
+				update_option( 'gitwire_running_task', $pending, false );
 			}
 		}
 
@@ -1265,7 +1265,7 @@ class Installer {
 		$pending['prev_record'] = $installed[ $record_key ] ?? null;
 		$pending['provider']    = $provider;
 		if ( ! $sync_theme_guard ) {
-			update_option( 'gitwire_pending_update', $pending, false );
+			update_option( 'gitwire_running_task', $pending, false );
 		}
 
 		$plugin_file  = 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null;
@@ -1280,14 +1280,14 @@ class Installer {
 
 			$pending['context'] = 'update';
 			self::clear_guard_feedback();
-			update_option( 'gitwire_pending_update', $pending, false );
+			update_option( 'gitwire_running_task', $pending, false );
 
 			self::refresh_plugin_runtime( $install_path, $slug );
 
 			$activated = self::reactivate_plugin_after_update( $plugin_file );
 			if ( is_wp_error( $activated ) ) {
 				self::restore_backup( $install_path, $backup_path );
-				delete_option( 'gitwire_pending_update' );
+				delete_option( 'gitwire_running_task' );
 				if ( ! $remote_sha ) {
 					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
 				}
@@ -1304,7 +1304,7 @@ class Installer {
 				self::restore_backup( $install_path, $backup_path );
 				self::refresh_plugin_runtime( $install_path, $slug );
 				Error_Handler::restore_pending_installed_record( $pending );
-				delete_option( 'gitwire_pending_update' );
+				delete_option( 'gitwire_running_task' );
 
 				if ( ! $remote_sha ) {
 					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
@@ -1391,7 +1391,7 @@ class Installer {
 	 */
 	private static function finalize_successful_update( ?string $backup_path ): void {
 		self::delete_backup_path( $backup_path );
-		delete_option( 'gitwire_pending_update' );
+		delete_option( 'gitwire_running_task' );
 	}
 
 	/**
@@ -1401,7 +1401,7 @@ class Installer {
 	 * @return void
 	 */
 	private static function clear_guard_feedback(): void {
-		delete_option( 'gitwire_fatal_notice' );
+		delete_option( 'gitwire_pending_msg' );
 	}
 
 	/**

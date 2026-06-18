@@ -36,12 +36,13 @@ class Settings {
 	public static function get_public(): array {
 		$s = self::get_raw();
 		return [
-			'smart_install'            => $s['smart_install'] ?? true,
-			'show_repo_label'          => $s['show_repo_label'] ?? true,
-			'enable_logging'           => $s['enable_logging'] ?? false,
-			'log_retention_days'       => $s['log_retention_days'] ?? 30,
-			'log_level'                => $s['log_level'] ?? 'activity',
-			'remove_data_on_uninstall' => $s['remove_data_on_uninstall'] ?? false,
+			'smart_install'              => $s['smart_install'] ?? true,
+			'show_repo_label'            => $s['show_repo_label'] ?? true,
+			'enable_logging'             => $s['enable_logging'] ?? false,
+			'log_retention_days'         => $s['log_retention_days'] ?? 30,
+			'log_level'                  => $s['log_level'] ?? 'activity',
+			'remove_data_on_uninstall'   => $s['remove_data_on_uninstall'] ?? false,
+			'repos_refresh_frequency'    => $s['repos_refresh_frequency'] ?? 'hourly',
 		];
 	}
 
@@ -87,7 +88,13 @@ class Settings {
 			$remove_data_on_uninstall = (bool) $incoming['remove_data_on_uninstall'];
 		}
 
-		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level', 'remove_data_on_uninstall' );
+		$repos_refresh_frequency = $current['repos_refresh_frequency'] ?? 'hourly';
+		if ( array_key_exists( 'repos_refresh_frequency', $incoming ) && null !== $incoming['repos_refresh_frequency'] ) {
+			$val                     = (string) $incoming['repos_refresh_frequency'];
+			$repos_refresh_frequency = in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
+		}
+
+		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level', 'remove_data_on_uninstall', 'repos_refresh_frequency' );
 	}
 
 	/**
@@ -122,6 +129,32 @@ class Settings {
 		$s   = self::get_raw();
 		$val = $s['log_level'] ?? 'activity';
 		return in_array( $val, [ 'activity', 'error' ], true ) ? $val : 'activity';
+	}
+
+	/**
+	 * Returns the configured repos cache refresh frequency.
+	 *
+	 * @since 1.0.0
+	 * @return string WP cron recurrence: 'hourly', 'daily', or 'weekly'.
+	 */
+	public static function get_repos_refresh_frequency(): string {
+		$s   = self::get_raw();
+		$val = $s['repos_refresh_frequency'] ?? 'hourly';
+		return in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
+	}
+
+	/**
+	 * Returns the max age in seconds before a cached repos page is considered stale.
+	 *
+	 * @since 1.0.0
+	 * @return int
+	 */
+	public static function get_repos_max_age(): int {
+		return match ( self::get_repos_refresh_frequency() ) {
+			'daily'  => DAY_IN_SECONDS,
+			'weekly' => WEEK_IN_SECONDS,
+			default  => HOUR_IN_SECONDS,
+		};
 	}
 
 	/**

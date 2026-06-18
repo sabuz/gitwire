@@ -58,8 +58,7 @@ final class Plugin {
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] );
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
 		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
-		add_action( 'gitwire_refresh_repos_cache', [ Repo_Cache::class, 'cron_refresh_repos' ] );
-		add_action( 'gitwire_refresh_repo_types', [ Repo_Cache::class, 'cron_refresh_types' ] );
+		add_action( 'gitwire_refresh_repos_cache', [ Repo_Cache::class, 'cron_refresh' ] );
 		add_action( 'gitwire_refresh_connections', [ REST::class, 'refresh_public_connections' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
 		add_action( 'upgrader_process_complete', [ $this, 'maybe_migrate' ], 10, 2 );
@@ -163,13 +162,7 @@ final class Plugin {
 			wp_schedule_event( time(), 'hourly', 'gitwire_maintenance' );
 		}
 
-		if ( ! wp_next_scheduled( 'gitwire_refresh_repos_cache' ) ) {
-			wp_schedule_event( time(), 'hourly', 'gitwire_refresh_repos_cache' );
-		}
-
-		if ( ! wp_next_scheduled( 'gitwire_refresh_repo_types' ) ) {
-			wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
-		}
+		$this->schedule_repos_cron();
 
 		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
 			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_connections' );
@@ -202,12 +195,13 @@ final class Plugin {
 			add_option(
 				'gitwire_settings',
 				[
-					'smart_install'            => true,
-					'show_repo_label'          => true,
-					'enable_logging'           => true,
-					'log_retention_days'       => 7,
-					'log_level'                => 'activity',
+					'smart_install'           => true,
+					'show_repo_label'         => true,
+					'enable_logging'          => true,
+					'log_retention_days'      => 7,
+					'log_level'               => 'activity',
 					'remove_data_on_uninstall' => false,
+					'repos_refresh_frequency' => 'hourly',
 				],
 				'',
 				false
@@ -216,18 +210,31 @@ final class Plugin {
 		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
 			wp_schedule_event( time(), 'hourly', 'gitwire_maintenance' );
 		}
-		if ( ! wp_next_scheduled( 'gitwire_refresh_repos_cache' ) ) {
-			wp_schedule_event( time(), 'hourly', 'gitwire_refresh_repos_cache' );
-		}
-		if ( ! wp_next_scheduled( 'gitwire_refresh_repo_types' ) ) {
-			wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
-		}
+		$this->schedule_repos_cron();
 		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
 			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_connections' );
 		}
 		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
 			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
 		}
+	}
+
+	/**
+	 * Schedules or reschedules the repos cache cron to match the current frequency setting.
+	 *
+	 * Safe to call on every boot — only reschedules when the stored interval differs.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function schedule_repos_cron(): void {
+		$freq    = Settings::get_repos_refresh_frequency();
+		$current = wp_get_schedule( 'gitwire_refresh_repos_cache' );
+		if ( $current === $freq ) {
+			return;
+		}
+		wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
+		wp_schedule_event( time(), $freq, 'gitwire_refresh_repos_cache' );
 	}
 
 	/**
@@ -240,7 +247,6 @@ final class Plugin {
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
 		wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
-		wp_clear_scheduled_hook( 'gitwire_refresh_repo_types' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
 	}
 }
