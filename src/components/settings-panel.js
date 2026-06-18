@@ -163,7 +163,7 @@ export default function SettingsPanel( {
 			<Card>
 				<CardHeader>
 					<Heading level={ 4 }>
-						{ __( 'Install', 'gitwire' ) }
+						{ __( 'General', 'gitwire' ) }
 					</Heading>
 				</CardHeader>
 				<CardBody>
@@ -223,7 +223,7 @@ export default function SettingsPanel( {
 			<Card>
 				<CardHeader>
 					<Heading level={ 4 }>
-						{ __( 'Logging', 'gitwire' ) }
+						{ __( 'Logs', 'gitwire' ) }
 					</Heading>
 				</CardHeader>
 				<CardBody>
@@ -235,7 +235,7 @@ export default function SettingsPanel( {
 							'Record installs, removals, activations, and connection changes to the Logs page.',
 							'gitwire'
 						) }
-						label={ __( 'Enable logging', 'gitwire' ) }
+						label={ __( 'Enable logs', 'gitwire' ) }
 						onChange={ handleEnableLoggingChange }
 					/>
 					{ enableLogging && (
