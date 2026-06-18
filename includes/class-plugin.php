@@ -160,11 +160,11 @@ final class Plugin {
 		}
 
 		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_maintenance' );
+			wp_schedule_event( time(), 'hourly', 'gitwire_maintenance' );
 		}
 
 		if ( ! wp_next_scheduled( 'gitwire_refresh_repos_cache' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_repos_cache' );
+			wp_schedule_event( time(), 'hourly', 'gitwire_refresh_repos_cache' );
 		}
 
 		if ( ! wp_next_scheduled( 'gitwire_refresh_repo_types' ) ) {
@@ -214,10 +214,10 @@ final class Plugin {
 			);
 		}
 		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_maintenance' );
+			wp_schedule_event( time(), 'hourly', 'gitwire_maintenance' );
 		}
 		if ( ! wp_next_scheduled( 'gitwire_refresh_repos_cache' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_repos_cache' );
+			wp_schedule_event( time(), 'hourly', 'gitwire_refresh_repos_cache' );
 		}
 		if ( ! wp_next_scheduled( 'gitwire_refresh_repo_types' ) ) {
 			wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
