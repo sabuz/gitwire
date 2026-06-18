@@ -145,7 +145,7 @@ export default function BrowsePanel( {
 
 	const { detections, runBatch, seedFromRepos, reset } = useRepoDetection();
 
-	const [ repos, setRepos ] = useState( [] );
+	const [ repositories, setRepositories ] = useState( [] );
 	const [ pagesLoaded, setPagesLoaded ] = useState( {} );
 	const [ hasMore, setHasMore ] = useState( {} );
 	const [ loading, setLoading ] = useState( false );
@@ -194,7 +194,7 @@ export default function BrowsePanel( {
 						errors.push( result.error );
 						continue;
 					}
-					const tagged = result.list.map( ( r ) => ( {
+					const tagged = result.repositories.map( ( r ) => ( {
 						...r,
 						provider: result.provider,
 						connectionId: result.connectionId,
@@ -371,7 +371,7 @@ export default function BrowsePanel( {
 		return activeSourceFilters.includes( r.provider ?? 'github' );
 	};
 
-	const filtered = repos.filter(
+	const filtered = repositories.filter(
 		( r ) => matchesSearch( r ) && matchesType( r ) && matchesSource( r )
 	);
 
@@ -584,13 +584,13 @@ export default function BrowsePanel( {
 				) }
 			</Flex>
 
-			{ repos.length === 0 && loading && (
+			{ repositories.length === 0 && loading && (
 				<div style={ { textAlign: 'center', padding: 48 } }>
 					<Spinner />
 				</div>
 			) }
 
-			{ repos.length > 0 && filtered.length === 0 && (
+			{ repositories.length > 0 && filtered.length === 0 && (
 				<p style={ { color: '#57606a', marginTop: 8 } }>
 					{ search.trim() ? (
 						<>

@@ -1,6 +1,6 @@
 <?php
 /**
- * Transient-based cache for repository lists and type detections.
+ * Transient-based cache for repositoriesitory lists and type detections.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -13,9 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Cache for repository lists and type detections.
+ * Cache for repositoriesitory lists and type detections.
  *
- * Both repos and types are stored as options (no TTL layer); cron refreshes
+ * Both repositories and types are stored as options (no TTL layer); cron refreshes
  * them at the configured frequency, and on-demand fetch fills gaps.
  */
 class Repo_Cache {
@@ -43,7 +43,7 @@ class Repo_Cache {
 	}
 
 	/**
-	 * Returns a cached repos page payload when still fresh.
+	 * Returns a cached repositories page payload when still fresh.
 	 *
 	 * @since 1.0.0
 	 * @param string $connection_id Connection ID used for the fetch.
@@ -62,7 +62,7 @@ class Repo_Cache {
 		}
 
 		$updated = (int) ( $page_data['updated_at'] ?? 0 );
-		if ( ! $updated || ( time() - $updated ) > Settings::get_repos_max_age() ) {
+		if ( ! $updated || ( time() - $updated ) > Settings::get_repositories_max_age() ) {
 			return null;
 		}
 
@@ -70,7 +70,7 @@ class Repo_Cache {
 	}
 
 	/**
-	 * Stores a repos page payload.
+	 * Stores a repositories page payload.
 	 *
 	 * @since 1.0.0
 	 * @param string               $connection_id Connection ID used for the fetch.
@@ -121,7 +121,7 @@ class Repo_Cache {
 			return null;
 		}
 		$updated = (int) ( $stored['updated_at'] ?? 0 );
-		if ( ! $updated || ( time() - $updated ) > Settings::get_repos_max_age() ) {
+		if ( ! $updated || ( time() - $updated ) > Settings::get_repositories_max_age() ) {
 			return null;
 		}
 		return is_array( $stored['data'] ?? null ) ? $stored['data'] : null;
@@ -147,7 +147,7 @@ class Repo_Cache {
 	}
 
 	/**
-	 * Clears cached repository list data.
+	 * Clears cached repositoriesitory list data.
 	 *
 	 * @since 1.0.0
 	 * @param string|null $connection_id Optional connection ID to clear one slot only. Null clears all.
@@ -198,7 +198,7 @@ class Repo_Cache {
 	}
 
 	/**
-	 * Fetches repos from the API and stores them in the transient cache.
+	 * Fetches repositories from the API and stores them in the transient cache.
 	 *
 	 * @since 1.0.0
 	 * @param string $provider      Provider key.
@@ -270,7 +270,7 @@ class Repo_Cache {
 	}
 
 	/**
-	 * Re-detects repository types for cached and installed repos.
+	 * Re-detects repositoriesitory types for cached and installed repositories.
 	 *
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.

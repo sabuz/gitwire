@@ -46,7 +46,7 @@ function installButtonLabel( installing, slugChecking ) {
  * @param {Object}   props.settings         Plugin settings.
  * @param {Function} props.onPostInstall    Called after a successful install.
  * @param {Function} [props.onGoToSettings] Navigates to the Settings tab.
- * @param {Object}   props.installed        Map of installed repos keyed by provider:full_name.
+ * @param {Object}   props.installed        Map of installed repositories keyed by provider:full_name.
  * @return {JSX.Element} The rendered import form.
  */
 export default function ImportFromUrl( {

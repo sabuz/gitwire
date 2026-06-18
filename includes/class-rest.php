@@ -1063,12 +1063,12 @@ class REST {
 	 */
 	private static function merge_installed( array $payload, string $provider ): array {
 		$installed       = Installer::get_installed();
-		$payload['list'] = array_map(
+		$payload['repositories'] = array_map(
 			static function ( $repo ) use ( $installed, $provider ) {
 				$repo['installed'] = $installed[ $provider . ':' . ( $repo['full_name'] ?? '' ) ] ?? null;
 				return $repo;
 			},
-			$payload['list'] ?? []
+			$payload['repositories'] ?? []
 		);
 		return $payload;
 	}
@@ -1109,7 +1109,7 @@ class REST {
 				return $result;
 			}
 
-			$repos = array_map(
+			$repositories = array_map(
 				static function ( $r ) {
 					$full_name = $r['full_name'] ?? '';
 					$parts     = explode( '/', $full_name, 2 );
@@ -1126,11 +1126,11 @@ class REST {
 						'stargazers_count' => 0,
 					];
 				},
-				$result['list']
+				$result['repositories']
 			);
 
 			return [
-				'list'     => $repos,
+				'repositories' => $repositories,
 				'has_more' => $result['has_more'],
 				'page'     => $page,
 			];
@@ -1158,7 +1158,7 @@ class REST {
 				return $result;
 			}
 
-			$repos = array_map(
+			$repositories = array_map(
 				static function ( $r ) {
 					$full_name  = $r['path_with_namespace'] ?? '';
 					$slash      = strrpos( $full_name, '/' );
@@ -1180,7 +1180,7 @@ class REST {
 			);
 
 			return [
-				'list'     => $repos,
+				'repositories' => $repositories,
 				'has_more' => count( $result ) === self::PAGE_SIZE,
 				'page'     => $page,
 			];
@@ -1200,7 +1200,7 @@ class REST {
 			return $result;
 		}
 
-		$repos = array_map(
+		$repositories = array_map(
 			static function ( $r ) {
 				$full_name = $r['full_name'] ?? '';
 				return [
@@ -1220,7 +1220,7 @@ class REST {
 		);
 
 		return [
-			'list'     => $repos,
+			'repositories' => $repositories,
 			'has_more' => count( $result ) === self::PAGE_SIZE,
 			'page'     => $page,
 		];
@@ -1276,7 +1276,7 @@ class REST {
 		$provider      = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 
-		// Only use cache for unauthenticated lookups; a specific connection may access private repos.
+		// Only use cache for unauthenticated lookups; a specific connection may access private repositories.
 		if ( '' === $connection_id ) {
 			$cached = Repo_Cache::get_repo_type( $provider, $owner, $repo, $branch );
 			if ( is_array( $cached ) ) {
@@ -1666,23 +1666,23 @@ class REST {
 	}
 
 	/**
-	 * Detects repository types for a batch of repos.
+	 * Detects repository types for a batch of repositories.
 	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, array<string, mixed>> Map of detection keys to results.
 	 */
 	public static function detect_batch( \WP_REST_Request $req ): array {
-		$repos   = $req->get_param( 'repositories' );
+		$repositories = $req->get_param( 'repositories' );
 		$results = [];
 
-		if ( ! is_array( $repos ) ) {
+		if ( ! is_array( $repositories ) ) {
 			return [ 'detections' => $results ];
 		}
 
-		$repos = array_slice( $repos, 0, 50 );
+		$repositories = array_slice( $repositories, 0, 50 );
 
-		foreach ( $repos as $entry ) {
+		foreach ( $repositories as $entry ) {
 			if ( ! is_array( $entry ) ) {
 				continue;
 			}
@@ -2086,18 +2086,18 @@ class REST {
 	}
 
 	/**
-	 * Enriches a repos payload with any already-cached detection results.
+	 * Enriches a repository list payload with any already-cached detection results.
 	 *
 	 * Checks each repo's detection transient and, when found, embeds the result
 	 * directly so the frontend can skip redundant detect API calls.
 	 *
 	 * @since 1.0.0
-	 * @param array  $payload  Repo list payload with a 'list' key.
+	 * @param array  $payload  Repo list payload with a 'repositories' key.
 	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
 	 * @return array The same payload with 'detection' added to each repo entry.
 	 */
 	private static function enrich_with_detections( array $payload, string $provider ): array {
-		$payload['list'] = array_map(
+		$payload['repositories'] = array_map(
 			static function ( $repo ) use ( $provider ) {
 				$detection = Repo_Cache::get_repo_type(
 					$provider,
@@ -2110,7 +2110,7 @@ class REST {
 				}
 				return $repo;
 			},
-			$payload['list'] ?? []
+			$payload['repositories'] ?? []
 		);
 		return $payload;
 	}

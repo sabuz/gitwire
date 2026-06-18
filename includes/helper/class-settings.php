@@ -132,7 +132,7 @@ class Settings {
 	}
 
 	/**
-	 * Returns the configured repos cache refresh frequency.
+	 * Returns the configured repositories cache refresh frequency.
 	 *
 	 * @since 1.0.0
 	 * @return string WP cron recurrence: 'hourly', 'daily', or 'weekly'.
@@ -144,12 +144,12 @@ class Settings {
 	}
 
 	/**
-	 * Returns the max age in seconds before a cached repos page is considered stale.
+	 * Returns the max age in seconds before a cached repositories page is considered stale.
 	 *
 	 * @since 1.0.0
 	 * @return int
 	 */
-	public static function get_repos_max_age(): int {
+	public static function get_repositories_max_age(): int {
 		return match ( self::get_repo_list_refresh_frequency() ) {
 			'daily'  => DAY_IN_SECONDS,
 			'weekly' => WEEK_IN_SECONDS,

@@ -220,7 +220,7 @@ final class Plugin {
 	}
 
 	/**
-	 * Schedules or reschedules the repos cache cron to match the current frequency setting.
+	 * Schedules or reschedules the repository list cache cron to match the current frequency setting.
 	 *
 	 * Safe to call on every boot — only reschedules when the stored interval differs.
 	 *

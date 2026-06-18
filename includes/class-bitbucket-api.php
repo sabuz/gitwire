@@ -99,7 +99,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * @since 1.0.0
 	 * @param string $username Bitbucket workspace slug (falls back to configured username).
 	 * @param int    $page     Page number for paginated results.
-	 * @return array{repos: array<int, mixed>, has_more: bool}|\WP_Error
+	 * @return array{repositories: array<int, mixed>, has_more: bool}|\WP_Error
 	 */
 	public function get_repos( string $username, int $page = 1 ): array|\WP_Error {
 		$slugs = $username ? [ $username ] : $this->get_workspace_slugs();
@@ -138,7 +138,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 		);
 
 		return [
-			'list'     => $all,
+			'repositories' => $all,
 			'has_more' => $has_more,
 		];
 	}
@@ -262,7 +262,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Downloads a repository ZIP archive to a local temp file.
 	 *
-	 * Uses the Bitbucket web archive URL with Basic auth for private repos.
+	 * Uses the Bitbucket web archive URL with Basic auth for private repositories.
 	 *
 	 * @since 1.0.0
 	 * @param string $owner  Repository workspace slug.

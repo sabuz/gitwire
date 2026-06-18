@@ -34,8 +34,8 @@ export function useRepoDetection() {
 	const detectionsRef = useRef( detections );
 	detectionsRef.current = detections;
 
-	const runBatch = useCallback( async ( repos ) => {
-		const toDetect = repos.filter( ( repo ) => {
+	const runBatch = useCallback( async ( repositories ) => {
+		const toDetect = repositories.filter( ( repo ) => {
 			const key = detectionKey( repo );
 			return (
 				! repo.installed &&
@@ -82,9 +82,9 @@ export function useRepoDetection() {
 		}
 	}, [] );
 
-	const seedFromRepos = useCallback( ( repos ) => {
+	const seedFromRepos = useCallback( ( repositories ) => {
 		const seeded = {};
-		repos.forEach( ( repo ) => {
+		repositories.forEach( ( repo ) => {
 			if ( repo.detection ) {
 				seeded[ detectionKey( repo ) ] = repo.detection;
 			}
