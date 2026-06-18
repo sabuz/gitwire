@@ -22,7 +22,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	const DB_VERSION = '1.2.0';
+	const DB_VERSION = '1.3.0';
 
 	/**
 	 * Option key used to track the installed schema version.
@@ -70,6 +70,40 @@ class Schema {
 			) $charset;"
 		);
 
+		// Installed repository records (replaces gitwire_installed option).
+		// owner and repo are derived from full_name at read time; not stored here.
+		dbDelta(
+			"CREATE TABLE {$prefix}gitwire_installed (
+				provider VARCHAR(20) NOT NULL,
+				full_name VARCHAR(255) NOT NULL,
+				slug VARCHAR(255) NOT NULL DEFAULT '',
+				branch VARCHAR(255) NOT NULL DEFAULT 'main',
+				head VARCHAR(40) NOT NULL DEFAULT '',
+				remote_head VARCHAR(40) NOT NULL DEFAULT '',
+				type VARCHAR(10) NOT NULL DEFAULT 'plugin',
+				subtype VARCHAR(10) NOT NULL DEFAULT '',
+				install_path VARCHAR(1024) NOT NULL DEFAULT '',
+				plugin_file VARCHAR(512) NOT NULL DEFAULT '',
+				connection_id VARCHAR(64) NOT NULL DEFAULT '',
+				installed_at INT UNSIGNED NOT NULL DEFAULT 0,
+				updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+				PRIMARY KEY  (provider, full_name)
+			) $charset;"
+		);
+
+		// Cached commit history per repo/branch (replaces gitwire_commits_* options).
+		// data stores the JSON-encoded commit array returned by the provider API.
+		dbDelta(
+			"CREATE TABLE {$prefix}gitwire_commits (
+				provider VARCHAR(20) NOT NULL,
+				full_name VARCHAR(255) NOT NULL,
+				branch VARCHAR(255) NOT NULL,
+				data MEDIUMTEXT NOT NULL,
+				fetched_at INT UNSIGNED NOT NULL DEFAULT 0,
+				PRIMARY KEY  (provider, full_name, branch)
+			) $charset;"
+		);
+
 		update_option( self::VERSION_OPTION, self::DB_VERSION, false );
 	}
 
@@ -92,7 +126,7 @@ class Schema {
 	private static function tables_exist(): bool {
 		global $wpdb;
 		$prefix = $wpdb->base_prefix;
-		foreach ( [ 'gitwire_public_connections', 'gitwire_connection_meta' ] as $table ) {
+		foreach ( [ 'gitwire_public_connections', 'gitwire_connection_meta', 'gitwire_installed', 'gitwire_commits' ] as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . $table ) ) !== $prefix . $table ) {
 				return false;
@@ -114,6 +148,10 @@ class Schema {
 
 		$prefix = $wpdb->base_prefix;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_commits" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_installed" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_connection_meta" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange

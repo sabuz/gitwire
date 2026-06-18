@@ -35,7 +35,7 @@ export default function BranchModal( {
 		setSelectedBranch( item.branch || '' );
 		setBranchFilter( '' );
 		setAllBranches( [] );
-		api.getBranches( owner, repo, item.provider ?? 'github' )
+		api.getBranches( owner, repo, item.provider ?? 'github', item.connection_id ?? '' )
 			.then( setAllBranches )
 			.catch( () => setAllBranches( [] ) );
 	}, [ item, owner, repo ] );

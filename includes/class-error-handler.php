@@ -273,10 +273,7 @@ class Error_Handler {
 			return;
 		}
 
-		$record_key               = $provider . ':' . $full_name;
-		$installed                = Installer::get_installed();
-		$installed[ $record_key ] = $prev_record;
-		update_option( 'gitwire_installed', $installed, false );
+		Installer::upsert_record( $prev_record );
 	}
 
 	/**

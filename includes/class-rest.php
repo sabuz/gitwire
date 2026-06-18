@@ -1420,7 +1420,6 @@ class REST {
 	public static function get_installed(): array {
 		$records  = Installer::get_installed();
 		$orphaned = [];
-		$pruned   = false;
 
 		foreach ( $records as $key => $rec ) {
 			if ( ! empty( $rec['install_path'] ) && ! is_dir( $rec['install_path'] ) ) {
@@ -1428,14 +1427,9 @@ class REST {
 					'full_name' => $rec['full_name'] ?? '',
 					'provider'  => $rec['provider'] ?? 'github',
 				];
+				Installer::delete_record( $rec['provider'] ?? 'github', $rec['full_name'] ?? '' );
 				unset( $records[ $key ] );
-				$pruned = true;
 			}
-		}
-
-		if ( $pruned ) {
-			update_option( 'gitwire_installed', $records, false );
-			Installer::invalidate_installed_cache();
 		}
 
 		$recently_deleted = get_option( 'gitwire_recently_deleted' );
@@ -1459,11 +1453,8 @@ class REST {
 	 * @return array<string, mixed> Synced installed records and any orphaned entries.
 	 */
 	public static function sync_installed(): array {
-		$records      = Installer::get_installed();
-		$orphaned     = [];
-		$pruned        = false;
-		$heads_updated = false;
-		$remote_heads  = (array) get_option( 'gitwire_remote_heads', [] );
+		$records   = Installer::get_installed();
+		$orphaned  = [];
 
 		$pending       = self::get_pending_update();
 		$pending_key   = '';
@@ -1483,8 +1474,8 @@ class REST {
 					'full_name' => $rec['full_name'],
 					'provider'  => $rec['provider'],
 				];
+				Installer::delete_record( $rec['provider'], $rec['full_name'] );
 				unset( $records[ $key ] );
-				$pruned = true;
 				continue;
 			}
 
@@ -1492,13 +1483,14 @@ class REST {
 				$found = Installer::find_plugin_file( $rec['install_path'], $rec['slug'] ?? '' );
 				if ( $found ) {
 					$rec['plugin_file'] = $found;
-					$pruned             = true;
+					Installer::set_plugin_file( $rec['provider'] ?? 'github', $rec['full_name'] ?? '', $found );
 				}
 			}
 
-			if ( 'theme' === ( $rec['type'] ?? '' ) && ! isset( $rec['subtype'] ) && ! empty( $rec['install_path'] ) ) {
-				$rec['subtype'] = file_exists( $rec['install_path'] . '/theme.json' ) ? 'block' : 'classic';
-				$pruned         = true;
+			if ( 'theme' === ( $rec['type'] ?? '' ) && empty( $rec['subtype'] ) && ! empty( $rec['install_path'] ) ) {
+				$subtype        = file_exists( $rec['install_path'] . '/theme.json' ) ? 'block' : 'classic';
+				$rec['subtype'] = $subtype;
+				Installer::set_subtype( $rec['provider'] ?? 'github', $rec['full_name'] ?? '', $subtype );
 			}
 
 			if ( empty( $rec['head'] ) && ! empty( $rec['owner'] ) && ! empty( $rec['repo'] ) && ! empty( $rec['branch'] ) ) {
@@ -1514,32 +1506,19 @@ class REST {
 				if ( ! is_wp_error( $commits ) && ! empty( $commits[0]['sha'] ) ) {
 					$rec['head'] = $commits[0]['sha'];
 					Installer::set_head( $provider, $full_name, $rec['head'] );
-					$pruned = true;
 				}
 			}
 
 			$record_key = ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' );
 			if ( ! $pending_guard || $record_key !== $pending_key ) {
 				$remote_head = self::fetch_remote_head( $rec );
-				if ( $remote_head ) {
-					$hash = md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
-					if ( ( $remote_heads[ $hash ] ?? null ) !== $remote_head ) {
-						$remote_heads[ $hash ] = $remote_head;
-						$heads_updated         = true;
-					}
+				if ( $remote_head && $remote_head !== ( $rec['remote_head'] ?? '' ) ) {
+					$rec['remote_head'] = $remote_head;
+					Installer::set_remote_head( $rec['provider'] ?? 'github', $rec['full_name'] ?? '', $remote_head );
 				}
 			}
 		}
 		unset( $rec );
-
-		if ( $pruned ) {
-			update_option( 'gitwire_installed', $records, false );
-			Installer::invalidate_installed_cache();
-		}
-
-		if ( $heads_updated ) {
-			update_option( 'gitwire_remote_heads', $remote_heads, false );
-		}
 
 		return [
 			'installed' => self::annotate_installed( $records ),
@@ -1563,7 +1542,6 @@ class REST {
 		$pending       = self::get_pending_update();
 		$pending_guard = is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
-		$remote_heads  = (array) get_option( 'gitwire_remote_heads', [] );
 
 		$all_connections = [];
 		foreach ( Connection_Resolver::all() as $conn ) {
@@ -1616,10 +1594,8 @@ class REST {
 				}
 			}
 
-			$remote_hash = md5( ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' ) . ':' . ( $rec['branch'] ?? '' ) );
-			$remote_head = $remote_heads[ $remote_hash ] ?? false;
-			if ( false !== $remote_head ) {
-				$rec['remote_head']      = $remote_head;
+			$remote_head = $rec['remote_head'] ?? '';
+			if ( '' !== $remote_head ) {
 				$rec['update_available'] = ! empty( $rec['head'] ) && $remote_head !== $rec['head'];
 				if (
 					! empty( $rec['active'] )
@@ -1844,9 +1820,11 @@ class REST {
 		Repo_Cache::clear_repos();
 		$stored_conn_id = $override_id ?? ( $existing_record['connection_id'] ?? null );
 		self::store_head( $owner, $repo, $branch, $provider, $stored_conn_id );
+		self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $stored_conn_id );
 
-		if ( $is_pull ) {
-			self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $stored_conn_id );
+		if ( ! $is_pull ) {
+			// remote_head was for the previous branch; wipe it so sync_installed re-resolves.
+			Installer::set_remote_head( $provider, $full_name, '' );
 		}
 
 		$type = $existing_record['type'] ?? 'plugin';
@@ -1964,15 +1942,9 @@ class REST {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
 
-		$option_key = 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $record['branch'] );
-		$cached     = get_option( $option_key );
-		if ( is_array( $cached ) && $cached ) {
-			return self::annotate_commits_with_fatal(
-				$cached,
-				$provider,
-				$full_name,
-				$record['branch']
-			);
+		$cached = self::get_cached_commits( $provider, $full_name, $record['branch'] );
+		if ( null !== $cached ) {
+			return self::annotate_commits_with_fatal( $cached, $provider, $full_name, $record['branch'] );
 		}
 
 		$api     = self::make_api( $provider, $record['connection_id'] ?? null );
@@ -1982,13 +1954,74 @@ class REST {
 			return $commits;
 		}
 
-		update_option( $option_key, $commits, false );
+		self::save_cached_commits( $provider, $full_name, $record['branch'], $commits );
 
-		return self::annotate_commits_with_fatal(
-			$commits,
-			$provider,
-			$full_name,
-			$record['branch']
+		return self::annotate_commits_with_fatal( $commits, $provider, $full_name, $record['branch'] );
+	}
+
+	/**
+	 * Returns the gitwire_commits table name.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
+	private static function commits_table(): string {
+		global $wpdb;
+		return $wpdb->base_prefix . 'gitwire_commits';
+	}
+
+	/**
+	 * Returns a cached commit list from the DB, or null when not cached.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @param string $branch    Branch name.
+	 * @return array<int, array<string, mixed>>|null
+	 */
+	private static function get_cached_commits( string $provider, string $full_name, string $branch ): ?array {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT data FROM ' . self::commits_table() . ' WHERE provider = %s AND full_name = %s AND branch = %s',
+				$provider,
+				$full_name,
+				$branch
+			),
+			ARRAY_A
+		);
+		if ( ! $row ) {
+			return null;
+		}
+		$commits = json_decode( $row['data'], true );
+		return is_array( $commits ) && $commits ? $commits : null;
+	}
+
+	/**
+	 * Writes or replaces the commit cache for a repo/branch.
+	 *
+	 * @since 1.0.0
+	 * @param string                           $provider  Git provider.
+	 * @param string                           $full_name Repository full name.
+	 * @param string                           $branch    Branch name.
+	 * @param array<int, array<string, mixed>> $commits   Commit list.
+	 * @return void
+	 */
+	private static function save_cached_commits( string $provider, string $full_name, string $branch, array $commits ): void {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->query(
+			$wpdb->prepare(
+				'INSERT INTO ' . self::commits_table() . ' (provider, full_name, branch, data, fetched_at)
+				VALUES (%s, %s, %s, %s, %d)
+				ON DUPLICATE KEY UPDATE data = VALUES(data), fetched_at = VALUES(fetched_at)',
+				$provider,
+				$full_name,
+				$branch,
+				wp_json_encode( $commits ),
+				time()
+			)
 		);
 	}
 
@@ -2338,12 +2371,11 @@ class REST {
 	 * @return void
 	 */
 	private static function update_commit_history_after_pull( string $provider, string $owner, string $repo, string $branch, ?string $connection_id ): void {
-		$full_name  = $owner . '/' . $repo;
-		$option_key = 'gitwire_commits_' . md5( $provider . ':' . $full_name . ':' . $branch );
-		$api        = self::make_api( $provider, $connection_id );
-		$commits    = $api->get_commits( $owner, $repo, $branch );
+		$full_name = $owner . '/' . $repo;
+		$api       = self::make_api( $provider, $connection_id );
+		$commits   = $api->get_commits( $owner, $repo, $branch );
 		if ( ! is_wp_error( $commits ) ) {
-			update_option( $option_key, $commits, false );
+			self::save_cached_commits( $provider, $full_name, $branch, $commits );
 		}
 	}
 }
