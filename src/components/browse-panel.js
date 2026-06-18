@@ -186,7 +186,7 @@ export default function BrowsePanel( {
 
 				const results = await Promise.all( fetches );
 
-				let newRepos = [];
+				let newRepositories = [];
 				const errors = [];
 
 				for ( const result of results ) {
@@ -199,7 +199,7 @@ export default function BrowsePanel( {
 						provider: result.provider,
 						connectionId: result.connectionId,
 					} ) );
-					newRepos = [ ...newRepos, ...tagged ];
+					newRepositories = [ ...newRepositories, ...tagged ];
 					setHasMore( ( prev ) => ( {
 						...prev,
 						[ result.connectionId ]: result.has_more,
@@ -210,16 +210,16 @@ export default function BrowsePanel( {
 					} ) );
 				}
 
-				newRepos.sort(
+				newRepositories.sort(
 					( a, b ) =>
 						new Date( b.updated_at ) - new Date( a.updated_at )
 				);
 
-				setRepos( ( prev ) => {
+				setRepositories( ( prev ) => {
 					if ( ! append ) {
-						return newRepos;
+						return newRepositories;
 					}
-					const merged = [ ...prev, ...newRepos ];
+					const merged = [ ...prev, ...newRepositories ];
 					merged.sort(
 						( a, b ) =>
 							new Date( b.updated_at ) - new Date( a.updated_at )
@@ -231,9 +231,9 @@ export default function BrowsePanel( {
 					toast.error( errors.join( ' · ' ) );
 				}
 
-				seedFromRepos( newRepos );
+				seedFromRepos( newRepositories );
 				runBatch(
-					newRepos.filter(
+					newRepositories.filter(
 						( repo ) => ! lookupInstalled( installed, repo )
 					)
 				);
@@ -262,7 +262,7 @@ export default function BrowsePanel( {
 		( connections ?? [] ).forEach( ( c ) => {
 			pages[ c.id ] = 1;
 		} );
-		setRepos( [] );
+		setRepositories( [] );
 		setHasMore( {} );
 		setPagesLoaded( {} );
 		reset();
@@ -271,7 +271,7 @@ export default function BrowsePanel( {
 
 	const handleRefresh = useCallback( async () => {
 		setLoading( true );
-		setRepos( [] );
+		setRepositories( [] );
 		setHasMore( {} );
 		setPagesLoaded( {} );
 		try {
