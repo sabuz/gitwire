@@ -990,12 +990,12 @@ class REST {
 		if ( null !== $req->get_param( 'remove_data_on_uninstall' ) ) {
 			$incoming['remove_data_on_uninstall'] = $req->get_param( 'remove_data_on_uninstall' );
 		}
-		if ( null !== $req->get_param( 'repos_refresh_frequency' ) ) {
-			$incoming['repos_refresh_frequency'] = $req->get_param( 'repos_refresh_frequency' );
+		if ( null !== $req->get_param( 'repo_list_refresh_frequency' ) ) {
+			$incoming['repo_list_refresh_frequency'] = $req->get_param( 'repo_list_refresh_frequency' );
 		}
 
 		$was_logging = Settings::is_logging_enabled();
-		$prev_freq   = Settings::get_repos_refresh_frequency();
+		$prev_freq   = Settings::get_repo_list_refresh_frequency();
 		$merged      = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
 
@@ -1004,8 +1004,8 @@ class REST {
 			Logger::log( 'Logging enabled' );
 		}
 
-		if ( ( $merged['repos_refresh_frequency'] ?? 'hourly' ) !== $prev_freq ) {
-			Repo_Cache::clear_repos();
+		if ( ( $merged['repo_list_refresh_frequency'] ?? 'hourly' ) !== $prev_freq ) {
+			Repo_Cache::clear_repo_list();
 			Plugin::instance()->schedule_repos_cron();
 		}
 
@@ -1038,7 +1038,7 @@ class REST {
 		// No token connection — public mode, cached per provider.
 		$cache_id = '' !== $connection_id ? $connection_id : 'public:' . $provider;
 
-		$cached = Repo_Cache::get_repos_page( $cache_id, $page );
+		$cached = Repo_Cache::get_repo_list( $cache_id, $page );
 		if ( is_array( $cached ) ) {
 			return self::enrich_with_detections( $cached, $provider );
 		}
@@ -1048,7 +1048,7 @@ class REST {
 			return $payload;
 		}
 
-		Repo_Cache::set_repos_page( $cache_id, $page, $payload );
+		Repo_Cache::set_repo_list( $cache_id, $page, $payload );
 
 		return self::enrich_with_detections( $payload, $provider );
 	}
@@ -1262,7 +1262,7 @@ class REST {
 
 		// Only use cache for unauthenticated lookups; a specific connection may access private repos.
 		if ( '' === $connection_id ) {
-			$cached = Repo_Cache::get_type( $provider, $owner, $repo, $branch );
+			$cached = Repo_Cache::get_repo_type( $provider, $owner, $repo, $branch );
 			if ( is_array( $cached ) ) {
 				return $cached;
 			}
@@ -1285,7 +1285,7 @@ class REST {
 		}
 
 		if ( '' === $connection_id ) {
-			Repo_Cache::set_type( $provider, $owner, $repo, $branch, $result );
+			Repo_Cache::set_repo_type( $provider, $owner, $repo, $branch, $result );
 		}
 
 		return $result;
@@ -1390,7 +1390,7 @@ class REST {
 
 		unset( $result['_evicted'] );
 
-		Repo_Cache::clear_repos();
+		Repo_Cache::clear_repo_list();
 		self::store_head( $owner, $repo, $branch, $provider, $connection_id );
 		self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $connection_id );
 
@@ -1688,7 +1688,7 @@ class REST {
 			}
 
 			$key    = $provider . ':' . $owner . '/' . $repo;
-			$cached = Repo_Cache::get_type( $provider, $owner, $repo, $branch );
+			$cached = Repo_Cache::get_repo_type( $provider, $owner, $repo, $branch );
 			if ( is_array( $cached ) ) {
 				$results[ $key ] = $cached;
 				continue;
@@ -1709,7 +1709,7 @@ class REST {
 				continue;
 			}
 
-			Repo_Cache::set_type( $provider, $owner, $repo, $branch, $result );
+			Repo_Cache::set_repo_type( $provider, $owner, $repo, $branch, $result );
 			$results[ $key ] = $result;
 		}
 
@@ -1827,7 +1827,7 @@ class REST {
 			return $result;
 		}
 
-		Repo_Cache::clear_repos();
+		Repo_Cache::clear_repo_list();
 		$stored_conn_id = $override_id ?? ( $existing_record['connection_id'] ?? null );
 		self::store_head( $owner, $repo, $branch, $provider, $stored_conn_id );
 		self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $stored_conn_id );
@@ -1903,7 +1903,7 @@ class REST {
 			Error_Handler::abort_pending_guard();
 		}
 
-		Repo_Cache::clear_repos();
+		Repo_Cache::clear_repo_list();
 
 		Logger::log( sprintf( '[%s] Uninstalled %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
 
@@ -1929,7 +1929,7 @@ class REST {
 			return $result;
 		}
 
-		Repo_Cache::clear_repos();
+		Repo_Cache::clear_repo_list();
 
 		return [ 'untracked' => true ];
 	}
@@ -2023,9 +2023,9 @@ class REST {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->query(
 			$wpdb->prepare(
-				'INSERT INTO ' . self::commits_table() . ' (provider, full_name, branch, data, fetched_at)
+				'INSERT INTO ' . self::commits_table() . ' (provider, full_name, branch, data, updated_at)
 				VALUES (%s, %s, %s, %s, %d)
-				ON DUPLICATE KEY UPDATE data = VALUES(data), fetched_at = VALUES(fetched_at)',
+				ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)',
 				$provider,
 				$full_name,
 				$branch,
@@ -2089,7 +2089,7 @@ class REST {
 	private static function enrich_with_detections( array $payload, string $provider ): array {
 		$payload['repos'] = array_map(
 			static function ( $repo ) use ( $provider ) {
-				$detection = Repo_Cache::get_type(
+				$detection = Repo_Cache::get_repo_type(
 					$provider,
 					$repo['owner'] ?? '',
 					$repo['name'] ?? '',

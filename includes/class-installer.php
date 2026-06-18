@@ -1401,7 +1401,7 @@ class Installer {
 	 * @return void
 	 */
 	private static function clear_guard_feedback(): void {
-		delete_option( 'gitwire_pending_msg' );
+		delete_option( 'gitwire_pending_message' );
 	}
 
 	/**

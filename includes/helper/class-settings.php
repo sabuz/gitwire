@@ -42,7 +42,7 @@ class Settings {
 			'log_retention_days'         => $s['log_retention_days'] ?? 7,
 			'log_level'                  => $s['log_level'] ?? 'activity',
 			'remove_data_on_uninstall'   => $s['remove_data_on_uninstall'] ?? false,
-			'repos_refresh_frequency'    => $s['repos_refresh_frequency'] ?? 'daily',
+			'repo_list_refresh_frequency'    => $s['repo_list_refresh_frequency'] ?? 'daily',
 		];
 	}
 
@@ -88,13 +88,13 @@ class Settings {
 			$remove_data_on_uninstall = (bool) $incoming['remove_data_on_uninstall'];
 		}
 
-		$repos_refresh_frequency = $current['repos_refresh_frequency'] ?? 'daily';
-		if ( array_key_exists( 'repos_refresh_frequency', $incoming ) && null !== $incoming['repos_refresh_frequency'] ) {
-			$val                     = (string) $incoming['repos_refresh_frequency'];
-			$repos_refresh_frequency = in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
+		$repo_list_refresh_frequency = $current['repo_list_refresh_frequency'] ?? 'daily';
+		if ( array_key_exists( 'repo_list_refresh_frequency', $incoming ) && null !== $incoming['repo_list_refresh_frequency'] ) {
+			$val                     = (string) $incoming['repo_list_refresh_frequency'];
+			$repo_list_refresh_frequency = in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
 		}
 
-		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level', 'remove_data_on_uninstall', 'repos_refresh_frequency' );
+		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level', 'remove_data_on_uninstall', 'repo_list_refresh_frequency' );
 	}
 
 	/**
@@ -137,9 +137,9 @@ class Settings {
 	 * @since 1.0.0
 	 * @return string WP cron recurrence: 'hourly', 'daily', or 'weekly'.
 	 */
-	public static function get_repos_refresh_frequency(): string {
+	public static function get_repo_list_refresh_frequency(): string {
 		$s   = self::get_raw();
-		$val = $s['repos_refresh_frequency'] ?? 'daily';
+		$val = $s['repo_list_refresh_frequency'] ?? 'daily';
 		return in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
 	}
 
@@ -150,7 +150,7 @@ class Settings {
 	 * @return int
 	 */
 	public static function get_repos_max_age(): int {
-		return match ( self::get_repos_refresh_frequency() ) {
+		return match ( self::get_repo_list_refresh_frequency() ) {
 			'daily'  => DAY_IN_SECONDS,
 			'weekly' => WEEK_IN_SECONDS,
 			default  => HOUR_IN_SECONDS,

@@ -65,8 +65,8 @@ export default function SettingsPanel( {
 		settings.log_level ?? 'activity'
 	);
 	const [ clearingLogs, setClearingLogs ] = useState( false );
-	const [ reposRefreshFrequency, setReposRefreshFrequency ] = useState(
-		settings.repos_refresh_frequency ?? 'daily'
+	const [ repoListRefreshFrequency, setReposRefreshFrequency ] = useState(
+		settings.repo_list_refresh_frequency ?? 'daily'
 	);
 
 	const saveSetting = ( payload, rollback ) =>
@@ -134,10 +134,10 @@ export default function SettingsPanel( {
 		saveSetting( { log_level: newVal } ).catch( () => {} );
 	};
 
-	const handleReposRefreshFrequencyChange = ( newVal ) => {
+	const handleRepoListRefreshFrequencyChange = ( newVal ) => {
 		setReposRefreshFrequency( newVal );
-		saveSetting( { repos_refresh_frequency: newVal }, () =>
-			setReposRefreshFrequency( reposRefreshFrequency )
+		saveSetting( { repo_list_refresh_frequency: newVal }, () =>
+			setReposRefreshFrequency( repoListRefreshFrequency )
 		).catch( () => {} );
 	};
 
@@ -208,8 +208,8 @@ export default function SettingsPanel( {
 							'How often the repository list is refreshed in the background.',
 							'gitwire'
 						) }
-						value={ reposRefreshFrequency }
-						onChange={ handleReposRefreshFrequencyChange }
+						value={ repoListRefreshFrequency }
+						onChange={ handleRepoListRefreshFrequencyChange }
 					>
 						<ToggleGroupControlOption label={ __( 'Hourly', 'gitwire' ) } value="hourly" />
 						<ToggleGroupControlOption label={ __( 'Daily', 'gitwire' ) } value="daily" />

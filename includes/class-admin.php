@@ -202,9 +202,9 @@ class Admin {
 		$installed_result = REST::get_installed();
 		$installed        = $installed_result['installed'];
 		$orphaned         = $installed_result['orphaned'];
-		$pending_msg = get_option( 'gitwire_pending_msg' );
+		$pending_msg = get_option( 'gitwire_pending_message' );
 		if ( $pending_msg ) {
-			delete_option( 'gitwire_pending_msg' );
+			delete_option( 'gitwire_pending_message' );
 		}
 
 		// Derive initial tab from path param or setup status.

@@ -20,7 +20,7 @@ $options = [
 	'gitwire_settings',
 	'gitwire_installed',
 	'gitwire_running_task',
-	'gitwire_pending_msg',
+	'gitwire_pending_message',
 	'gitwire_orphan_queue',
 ];
 
@@ -32,7 +32,7 @@ foreach ( $options as $option ) {
 
 wp_clear_scheduled_hook( 'gitwire_maintenance' );
 wp_clear_scheduled_hook( 'gitwire_trim_logs' );
-wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
+wp_clear_scheduled_hook( 'gitwire_refresh_repo_list' );
 wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
 
 global $wpdb;
@@ -40,10 +40,11 @@ global $wpdb;
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 $wpdb->query(
 	$wpdb->prepare(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s",
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s",
 		$wpdb->esc_like( '_transient_gitwire_' ) . '%',
 		$wpdb->esc_like( '_transient_timeout_gitwire_' ) . '%',
 		$wpdb->esc_like( 'gitwire_commits_' ) . '%',
-		$wpdb->esc_like( 'gitwire_repos_' ) . '%'
+		$wpdb->esc_like( 'gitwire_repo_list_' ) . '%',
+		$wpdb->esc_like( 'gitwire_repo_type_' ) . '%'
 	)
 );

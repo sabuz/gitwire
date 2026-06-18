@@ -210,7 +210,7 @@ class Error_Handler {
 			'restored'  => 'activation' === $context ? true : $restored,
 		];
 
-		self::db_update_option( 'gitwire_pending_msg', [ 'type' => 'fatal', 'data' => $notice ] );
+		self::db_update_option( 'gitwire_pending_message', [ 'type' => 'fatal', 'data' => $notice ] );
 
 		Logger::log(
 			sprintf(

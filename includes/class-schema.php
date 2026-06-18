@@ -99,7 +99,7 @@ class Schema {
 				full_name VARCHAR(255) NOT NULL,
 				branch VARCHAR(255) NOT NULL,
 				data MEDIUMTEXT NOT NULL,
-				fetched_at INT UNSIGNED NOT NULL DEFAULT 0,
+				updated_at INT UNSIGNED NOT NULL DEFAULT 0,
 				PRIMARY KEY  (provider, full_name, branch)
 			) $charset;"
 		);

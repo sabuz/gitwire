@@ -15,13 +15,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Cache for repository lists and type detections.
  *
- * Repo lists are stored as options (one per connection, all pages in one entry).
- * Cron refreshes them at the configured frequency; on-demand fetch fills gaps.
- * Type detections are stored as transients (one per detection key, 24h TTL).
+ * Both repos and types are stored as options (no TTL layer); cron refreshes
+ * them at the configured frequency, and on-demand fetch fills gaps.
  */
 class Repo_Cache {
-
-	public const TYPES_TTL = DAY_IN_SECONDS;
 
 	/**
 	 * Returns the option key for a connection's repo pages.
@@ -30,19 +27,19 @@ class Repo_Cache {
 	 * @param string $connection_id Connection ID or 'public:{provider}'.
 	 * @return string
 	 */
-	private static function repos_option_key( string $connection_id ): string {
-		return 'gitwire_repos_' . md5( $connection_id );
+	private static function repo_list_option_key( string $connection_id ): string {
+		return 'gitwire_repo_list_' . md5( $connection_id );
 	}
 
 	/**
-	 * Returns the transient key for a type detection result.
+	 * Returns the option key for a type detection result.
 	 *
 	 * @since 1.0.0
-	 * @param string $type_key Canonical type key from type_key().
+	 * @param string $type_key Canonical type key from repo_type_key().
 	 * @return string
 	 */
-	private static function type_transient_key( string $type_key ): string {
-		return 'gitwire_type_' . md5( $type_key );
+	private static function repo_type_option_key( string $type_key ): string {
+		return 'gitwire_repo_type_' . md5( $type_key );
 	}
 
 	/**
@@ -53,8 +50,8 @@ class Repo_Cache {
 	 * @param int    $page          Page number.
 	 * @return array<string, mixed>|null Cached payload or null when missing/stale.
 	 */
-	public static function get_repos_page( string $connection_id, int $page ): ?array {
-		$data = get_option( self::repos_option_key( $connection_id ) );
+	public static function get_repo_list( string $connection_id, int $page ): ?array {
+		$data = get_option( self::repo_list_option_key( $connection_id ) );
 		if ( ! is_array( $data ) ) {
 			return null;
 		}
@@ -64,8 +61,8 @@ class Repo_Cache {
 			return null;
 		}
 
-		$fetched = (int) ( $page_data['fetched_at'] ?? 0 );
-		if ( ! $fetched || ( time() - $fetched ) > Settings::get_repos_max_age() ) {
+		$updated = (int) ( $page_data['updated_at'] ?? 0 );
+		if ( ! $updated || ( time() - $updated ) > Settings::get_repos_max_age() ) {
 			return null;
 		}
 
@@ -81,14 +78,14 @@ class Repo_Cache {
 	 * @param array<string, mixed> $payload       Repos payload.
 	 * @return void
 	 */
-	public static function set_repos_page( string $connection_id, int $page, array $payload ): void {
-		$key  = self::repos_option_key( $connection_id );
+	public static function set_repo_list( string $connection_id, int $page, array $payload ): void {
+		$key  = self::repo_list_option_key( $connection_id );
 		$data = get_option( $key );
 		if ( ! is_array( $data ) ) {
 			$data = [];
 		}
 
-		$payload['fetched_at']  = time();
+		$payload['updated_at']  = time();
 		$data[ (string) $page ] = $payload;
 
 		update_option( $key, $data, false );
@@ -104,7 +101,7 @@ class Repo_Cache {
 	 * @param string $branch   Branch name.
 	 * @return string
 	 */
-	public static function type_key( string $provider, string $owner, string $repo, string $branch ): string {
+	public static function repo_type_key( string $provider, string $owner, string $repo, string $branch ): string {
 		return $provider . ':' . $owner . '/' . $repo . ':' . $branch;
 	}
 
@@ -116,11 +113,18 @@ class Repo_Cache {
 	 * @param string $owner    Repository owner.
 	 * @param string $repo     Repository name.
 	 * @param string $branch   Branch name.
-	 * @return array<string, mixed>|null Cached detection or null when missing/expired.
+	 * @return array<string, mixed>|null Cached detection or null when missing/stale.
 	 */
-	public static function get_type( string $provider, string $owner, string $repo, string $branch ): ?array {
-		$data = get_transient( self::type_transient_key( self::type_key( $provider, $owner, $repo, $branch ) ) );
-		return is_array( $data ) ? $data : null;
+	public static function get_repo_type( string $provider, string $owner, string $repo, string $branch ): ?array {
+		$stored = get_option( self::repo_type_option_key( self::repo_type_key( $provider, $owner, $repo, $branch ) ) );
+		if ( ! is_array( $stored ) ) {
+			return null;
+		}
+		$updated = (int) ( $stored['updated_at'] ?? 0 );
+		if ( ! $updated || ( time() - $updated ) > Settings::get_repos_max_age() ) {
+			return null;
+		}
+		return is_array( $stored['data'] ?? null ) ? $stored['data'] : null;
 	}
 
 	/**
@@ -134,11 +138,11 @@ class Repo_Cache {
 	 * @param array<string, mixed> $result   Detection payload.
 	 * @return void
 	 */
-	public static function set_type( string $provider, string $owner, string $repo, string $branch, array $result ): void {
-		set_transient(
-			self::type_transient_key( self::type_key( $provider, $owner, $repo, $branch ) ),
-			$result,
-			self::TYPES_TTL
+	public static function set_repo_type( string $provider, string $owner, string $repo, string $branch, array $result ): void {
+		update_option(
+			self::repo_type_option_key( self::repo_type_key( $provider, $owner, $repo, $branch ) ),
+			[ 'updated_at' => time(), 'data' => $result ],
+			false
 		);
 	}
 
@@ -149,9 +153,9 @@ class Repo_Cache {
 	 * @param string|null $connection_id Optional connection ID to clear one slot only. Null clears all.
 	 * @return void
 	 */
-	public static function clear_repos( ?string $connection_id = null ): void {
+	public static function clear_repo_list( ?string $connection_id = null ): void {
 		if ( null !== $connection_id ) {
-			delete_option( self::repos_option_key( $connection_id ) );
+			delete_option( self::repo_list_option_key( $connection_id ) );
 			return;
 		}
 
@@ -160,7 +164,7 @@ class Repo_Cache {
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-				$wpdb->esc_like( 'gitwire_repos_' ) . '%'
+				$wpdb->esc_like( 'gitwire_repo_list_' ) . '%'
 			)
 		);
 	}
@@ -171,14 +175,13 @@ class Repo_Cache {
 	 * @since 1.0.0
 	 * @return void
 	 */
-	public static function clear_types(): void {
+	public static function clear_repo_types(): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-				$wpdb->esc_like( '_transient_gitwire_type_' ) . '%',
-				$wpdb->esc_like( '_transient_timeout_gitwire_type_' ) . '%'
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+				$wpdb->esc_like( 'gitwire_repo_type_' ) . '%'
 			)
 		);
 	}
@@ -190,8 +193,8 @@ class Repo_Cache {
 	 * @return void
 	 */
 	public static function clear_all(): void {
-		self::clear_repos();
-		self::clear_types();
+		self::clear_repo_list();
+		self::clear_repo_types();
 	}
 
 	/**
@@ -203,7 +206,7 @@ class Repo_Cache {
 	 * @param string $connection_id Connection ID to use for credentials.
 	 * @return array<string, mixed>|\WP_Error Stored payload on success.
 	 */
-	public static function fetch_repos_page( string $provider, int $page, string $connection_id ): array|\WP_Error {
+	public static function fetch_repo_list( string $provider, int $page, string $connection_id ): array|\WP_Error {
 		$cache_id = '' !== $connection_id ? $connection_id : 'public:' . $provider;
 		$payload  = REST::build_repos_page( $provider, $page, $connection_id );
 
@@ -211,18 +214,18 @@ class Repo_Cache {
 			return $payload;
 		}
 
-		self::set_repos_page( $cache_id, $page, $payload );
+		self::set_repo_list( $cache_id, $page, $payload );
 
 		return $payload;
 	}
 
 	/**
-	 * Cron handler: refreshes repo lists for all connections then re-detects types.
+	 * Fetches page 1 of the repo list for every known connection.
 	 *
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when every source fails.
 	 */
-	public static function cron_refresh(): true|\WP_Error {
+	private static function refresh_repo_lists(): true|\WP_Error {
 		$sources = [];
 
 		foreach ( Connection_Resolver::all() as $conn ) {
@@ -238,7 +241,7 @@ class Repo_Cache {
 
 		foreach ( $sources as [ $provider, $id ] ) {
 			$ran    = true;
-			$result = self::fetch_repos_page( $provider, 1, $id );
+			$result = self::fetch_repo_list( $provider, 1, $id );
 			if ( is_wp_error( $result ) ) {
 				$last_err = $result;
 			}
@@ -248,13 +251,22 @@ class Repo_Cache {
 			return true;
 		}
 
-		if ( $last_err ) {
-			return $last_err;
+		return $last_err ?? true;
+	}
+
+	/**
+	 * Scheduled cron callback: refreshes repo lists then re-detects types.
+	 *
+	 * @since 1.0.0
+	 * @return true|\WP_Error
+	 */
+	public static function scheduled_refresh(): true|\WP_Error {
+		$result = self::refresh_repo_lists();
+		if ( is_wp_error( $result ) ) {
+			return $result;
 		}
 
-		self::cron_refresh_types();
-
-		return true;
+		return self::cron_refresh_repo_types();
 	}
 
 	/**
@@ -263,7 +275,7 @@ class Repo_Cache {
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
 	 */
-	public static function cron_refresh_types(): true|\WP_Error {
+	public static function cron_refresh_repo_types(): true|\WP_Error {
 		$keys           = [];
 		$connection_ids = [];
 		$records        = Installer::get_installed();
@@ -274,7 +286,7 @@ class Repo_Cache {
 			$repo     = $rec['repo'] ?? '';
 			$branch   = $rec['branch'] ?? 'main';
 			if ( $owner && $repo ) {
-				$key          = self::type_key( $provider, $owner, $repo, $branch );
+				$key          = self::repo_type_key( $provider, $owner, $repo, $branch );
 				$keys[ $key ] = true;
 				if ( ! empty( $rec['connection_id'] ) ) {
 					$connection_ids[ $key ] = $rec['connection_id'];
@@ -319,34 +331,24 @@ class Repo_Cache {
 				continue;
 			}
 
-			self::set_type( $provider, $owner, $repo, $full_branch, $result );
+			self::set_repo_type( $provider, $owner, $repo, $full_branch, $result );
 		}
 
 		return $last_err ?? true;
 	}
 
 	/**
-	 * Refreshes browse caches immediately (manual refresh).
+	 * Forces an immediate full refresh outside the cron cycle.
 	 *
 	 * @since 1.0.0
-	 * @param bool $include_types Whether to refresh type detections too.
 	 * @return true|\WP_Error
 	 */
-	public static function refresh_all( bool $include_types = true ) {
-		$repos = self::cron_refresh();
-		if ( is_wp_error( $repos ) ) {
-			return $repos;
+	public static function force_refresh(): true|\WP_Error {
+		$result = self::refresh_repo_lists();
+		if ( is_wp_error( $result ) ) {
+			return $result;
 		}
 
-		if ( ! $include_types ) {
-			return true;
-		}
-
-		$types = self::cron_refresh_types();
-		if ( is_wp_error( $types ) ) {
-			return $types;
-		}
-
-		return true;
+		return self::cron_refresh_repo_types();
 	}
 }
