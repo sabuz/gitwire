@@ -35,11 +35,11 @@ export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );
 export const syncInstalled = () =>
 	apiFetch( { path: `${ BASE }/installed/sync`, method: 'POST' } );
 
-export const detectBatch = ( repos ) =>
+export const detectBatch = ( repositories ) =>
 	apiFetch( {
 		path: `${ BASE }/repos/detect-batch`,
 		method: 'POST',
-		data: { repos },
+		data: { repositories },
 	} );
 
 export const getBranches = (

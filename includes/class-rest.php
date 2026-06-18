@@ -158,7 +158,7 @@ class REST {
 				'callback'            => [ self::class, 'detect_batch' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [
-					'repos' => [
+					'repositories' => [
 						'required' => true,
 						'type'     => 'array',
 					],
@@ -1040,21 +1040,43 @@ class REST {
 
 		$cached = Repo_Cache::get_repo_list( $cache_id, $page );
 		if ( is_array( $cached ) ) {
-			return self::enrich_with_detections( $cached, $provider );
+			return self::enrich_with_detections( self::merge_installed( $cached, $provider ), $provider );
 		}
 
-		$payload = self::build_repos_page( $provider, $page, $connection_id );
+		$payload = self::build_repo_list( $provider, $page, $connection_id );
 		if ( is_wp_error( $payload ) ) {
 			return $payload;
 		}
 
 		Repo_Cache::set_repo_list( $cache_id, $page, $payload );
 
-		return self::enrich_with_detections( $payload, $provider );
+		return self::enrich_with_detections( self::merge_installed( $payload, $provider ), $provider );
 	}
 
 	/**
-	 * Builds a paginated repository list payload from the Git provider API.
+	 * Merges current installed status into a cached repo list payload.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed> $payload  Repo list payload from cache.
+	 * @param string               $provider Provider key.
+	 * @return array<string, mixed>
+	 */
+	private static function merge_installed( array $payload, string $provider ): array {
+		$installed       = Installer::get_installed();
+		$payload['list'] = array_map(
+			static function ( $repo ) use ( $installed, $provider ) {
+				$repo['installed'] = $installed[ $provider . ':' . ( $repo['full_name'] ?? '' ) ] ?? null;
+				return $repo;
+			},
+			$payload['list'] ?? []
+		);
+		return $payload;
+	}
+
+	/**
+	 * Fetches and normalizes a paginated repository list from the Git provider API.
+	 *
+	 * Does not embed installed status — callers merge that at response time via merge_installed().
 	 *
 	 * @since 1.0.0
 	 * @param string $provider      Provider key: github, gitlab, or bitbucket.
@@ -1062,7 +1084,7 @@ class REST {
 	 * @param string $connection_id Connection ID to use for credentials.
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	public static function build_repos_page( string $provider, int $page, string $connection_id = '' ): array|\WP_Error {
+	public static function build_repo_list( string $provider, int $page, string $connection_id = '' ): array|\WP_Error {
 		$creds = '' !== $connection_id
 			? Connection_Resolver::get_credentials( $connection_id )
 			: Connection_Resolver::get_credentials_for_provider( $provider );
@@ -1081,15 +1103,14 @@ class REST {
 				? new Bitbucket_API( sanitize_email( $creds['email'] ), $creds['api_token'] )
 				: new Bitbucket_API( '', '' );
 			// Authenticated: empty string — get_repos auto-discovers workspaces via /user/workspaces.
-			$result    = $api->get_repos( $workspace, $page );
-			$installed = Installer::get_installed();
+			$result = $api->get_repos( $workspace, $page );
 
 			if ( is_wp_error( $result ) ) {
 				return $result;
 			}
 
 			$repos = array_map(
-				static function ( $r ) use ( $installed ) {
+				static function ( $r ) {
 					$full_name = $r['full_name'] ?? '';
 					$parts     = explode( '/', $full_name, 2 );
 					return [
@@ -1103,14 +1124,13 @@ class REST {
 						'default_branch'   => $r['mainbranch']['name'] ?? 'main',
 						'updated_at'       => $r['updated_on'] ?? '',
 						'stargazers_count' => 0,
-						'installed'        => $installed[ 'bitbucket:' . $full_name ] ?? null,
 					];
 				},
-				$result['repos']
+				$result['list']
 			);
 
 			return [
-				'repos'    => $repos,
+				'list'     => $repos,
 				'has_more' => $result['has_more'],
 				'page'     => $page,
 			];
@@ -1132,15 +1152,14 @@ class REST {
 				? new GitLab_API( $creds['token'], $creds['gitlab_url'] ?? '' )
 				: new GitLab_API( '', $gitlab_url );
 
-			$result    = $api->get_repos( $username, $page );
-			$installed = Installer::get_installed();
+			$result = $api->get_repos( $username, $page );
 
 			if ( is_wp_error( $result ) ) {
 				return $result;
 			}
 
 			$repos = array_map(
-				static function ( $r ) use ( $installed ) {
+				static function ( $r ) {
 					$full_name  = $r['path_with_namespace'] ?? '';
 					$slash      = strrpos( $full_name, '/' );
 					$is_private = ( $r['visibility'] ?? 'private' ) !== 'public';
@@ -1155,14 +1174,13 @@ class REST {
 						'default_branch'   => $r['default_branch'] ?? 'main',
 						'updated_at'       => $r['last_activity_at'] ?? '',
 						'stargazers_count' => (int) ( $r['star_count'] ?? 0 ),
-						'installed'        => $installed[ 'gitlab:' . $full_name ] ?? null,
 					];
 				},
 				$result
 			);
 
 			return [
-				'repos'    => $repos,
+				'list'     => $repos,
 				'has_more' => count( $result ) === self::PAGE_SIZE,
 				'page'     => $page,
 			];
@@ -1175,16 +1193,15 @@ class REST {
 			return new \WP_Error( 'missing_config', 'Add a GitHub account in Settings first.', [ 'status' => 400 ] );
 		}
 
-		$api       = new GitHub_API( $creds['token'] ?? '' );
-		$result    = $api->get_repos( $username, $page );
-		$installed = Installer::get_installed();
+		$api    = new GitHub_API( $creds['token'] ?? '' );
+		$result = $api->get_repos( $username, $page );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 
 		$repos = array_map(
-			static function ( $r ) use ( $installed ) {
+			static function ( $r ) {
 				$full_name = $r['full_name'] ?? '';
 				return [
 					'id'               => $r['id'],
@@ -1197,14 +1214,13 @@ class REST {
 					'default_branch'   => $r['default_branch'] ?? 'main',
 					'updated_at'       => $r['updated_at'] ?? '',
 					'stargazers_count' => (int) ( $r['stargazers_count'] ?? 0 ),
-					'installed'        => $installed[ 'github:' . $full_name ] ?? null,
 				];
 			},
 			$result
 		);
 
 		return [
-			'repos'    => $repos,
+			'list'     => $repos,
 			'has_more' => count( $result ) === self::PAGE_SIZE,
 			'page'     => $page,
 		];
@@ -1390,7 +1406,6 @@ class REST {
 
 		unset( $result['_evicted'] );
 
-		Repo_Cache::clear_repo_list();
 		self::store_head( $owner, $repo, $branch, $provider, $connection_id );
 		self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $connection_id );
 
@@ -1658,7 +1673,7 @@ class REST {
 	 * @return array<string, array<string, mixed>> Map of detection keys to results.
 	 */
 	public static function detect_batch( \WP_REST_Request $req ): array {
-		$repos   = $req->get_param( 'repos' );
+		$repos   = $req->get_param( 'repositories' );
 		$results = [];
 
 		if ( ! is_array( $repos ) ) {
@@ -1827,7 +1842,6 @@ class REST {
 			return $result;
 		}
 
-		Repo_Cache::clear_repo_list();
 		$stored_conn_id = $override_id ?? ( $existing_record['connection_id'] ?? null );
 		self::store_head( $owner, $repo, $branch, $provider, $stored_conn_id );
 		self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $stored_conn_id );
@@ -1903,8 +1917,6 @@ class REST {
 			Error_Handler::abort_pending_guard();
 		}
 
-		Repo_Cache::clear_repo_list();
-
 		Logger::log( sprintf( '[%s] Uninstalled %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
 
 		return [ 'removed' => true ];
@@ -1928,8 +1940,6 @@ class REST {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-
-		Repo_Cache::clear_repo_list();
 
 		return [ 'untracked' => true ];
 	}
@@ -2082,12 +2092,12 @@ class REST {
 	 * directly so the frontend can skip redundant detect API calls.
 	 *
 	 * @since 1.0.0
-	 * @param array  $payload  Repos payload with a 'repos' key.
+	 * @param array  $payload  Repo list payload with a 'list' key.
 	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
-	 * @return array The same payload with 'detection' added to each cached repo.
+	 * @return array The same payload with 'detection' added to each repo entry.
 	 */
 	private static function enrich_with_detections( array $payload, string $provider ): array {
-		$payload['repos'] = array_map(
+		$payload['list'] = array_map(
 			static function ( $repo ) use ( $provider ) {
 				$detection = Repo_Cache::get_repo_type(
 					$provider,
@@ -2100,7 +2110,7 @@ class REST {
 				}
 				return $repo;
 			},
-			$payload['repos']
+			$payload['list'] ?? []
 		);
 		return $payload;
 	}

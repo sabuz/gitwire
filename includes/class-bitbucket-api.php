@@ -138,7 +138,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 		);
 
 		return [
-			'repos'    => $all,
+			'list'     => $all,
 			'has_more' => $has_more,
 		];
 	}

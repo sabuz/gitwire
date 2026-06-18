@@ -194,7 +194,7 @@ export default function BrowsePanel( {
 						errors.push( result.error );
 						continue;
 					}
-					const tagged = result.repos.map( ( r ) => ( {
+					const tagged = result.list.map( ( r ) => ( {
 						...r,
 						provider: result.provider,
 						connectionId: result.connectionId,

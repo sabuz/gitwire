@@ -208,7 +208,7 @@ class Repo_Cache {
 	 */
 	public static function fetch_repo_list( string $provider, int $page, string $connection_id ): array|\WP_Error {
 		$cache_id = '' !== $connection_id ? $connection_id : 'public:' . $provider;
-		$payload  = REST::build_repos_page( $provider, $page, $connection_id );
+		$payload  = REST::build_repo_list( $provider, $page, $connection_id );
 
 		if ( is_wp_error( $payload ) ) {
 			return $payload;
