@@ -13,24 +13,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Stores browse-repo lists and detection results in transients.
+ * Cache for repository lists and type detections.
  *
- * One transient per connection holds all browsed pages for that connection.
- * One transient per detection key holds the type result.
- * Both are isolated — no shared blob, no read-modify-write race between connections.
+ * Repo lists are stored as options (one per connection, all pages in one entry).
+ * Cron refreshes them at the configured frequency; on-demand fetch fills gaps.
+ * Type detections are stored as transients (one per detection key, 24h TTL).
  */
 class Repo_Cache {
 
 	public const TYPES_TTL = DAY_IN_SECONDS;
 
 	/**
-	 * Returns the transient key for a connection's repo pages.
+	 * Returns the option key for a connection's repo pages.
 	 *
 	 * @since 1.0.0
 	 * @param string $connection_id Connection ID or 'public:{provider}'.
 	 * @return string
 	 */
-	private static function repos_transient_key( string $connection_id ): string {
+	private static function repos_option_key( string $connection_id ): string {
 		return 'gitwire_repos_' . md5( $connection_id );
 	}
 
@@ -54,7 +54,7 @@ class Repo_Cache {
 	 * @return array<string, mixed>|null Cached payload or null when missing/stale.
 	 */
 	public static function get_repos_page( string $connection_id, int $page ): ?array {
-		$data = get_transient( self::repos_transient_key( $connection_id ) );
+		$data = get_option( self::repos_option_key( $connection_id ) );
 		if ( ! is_array( $data ) ) {
 			return null;
 		}
@@ -82,8 +82,8 @@ class Repo_Cache {
 	 * @return void
 	 */
 	public static function set_repos_page( string $connection_id, int $page, array $payload ): void {
-		$key  = self::repos_transient_key( $connection_id );
-		$data = get_transient( $key );
+		$key  = self::repos_option_key( $connection_id );
+		$data = get_option( $key );
 		if ( ! is_array( $data ) ) {
 			$data = [];
 		}
@@ -91,7 +91,7 @@ class Repo_Cache {
 		$payload['fetched_at']  = time();
 		$data[ (string) $page ] = $payload;
 
-		set_transient( $key, $data, WEEK_IN_SECONDS );
+		update_option( $key, $data, false );
 	}
 
 	/**
@@ -151,7 +151,7 @@ class Repo_Cache {
 	 */
 	public static function clear_repos( ?string $connection_id = null ): void {
 		if ( null !== $connection_id ) {
-			delete_transient( self::repos_transient_key( $connection_id ) );
+			delete_option( self::repos_option_key( $connection_id ) );
 			return;
 		}
 
@@ -159,9 +159,8 @@ class Repo_Cache {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-				$wpdb->esc_like( '_transient_gitwire_repos_' ) . '%',
-				$wpdb->esc_like( '_transient_timeout_gitwire_repos_' ) . '%'
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+				$wpdb->esc_like( 'gitwire_repos_' ) . '%'
 			)
 		);
 	}
