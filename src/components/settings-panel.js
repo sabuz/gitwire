@@ -357,32 +357,14 @@ function PublicConnectionsCard( { connections, onChange } ) {
 
 	if ( selectedId ) {
 		const rec = connections.find( ( c ) => c.id === selectedId );
-		return (
-			<>
-				<Flex align="center" gap={ 2 } style={ { marginBottom: 16 } }>
-					<FlexItem>
-						<Button
-							icon="arrow-left-alt2"
-							label={ __( 'Back to Connections', 'gitwire' ) }
-							variant="tertiary"
-							onClick={ () => setSelectedId( null ) }
-						/>
-					</FlexItem>
-					<FlexBlock>
-						<Heading level={ 4 } style={ { margin: 0 } }>
-							{ __( 'Connections', 'gitwire' ) }
-						</Heading>
-					</FlexBlock>
-				</Flex>
-				{ rec && (
-					<PublicConnectionDetail
-						rateData={ rateCache[ rec.id ] ?? null }
-						rec={ rec }
-						onRemoved={ handleRemoved }
-					/>
-				) }
-			</>
-		);
+		return rec ? (
+			<PublicConnectionDetail
+				rateData={ rateCache[ rec.id ] ?? null }
+				rec={ rec }
+				onBack={ () => setSelectedId( null ) }
+				onRemoved={ handleRemoved }
+			/>
+		) : null;
 	}
 
 	return (
@@ -528,7 +510,7 @@ function gravatarFallback( identifier ) {
 	return `https://www.gravatar.com/avatar/${ h.toString( 16 ).padStart( 32, '0' ) }?d=identicon&s=96`;
 }
 
-function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
+function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 	const [ busy, setBusy ] = useState( false );
 	const [ confirming, setConfirming ] = useState( false );
 	const provLabel = PROVIDER_LABELS[ rec.provider ] ?? rec.provider;
@@ -563,11 +545,23 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 		<Card>
 			<CardHeader>
 				<Flex align="center" gap={ 2 }>
+					{ onBack && (
+						<FlexItem>
+							<Button
+								icon="arrow-left-alt2"
+								iconSize={ 18 }
+								label={ __( 'Back to Connections', 'gitwire' ) }
+								size="compact"
+								variant="tertiary"
+								onClick={ onBack }
+							/>
+						</FlexItem>
+					) }
 					<FlexItem>
-						<ProviderIcon provider={ rec.provider } />
+						<ProviderIcon provider={ rec.provider } size={ 15 } variant="brand" />
 					</FlexItem>
 					<FlexBlock>
-						<strong>{ provLabel }</strong>
+						<strong style={ { fontSize: 15, lineHeight: 1.5 } }>{ provLabel }</strong>
 					</FlexBlock>
 					<FlexItem>
 						<span className="gitwire-badge gitwire-badge--warning">
