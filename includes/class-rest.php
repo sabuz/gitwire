@@ -481,9 +481,17 @@ class REST {
 			return $valid;
 		}
 
-		$conn = Public_Connections::add( $provider, $valid['username'], $valid['gitlab_url'] );
+		$conn = Public_Connections::add( $provider, $valid['identifier'], $valid['gitlab_url'] );
+		$id   = $conn['id'] ?? '';
 
-		return [ 'connection' => $conn ];
+		if ( '' !== $id ) {
+			self::write_public_metadata( $id, $provider, $valid['identifier'], $valid['gitlab_url'] );
+		}
+
+		return [
+			'connection' => $conn,
+			'metadata'   => self::get_public_connections_metadata( $id ) ?: null,
+		];
 	}
 
 	/**
@@ -500,7 +508,7 @@ class REST {
 			return new \WP_Error( 'not_found', __( 'Connection not found.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
-		self::clear_public_rate_cache( $id );
+		self::clear_public_connection_metadata( $id );
 
 		return [ 'deleted' => true ];
 	}
@@ -527,7 +535,7 @@ class REST {
 			return new \WP_REST_Response( null, 204 );
 		}
 
-		$payload = self::get_public_github_rate( $id, $conn['username'] ?? '' );
+		$payload = self::get_public_github_rate( $id, $conn['identifier'] ?? '', $conn['avatar_url'] ?? '' );
 
 		if ( null === $payload ) {
 			return new \WP_REST_Response( null, 204 );
@@ -546,15 +554,19 @@ class REST {
 		foreach ( Public_Connections::all() as $conn ) {
 			$id       = $conn['id'] ?? '';
 			$provider = $conn['provider'] ?? '';
-			$username = $conn['username'] ?? '';
+			$username = $conn['identifier'] ?? '';
 
-			if ( '' === $id || 'github' !== $provider ) {
+			if ( '' === $id ) {
 				continue;
 			}
 
-			$payload = self::fetch_github_profile( $username );
-			if ( null !== $payload ) {
-				self::save_public_rate_cache( $id, $payload );
+			if ( 'github' === $provider ) {
+				$payload = self::fetch_github_profile( $username );
+				if ( null !== $payload ) {
+					self::save_public_connection_metadata( $id, $payload );
+				}
+			} else {
+				self::write_public_metadata( $id, $provider, $username, $conn['gitlab_url'] ?? '' );
 			}
 		}
 	}
@@ -566,22 +578,23 @@ class REST {
 	 * for its public connections rather than re-fetching from GitHub.
 	 *
 	 * @since 1.0.0
-	 * @param string $id       Public connection ID.
-	 * @param string $username GitHub username.
+	 * @param string $id         Public connection ID.
+	 * @param string $username   GitHub username.
+	 * @param string $avatar_url Stored avatar URL (GitHub avatars are derived, not stored).
 	 * @return array<string, mixed>|null Null when the GitHub request fails.
 	 */
-	public static function get_public_github_rate( string $id, string $username ): ?array {
-		$cache = (array) get_option( 'gitwire_public_rate_cache', [] );
-		if ( isset( $cache[ $id ] ) && is_array( $cache[ $id ] ) ) {
-			return $cache[ $id ];
+	public static function get_public_github_rate( string $id, string $username, string $avatar_url = '' ): ?array {
+		$cached = self::get_public_connections_metadata( $id );
+		if ( null !== $cached ) {
+			return $cached;
 		}
 
-		$payload = self::fetch_github_profile( $username );
+		$payload = self::fetch_github_profile( $username, $avatar_url );
 		if ( null === $payload ) {
 			return null;
 		}
 
-		self::save_public_rate_cache( $id, $payload );
+		self::save_public_connection_metadata( $id, $payload );
 
 		return $payload;
 	}
@@ -592,10 +605,11 @@ class REST {
 	 * Returns null when the API call fails so the caller can decide how to handle it.
 	 *
 	 * @since 1.0.0
-	 * @param string $username GitHub username.
+	 * @param string $username   GitHub username.
+	 * @param string $avatar_url Stored avatar URL; falls back to the deterministic GitHub URL.
 	 * @return array<string, mixed>|null
 	 */
-	private static function fetch_github_profile( string $username ): ?array {
+	private static function fetch_github_profile( string $username, string $avatar_url = '' ): ?array {
 		$headers  = [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ];
 		$rate_res = wp_remote_get(
 			'https://api.github.com/rate_limit',
@@ -627,65 +641,228 @@ class REST {
 		if ( ! is_wp_error( $user_res ) && 200 === wp_remote_retrieve_response_code( $user_res ) ) {
 			$user_data = json_decode( wp_remote_retrieve_body( $user_res ), true );
 			$name      = (string) ( $user_data['name'] ?? '' );
+			if ( '' === $avatar_url ) {
+				$avatar_url = (string) ( $user_data['avatar_url'] ?? '' );
+			}
+		}
+
+		if ( '' === $avatar_url && '' !== $username ) {
+			$avatar_url = 'https://avatars.githubusercontent.com/' . rawurlencode( $username );
 		}
 
 		return [
+			'provider'       => 'github',
+			'authenticated'  => false,
+			'username'       => $username,
+			'name'           => $name,
+			'avatar_url'     => $avatar_url,
 			'rate_limit'     => (int) $core['limit'],
 			'rate_remaining' => (int) $core['remaining'],
 			'rate_reset'     => (int) $core['reset'],
-			'name'           => $name,
 			'checked_at'     => time(),
 		];
 	}
 
 	/**
-	 * Returns the unified connection cache for boot data.
+	 * Returns a Gravatar identicon URL for a given identifier.
 	 *
-	 * Starts with the public rate cache; Pro injects authenticated profiles
-	 * via the gitwire_connection_cache filter.
+	 * Used as an avatar fallback for providers with no accessible avatar API.
+	 *
+	 * @since 1.0.0
+	 * @param string $identifier Provider handle (username, workspace slug, etc.).
+	 * @return string
+	 */
+	private static function gravatar_url( string $identifier ): string {
+		return 'https://www.gravatar.com/avatar/' . md5( strtolower( trim( $identifier ) ) ) . '?s=96&d=identicon';
+	}
+
+	/**
+	 * Fetches profile fields for a GitLab user via the unauthenticated API.
+	 *
+	 * Returns null when the request fails or the user is not found.
+	 *
+	 * @since 1.0.0
+	 * @param string $username   GitLab username.
+	 * @param string $gitlab_url Self-hosted instance URL, or empty for gitlab.com.
+	 * @return array<string, mixed>|null
+	 */
+	private static function fetch_gitlab_profile( string $username, string $gitlab_url = '' ): ?array {
+		$base     = rtrim( $gitlab_url ? $gitlab_url : 'https://gitlab.com', '/' );
+		$response = wp_remote_get(
+			$base . '/api/v4/users?username=' . rawurlencode( $username ) . '&per_page=1',
+			[ 'timeout' => 5 ]
+		);
+
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return null;
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( empty( $data[0] ) ) {
+			return null;
+		}
+
+		return [
+			'provider'       => 'gitlab',
+			'authenticated'  => false,
+			'username'       => $username,
+			'name'           => (string) ( $data[0]['name'] ?? '' ),
+			'avatar_url'     => (string) ( $data[0]['avatar_url'] ?? '' ),
+			'rate_limit'     => 0,
+			'rate_remaining' => 0,
+			'rate_reset'     => 0,
+			'checked_at'     => time(),
+		];
+	}
+
+	/**
+	 * Returns the connections metadata table name.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
+	private static function metadata_table(): string {
+		global $wpdb;
+		return $wpdb->base_prefix . 'gitwire_connections_metadata';
+	}
+
+	/**
+	 * Returns all connections metadata keyed by connection_id for boot data.
+	 *
+	 * Reads the shared table — Pro authenticated profiles are written there too,
+	 * so no filter merge is needed.
 	 *
 	 * @since 1.0.0
 	 * @return array<string, mixed>
 	 */
 	public static function get_connection_cache(): array {
-		return (array) apply_filters( 'gitwire_connection_cache', self::get_public_rate_cache() );
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_results( 'SELECT * FROM ' . self::metadata_table(), ARRAY_A );
+
+		if ( ! $rows ) {
+			return [];
+		}
+
+		return array_column( $rows, null, 'connection_id' );
 	}
 
 	/**
-	 * Returns the full public rate cache for boot data.
+	 * Returns a single connection's metadata row, or null when not cached yet.
 	 *
 	 * @since 1.0.0
-	 * @return array<string, mixed>
+	 * @param string $id Connection ID.
+	 * @return array<string, mixed>|null
 	 */
-	public static function get_public_rate_cache(): array {
-		return (array) get_option( 'gitwire_public_rate_cache', [] );
+	public static function get_public_connections_metadata( string $id ): ?array {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$row = $wpdb->get_row(
+			$wpdb->prepare( 'SELECT * FROM ' . self::metadata_table() . ' WHERE connection_id = %s', $id ),
+			ARRAY_A
+		);
+
+		return $row ?: null;
 	}
 
 	/**
-	 * Persists a single connection's rate data to the option cache.
+	 * Writes profile metadata for a public (no-token) connection.
+	 *
+	 * Fetches real profile data where an API is available (GitLab); falls back
+	 * to a Gravatar identicon for providers with no accessible avatar API (Bitbucket).
+	 * GitHub is handled separately via get_public_github_rate().
+	 *
+	 * @since 1.0.0
+	 * @param string $id         Connection ID.
+	 * @param string $provider   Provider key.
+	 * @param string $identifier Username or workspace slug.
+	 * @param string $gitlab_url Self-hosted GitLab URL, or empty for gitlab.com.
+	 * @return void
+	 */
+	public static function write_public_metadata( string $id, string $provider, string $identifier, string $gitlab_url = '' ): void {
+		if ( 'gitlab' === $provider ) {
+			$profile = self::fetch_gitlab_profile( $identifier, $gitlab_url );
+			self::save_public_connection_metadata(
+				$id,
+				$profile ?? [
+					'provider'       => 'gitlab',
+					'authenticated'  => false,
+					'username'       => $identifier,
+					'name'           => '',
+					'avatar_url'     => self::gravatar_url( $identifier ),
+					'rate_limit'     => 0,
+					'rate_remaining' => 0,
+					'rate_reset'     => 0,
+					'checked_at'     => time(),
+				]
+			);
+		} elseif ( 'bitbucket' === $provider ) {
+			self::save_public_connection_metadata(
+				$id,
+				[
+					'provider'       => 'bitbucket',
+					'authenticated'  => false,
+					'username'       => $identifier,
+					'name'           => '',
+					'avatar_url'     => self::gravatar_url( $identifier ),
+					'rate_limit'     => 0,
+					'rate_remaining' => 0,
+					'rate_reset'     => 0,
+					'checked_at'     => time(),
+				]
+			);
+		}
+	}
+
+	/**
+	 * Upserts a single connection's metadata row.
 	 *
 	 * @since 1.0.0
 	 * @param string               $id   Connection ID.
-	 * @param array<string, mixed> $data Rate data to store.
+	 * @param array<string, mixed> $data Metadata fields to store.
 	 * @return void
 	 */
-	private static function save_public_rate_cache( string $id, array $data ): void {
-		$cache        = (array) get_option( 'gitwire_public_rate_cache', [] );
-		$cache[ $id ] = $data;
-		update_option( 'gitwire_public_rate_cache', $cache, false );
+	private static function save_public_connection_metadata( string $id, array $data ): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->replace(
+			self::metadata_table(),
+			array_merge(
+				[
+					'connection_id'  => $id,
+					'provider'       => '',
+					'authenticated'  => 0,
+					'username'       => '',
+					'name'           => '',
+					'avatar_url'     => '',
+					'rate_limit'     => 0,
+					'rate_remaining' => 0,
+					'rate_reset'     => 0,
+					'checked_at'     => 0,
+					'error'          => null,
+				],
+				$data,
+				[ 'connection_id' => $id ]
+			),
+			[ '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s' ]
+		);
 	}
 
 	/**
-	 * Removes a connection's rate data from the option cache.
+	 * Deletes a connection's metadata row.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return void
 	 */
-	public static function clear_public_rate_cache( string $id ): void {
-		$cache = (array) get_option( 'gitwire_public_rate_cache', [] );
-		unset( $cache[ $id ] );
-		update_option( 'gitwire_public_rate_cache', $cache, false );
+	public static function clear_public_connection_metadata( string $id ): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->delete( self::metadata_table(), [ 'connection_id' => $id ], [ '%s' ] );
 	}
 
 	/**

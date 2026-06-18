@@ -14,9 +14,10 @@ if ( empty( $settings['remove_data_on_uninstall'] ) ) {
 	return;
 }
 
+require_once plugin_dir_path( __FILE__ ) . 'autoload.php';
+
 $options = [
 	'gitwire_settings',
-	'gitwire_public_connections',
 	'gitwire_installed',
 	'gitwire_pending_update',
 	'gitwire_fatal_notice',
@@ -25,13 +26,14 @@ $options = [
 	'gitwire_recently_deleted',
 	'gitwire_repos',
 	'gitwire_repo_types',
-	'gitwire_public_rate_cache',
 	'gitwire_remote_heads',
 ];
 
 foreach ( $options as $option ) {
 	delete_option( $option );
 }
+
+\Gitwire\Schema::uninstall();
 
 wp_clear_scheduled_hook( 'gitwire_maintenance' );
 wp_clear_scheduled_hook( 'gitwire_trim_logs' );

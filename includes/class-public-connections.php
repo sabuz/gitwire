@@ -13,43 +13,91 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Stores and retrieves public browse accounts from the options table.
+ * Stores and retrieves public browse accounts from the custom DB table.
  */
 class Public_Connections {
 
 	/**
-	 * WordPress option key.
+	 * Returns the connections table name.
 	 *
-	 * @var string
+	 * @since 1.0.0
+	 * @return string
 	 */
-	private const OPTION = 'gitwire_public_connections';
+	private static function table(): string {
+		global $wpdb;
+		return $wpdb->base_prefix . 'gitwire_public_connections';
+	}
 
 	/**
-	 * Returns all stored public connections, enriched with derived fields.
+	 * Returns the connection meta table name.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
+	private static function meta_table(): string {
+		global $wpdb;
+		return $wpdb->base_prefix . 'gitwire_connection_meta';
+	}
+
+	/**
+	 * Returns all stored public connections, enriched with meta and derived fields.
 	 *
 	 * @since 1.0.0
 	 * @return array<int, array<string, string>>
 	 */
 	public static function all(): array {
-		$stored = get_option( self::OPTION, [] );
-		$stored = is_array( $stored ) ? $stored : [];
-		return array_map( [ self::class, 'enrich' ], $stored );
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_results(
+			'SELECT * FROM ' . self::table() . ' ORDER BY created_at ASC',
+			ARRAY_A
+		);
+
+		if ( ! $rows ) {
+			return [];
+		}
+
+		$ids          = array_column( $rows, 'id' );
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%s' ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$meta_rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT connection_id, meta_key, meta_value FROM ' . self::meta_table() . " WHERE connection_id IN ($placeholders)",
+				...$ids
+			),
+			ARRAY_A
+		);
+
+		$meta_by_id = [];
+		foreach ( $meta_rows as $meta ) {
+			$meta_by_id[ $meta['connection_id'] ][ $meta['meta_key'] ] = $meta['meta_value'];
+		}
+
+		return array_values(
+			array_map(
+				static function ( $row ) use ( $meta_by_id ) {
+					return self::enrich( array_merge( $row, $meta_by_id[ $row['id'] ] ?? [] ) );
+				},
+				$rows
+			)
+		);
 	}
 
 	/**
 	 * Injects derived fields that do not need to be persisted.
 	 *
 	 * GitHub avatar URLs are deterministic from the username, so we compute
-	 * them here rather than storing them, which means existing connections
-	 * get the field without any migration.
+	 * them rather than store them.
 	 *
 	 * @since 1.0.0
-	 * @param array<string, string> $conn Stored connection record.
+	 * @param array<string, string> $conn Connection row merged with meta.
 	 * @return array<string, string>
 	 */
 	private static function enrich( array $conn ): array {
 		if ( 'github' === ( $conn['provider'] ?? '' ) && empty( $conn['avatar_url'] ) ) {
-			$conn['avatar_url'] = 'https://avatars.githubusercontent.com/' . rawurlencode( $conn['username'] ?? '' );
+			$conn['avatar_url'] = 'https://avatars.githubusercontent.com/' . rawurlencode( $conn['identifier'] ?? '' );
 		}
 		return $conn;
 	}
@@ -62,12 +110,32 @@ class Public_Connections {
 	 * @return array<string, string>|null
 	 */
 	public static function find( string $id ): ?array {
-		foreach ( self::all() as $conn ) {
-			if ( ( $conn['id'] ?? '' ) === $id ) {
-				return $conn;
-			}
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$row = $wpdb->get_row(
+			$wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE id = %s', $id ),
+			ARRAY_A
+		);
+
+		if ( ! $row ) {
+			return null;
 		}
-		return null;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$meta_rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT meta_key, meta_value FROM ' . self::meta_table() . ' WHERE connection_id = %s',
+				$id
+			),
+			ARRAY_A
+		);
+
+		foreach ( $meta_rows as $meta ) {
+			$row[ $meta['meta_key'] ] = $meta['meta_value'];
+		}
+
+		return self::enrich( $row );
 	}
 
 	/**
@@ -78,12 +146,35 @@ class Public_Connections {
 	 * @return array<string, string>|null
 	 */
 	public static function get_first_for_provider( string $provider ): ?array {
-		foreach ( self::all() as $conn ) {
-			if ( ( $conn['provider'] ?? '' ) === $provider ) {
-				return $conn;
-			}
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT * FROM ' . self::table() . ' WHERE provider = %s ORDER BY created_at ASC LIMIT 1',
+				$provider
+			),
+			ARRAY_A
+		);
+
+		if ( ! $row ) {
+			return null;
 		}
-		return null;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$meta_rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT meta_key, meta_value FROM ' . self::meta_table() . ' WHERE connection_id = %s',
+				$row['id']
+			),
+			ARRAY_A
+		);
+
+		foreach ( $meta_rows as $meta ) {
+			$row[ $meta['meta_key'] ] = $meta['meta_value'];
+		}
+
+		return self::enrich( $row );
 	}
 
 	/**
@@ -94,20 +185,20 @@ class Public_Connections {
 	 * @return array<string, string>
 	 */
 	public static function to_credentials( array $conn ): array {
-		$username = $conn['username'] ?? '';
+		$identifier = $conn['identifier'] ?? '';
 
 		if ( 'gitlab' === $conn['provider'] ) {
 			return [
-				'username'   => $username,
+				'username'   => $identifier,
 				'gitlab_url' => $conn['gitlab_url'] ?? '',
 			];
 		}
 
 		if ( 'bitbucket' === $conn['provider'] ) {
-			return [ 'workspace' => $username ];
+			return [ 'workspace' => $identifier ];
 		}
 
-		return [ 'username' => $username ];
+		return [ 'username' => $identifier ];
 	}
 
 	/**
@@ -118,13 +209,13 @@ class Public_Connections {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider   Provider key.
-	 * @param string $username   GitHub/GitLab username or Bitbucket workspace slug.
+	 * @param string $identifier GitHub/GitLab username or Bitbucket workspace slug.
 	 * @param string $gitlab_url Raw self-hosted GitLab instance URL.
-	 * @return array{username: string, gitlab_url: string}|\WP_Error Normalized fields, or WP_Error on invalid input.
+	 * @return array{identifier: string, gitlab_url: string}|\WP_Error Normalized fields, or WP_Error on invalid input.
 	 */
-	public static function validate( string $provider, string $username, string $gitlab_url = '' ): array|\WP_Error {
-		$username = sanitize_text_field( $username );
-		if ( '' === $username ) {
+	public static function validate( string $provider, string $identifier, string $gitlab_url = '' ): array|\WP_Error {
+		$identifier = sanitize_text_field( $identifier );
+		if ( '' === $identifier ) {
 			$message = 'bitbucket' === $provider
 				? __( 'Workspace is required.', 'gitwire' )
 				: __( 'Username is required.', 'gitwire' );
@@ -144,7 +235,7 @@ class Public_Connections {
 		}
 
 		return [
-			'username'   => $username,
+			'identifier' => $identifier,
 			'gitlab_url' => $normalized_url,
 		];
 	}
@@ -154,102 +245,78 @@ class Public_Connections {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider   Provider key.
-	 * @param string $username   GitHub/GitLab username or Bitbucket workspace slug.
+	 * @param string $identifier GitHub/GitLab username or Bitbucket workspace slug.
 	 * @param string $gitlab_url Optional self-hosted GitLab instance URL.
 	 * @return array<string, string> The new connection record.
 	 */
-	public static function add( string $provider, string $username, string $gitlab_url = '' ): array {
-		// Re-read stored connections directly to avoid the enrich() layer.
-		$stored = get_option( self::OPTION, [] );
-		$stored = is_array( $stored ) ? $stored : [];
+	public static function add( string $provider, string $identifier, string $gitlab_url = '' ): array {
+		global $wpdb;
 
-		$conn = [
-			'id'       => uniqid( 'pub_', true ),
-			'provider' => $provider,
-			'username' => $username,
-		];
+		$id = uniqid( 'pub_', true );
 
-		if ( 'gitlab' === $provider ) {
-			$conn['gitlab_url'] = $gitlab_url;
-			$profile            = self::resolve_gitlab_profile( $username, $gitlab_url );
-			if ( '' !== ( $profile['avatar_url'] ?? '' ) ) {
-				$conn['avatar_url'] = $profile['avatar_url'];
-			}
-			if ( '' !== ( $profile['name'] ?? '' ) ) {
-				$conn['name'] = $profile['name'];
-			}
-		}
-
-		$stored[] = $conn;
-		self::save( $stored );
-
-		return self::enrich( $conn );
-	}
-
-	/**
-	 * Fetches profile fields for a GitLab user via the unauthenticated API.
-	 *
-	 * Returns an empty array when the request fails or the user is not found.
-	 *
-	 * @since 1.0.0
-	 * @param string $username   GitLab username.
-	 * @param string $gitlab_url Self-hosted instance URL, or empty for gitlab.com.
-	 * @return array<string, string> Keys: avatar_url, name.
-	 */
-	private static function resolve_gitlab_profile( string $username, string $gitlab_url ): array {
-		$base     = rtrim( $gitlab_url ? $gitlab_url : 'https://gitlab.com', '/' );
-		$response = wp_remote_get(
-			$base . '/api/v4/users?username=' . rawurlencode( $username ) . '&per_page=1',
-			[ 'timeout' => 5 ]
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->insert(
+			self::table(),
+			[
+				'id'         => $id,
+				'provider'   => $provider,
+				'identifier' => $identifier,
+				'created_at' => current_time( 'mysql' ),
+			],
+			[ '%s', '%s', '%s', '%s' ]
 		);
 
-		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return [];
+		if ( 'gitlab' === $provider && '' !== $gitlab_url ) {
+			self::set_meta( $id, 'gitlab_url', $gitlab_url );
 		}
 
-		$data = json_decode( wp_remote_retrieve_body( $response ), true );
-		if ( empty( $data[0] ) ) {
-			return [];
-		}
-		return [
-			'avatar_url' => (string) ( $data[0]['avatar_url'] ?? '' ),
-			'name'       => (string) ( $data[0]['name'] ?? '' ),
-		];
+		return self::find( $id ) ?? [ 'id' => $id, 'provider' => $provider, 'identifier' => $identifier ];
 	}
 
 	/**
-	 * Removes a connection by ID.
+	 * Upserts a single meta value for a connection.
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_id Connection ID.
+	 * @param string $meta_key      Meta key.
+	 * @param string $meta_value    Meta value.
+	 * @return void
+	 */
+	private static function set_meta( string $connection_id, string $meta_key, string $meta_value ): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->replace(
+			self::meta_table(),
+			[
+				'connection_id' => $connection_id,
+				'meta_key'      => $meta_key,
+				'meta_value'    => $meta_value,
+			],
+			[ '%s', '%s', '%s' ]
+		);
+	}
+
+	/**
+	 * Removes a connection and its meta by ID.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return bool True when the connection was found and removed.
 	 */
 	public static function delete( string $id ): bool {
-		// Work from raw stored data so ephemeral fields from enrich() are never persisted.
-		$stored   = get_option( self::OPTION, [] );
-		$stored   = is_array( $stored ) ? $stored : [];
-		$filtered = array_values(
-			array_filter( $stored, static fn( $c ) => ( $c['id'] ?? '' ) !== $id )
-		);
+		global $wpdb;
 
-		if ( count( $filtered ) === count( $stored ) ) {
-			return false;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$deleted = $wpdb->delete( self::table(), [ 'id' => $id ], [ '%s' ] );
+
+		if ( $deleted ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->delete( self::meta_table(), [ 'connection_id' => $id ], [ '%s' ] );
+			Repo_Cache::clear_repos( $id );
 		}
 
-		self::save( $filtered );
-		Repo_Cache::clear_repos( $id );
-
-		return true;
+		return (bool) $deleted;
 	}
 
-	/**
-	 * Persists the connections array.
-	 *
-	 * @since 1.0.0
-	 * @param array<int, array<string, string>> $connections Connections to store.
-	 * @return void
-	 */
-	private static function save( array $connections ): void {
-		update_option( self::OPTION, $connections, false );
-	}
 }

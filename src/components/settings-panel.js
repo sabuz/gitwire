@@ -291,7 +291,7 @@ export default function SettingsPanel( {
 function PublicConnectionsCard( { connections, onChange } ) {
 	const [ selectedId, setSelectedId ] = useState( null );
 	const [ rateCache, setRateCache ] = useState(
-		() => window.gitwire?.connection_cache ?? {}
+		() => window.gitwire?.connections_metadata ?? {}
 	);
 
 	useEffect( () => {
@@ -318,8 +318,11 @@ function PublicConnectionsCard( { connections, onChange } ) {
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleCreated = useCallback(
-		( conn ) => {
+		( conn, metadata ) => {
 			onChange( [ ...connections, conn ] );
+			if ( metadata ) {
+				setRateCache( ( prev ) => ( { ...prev, [ conn.id ]: metadata } ) );
+			}
 			if ( 'github' === conn.provider ) {
 				api.getPublicConnectionRateLimit( conn.id )
 					.then( ( data ) => {
@@ -377,17 +380,18 @@ function PublicConnectionsCard( { connections, onChange } ) {
 	return (
 		<PublicConnectionsSummary
 			connections={ connections }
+			rateCache={ rateCache }
 			onCreated={ handleCreated }
 			onSelect={ setSelectedId }
 		/>
 	);
 }
 
-function PublicConnectionsSummary( { connections, onCreated, onSelect } ) {
+function PublicConnectionsSummary( { connections, rateCache, onCreated, onSelect } ) {
 	const [ adding, setAdding ] = useState( false );
 
-	const handleCreated = ( conn ) => {
-		onCreated( conn );
+	const handleCreated = ( conn, metadata ) => {
+		onCreated( conn, metadata );
 		setAdding( false );
 	};
 
@@ -434,12 +438,12 @@ function PublicConnectionsSummary( { connections, onCreated, onSelect } ) {
 									type="button"
 									onClick={ () => onSelect( conn.id ) }
 								>
-									{ conn.avatar_url ? (
+									{ ( rateCache[ conn.id ]?.avatar_url || conn.avatar_url ) ? (
 										<img
 											alt=""
 											aria-hidden="true"
 											height={ 24 }
-											src={ conn.avatar_url }
+											src={ rateCache[ conn.id ]?.avatar_url || conn.avatar_url }
 											style={ {
 												borderRadius: '50%',
 												display: 'block',
@@ -464,7 +468,7 @@ function PublicConnectionsSummary( { connections, onCreated, onSelect } ) {
 											whiteSpace: 'nowrap',
 										} }
 									>
-										@{ conn.username }
+										@{ rateCache[ conn.id ]?.username || conn.identifier }
 										{ conn.gitlab_url && (
 											<span
 												style={ {
@@ -505,6 +509,15 @@ function PublicConnectionsSummary( { connections, onCreated, onSelect } ) {
 			) }
 		</Card>
 	);
+}
+
+function gravatarFallback( identifier ) {
+	let h = 5381;
+	const s = String( identifier || '' ).toLowerCase().trim();
+	for ( let i = 0; i < s.length; i++ ) {
+		h = ( Math.imul( 33, h ) ^ s.charCodeAt( i ) ) >>> 0;
+	}
+	return `https://www.gravatar.com/avatar/${ h.toString( 16 ).padStart( 32, '0' ) }?d=identicon&s=96`;
 }
 
 function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
@@ -557,24 +570,21 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 			</CardHeader>
 			<CardBody>
 				<Flex align="center" gap={ 3 }>
-					{ rec.avatar_url ? (
-						<img
-							alt={ rec.username }
-							height={ 44 }
-							src={ rec.avatar_url }
-							style={ {
-								borderRadius: '50%',
-								display: 'block',
-								flexShrink: 0,
-							} }
-							width={ 44 }
-						/>
-					) : (
-						<span
-							className="gitwire-connection-avatar is-placeholder"
-							style={ { width: 44, height: 44 } }
-						/>
-					) }
+					<img
+						alt={ rateData?.username || rec.identifier }
+						height={ 44 }
+						src={
+							rateData?.avatar_url ||
+							rec.avatar_url ||
+							gravatarFallback( rateData?.username || rec.identifier )
+						}
+						style={ {
+							borderRadius: '50%',
+							display: 'block',
+							flexShrink: 0,
+						} }
+						width={ 44 }
+					/>
 					<FlexBlock>
 						{ displayName && (
 							<div style={ { fontWeight: 700, fontSize: 14 } }>
@@ -588,7 +598,7 @@ function PublicConnectionDetail( { rec, rateData, onRemoved } ) {
 									: { fontWeight: 700, fontSize: 14 }
 							}
 						>
-							@{ rec.username }
+							@{ rateData?.username || rec.identifier }
 						</div>
 						{ rec.gitlab_url && (
 							<div style={ { fontSize: 12, color: '#57606a' } }>
@@ -757,7 +767,7 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 					: {} ),
 			} );
 			toast.success( __( 'Connection added.', 'gitwire' ) );
-			onCreated( result.connection );
+			onCreated( result.connection, result.metadata ?? null );
 		} catch ( e ) {
 			setUsernameError( true );
 			toast.error(

@@ -62,6 +62,7 @@ final class Plugin {
 		add_action( 'gitwire_refresh_repo_types', [ Repo_Cache::class, 'cron_refresh_types' ] );
 		add_action( 'gitwire_refresh_connections', [ REST::class, 'refresh_public_connections' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
+		add_action( 'upgrader_process_complete', [ $this, 'maybe_migrate' ], 10, 2 );
 
 		if ( $this->file ) {
 			register_activation_hook( $this->file, [ $this, 'activate' ] );
@@ -121,11 +122,36 @@ final class Plugin {
 	}
 
 	/**
+	 * Migrates schema immediately after this plugin is updated via the WP upgrader.
+	 *
+	 * @param \WP_Upgrader                        $upgrader Upgrader instance.
+	 * @param array<string, mixed>                $hook_extra Upgrade metadata.
+	 * @return void
+	 */
+	public function maybe_migrate( $upgrader, array $hook_extra ): void {
+		if ( ( $hook_extra['action'] ?? '' ) !== 'update' || ( $hook_extra['type'] ?? '' ) !== 'plugin' ) {
+			return;
+		}
+		$plugins = (array) ( $hook_extra['plugins'] ?? [] );
+		if ( $this->file && in_array( plugin_basename( $this->file ), $plugins, true ) ) {
+			Schema::install();
+		}
+	}
+
+	/**
 	 * Boots plugin services on plugins_loaded.
 	 *
 	 * @return void
 	 */
 	public function boot(): void {
+		if ( is_multisite() && ! is_main_site() ) {
+			return;
+		}
+
+		if ( Schema::needs_install() ) {
+			Schema::install();
+		}
+
 		Installer::init();
 		REST::init();
 
@@ -170,6 +196,8 @@ final class Plugin {
 	 * @return void
 	 */
 	public function activate(): void {
+		Schema::install();
+
 		if ( ! get_option( 'gitwire_settings' ) ) {
 			add_option(
 				'gitwire_settings',
