@@ -21,14 +21,8 @@ export const getPublicConnectionRateLimit = ( id ) =>
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>
 	apiFetch( { path: `${ BASE }/settings`, method: 'POST', data } );
-export const getRepos = ( page = 1, provider = 'github', connectionId = '' ) =>
-	apiFetch( {
-		path:
-			`${ BASE }/repos?page=${ page }&provider=${ provider }` +
-			( connectionId
-				? `&connection_id=${ encodeURIComponent( connectionId ) }`
-				: '' ),
-	} );
+export const getRepos = ( offset = 0 ) =>
+	apiFetch( { path: `${ BASE }/repos?offset=${ offset }` } );
 export const clearCache = () =>
 	apiFetch( { path: `${ BASE }/repos/cache`, method: 'DELETE' } );
 export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );

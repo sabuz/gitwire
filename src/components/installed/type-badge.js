@@ -8,8 +8,9 @@ import { __ } from '@wordpress/i18n';
  * @return {JSX.Element} The rendered type badge.
  */
 export default function TypeBadge( { item } ) {
-	const isBlockTheme = item.type === 'theme' && item.subtype === 'block';
-	const isTheme = item.type === 'theme';
+	const isBlockTheme = item.type === 'block-theme';
+	const isTheme =
+		item.type === 'block-theme' || item.type === 'classic-theme';
 
 	let badgeMod = 'info';
 	if ( isBlockTheme ) {

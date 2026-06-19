@@ -90,7 +90,14 @@ class Installer {
 	private static function delete_commits( string $provider, string $full_name ): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->delete( self::commits_table(), [ 'provider' => $provider, 'full_name' => $full_name ], [ '%s', '%s' ] );
+		$wpdb->delete(
+			self::commits_table(),
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			],
+			[ '%s', '%s' ]
+		);
 	}
 
 	/**
@@ -106,7 +113,14 @@ class Installer {
 	public static function delete_record( string $provider, string $full_name ): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->delete( self::installed_table(), [ 'provider' => $provider, 'full_name' => $full_name ], [ '%s', '%s' ] );
+		$wpdb->delete(
+			self::installed_table(),
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			],
+			[ '%s', '%s' ]
+		);
 		self::delete_commits( $provider, $full_name );
 		self::invalidate_installed_cache();
 	}
@@ -127,11 +141,11 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installed_table() . '
-					(provider, full_name, slug, branch, head, remote_head, type, subtype, install_path, plugin_file, connection_id, installed_at, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d)
+					(provider, full_name, slug, branch, head, remote_head, type, install_path, plugin_file, connection_id, installed_at, updated_at)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d)
 				ON DUPLICATE KEY UPDATE
 					slug = VALUES(slug), branch = VALUES(branch), head = VALUES(head),
-					type = VALUES(type), subtype = VALUES(subtype),
+					type = VALUES(type),
 					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
 					connection_id = VALUES(connection_id), updated_at = VALUES(updated_at)',
 				$record['provider'] ?? '',
@@ -141,7 +155,6 @@ class Installer {
 				$record['head'] ?? '',
 				$record['remote_head'] ?? '',
 				$record['type'] ?? 'plugin',
-				$record['subtype'] ?? '',
 				$record['install_path'] ?? '',
 				$record['plugin_file'] ?? '',
 				$record['connection_id'] ?? '',
@@ -168,7 +181,10 @@ class Installer {
 		$wpdb->update(
 			self::installed_table(),
 			[ 'remote_head' => $sha ],
-			[ 'provider' => $provider, 'full_name' => $full_name ],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			],
 			[ '%s' ],
 			[ '%s', '%s' ]
 		);
@@ -190,34 +206,16 @@ class Installer {
 		$wpdb->update(
 			self::installed_table(),
 			[ 'plugin_file' => $plugin_file ],
-			[ 'provider' => $provider, 'full_name' => $full_name ],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			],
 			[ '%s' ],
 			[ '%s', '%s' ]
 		);
 		self::invalidate_installed_cache();
 	}
 
-	/**
-	 * Updates the subtype column for a single installed record.
-	 *
-	 * @since 1.0.0
-	 * @param string $provider  Git provider.
-	 * @param string $full_name Repository full name.
-	 * @param string $subtype   Theme subtype: 'block' or 'classic'.
-	 * @return void
-	 */
-	public static function set_subtype( string $provider, string $full_name, string $subtype ): void {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->update(
-			self::installed_table(),
-			[ 'subtype' => $subtype ],
-			[ 'provider' => $provider, 'full_name' => $full_name ],
-			[ '%s' ],
-			[ '%s', '%s' ]
-		);
-		self::invalidate_installed_cache();
-	}
 
 	/**
 	 * Registers hooks that clean up installation records when a plugin or theme
@@ -391,7 +389,7 @@ class Installer {
 		$rec       = $installed[ $key ];
 		$owner     = $rec['owner'];
 		$repo      = $rec['repo'];
-		$method    = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
+		$method    = Repo_Detector::is_theme( $rec['type'] ) ? 'install_theme' : 'install_plugin';
 		$was_stale = false;
 		if ( null !== $override_connection_id ) {
 			$connection_id = $override_connection_id;
@@ -516,7 +514,16 @@ class Installer {
 					if ( $plugin_file ) {
 						global $wpdb;
 						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-						$wpdb->update( self::installed_table(), [ 'plugin_file' => $plugin_file ], [ 'provider' => $provider, 'full_name' => $full_name ], [ '%s' ], [ '%s', '%s' ] );
+						$wpdb->update(
+							self::installed_table(),
+							[ 'plugin_file' => $plugin_file ],
+							[
+								'provider'  => $provider,
+								'full_name' => $full_name,
+							],
+							[ '%s' ],
+							[ '%s', '%s' ]
+						);
 						self::invalidate_installed_cache();
 					}
 				}
@@ -546,7 +553,7 @@ class Installer {
 			}
 
 			self::complete_plugin_activation_guard();
-		} elseif ( 'theme' === $rec['type'] ) {
+		} elseif ( Repo_Detector::is_theme( $rec['type'] ) ) {
 			Error_Handler::clear_stale_activation_guard();
 			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
 
@@ -612,7 +619,7 @@ class Installer {
 			'previous_template'   => get_template(),
 		];
 
-		if ( 'theme' === $rec['type'] ) {
+		if ( Repo_Detector::is_theme( $rec['type'] ) ) {
 			$pending['target_stylesheet'] = $rec['slug'];
 		}
 
@@ -677,7 +684,16 @@ class Installer {
 				if ( $plugin_file ) {
 					global $wpdb;
 					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-					$wpdb->update( self::installed_table(), [ 'plugin_file' => $plugin_file ], [ 'provider' => $provider, 'full_name' => $full_name ], [ '%s' ], [ '%s', '%s' ] );
+					$wpdb->update(
+						self::installed_table(),
+						[ 'plugin_file' => $plugin_file ],
+						[
+							'provider'  => $provider,
+							'full_name' => $full_name,
+						],
+						[ '%s' ],
+						[ '%s', '%s' ]
+					);
 					self::invalidate_installed_cache();
 				}
 			}
@@ -713,7 +729,7 @@ class Installer {
 
 		self::$installed_cache = [];
 		foreach ( (array) $rows as $row ) {
-			$key = $row['provider'] . ':' . $row['full_name'];
+			$key                           = $row['provider'] . ':' . $row['full_name'];
 			self::$installed_cache[ $key ] = self::hydrate_record( $row );
 		}
 
@@ -748,7 +764,10 @@ class Installer {
 		$wpdb->update(
 			self::installed_table(),
 			[ 'head' => $sha ],
-			[ 'provider' => $provider, 'full_name' => $full_name ],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			],
 			[ '%s' ],
 			[ '%s', '%s' ]
 		);
@@ -1034,11 +1053,11 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installed_table() . '
-					(provider, full_name, slug, branch, head, remote_head, type, subtype, install_path, plugin_file, connection_id, installed_at, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d)
+					(provider, full_name, slug, branch, head, remote_head, type, install_path, plugin_file, connection_id, installed_at, updated_at)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d)
 				ON DUPLICATE KEY UPDATE
 					slug = VALUES(slug), branch = VALUES(branch), head = VALUES(head),
-					type = VALUES(type), subtype = VALUES(subtype),
+					type = VALUES(type),
 					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
 					connection_id = VALUES(connection_id), updated_at = VALUES(updated_at)',
 				$provider,
@@ -1048,7 +1067,6 @@ class Installer {
 				$record['head'] ?? '',
 				$record['remote_head'] ?? '',
 				$record['type'] ?? 'plugin',
-				$record['subtype'] ?? '',
 				$record['install_path'] ?? '',
 				$record['plugin_file'] ?? '',
 				$record['connection_id'] ?? '',
@@ -1249,8 +1267,7 @@ class Installer {
 			'owner'         => $owner,
 			'full_name'     => $full_name,
 			'branch'        => $branch,
-			'type'          => $type,
-			'subtype'       => 'plugin' === $type ? 'plugin' : ( file_exists( $install_path . '/theme.json' ) ? 'block' : 'classic' ),
+			'type'          => 'plugin' === $type ? 'plugin' : ( file_exists( $install_path . '/theme.json' ) ? 'block-theme' : 'classic-theme' ),
 			'provider'      => $provider,
 			'connection_id' => $connection_id,
 			'install_path'  => $install_path,

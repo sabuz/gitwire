@@ -79,6 +79,12 @@ class Repo_Detector {
 	/**
 	 * Detects repository type from root file listing callbacks.
 	 *
+	 * Returns an array with:
+	 *   'type'       — flat value: 'plugin', 'block-theme', 'classic-theme', 'unknown'
+	 *   'confidence' — 'high', 'medium', 'low', or 'none'
+	 *   'name'       — extracted Theme Name or Plugin Name header value, or ''
+	 *   'key_files'  — files that drove the decision; empty for low/unknown (skip shallow re-detect)
+	 *
 	 * @since 1.0.0
 	 * @param string   $repo_name         Repository slug used for main-file priority.
 	 * @param string   $branch            Branch ref to inspect.
@@ -122,27 +128,31 @@ class Repo_Detector {
 
 				if ( isset( $files['theme.json'] ) ) {
 					return [
-						'type'       => 'theme',
-						'subtype'    => 'block',
+						'type'       => 'block-theme',
 						'confidence' => 'high',
 						'name'       => $name,
+						'key_files'  => [ 'style.css', 'theme.json' ],
 					];
 				}
 
 				if ( isset( $files['templates'] ) && ( $files['templates']['type'] ?? '' ) === 'dir' ) {
 					return [
-						'type'       => 'theme',
-						'subtype'    => 'block',
+						'type'       => 'block-theme',
 						'confidence' => 'high',
 						'name'       => $name,
+						'key_files'  => [ 'style.css', 'templates/' ],
 					];
 				}
 
+				$key_files = isset( $files['functions.php'] )
+					? [ 'style.css', 'functions.php' ]
+					: [ 'style.css' ];
+
 				return [
-					'type'       => 'theme',
-					'subtype'    => 'classic',
+					'type'       => 'classic-theme',
 					'confidence' => isset( $files['functions.php'] ) ? 'high' : 'medium',
 					'name'       => $name,
+					'key_files'  => $key_files,
 				];
 			}
 		}
@@ -176,36 +186,36 @@ class Repo_Detector {
 			if ( ! is_wp_error( $content ) && self::has_header( $content, 'Plugin Name' ) ) {
 				return [
 					'type'       => 'plugin',
-					'subtype'    => null,
 					'confidence' => 'high',
 					'name'       => self::extract_header( $content, 'Plugin Name' ),
+					'key_files'  => [ $real_name ],
 				];
 			}
 		}
 
 		if ( isset( $files['functions.php'] ) ) {
 			return [
-				'type'       => 'theme',
-				'subtype'    => 'classic',
+				'type'       => 'classic-theme',
 				'confidence' => 'medium',
 				'name'       => '',
+				'key_files'  => [ 'functions.php' ],
 			];
 		}
 
 		if ( ! empty( $php_files ) ) {
 			return [
 				'type'       => 'plugin',
-				'subtype'    => null,
 				'confidence' => 'low',
 				'name'       => '',
+				'key_files'  => [],
 			];
 		}
 
 		return [
 			'type'       => 'unknown',
-			'subtype'    => null,
 			'confidence' => 'none',
 			'name'       => '',
+			'key_files'  => [],
 		];
 	}
 
@@ -234,5 +244,16 @@ class Repo_Detector {
 			return trim( $m[1] );
 		}
 		return '';
+	}
+
+	/**
+	 * Returns true when the flat type value represents a theme.
+	 *
+	 * @since 2.0.0
+	 * @param string $type Flat type value.
+	 * @return bool
+	 */
+	public static function is_theme( string $type ): bool {
+		return str_ends_with( $type, '-theme' );
 	}
 }

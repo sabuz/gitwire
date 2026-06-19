@@ -36,13 +36,22 @@ class Settings {
 	public static function get_public(): array {
 		$s = self::get_raw();
 		return [
-			'smart_install'              => $s['smart_install'] ?? true,
-			'show_repo_label'            => $s['show_repo_label'] ?? true,
-			'enable_logging'             => $s['enable_logging'] ?? false,
-			'log_retention_days'         => $s['log_retention_days'] ?? 7,
-			'log_level'                  => $s['log_level'] ?? 'activity',
-			'remove_data_on_uninstall'   => $s['remove_data_on_uninstall'] ?? false,
-			'repo_list_refresh_frequency'    => $s['repo_list_refresh_frequency'] ?? 'daily',
+			'smart_install'               => $s['smart_install'] ?? true,
+			'auto_detect_type'            => $s['auto_detect_type'] ?? true,
+			'repos_per_page'              => $s['repos_per_page'] ?? 50,
+			'excluded_repos'              => $s['excluded_repos'] ?? [],
+			'max_repos_per_source'        => $s['max_repos_per_source'] ?? 'unlimited',
+			'repo_list_refresh_frequency' => $s['repo_list_refresh_frequency'] ?? 'daily',
+			'background_type_detection'   => $s['background_type_detection'] ?? false,
+			'detection_batch_size'        => $s['detection_batch_size'] ?? 'auto',
+			'shallow_detection'           => $s['shallow_detection'] ?? false,
+			'show_repo_label'             => $s['show_repo_label'] ?? true,
+			'block_on_fatal'              => $s['block_on_fatal'] ?? true,
+			'update_check_interval'       => $s['update_check_interval'] ?? 'daily',
+			'enable_logging'              => $s['enable_logging'] ?? false,
+			'log_retention_days'          => $s['log_retention_days'] ?? 7,
+			'log_level'                   => $s['log_level'] ?? 'activity',
+			'remove_data_on_uninstall'    => $s['remove_data_on_uninstall'] ?? false,
 		];
 	}
 
@@ -61,9 +70,79 @@ class Settings {
 			$smart_install = (bool) $incoming['smart_install'];
 		}
 
+		$auto_detect_type = $current['auto_detect_type'] ?? true;
+		if ( array_key_exists( 'auto_detect_type', $incoming ) && null !== $incoming['auto_detect_type'] ) {
+			$auto_detect_type = (bool) $incoming['auto_detect_type'];
+		}
+
+		$repos_per_page = (int) ( $current['repos_per_page'] ?? 50 );
+		if ( array_key_exists( 'repos_per_page', $incoming ) && null !== $incoming['repos_per_page'] ) {
+			$val            = (int) $incoming['repos_per_page'];
+			$repos_per_page = max( 10, min( 100, $val ) );
+		}
+
+		$excluded_repos = $current['excluded_repos'] ?? [];
+		if ( array_key_exists( 'excluded_repos', $incoming ) && is_array( $incoming['excluded_repos'] ) ) {
+			$excluded_repos = array_values(
+				array_filter(
+					array_map( 'sanitize_text_field', $incoming['excluded_repos'] ),
+					static fn( $v ) => (bool) preg_match( '/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/', $v )
+				)
+			);
+		}
+
+		$max_repos_per_source = $current['max_repos_per_source'] ?? 'unlimited';
+		if ( array_key_exists( 'max_repos_per_source', $incoming ) && null !== $incoming['max_repos_per_source'] ) {
+			$val = $incoming['max_repos_per_source'];
+			if ( 'unlimited' === $val ) {
+				$max_repos_per_source = 'unlimited';
+			} else {
+				$int                  = (int) $val;
+				$max_repos_per_source = in_array( $int, [ 100, 250, 500 ], true ) ? $int : 'unlimited';
+			}
+		}
+
+		$repo_list_refresh_frequency = $current['repo_list_refresh_frequency'] ?? 'daily';
+		if ( array_key_exists( 'repo_list_refresh_frequency', $incoming ) && null !== $incoming['repo_list_refresh_frequency'] ) {
+			$val                         = (string) $incoming['repo_list_refresh_frequency'];
+			$repo_list_refresh_frequency = in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
+		}
+
+		$background_type_detection = $current['background_type_detection'] ?? false;
+		if ( array_key_exists( 'background_type_detection', $incoming ) && null !== $incoming['background_type_detection'] ) {
+			$background_type_detection = (bool) $incoming['background_type_detection'];
+		}
+
+		$detection_batch_size = $current['detection_batch_size'] ?? 'auto';
+		if ( array_key_exists( 'detection_batch_size', $incoming ) && null !== $incoming['detection_batch_size'] ) {
+			$val = $incoming['detection_batch_size'];
+			if ( 'auto' === $val ) {
+				$detection_batch_size = 'auto';
+			} else {
+				$int                  = (int) $val;
+				$detection_batch_size = ( $int >= 10 && $int <= 200 ) ? $int : 'auto';
+			}
+		}
+
+		$shallow_detection = $current['shallow_detection'] ?? false;
+		if ( array_key_exists( 'shallow_detection', $incoming ) && null !== $incoming['shallow_detection'] ) {
+			$shallow_detection = (bool) $incoming['shallow_detection'];
+		}
+
 		$show_repo_label = $current['show_repo_label'] ?? true;
 		if ( array_key_exists( 'show_repo_label', $incoming ) && null !== $incoming['show_repo_label'] ) {
 			$show_repo_label = (bool) $incoming['show_repo_label'];
+		}
+
+		$block_on_fatal = $current['block_on_fatal'] ?? true;
+		if ( array_key_exists( 'block_on_fatal', $incoming ) && null !== $incoming['block_on_fatal'] ) {
+			$block_on_fatal = (bool) $incoming['block_on_fatal'];
+		}
+
+		$update_check_interval = $current['update_check_interval'] ?? 'daily';
+		if ( array_key_exists( 'update_check_interval', $incoming ) && null !== $incoming['update_check_interval'] ) {
+			$val                   = (string) $incoming['update_check_interval'];
+			$update_check_interval = in_array( $val, [ 'hourly', '6hours', 'daily', 'weekly', 'never' ], true ) ? $val : 'daily';
 		}
 
 		$enable_logging = $current['enable_logging'] ?? false;
@@ -88,13 +167,24 @@ class Settings {
 			$remove_data_on_uninstall = (bool) $incoming['remove_data_on_uninstall'];
 		}
 
-		$repo_list_refresh_frequency = $current['repo_list_refresh_frequency'] ?? 'daily';
-		if ( array_key_exists( 'repo_list_refresh_frequency', $incoming ) && null !== $incoming['repo_list_refresh_frequency'] ) {
-			$val                     = (string) $incoming['repo_list_refresh_frequency'];
-			$repo_list_refresh_frequency = in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
-		}
-
-		return compact( 'smart_install', 'show_repo_label', 'enable_logging', 'log_retention_days', 'log_level', 'remove_data_on_uninstall', 'repo_list_refresh_frequency' );
+		return compact(
+			'smart_install',
+			'auto_detect_type',
+			'repos_per_page',
+			'excluded_repos',
+			'max_repos_per_source',
+			'repo_list_refresh_frequency',
+			'background_type_detection',
+			'detection_batch_size',
+			'shallow_detection',
+			'show_repo_label',
+			'block_on_fatal',
+			'update_check_interval',
+			'enable_logging',
+			'log_retention_days',
+			'log_level',
+			'remove_data_on_uninstall'
+		);
 	}
 
 	/**

@@ -111,10 +111,10 @@ class REST {
 				'callback'            => [ self::class, 'get_repos' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [
-					'connection_id' => [
-						'type'              => 'string',
-						'default'           => '',
-						'sanitize_callback' => 'sanitize_text_field',
+					'offset' => [
+						'type'    => 'integer',
+						'default' => 0,
+						'minimum' => 0,
 					],
 				],
 			]
@@ -908,7 +908,7 @@ class REST {
 			'checked_at'     => 0,
 			'error'          => '',
 		];
-		$meta = array_intersect_key( array_merge( $defaults, $data ), $defaults );
+		$meta     = array_intersect_key( array_merge( $defaults, $data ), $defaults );
 
 		$value_parts = [];
 		$params      = [];
@@ -1023,49 +1023,57 @@ class REST {
 	 * @return array<string, mixed>|\WP_Error Repository payload on success, WP_Error on failure.
 	 */
 	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
-		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
-			$provider = 'github';
-		}
-		$page = max( 1, (int) ( $req->get_param( 'page' ) ?? 1 ) );
+		$offset = max( 0, (int) ( $req->get_param( 'offset' ) ?? 0 ) );
 
-		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
-		if ( '' === $connection_id ) {
-			$first         = Connection_Resolver::get_first_for_provider( $provider );
-			$connection_id = $first['id'] ?? '';
-		}
+		$connections = array_values(
+			array_filter(
+				Connection_Resolver::all(),
+				static fn( $c ) => isset( $c['id'] ) && '' !== $c['id'] && in_array( $c['provider'] ?? '', [ 'github', 'gitlab', 'bitbucket' ], true )
+			)
+		);
 
-		// No token connection — public mode, cached per provider.
-		$cache_id = '' !== $connection_id ? $connection_id : 'public:' . $provider;
-
-		$cached = Repo_Cache::get_repo_list( $cache_id, $page );
-		if ( is_array( $cached ) ) {
-			return self::enrich_with_detections( self::merge_installed( $cached, $provider ), $provider );
+		if ( empty( $connections ) ) {
+			return [
+				'repositories' => [],
+				'has_more'     => false,
+				'offset'       => 0,
+			];
 		}
 
-		$payload = self::build_repo_list( $provider, $page, $connection_id );
-		if ( is_wp_error( $payload ) ) {
-			return $payload;
+		$connection_ids = array_column( $connections, 'id' );
+		$cached         = Repo_Cache::get_repo_list( $connection_ids, $offset );
+
+		if ( null === $cached ) {
+			// Seed cache with page 1 from each connection on first browse.
+			foreach ( $connections as $conn ) {
+				Repo_Cache::fetch_repo_list( $conn['provider'], 1, $conn['id'] );
+			}
+			$cached = Repo_Cache::get_repo_list( $connection_ids, $offset );
 		}
 
-		Repo_Cache::set_repo_list( $cache_id, $page, $payload );
+		if ( null === $cached ) {
+			return [
+				'repositories' => [],
+				'has_more'     => false,
+				'offset'       => 0,
+			];
+		}
 
-		return self::enrich_with_detections( self::merge_installed( $payload, $provider ), $provider );
+		return self::enrich_with_detections( self::merge_installed( $cached ) );
 	}
 
 	/**
 	 * Merges current installed status into a cached repo list payload.
 	 *
 	 * @since 1.0.0
-	 * @param array<string, mixed> $payload  Repo list payload from cache.
-	 * @param string               $provider Provider key.
+	 * @param array<string, mixed> $payload Repo list payload from cache.
 	 * @return array<string, mixed>
 	 */
-	private static function merge_installed( array $payload, string $provider ): array {
-		$installed       = Installer::get_installed();
+	private static function merge_installed( array $payload ): array {
+		$installed               = Installer::get_installed();
 		$payload['repositories'] = array_map(
-			static function ( $repo ) use ( $installed, $provider ) {
-				$repo['installed'] = $installed[ $provider . ':' . ( $repo['full_name'] ?? '' ) ] ?? null;
+			static function ( $repo ) use ( $installed ) {
+				$repo['installed'] = $installed[ ( $repo['provider'] ?? '' ) . ':' . ( $repo['full_name'] ?? '' ) ] ?? null;
 				return $repo;
 			},
 			$payload['repositories'] ?? []
@@ -1122,7 +1130,7 @@ class REST {
 						'private'          => (bool) ( $r['is_private'] ?? false ),
 						'html_url'         => $r['links']['html']['href'] ?? '',
 						'default_branch'   => $r['mainbranch']['name'] ?? 'main',
-						'updated_at'       => $r['updated_on'] ?? '',
+						'last_activity_at' => $r['updated_on'] ?? '',
 						'stargazers_count' => 0,
 					];
 				},
@@ -1131,8 +1139,8 @@ class REST {
 
 			return [
 				'repositories' => $repositories,
-				'has_more' => $result['has_more'],
-				'page'     => $page,
+				'has_more'     => $result['has_more'],
+				'page'         => $page,
 			];
 		}
 
@@ -1172,7 +1180,7 @@ class REST {
 						'private'          => $is_private,
 						'html_url'         => $r['web_url'] ?? '',
 						'default_branch'   => $r['default_branch'] ?? 'main',
-						'updated_at'       => $r['last_activity_at'] ?? '',
+						'last_activity_at' => $r['last_activity_at'] ?? '',
 						'stargazers_count' => (int) ( $r['star_count'] ?? 0 ),
 					];
 				},
@@ -1181,8 +1189,8 @@ class REST {
 
 			return [
 				'repositories' => $repositories,
-				'has_more' => count( $result ) === self::PAGE_SIZE,
-				'page'     => $page,
+				'has_more'     => count( $result ) === self::PAGE_SIZE,
+				'page'         => $page,
 			];
 		}
 
@@ -1212,7 +1220,7 @@ class REST {
 					'private'          => (bool) ( $r['private'] ?? false ),
 					'html_url'         => $r['html_url'] ?? '',
 					'default_branch'   => $r['default_branch'] ?? 'main',
-					'updated_at'       => $r['updated_at'] ?? '',
+					'last_activity_at' => $r['updated_at'] ?? '',
 					'stargazers_count' => (int) ( $r['stargazers_count'] ?? 0 ),
 				];
 			},
@@ -1221,8 +1229,8 @@ class REST {
 
 		return [
 			'repositories' => $repositories,
-			'has_more' => count( $result ) === self::PAGE_SIZE,
-			'page'     => $page,
+			'has_more'     => count( $result ) === self::PAGE_SIZE,
+			'page'         => $page,
 		];
 	}
 
@@ -1294,7 +1302,6 @@ class REST {
 			}
 			$result = [
 				'type'       => 'unknown',
-				'subtype'    => null,
 				'confidence' => 'none',
 				'name'       => '',
 			];
@@ -1478,8 +1485,8 @@ class REST {
 	 * @return array<string, mixed> Synced installed records and any orphaned entries.
 	 */
 	public static function sync_installed(): array {
-		$records   = Installer::get_installed();
-		$orphaned  = [];
+		$records  = Installer::get_installed();
+		$orphaned = [];
 
 		$pending       = self::get_running_task();
 		$pending_key   = '';
@@ -1510,12 +1517,6 @@ class REST {
 					$rec['plugin_file'] = $found;
 					Installer::set_plugin_file( $rec['provider'] ?? 'github', $rec['full_name'] ?? '', $found );
 				}
-			}
-
-			if ( 'theme' === ( $rec['type'] ?? '' ) && empty( $rec['subtype'] ) && ! empty( $rec['install_path'] ) ) {
-				$subtype        = file_exists( $rec['install_path'] . '/theme.json' ) ? 'block' : 'classic';
-				$rec['subtype'] = $subtype;
-				Installer::set_subtype( $rec['provider'] ?? 'github', $rec['full_name'] ?? '', $subtype );
 			}
 
 			if ( empty( $rec['head'] ) && ! empty( $rec['owner'] ) && ! empty( $rec['repo'] ) && ! empty( $rec['branch'] ) ) {
@@ -1585,11 +1586,9 @@ class REST {
 			}
 
 			if ( 'plugin' === ( $rec['type'] ?? '' ) ) {
-				$rec['active']  = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
-				$rec['subtype'] = 'plugin';
+				$rec['active'] = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
 			} else {
-				$rec['active']  = ( $rec['slug'] ?? '' ) === $active_theme;
-				$rec['subtype'] = $rec['subtype'] ?? ( ! empty( $rec['install_path'] ) && file_exists( $rec['install_path'] . '/theme.json' ) ? 'block' : 'classic' );
+				$rec['active'] = ( $rec['slug'] ?? '' ) === $active_theme;
 			}
 
 			if (
@@ -1598,7 +1597,7 @@ class REST {
 			) {
 				$rec['activation_pending'] = true;
 				if (
-					'theme' === ( $rec['type'] ?? '' )
+					Repo_Detector::is_theme( $rec['type'] ?? '' )
 					&& 'activation' === ( $pending['context'] ?? '' )
 				) {
 					$rec['active'] = false;
@@ -1674,7 +1673,7 @@ class REST {
 	 */
 	public static function detect_batch( \WP_REST_Request $req ): array {
 		$repositories = $req->get_param( 'repositories' );
-		$results = [];
+		$results      = [];
 
 		if ( ! is_array( $repositories ) ) {
 			return [ 'detections' => $results ];
@@ -1715,7 +1714,6 @@ class REST {
 				Logger::log( sprintf( 'Detection failed — %s: %s', $key, $result->get_error_message() ), 'error' );
 				$result          = [
 					'type'       => 'unknown',
-					'subtype'    => null,
 					'confidence' => 'none',
 					'name'       => '',
 					'error_code' => $result->get_error_code(),
@@ -2088,19 +2086,21 @@ class REST {
 	/**
 	 * Enriches a repository list payload with any already-cached detection results.
 	 *
-	 * Checks each repo's detection transient and, when found, embeds the result
-	 * directly so the frontend can skip redundant detect API calls.
-	 *
 	 * @since 1.0.0
-	 * @param array  $payload  Repo list payload with a 'repositories' key.
-	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
-	 * @return array The same payload with 'detection' added to each repo entry.
+	 * @param array<string, mixed> $payload Repo list payload with a 'repositories' key.
+	 * @return array<string, mixed>
 	 */
-	private static function enrich_with_detections( array $payload, string $provider ): array {
+	private static function enrich_with_detections( array $payload ): array {
 		$payload['repositories'] = array_map(
-			static function ( $repo ) use ( $provider ) {
+			static function ( $repo ) {
+				// type_meta is embedded by get_repo_list() directly from the cache table row.
+				if ( isset( $repo['type_meta'] ) ) {
+					$repo['detection'] = array_merge( $repo['type_meta'], [ 'type' => $repo['type'] ?? '' ] );
+					unset( $repo['type_meta'] );
+					return $repo;
+				}
 				$detection = Repo_Cache::get_repo_type(
-					$provider,
+					$repo['provider'] ?? '',
 					$repo['owner'] ?? '',
 					$repo['name'] ?? '',
 					$repo['default_branch'] ?? 'main'

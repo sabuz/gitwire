@@ -210,7 +210,13 @@ class Error_Handler {
 			'restored'  => 'activation' === $context ? true : $restored,
 		];
 
-		self::db_update_option( 'gitwire_pending_message', [ 'type' => 'fatal', 'data' => $notice ] );
+		self::db_update_option(
+			'gitwire_pending_message',
+			[
+				'type' => 'fatal',
+				'data' => $notice,
+			]
+		);
 
 		Logger::log(
 			sprintf(
@@ -311,14 +317,14 @@ class Error_Handler {
 		$slug = $pending['slug'] ?? '';
 		if ( ! $slug || ! function_exists( 'get_stylesheet' ) ) {
 			delete_option( 'gitwire_running_task' );
-	
+
 			return;
 		}
 
 		$is_active = get_stylesheet() === $slug || get_template() === $slug;
 		if ( ! $is_active ) {
 			delete_option( 'gitwire_running_task' );
-	
+
 		}
 	}
 
@@ -331,14 +337,14 @@ class Error_Handler {
 	public static function abort_pending_guard(): bool {
 		$pending = get_option( 'gitwire_running_task' );
 		if ( ! is_array( $pending ) ) {
-	
+
 			return false;
 		}
 
 		$context = $pending['context'] ?? '';
 		if ( ! in_array( $context, [ 'activation', 'update' ], true ) ) {
 			delete_option( 'gitwire_running_task' );
-	
+
 			return true;
 		}
 
@@ -365,7 +371,6 @@ class Error_Handler {
 
 		delete_option( 'gitwire_running_task' );
 
-
 		return true;
 	}
 
@@ -390,7 +395,6 @@ class Error_Handler {
 		}
 
 		delete_option( 'gitwire_running_task' );
-
 	}
 
 	/**

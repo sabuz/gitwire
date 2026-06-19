@@ -140,14 +140,10 @@ export default function BrowsePanel( {
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 
-	const connectionsRef = useRef( connections );
-	connectionsRef.current = connections;
-
 	const { detections, runBatch, seedFromRepos, reset } = useRepoDetection();
 
 	const [ repositories, setRepositories ] = useState( [] );
-	const [ pagesLoaded, setPagesLoaded ] = useState( {} );
-	const [ hasMore, setHasMore ] = useState( {} );
+	const [ hasMore, setHasMore ] = useState( false );
 	const [ loading, setLoading ] = useState( false );
 	const [ modal, setModal ] = useState( null );
 	const [ search, setSearch ] = useState( '' );
@@ -156,84 +152,18 @@ export default function BrowsePanel( {
 	const prevConnIdsRef = useRef( null );
 
 	const loadRepos = useCallback(
-		async ( connectionPages, append = false ) => {
+		async ( offset, append = false ) => {
 			setLoading( true );
-			const allConns = connectionsRef.current ?? [];
-			const connMap = {};
-			allConns.forEach( ( c ) => {
-				connMap[ c.id ] = c;
-			} );
 			try {
-				const fetches = Object.entries( connectionPages )
-					.filter( ( [ , page ] ) => page > 0 )
-					.map( ( [ connId, page ] ) => {
-						const conn = connMap[ connId ];
-						const provider = conn?.provider ?? 'github';
-						return api
-							.getRepos( page, provider, connId )
-							.then( ( d ) => ( {
-								...d,
-								provider,
-								page,
-								connectionId: connId,
-							} ) )
-							.catch( ( e ) => ( {
-								error: e.message,
-								provider,
-								connectionId: connId,
-							} ) );
-					} );
-
-				const results = await Promise.all( fetches );
-
-				let newRepositories = [];
-				const errors = [];
-
-				for ( const result of results ) {
-					if ( result.error ) {
-						errors.push( result.error );
-						continue;
-					}
-					const tagged = result.repositories.map( ( r ) => ( {
-						...r,
-						provider: result.provider,
-						connectionId: result.connectionId,
-					} ) );
-					newRepositories = [ ...newRepositories, ...tagged ];
-					setHasMore( ( prev ) => ( {
-						...prev,
-						[ result.connectionId ]: result.has_more,
-					} ) );
-					setPagesLoaded( ( prev ) => ( {
-						...prev,
-						[ result.connectionId ]: result.page,
-					} ) );
-				}
-
-				newRepositories.sort(
-					( a, b ) =>
-						new Date( b.updated_at ) - new Date( a.updated_at )
+				const result = await api.getRepos( offset );
+				const repos = result.repositories ?? [];
+				setRepositories( ( prev ) =>
+					append ? [ ...prev, ...repos ] : repos
 				);
-
-				setRepositories( ( prev ) => {
-					if ( ! append ) {
-						return newRepositories;
-					}
-					const merged = [ ...prev, ...newRepositories ];
-					merged.sort(
-						( a, b ) =>
-							new Date( b.updated_at ) - new Date( a.updated_at )
-					);
-					return merged;
-				} );
-
-				if ( errors.length ) {
-					toast.error( errors.join( ' · ' ) );
-				}
-
-				seedFromRepos( newRepositories );
+				setHasMore( result.has_more ?? false );
+				seedFromRepos( repos );
 				runBatch(
-					newRepositories.filter(
+					repos.filter(
 						( repo ) => ! lookupInstalled( installed, repo )
 					)
 				);
@@ -258,30 +188,20 @@ export default function BrowsePanel( {
 			return;
 		}
 		prevConnIdsRef.current = connIds;
-		const pages = {};
-		( connections ?? [] ).forEach( ( c ) => {
-			pages[ c.id ] = 1;
-		} );
 		setRepositories( [] );
-		setHasMore( {} );
-		setPagesLoaded( {} );
+		setHasMore( false );
 		reset();
-		loadRepos( pages );
+		loadRepos( 0 );
 	}, [ connIds ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleRefresh = useCallback( async () => {
 		setLoading( true );
 		setRepositories( [] );
-		setHasMore( {} );
-		setPagesLoaded( {} );
+		setHasMore( false );
 		try {
 			await api.clearCache();
 			reset();
-			const pages = {};
-			( connectionsRef.current ?? [] ).forEach( ( c ) => {
-				pages[ c.id ] = 1;
-			} );
-			await loadRepos( pages );
+			await loadRepos( 0 );
 		} catch ( e ) {
 			toast.error(
 				e.message || __( 'Failed to refresh repositories.', 'gitwire' )
@@ -291,13 +211,7 @@ export default function BrowsePanel( {
 	}, [ loadRepos, reset ] );
 
 	const handleLoadMore = () => {
-		const pages = {};
-		Object.entries( hasMore ).forEach( ( [ connId, more ] ) => {
-			if ( more ) {
-				pages[ connId ] = ( pagesLoaded[ connId ] ?? 0 ) + 1;
-			}
-		} );
-		loadRepos( pages, true );
+		loadRepos( repositories.length, true );
 	};
 
 	const smartInstall = settings?.smart_install !== false;
@@ -610,7 +524,7 @@ export default function BrowsePanel( {
 				<div className="gitwire-repo-grid">
 					{ filtered.map( ( repo ) => (
 						<RepoCard
-							key={ `${ repo.provider }:${ repo.id }` }
+							key={ `${ repo.provider }:${ repo.full_name }` }
 							detection={ detections[ detectionKey( repo ) ] }
 							installed={ lookupInstalled( installed, repo ) }
 							repo={ repo }
@@ -632,7 +546,7 @@ export default function BrowsePanel( {
 				</div>
 			) }
 
-			{ Object.values( hasMore ).some( Boolean ) && ! search && (
+			{ hasMore && ! search && (
 				<div style={ { textAlign: 'center', marginTop: 24 } }>
 					<Button
 						disabled={ loading }
@@ -647,7 +561,7 @@ export default function BrowsePanel( {
 
 			{ ! onInstallRequest && modal && (
 				<InstallModal
-					connectionId={ modal.connectionId }
+					connectionId={ modal.connection_id }
 					detection={ detections[ detectionKey( modal ) ] }
 					provider={ modal.provider }
 					repo={ modal }
@@ -747,18 +661,17 @@ const RepoCard = memo( function RepoCard( {
 						detection={ detection }
 						installed={ installed }
 					/>
-					{ repo.updated_at && (
+					{ repo.last_activity_at && (
 						<Tooltip
 							text={ `${ __(
 								'Last Updated',
 								'gitwire'
-							) }: ${ new Date( repo.updated_at ).toLocaleString(
-								undefined,
-								{
-									dateStyle: 'medium',
-									timeStyle: 'short',
-								}
-							) }` }
+							) }: ${ new Date(
+								repo.last_activity_at
+							).toLocaleString( undefined, {
+								dateStyle: 'medium',
+								timeStyle: 'short',
+							} ) }` }
 						>
 							<span className="gitwire-repo-updated">
 								<svg
@@ -775,7 +688,7 @@ const RepoCard = memo( function RepoCard( {
 									<circle cx="8" cy="8" r="6.25" />
 									<polyline points="8,4.5 8,8 10.5,10" />
 								</svg>
-								{ relativeTimeFromDate( repo.updated_at ) }
+								{ relativeTimeFromDate( repo.last_activity_at ) }
 							</span>
 						</Tooltip>
 					) }
@@ -787,16 +700,14 @@ const RepoCard = memo( function RepoCard( {
 
 function TypeBadge( { detection, installed } ) {
 	if ( installed ) {
-		const isBlockTheme =
-			installed.type === 'theme' && installed.subtype === 'block';
-		if ( isBlockTheme ) {
+		if ( installed.type === 'block-theme' ) {
 			return (
 				<span className="gitwire-badge gitwire-badge--block-theme">
 					{ __( 'Block Theme', 'gitwire' ) }
 				</span>
 			);
 		}
-		if ( installed.type === 'theme' ) {
+		if ( installed.type === 'classic-theme' ) {
 			return (
 				<span className="gitwire-badge gitwire-badge--theme">
 					{ __( 'Theme', 'gitwire' ) }
@@ -816,7 +727,7 @@ function TypeBadge( { detection, installed } ) {
 			</span>
 		);
 	}
-	const { type, subtype } = detection;
+	const { type } = detection;
 	if ( type === 'plugin' ) {
 		return (
 			<span className="gitwire-badge gitwire-badge--info">
@@ -824,14 +735,14 @@ function TypeBadge( { detection, installed } ) {
 			</span>
 		);
 	}
-	if ( type === 'theme' && subtype === 'block' ) {
+	if ( type === 'block-theme' ) {
 		return (
 			<span className="gitwire-badge gitwire-badge--block-theme">
 				{ __( 'Block Theme', 'gitwire' ) }
 			</span>
 		);
 	}
-	if ( type === 'theme' ) {
+	if ( type === 'classic-theme' ) {
 		return (
 			<span className="gitwire-badge gitwire-badge--theme">
 				{ __( 'Theme', 'gitwire' ) }

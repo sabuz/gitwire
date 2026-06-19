@@ -13,6 +13,9 @@ import {
 	Flex,
 	FlexBlock,
 	FlexItem,
+	FormTokenField,
+	RangeControl,
+	SelectControl,
 	TextControl,
 	ToggleControl,
 	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
@@ -32,7 +35,7 @@ import { relativeTimeFromUnix } from '../relative-time';
 import { persistSetting } from '../save-setting';
 
 /**
- * Settings panel — Browse accounts card + Smart Install card + Logging card.
+ * Settings panel — connections, Browse & Detection, Installed & Updates, Logging.
  *
  * @param {Object}   props                     Component props.
  * @param {Array}    props.publicConnections   Current public connections list.
@@ -47,13 +50,6 @@ export default function SettingsPanel( {
 	onConnectionsChange,
 	onSave,
 } ) {
-	const [ smartInstall, setSmartInstall ] = useState(
-		settings.smart_install !== false
-	);
-	const [ savingSi, setSavingSi ] = useState( false );
-	const [ showRepoLabel, setShowRepoLabel ] = useState(
-		settings.show_repo_label !== false
-	);
 	const [ enableLogging, setEnableLogging ] = useState(
 		!! settings.enable_logging
 	);
@@ -65,29 +61,6 @@ export default function SettingsPanel( {
 		settings.log_level ?? 'activity'
 	);
 	const [ clearingLogs, setClearingLogs ] = useState( false );
-	const [ repoListRefreshFrequency, setReposRefreshFrequency ] = useState(
-		settings.repo_list_refresh_frequency ?? 'daily'
-	);
-
-	const saveSetting = ( payload, rollback ) =>
-		persistSetting( payload, onSave, rollback );
-
-	const handleSmartInstallChange = ( newVal ) => {
-		setSmartInstall( newVal );
-		setSavingSi( true );
-		saveSetting( { smart_install: newVal }, () =>
-			setSmartInstall( ! newVal )
-		)
-			.finally( () => setSavingSi( false ) )
-			.catch( () => {} );
-	};
-
-	const handleShowRepoLabelChange = ( newVal ) => {
-		setShowRepoLabel( newVal );
-		saveSetting( { show_repo_label: newVal }, () =>
-			setShowRepoLabel( ! newVal )
-		).catch( () => {} );
-	};
 
 	const handleEnableLoggingChange = ( newVal ) => {
 		setEnableLogging( newVal );
@@ -111,9 +84,10 @@ export default function SettingsPanel( {
 
 	const handleLogRetentionChange = ( newVal ) => {
 		setLogRetentionDays( newVal );
-		saveSetting( { log_retention_days: parseInt( newVal, 10 ) } ).catch(
-			() => {}
-		);
+		persistSetting(
+			{ log_retention_days: parseInt( newVal, 10 ) },
+			onSave
+		).catch( () => {} );
 	};
 
 	const handleClearLogs = () => {
@@ -131,17 +105,10 @@ export default function SettingsPanel( {
 
 	const handleLogLevelChange = ( newVal ) => {
 		setLogLevel( newVal );
-		saveSetting( { log_level: newVal } ).catch( () => {} );
+		persistSetting( { log_level: newVal }, onSave ).catch( () => {} );
 	};
 
-	const handleRepoListRefreshFrequencyChange = ( newVal ) => {
-		setReposRefreshFrequency( newVal );
-		saveSetting( { repo_list_refresh_frequency: newVal }, () =>
-			setReposRefreshFrequency( repoListRefreshFrequency )
-		).catch( () => {} );
-	};
-
-	// Pro replaces the public connections card with its token connections UI
+	// Pro replaces the public connections card with its token connections UI.
 	const accountsSection = applyFilters(
 		'gitwire.settings.accountsSection',
 		<PublicConnectionsCard
@@ -160,71 +127,17 @@ export default function SettingsPanel( {
 
 			<Spacer marginTop={ 4 } />
 
-			<Card>
-				<CardHeader>
-					<Heading level={ 4 }>
-						{ __( 'General', 'gitwire' ) }
-					</Heading>
-				</CardHeader>
-				<CardBody>
-					<ToggleControl
-						__nextHasNoMarginBottom
-						checked={ smartInstall }
-						disabled={ savingSi }
-						help={ __(
-							'Only allow installing repositories detected as a WordPress plugin or theme.',
-							'gitwire'
-						) }
-						label={
-							<>
-								{ __( 'Smart install', 'gitwire' ) }{ ' ' }
-								<span
-									className="gitwire-badge gitwire-badge--success"
-									style={ { marginLeft: 4 } }
-								>
-									{ __( 'Recommended', 'gitwire' ) }
-								</span>
-							</>
-						}
-						onChange={ handleSmartInstallChange }
-					/>
-					<Spacer marginTop={ 4 } />
-					<ToggleControl
-						__nextHasNoMarginBottom
-						checked={ showRepoLabel }
-						help={ __(
-							'Shows a [Gitwire] label next to managed plugin and theme names on the Plugins and Themes screens.',
-							'gitwire'
-						) }
-						label={ __( 'Repo label', 'gitwire' ) }
-						onChange={ handleShowRepoLabelChange }
-					/>
-					<Spacer marginTop={ 4 } />
-					<ToggleGroupControl
-						__nextHasNoMarginBottom
-						isBlock
-						label={ __( 'Repository list refresh frequency', 'gitwire' ) }
-						help={ __(
-							'How often the repository list is refreshed in the background.',
-							'gitwire'
-						) }
-						value={ repoListRefreshFrequency }
-						onChange={ handleRepoListRefreshFrequencyChange }
-					>
-						<ToggleGroupControlOption label={ __( 'Hourly', 'gitwire' ) } value="hourly" />
-						<ToggleGroupControlOption label={ __( 'Daily', 'gitwire' ) } value="daily" />
-						<ToggleGroupControlOption label={ __( 'Weekly', 'gitwire' ) } value="weekly" />
-					</ToggleGroupControl>
-				</CardBody>
-			</Card>
+			<BrowseDetectionCard settings={ settings } onSave={ onSave } />
+
+			<Spacer marginTop={ 4 } />
+
+			<InstalledUpdatesCard settings={ settings } onSave={ onSave } />
 
 			<Spacer marginTop={ 4 } />
 
 			<Card>
 				<CardHeader>
-					<Heading level={ 4 }>
-						{ __( 'Logs', 'gitwire' ) }
-					</Heading>
+					<Heading level={ 4 }>{ __( 'Logs', 'gitwire' ) }</Heading>
 				</CardHeader>
 				<CardBody>
 					<ToggleControl
@@ -252,8 +165,14 @@ export default function SettingsPanel( {
 								value={ logLevel }
 								onChange={ handleLogLevelChange }
 							>
-								<ToggleGroupControlOption label={ __( 'All activity', 'gitwire' ) } value="activity" />
-								<ToggleGroupControlOption label={ __( 'Errors only', 'gitwire' ) } value="error" />
+								<ToggleGroupControlOption
+									label={ __( 'All activity', 'gitwire' ) }
+									value="activity"
+								/>
+								<ToggleGroupControlOption
+									label={ __( 'Errors only', 'gitwire' ) }
+									value="error"
+								/>
 							</ToggleGroupControl>
 							<Spacer marginTop={ 4 } />
 							<ToggleGroupControl
@@ -284,15 +203,419 @@ export default function SettingsPanel( {
 								value={ logRetentionDays }
 								onChange={ handleLogRetentionChange }
 							>
-								<ToggleGroupControlOption label={ __( '7 days', 'gitwire' ) } value="7" />
-								<ToggleGroupControlOption label={ __( '15 days', 'gitwire' ) } value="15" />
-								<ToggleGroupControlOption label={ __( '30 days', 'gitwire' ) } value="30" />
+								<ToggleGroupControlOption
+									label={ __( '7 days', 'gitwire' ) }
+									value="7"
+								/>
+								<ToggleGroupControlOption
+									label={ __( '15 days', 'gitwire' ) }
+									value="15"
+								/>
+								<ToggleGroupControlOption
+									label={ __( '30 days', 'gitwire' ) }
+									value="30"
+								/>
 							</ToggleGroupControl>
 						</>
 					) }
 				</CardBody>
 			</Card>
 		</div>
+	);
+}
+
+function BrowseDetectionCard( { settings, onSave } ) {
+	const [ smartInstall, setSmartInstall ] = useState(
+		settings.smart_install !== false
+	);
+	const [ savingSi, setSavingSi ] = useState( false );
+	const [ autoDetectType, setAutoDetectType ] = useState(
+		settings.auto_detect_type !== false
+	);
+	const [ reposPerPage, setReposPerPage ] = useState(
+		settings.repos_per_page ?? 50
+	);
+	const [ excludedRepos, setExcludedRepos ] = useState(
+		settings.excluded_repos ?? []
+	);
+	const [ maxReposPerSource, setMaxReposPerSource ] = useState(
+		String( settings.max_repos_per_source ?? 'unlimited' )
+	);
+	const [ repoListRefreshFrequency, setRepoListRefreshFrequency ] = useState(
+		settings.repo_list_refresh_frequency ?? 'daily'
+	);
+	const [ backgroundTypeDetection, setBackgroundTypeDetection ] = useState(
+		!! settings.background_type_detection
+	);
+	const [ detectionBatchSize, setDetectionBatchSize ] = useState(
+		String( settings.detection_batch_size ?? 'auto' )
+	);
+	const [ shallowDetection, setShallowDetection ] = useState(
+		!! settings.shallow_detection
+	);
+
+	const save = ( payload, rollback ) =>
+		persistSetting( payload, onSave, rollback );
+
+	const handleSmartInstallChange = ( newVal ) => {
+		setSmartInstall( newVal );
+		setSavingSi( true );
+		save( { smart_install: newVal }, () => setSmartInstall( ! newVal ) )
+			.finally( () => setSavingSi( false ) )
+			.catch( () => {} );
+	};
+
+	const handleAutoDetectTypeChange = ( newVal ) => {
+		setAutoDetectType( newVal );
+		save( { auto_detect_type: newVal }, () =>
+			setAutoDetectType( ! newVal )
+		).catch( () => {} );
+	};
+
+	const handleReposPerPageChange = ( newVal ) => {
+		setReposPerPage( newVal );
+		save( { repos_per_page: newVal } ).catch( () => {} );
+	};
+
+	const handleExcludedReposChange = ( tokens ) => {
+		const valid = tokens.filter( ( t ) =>
+			/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test( t )
+		);
+		if ( valid.length < tokens.length ) {
+			toast.error(
+				__( 'Use owner/repo format, e.g. acme/my-plugin.', 'gitwire' )
+			);
+		}
+		setExcludedRepos( valid );
+		save( { excluded_repos: valid } ).catch( () => {} );
+	};
+
+	const handleMaxReposPerSourceChange = ( newVal ) => {
+		setMaxReposPerSource( newVal );
+		const parsed =
+			'unlimited' === newVal ? 'unlimited' : parseInt( newVal, 10 );
+		save( { max_repos_per_source: parsed } ).catch( () => {} );
+	};
+
+	const handleRepoListRefreshFrequencyChange = ( newVal ) => {
+		setRepoListRefreshFrequency( newVal );
+		save( { repo_list_refresh_frequency: newVal }, () =>
+			setRepoListRefreshFrequency( repoListRefreshFrequency )
+		).catch( () => {} );
+	};
+
+	const handleBackgroundTypeDetectionChange = ( newVal ) => {
+		setBackgroundTypeDetection( newVal );
+		save( { background_type_detection: newVal }, () =>
+			setBackgroundTypeDetection( ! newVal )
+		).catch( () => {} );
+	};
+
+	const handleDetectionBatchSizeChange = ( newVal ) => {
+		setDetectionBatchSize( newVal );
+		const parsed = 'auto' === newVal ? 'auto' : parseInt( newVal, 10 );
+		save( { detection_batch_size: parsed } ).catch( () => {} );
+	};
+
+	const handleShallowDetectionChange = ( newVal ) => {
+		setShallowDetection( newVal );
+		save( { shallow_detection: newVal }, () =>
+			setShallowDetection( ! newVal )
+		).catch( () => {} );
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<Heading level={ 4 }>
+					{ __( 'Browse & Detection', 'gitwire' ) }
+				</Heading>
+			</CardHeader>
+			<CardBody>
+				<ToggleControl
+					__nextHasNoMarginBottom
+					checked={ smartInstall }
+					disabled={ savingSi }
+					help={ __(
+						'Only allow installing repositories detected as a WordPress plugin or theme.',
+						'gitwire'
+					) }
+					label={
+						<>
+							{ __( 'Smart install', 'gitwire' ) }{ ' ' }
+							<span
+								className="gitwire-badge gitwire-badge--success"
+								style={ { marginLeft: 4 } }
+							>
+								{ __( 'Recommended', 'gitwire' ) }
+							</span>
+						</>
+					}
+					onChange={ handleSmartInstallChange }
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<ToggleControl
+					__nextHasNoMarginBottom
+					checked={ autoDetectType }
+					disabled={ smartInstall }
+					help={
+						smartInstall
+							? __(
+									'Smart Install requires type detection.',
+									'gitwire'
+							  )
+							: __(
+									'When off, Gitwire asks whether to install as plugin or theme at install time.',
+									'gitwire'
+							  )
+					}
+					label={ __( 'Auto-detect repository type', 'gitwire' ) }
+					onChange={ handleAutoDetectTypeChange }
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<RangeControl
+					__nextHasNoMarginBottom
+					label={ __( 'Repos per page', 'gitwire' ) }
+					help={ __(
+						'Number of repositories shown per page in the Browse tab.',
+						'gitwire'
+					) }
+					value={ reposPerPage }
+					onChange={ handleReposPerPageChange }
+					min={ 10 }
+					max={ 100 }
+					step={ 10 }
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<FormTokenField
+					__nextHasNoMarginBottom
+					label={ __( 'Excluded repositories', 'gitwire' ) }
+					help={ __(
+						'Repositories never shown in Browse. Use owner/repo format, one per entry.',
+						'gitwire'
+					) }
+					value={ excludedRepos }
+					onChange={ handleExcludedReposChange }
+					tokenizeOnSpace={ false }
+					__experimentalExpandOnFocus
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<SelectControl
+					__nextHasNoMarginBottom
+					label={ __( 'Max repos per source', 'gitwire' ) }
+					help={ __(
+						'Cap total repos fetched per connection per cron cycle.',
+						'gitwire'
+					) }
+					value={ maxReposPerSource }
+					options={ [
+						{
+							label: __( 'No limit', 'gitwire' ),
+							value: 'unlimited',
+						},
+						{ label: '100', value: '100' },
+						{ label: '250', value: '250' },
+						{ label: '500', value: '500' },
+					] }
+					onChange={ handleMaxReposPerSourceChange }
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<ToggleGroupControl
+					__nextHasNoMarginBottom
+					isBlock
+					label={ __(
+						'Repository list refresh frequency',
+						'gitwire'
+					) }
+					help={ __(
+						'How often the repository list is refreshed in the background.',
+						'gitwire'
+					) }
+					value={ repoListRefreshFrequency }
+					onChange={ handleRepoListRefreshFrequencyChange }
+				>
+					<ToggleGroupControlOption
+						label={ __( 'Hourly', 'gitwire' ) }
+						value="hourly"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Daily', 'gitwire' ) }
+						value="daily"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Weekly', 'gitwire' ) }
+						value="weekly"
+					/>
+				</ToggleGroupControl>
+
+				<Spacer marginTop={ 4 } />
+
+				<ToggleControl
+					__nextHasNoMarginBottom
+					checked={ backgroundTypeDetection }
+					help={ __(
+						'Detect types for unscanned repos in the background each cron cycle. Best for large collections.',
+						'gitwire'
+					) }
+					label={ __( 'Background type pre-detection', 'gitwire' ) }
+					onChange={ handleBackgroundTypeDetectionChange }
+				/>
+
+				{ backgroundTypeDetection && (
+					<>
+						<Spacer marginTop={ 4 } />
+						<SelectControl
+							__nextHasNoMarginBottom
+							label={ __( 'Detection batch size', 'gitwire' ) }
+							help={ __(
+								'Repos detected per cron cycle. Auto derives a safe limit from your PHP time limit.',
+								'gitwire'
+							) }
+							value={ detectionBatchSize }
+							options={ [
+								{
+									label: __( 'Auto', 'gitwire' ),
+									value: 'auto',
+								},
+								{ label: '10', value: '10' },
+								{ label: '25', value: '25' },
+								{ label: '50', value: '50' },
+								{ label: '100', value: '100' },
+								{ label: '200', value: '200' },
+							] }
+							onChange={ handleDetectionBatchSizeChange }
+						/>
+					</>
+				) }
+
+				<Spacer marginTop={ 4 } />
+
+				<ToggleControl
+					__nextHasNoMarginBottom
+					checked={ shallowDetection }
+					help={ __(
+						'Skip full file scans on re-detection when stored key files still match. Saves API calls on large collections.',
+						'gitwire'
+					) }
+					label={ __( 'Shallow detection', 'gitwire' ) }
+					onChange={ handleShallowDetectionChange }
+				/>
+			</CardBody>
+		</Card>
+	);
+}
+
+function InstalledUpdatesCard( { settings, onSave } ) {
+	const [ showRepoLabel, setShowRepoLabel ] = useState(
+		settings.show_repo_label !== false
+	);
+	const [ blockOnFatal, setBlockOnFatal ] = useState(
+		settings.block_on_fatal !== false
+	);
+	const [ updateCheckInterval, setUpdateCheckInterval ] = useState(
+		settings.update_check_interval ?? 'daily'
+	);
+
+	const save = ( payload, rollback ) =>
+		persistSetting( payload, onSave, rollback );
+
+	const handleShowRepoLabelChange = ( newVal ) => {
+		setShowRepoLabel( newVal );
+		save( { show_repo_label: newVal }, () =>
+			setShowRepoLabel( ! newVal )
+		).catch( () => {} );
+	};
+
+	const handleBlockOnFatalChange = ( newVal ) => {
+		setBlockOnFatal( newVal );
+		save( { block_on_fatal: newVal }, () =>
+			setBlockOnFatal( ! newVal )
+		).catch( () => {} );
+	};
+
+	const handleUpdateCheckIntervalChange = ( newVal ) => {
+		setUpdateCheckInterval( newVal );
+		save( { update_check_interval: newVal }, () =>
+			setUpdateCheckInterval( updateCheckInterval )
+		).catch( () => {} );
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<Heading level={ 4 }>
+					{ __( 'Installed & Updates', 'gitwire' ) }
+				</Heading>
+			</CardHeader>
+			<CardBody>
+				<ToggleControl
+					__nextHasNoMarginBottom
+					checked={ showRepoLabel }
+					help={ __(
+						'Shows a [Gitwire] label next to managed plugin and theme names on the Plugins and Themes screens.',
+						'gitwire'
+					) }
+					label={ __( 'Repo label', 'gitwire' ) }
+					onChange={ handleShowRepoLabelChange }
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<ToggleControl
+					__nextHasNoMarginBottom
+					checked={ blockOnFatal }
+					help={
+						blockOnFatal
+							? __(
+									'A fatal commit is blocked permanently until a new commit is detected on the branch.',
+									'gitwire'
+							  )
+							: __(
+									'A fatal commit will still be blocked for 5 minutes per retry due to an internal rate limit.',
+									'gitwire'
+							  )
+					}
+					label={ __( 'Block on fatal error', 'gitwire' ) }
+					onChange={ handleBlockOnFatalChange }
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<SelectControl
+					__nextHasNoMarginBottom
+					label={ __( 'Update check interval', 'gitwire' ) }
+					help={ __(
+						'How often Gitwire checks for new commits on installed repositories.',
+						'gitwire'
+					) }
+					value={ updateCheckInterval }
+					options={ [
+						{
+							label: __( 'Every hour', 'gitwire' ),
+							value: 'hourly',
+						},
+						{
+							label: __( 'Every 6 hours', 'gitwire' ),
+							value: '6hours',
+						},
+						{ label: __( 'Daily', 'gitwire' ), value: 'daily' },
+						{ label: __( 'Weekly', 'gitwire' ), value: 'weekly' },
+						{ label: __( 'Never', 'gitwire' ), value: 'never' },
+					] }
+					onChange={ handleUpdateCheckIntervalChange }
+				/>
+			</CardBody>
+		</Card>
 	);
 }
 
@@ -329,7 +652,10 @@ function PublicConnectionsCard( { connections, onChange } ) {
 		( conn, metadata ) => {
 			onChange( [ ...connections, conn ] );
 			if ( metadata ) {
-				setRateCache( ( prev ) => ( { ...prev, [ conn.id ]: metadata } ) );
+				setRateCache( ( prev ) => ( {
+					...prev,
+					[ conn.id ]: metadata,
+				} ) );
 			}
 			if ( 'github' === conn.provider ) {
 				api.getPublicConnectionRateLimit( conn.id )
@@ -377,7 +703,12 @@ function PublicConnectionsCard( { connections, onChange } ) {
 	);
 }
 
-function PublicConnectionsSummary( { connections, rateCache, onCreated, onSelect } ) {
+function PublicConnectionsSummary( {
+	connections,
+	rateCache,
+	onCreated,
+	onSelect,
+} ) {
 	const [ adding, setAdding ] = useState( false );
 
 	const handleCreated = ( conn, metadata ) => {
@@ -428,12 +759,17 @@ function PublicConnectionsSummary( { connections, rateCache, onCreated, onSelect
 									type="button"
 									onClick={ () => onSelect( conn.id ) }
 								>
-									{ ( rateCache[ conn.id ]?.avatar_url || conn.avatar_url ) ? (
+									{ rateCache[ conn.id ]?.avatar_url ||
+									conn.avatar_url ? (
 										<img
 											alt=""
 											aria-hidden="true"
 											height={ 24 }
-											src={ rateCache[ conn.id ]?.avatar_url || conn.avatar_url }
+											src={
+												rateCache[ conn.id ]
+													?.avatar_url ||
+												conn.avatar_url
+											}
 											style={ {
 												borderRadius: '50%',
 												display: 'block',
@@ -458,7 +794,9 @@ function PublicConnectionsSummary( { connections, rateCache, onCreated, onSelect
 											whiteSpace: 'nowrap',
 										} }
 									>
-										@{ rateCache[ conn.id ]?.username || conn.identifier }
+										@
+										{ rateCache[ conn.id ]?.username ||
+											conn.identifier }
 										{ conn.gitlab_url && (
 											<span
 												style={ {
@@ -503,11 +841,15 @@ function PublicConnectionsSummary( { connections, rateCache, onCreated, onSelect
 
 function gravatarFallback( identifier ) {
 	let h = 5381;
-	const s = String( identifier || '' ).toLowerCase().trim();
+	const s = String( identifier || '' )
+		.toLowerCase()
+		.trim();
 	for ( let i = 0; i < s.length; i++ ) {
-		h = ( Math.imul( 33, h ) ^ s.charCodeAt( i ) ) >>> 0;
+		h = ( Math.imul( 33, h ) ^ s.charCodeAt( i ) ) >>> 0; // eslint-disable-line no-bitwise
 	}
-	return `https://www.gravatar.com/avatar/${ h.toString( 16 ).padStart( 32, '0' ) }?d=identicon&s=96`;
+	return `https://www.gravatar.com/avatar/${ h
+		.toString( 16 )
+		.padStart( 32, '0' ) }?d=identicon&s=96`;
 }
 
 function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
@@ -558,10 +900,16 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 						</FlexItem>
 					) }
 					<FlexItem>
-						<ProviderIcon provider={ rec.provider } size={ 15 } variant="brand" />
+						<ProviderIcon
+							provider={ rec.provider }
+							size={ 15 }
+							variant="brand"
+						/>
 					</FlexItem>
 					<FlexBlock>
-						<strong style={ { fontSize: 15, lineHeight: 1.5 } }>{ provLabel }</strong>
+						<strong style={ { fontSize: 15, lineHeight: 1.5 } }>
+							{ provLabel }
+						</strong>
 					</FlexBlock>
 					<FlexItem>
 						<span className="gitwire-badge gitwire-badge--warning">
@@ -578,7 +926,9 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 						src={
 							rateData?.avatar_url ||
 							rec.avatar_url ||
-							gravatarFallback( rateData?.username || rec.identifier )
+							gravatarFallback(
+								rateData?.username || rec.identifier
+							)
 						}
 						style={ {
 							borderRadius: '50%',

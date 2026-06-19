@@ -22,7 +22,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	const DB_VERSION = '1.3.0';
+	const DB_VERSION = '2.0.0';
 
 	/**
 	 * Option key used to track the installed schema version.
@@ -44,6 +44,8 @@ class Schema {
 
 		$prefix  = $wpdb->base_prefix;
 		$charset = $wpdb->get_charset_collate();
+
+		self::run_migrations( $prefix );
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
@@ -70,8 +72,8 @@ class Schema {
 			) $charset;"
 		);
 
-		// Installed repository records (replaces gitwire_installed option).
-		// owner and repo are derived from full_name at read time; not stored here.
+		// Installed repository records.
+		// type stores the flat detection value: 'plugin', 'block-theme', 'classic-theme'.
 		dbDelta(
 			"CREATE TABLE {$prefix}gitwire_installed (
 				provider VARCHAR(20) NOT NULL,
@@ -80,18 +82,19 @@ class Schema {
 				branch VARCHAR(255) NOT NULL DEFAULT 'main',
 				head VARCHAR(40) NOT NULL DEFAULT '',
 				remote_head VARCHAR(40) NOT NULL DEFAULT '',
-				type VARCHAR(10) NOT NULL DEFAULT 'plugin',
-				subtype VARCHAR(10) NOT NULL DEFAULT '',
+				type VARCHAR(20) NOT NULL DEFAULT 'plugin',
 				install_path VARCHAR(1024) NOT NULL DEFAULT '',
 				plugin_file VARCHAR(512) NOT NULL DEFAULT '',
 				connection_id VARCHAR(64) NOT NULL DEFAULT '',
 				installed_at INT UNSIGNED NOT NULL DEFAULT 0,
 				updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+				auto_update TINYINT(1) NOT NULL DEFAULT 0,
+				auto_update_scope VARCHAR(10) NOT NULL DEFAULT 'current',
 				PRIMARY KEY  (provider, full_name)
 			) $charset;"
 		);
 
-		// Cached commit history per repo/branch (replaces gitwire_commits_* options).
+		// Cached commit history per repo/branch.
 		// data stores the JSON-encoded commit array returned by the provider API.
 		dbDelta(
 			"CREATE TABLE {$prefix}gitwire_commits (
@@ -101,6 +104,31 @@ class Schema {
 				data MEDIUMTEXT NOT NULL,
 				updated_at INT UNSIGNED NOT NULL DEFAULT 0,
 				PRIMARY KEY  (provider, full_name, branch)
+			) $charset;"
+		);
+
+		// Cached repository list and type detection — one row per repo per connection.
+		// last_activity_at: repo's last activity timestamp from the provider (ISO 8601).
+		// updated_at:    when this cache row was last written by cron (Unix timestamp).
+		// type:          flat detection value ('plugin','block-theme','classic-theme','unknown','').
+		// type_meta:     detection payload JSON (confidence, name, key_files).
+		dbDelta(
+			"CREATE TABLE {$prefix}gitwire_repo_cache (
+				connection_id  VARCHAR(64) NOT NULL,
+				provider       VARCHAR(20) NOT NULL,
+				owner          VARCHAR(128) NOT NULL DEFAULT '',
+				name           VARCHAR(128) NOT NULL DEFAULT '',
+				full_name      VARCHAR(255) NOT NULL,
+				private        TINYINT(1) NOT NULL DEFAULT 0,
+				html_url       VARCHAR(512) NOT NULL DEFAULT '',
+				default_branch VARCHAR(255) NOT NULL DEFAULT 'main',
+				last_activity_at  VARCHAR(32) NOT NULL DEFAULT '',
+				type           VARCHAR(20) NOT NULL DEFAULT '',
+				type_meta      TEXT DEFAULT NULL,
+				updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+				PRIMARY KEY  (connection_id, full_name),
+				KEY provider_full_name (provider, full_name),
+				KEY type (type)
 			) $charset;"
 		);
 
@@ -126,13 +154,80 @@ class Schema {
 	private static function tables_exist(): bool {
 		global $wpdb;
 		$prefix = $wpdb->base_prefix;
-		foreach ( [ 'gitwire_public_connections', 'gitwire_connection_meta', 'gitwire_installed', 'gitwire_commits' ] as $table ) {
+		foreach ( [ 'gitwire_public_connections', 'gitwire_connection_meta', 'gitwire_installed', 'gitwire_commits', 'gitwire_repo_cache' ] as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . $table ) ) !== $prefix . $table ) {
 				return false;
 			}
 		}
 		return true;
+	}
+
+	/**
+	 * Runs ALTER TABLE migrations for existing installs.
+	 *
+	 * Necessary because dbDelta cannot drop or rename columns. Each block is
+	 * guarded by a column-existence check so it is safe to call on both fresh
+	 * installs and upgrades.
+	 *
+	 * @since 2.0.0
+	 * @param string $prefix Table prefix.
+	 * @return void
+	 */
+	private static function run_migrations( string $prefix ): void {
+		global $wpdb;
+
+		$cache     = $prefix . 'gitwire_repo_cache';
+		$installed = $prefix . 'gitwire_installed';
+
+		// v2.0.0 — repo cache: drop page/has_more, rename columns, add type.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$has_page = $wpdb->get_var( "SHOW COLUMNS FROM `{$cache}` LIKE 'page'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $has_page ) {
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query(
+				"ALTER TABLE `{$cache}`
+				DROP COLUMN `page`,
+				DROP COLUMN `has_more`,
+				DROP INDEX `connection_page`,
+				CHANGE COLUMN `updated_at` `last_activity_at` VARCHAR(32) NOT NULL DEFAULT '',
+				CHANGE COLUMN `created_at` `updated_at` INT UNSIGNED NOT NULL DEFAULT 0,
+				CHANGE COLUMN `type_data` `type_meta` TEXT DEFAULT NULL,
+				ADD COLUMN `type` VARCHAR(20) NOT NULL DEFAULT '' AFTER `type_meta`,
+				ADD INDEX `type` (`type`)"
+			);
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+
+		// v2.0.0 — installed: migrate flat type values, drop subtype.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$has_subtype = $wpdb->get_var( "SHOW COLUMNS FROM `{$installed}` LIKE 'subtype'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $has_subtype ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->query( "UPDATE `{$installed}` SET `type` = 'block-theme' WHERE `type` = 'theme' AND `subtype` = 'block'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->query( "UPDATE `{$installed}` SET `type` = 'classic-theme' WHERE `type` = 'theme' AND `subtype` != 'block'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query(
+				"ALTER TABLE `{$installed}`
+				DROP COLUMN `subtype`,
+				MODIFY COLUMN `type` VARCHAR(20) NOT NULL DEFAULT 'plugin'"
+			);
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+
+		// v2.0.0 — installed: add auto_update columns.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$has_auto_update = $wpdb->get_var( "SHOW COLUMNS FROM `{$installed}` LIKE 'auto_update'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( ! $has_auto_update ) {
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query(
+				"ALTER TABLE `{$installed}`
+				ADD COLUMN `auto_update` TINYINT(1) NOT NULL DEFAULT 0,
+				ADD COLUMN `auto_update_scope` VARCHAR(10) NOT NULL DEFAULT 'current'"
+			);
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
 	}
 
 	/**
@@ -148,13 +243,15 @@ class Schema {
 
 		$prefix = $wpdb->base_prefix;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_repo_cache" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_commits" );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_installed" );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_connection_meta" );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_public_connections" );
 
 		delete_option( self::VERSION_OPTION );

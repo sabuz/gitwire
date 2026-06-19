@@ -23,7 +23,7 @@ export default function DetectionBadge( { detection, smartInstall } ) {
 		);
 	}
 
-	const { type, subtype, confidence, name } = detection;
+	const { type, confidence, name } = detection;
 	let badgeClass, label;
 
 	if ( type === 'plugin' ) {
@@ -36,7 +36,7 @@ export default function DetectionBadge( { detection, smartInstall } ) {
 						name ? `: ${ name }` : ''
 				  )
 				: __( 'Likely a WordPress Plugin', 'gitwire' );
-	} else if ( type === 'theme' && subtype === 'block' ) {
+	} else if ( type === 'block-theme' ) {
 		badgeClass = 'gitwire-detect-theme';
 		label =
 			confidence === 'high'
@@ -46,7 +46,7 @@ export default function DetectionBadge( { detection, smartInstall } ) {
 						name ? `: ${ name }` : ''
 				  )
 				: __( 'Likely a Block Theme', 'gitwire' );
-	} else if ( type === 'theme' ) {
+	} else if ( type === 'classic-theme' ) {
 		badgeClass = 'gitwire-detect-theme';
 		label =
 			confidence === 'high'

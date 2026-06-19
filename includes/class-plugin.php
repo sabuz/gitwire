@@ -123,8 +123,8 @@ final class Plugin {
 	/**
 	 * Migrates schema immediately after this plugin is updated via the WP upgrader.
 	 *
-	 * @param \WP_Upgrader                        $upgrader Upgrader instance.
-	 * @param array<string, mixed>                $hook_extra Upgrade metadata.
+	 * @param \WP_Upgrader         $upgrader Upgrader instance.
+	 * @param array<string, mixed> $hook_extra Upgrade metadata.
 	 * @return void
 	 */
 	public function maybe_migrate( $upgrader, array $hook_extra ): void {
@@ -195,12 +195,12 @@ final class Plugin {
 			add_option(
 				'gitwire_settings',
 				[
-					'smart_install'           => true,
-					'show_repo_label'         => true,
-					'enable_logging'          => true,
-					'log_retention_days'      => 7,
-					'log_level'               => 'activity',
-					'remove_data_on_uninstall' => false,
+					'smart_install'               => true,
+					'show_repo_label'             => true,
+					'enable_logging'              => true,
+					'log_retention_days'          => 7,
+					'log_level'                   => 'activity',
+					'remove_data_on_uninstall'    => false,
 					'repo_list_refresh_frequency' => 'daily',
 				],
 				'',

@@ -202,7 +202,7 @@ class Admin {
 		$installed_result = REST::get_installed();
 		$installed        = $installed_result['installed'];
 		$orphaned         = $installed_result['orphaned'];
-		$pending_msg = get_option( 'gitwire_pending_message' );
+		$pending_msg      = get_option( 'gitwire_pending_message' );
 		if ( $pending_msg ) {
 			delete_option( 'gitwire_pending_message' );
 		}
@@ -223,18 +223,18 @@ class Admin {
 			'gitwire-app',
 			'window.gitwire = ' . wp_json_encode(
 				[
-					'nonce'              => wp_create_nonce( 'wp_rest' ),
-					'public_connections' => Public_Connections::all(),
+					'nonce'                => wp_create_nonce( 'wp_rest' ),
+					'public_connections'   => Public_Connections::all(),
 					'connections_metadata' => REST::get_connection_cache(),
-					'icon_url'           => GITWIRE_URL . 'assets/images/icon.svg',
-					'disconnected_url'   => GITWIRE_URL . 'assets/images/cloud-alert.svg',
-					'not_found_url'      => GITWIRE_URL . 'assets/images/folder-x.svg',
-					'themes_url'         => admin_url( 'themes.php' ),
-					'initial_tab'        => $initial_tab,
-					'settings'           => $settings,
-					'installed'          => $installed ? $installed : (object) [],
-					'orphaned'           => $orphaned,
-					'pending_msg'        => $pending_msg ?: null,
+					'icon_url'             => GITWIRE_URL . 'assets/images/icon.svg',
+					'disconnected_url'     => GITWIRE_URL . 'assets/images/cloud-alert.svg',
+					'not_found_url'        => GITWIRE_URL . 'assets/images/folder-x.svg',
+					'themes_url'           => admin_url( 'themes.php' ),
+					'initial_tab'          => $initial_tab,
+					'settings'             => $settings,
+					'installed'            => $installed ? $installed : (object) [],
+					'orphaned'             => $orphaned,
+					'pending_msg'          => $pending_msg ?: null,
 				]
 			) . ';',
 			'before'

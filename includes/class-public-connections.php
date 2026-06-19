@@ -270,7 +270,11 @@ class Public_Connections {
 			self::set_meta( $id, 'gitlab_url', $gitlab_url );
 		}
 
-		return self::find( $id ) ?? [ 'id' => $id, 'provider' => $provider, 'identifier' => $identifier ];
+		return self::find( $id ) ?? [
+			'id'         => $id,
+			'provider'   => $provider,
+			'identifier' => $identifier,
+		];
 	}
 
 	/**
@@ -318,5 +322,4 @@ class Public_Connections {
 
 		return (bool) $deleted;
 	}
-
 }
