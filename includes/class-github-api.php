@@ -127,7 +127,7 @@ class GitHub_API implements Git_Provider_Interface {
 	 * @param string $branch Branch, tag, or SHA to inspect.
 	 * @return array<string, mixed>|WP_Error Detection result on success, WP_Error on failure.
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD' ): array|\WP_Error {
+	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
 		return Repo_Detector::detect(
 			$repo,
 			$branch,
@@ -135,7 +135,8 @@ class GitHub_API implements Git_Provider_Interface {
 				'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
 				. '/contents?ref=' . rawurlencode( $ref )
 			),
-			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref )
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref ),
+			$cached_result
 		);
 	}
 

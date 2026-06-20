@@ -135,7 +135,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 * @param string $branch Branch, tag, or SHA to inspect.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD' ): array|\WP_Error {
+	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
 		$project_id = rawurlencode( $owner . '/' . $repo );
 
 		return Repo_Detector::detect(
@@ -159,7 +159,8 @@ class GitLab_API implements Git_Provider_Interface {
 					$contents
 				);
 			},
-			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref )
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref ),
+			$cached_result
 		);
 	}
 

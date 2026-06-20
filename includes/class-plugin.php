@@ -60,6 +60,7 @@ final class Plugin {
 		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
 		add_action( 'gitwire_refresh_repo_list', [ Repo_Cache::class, 'scheduled_refresh' ] );
 		add_action( 'gitwire_refresh_connections', [ REST::class, 'refresh_public_connections' ] );
+		add_action( 'gitwire_update_check', [ Installer::class, 'run_auto_updates' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
 		add_action( 'upgrader_process_complete', [ $this, 'maybe_migrate' ], 10, 2 );
 
@@ -96,6 +97,10 @@ final class Plugin {
 		$schedules['gitwire_daily']       = [
 			'interval' => DAY_IN_SECONDS,
 			'display'  => __( 'Once daily', 'gitwire' ),
+		];
+		$schedules['gitwire_6hours']      = [
+			'interval' => 6 * HOUR_IN_SECONDS,
+			'display'  => __( 'Every 6 hours', 'gitwire' ),
 		];
 		return $schedules;
 	}
@@ -172,6 +177,8 @@ final class Plugin {
 			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
 		}
 
+		$this->schedule_update_check_cron();
+
 		/**
 		 * Fires after the free plugin finishes bootstrapping.
 		 *
@@ -217,6 +224,7 @@ final class Plugin {
 		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
 			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
 		}
+		$this->schedule_update_check_cron();
 	}
 
 	/**
@@ -238,6 +246,39 @@ final class Plugin {
 	}
 
 	/**
+	 * Schedules or reschedules the auto-update cron to match the update_check_interval setting.
+	 *
+	 * When update_check_interval is 'never', the event is removed entirely.
+	 * Safe to call on every boot — only reschedules when the stored interval differs.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function schedule_update_check_cron(): void {
+		$interval = Settings::get_public()['update_check_interval'] ?? 'daily';
+
+		if ( 'never' === $interval ) {
+			wp_clear_scheduled_hook( 'gitwire_update_check' );
+			return;
+		}
+
+		$recurrence_map = [
+			'hourly' => 'hourly',
+			'6hours' => 'gitwire_6hours',
+			'daily'  => 'daily',
+			'weekly' => 'weekly',
+		];
+		$recurrence = $recurrence_map[ $interval ] ?? 'daily';
+		$current    = wp_get_schedule( 'gitwire_update_check' );
+
+		if ( $current === $recurrence ) {
+			return;
+		}
+		wp_clear_scheduled_hook( 'gitwire_update_check' );
+		wp_schedule_event( time(), $recurrence, 'gitwire_update_check' );
+	}
+
+	/**
 	 * Runs on plugin deactivation.
 	 *
 	 * @return void
@@ -248,5 +289,6 @@ final class Plugin {
 		wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repo_list' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
+		wp_clear_scheduled_hook( 'gitwire_update_check' );
 	}
 }

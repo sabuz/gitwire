@@ -21,8 +21,13 @@ export const getPublicConnectionRateLimit = ( id ) =>
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>
 	apiFetch( { path: `${ BASE }/settings`, method: 'POST', data } );
-export const getRepos = ( offset = 0 ) =>
-	apiFetch( { path: `${ BASE }/repos?offset=${ offset }` } );
+export const getRepos = ( { offset = 0, search = '' } = {} ) => {
+	const params = new URLSearchParams( { offset } );
+	if ( search ) {
+		params.set( 'search', search );
+	}
+	return apiFetch( { path: `${ BASE }/repos?${ params }` } );
+};
 export const clearCache = () =>
 	apiFetch( { path: `${ BASE }/repos/cache`, method: 'DELETE' } );
 export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );
@@ -147,6 +152,21 @@ export const untrackInstalled = ( owner, repo, provider = 'github' ) =>
 			repo
 		) }/untrack?provider=${ encodeURIComponent( provider ) }`,
 		method: 'DELETE',
+	} );
+
+export const saveAutoUpdate = (
+	owner,
+	repo,
+	provider = 'github',
+	autoUpdate,
+	scope = 'current'
+) =>
+	apiFetch( {
+		path: `${ BASE }/installed/${ encodeURIComponent(
+			owner
+		) }/${ encodeURIComponent( repo ) }/auto-update`,
+		method: 'POST',
+		data: { provider, auto_update: autoUpdate, auto_update_scope: scope },
 	} );
 
 export const resolveRepo = ( url ) =>

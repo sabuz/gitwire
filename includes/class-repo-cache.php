@@ -53,33 +53,70 @@ class Repo_Cache {
 	 * @since 1.0.0
 	 * @param string[] $connection_ids Connection IDs to query across.
 	 * @param int      $offset         Row offset for pagination.
+	 * @param string   $search         Optional name/owner search filter.
 	 * @return array<string, mixed>|null Cached payload or null when cache is empty.
 	 */
-	public static function get_repo_list( array $connection_ids, int $offset = 0 ): ?array {
+	public static function get_repo_list( array $connection_ids, int $offset = 0, string $search = '' ): ?array {
 		global $wpdb;
 
 		if ( empty( $connection_ids ) ) {
 			return null;
 		}
 
+		$settings = Settings::get_public();
+		$per_page = (int) ( $settings['repos_per_page'] ?? 50 );
+		$excluded = (array) ( $settings['excluded_repos'] ?? [] );
+
 		$placeholders = implode( ', ', array_fill( 0, count( $connection_ids ), '%s' ) );
-		$args         = array_merge( $connection_ids, [ $offset ] );
+		$where        = 'WHERE connection_id IN (' . $placeholders . ')';
+		$args         = $connection_ids;
+
+		if ( ! empty( $excluded ) ) {
+			$ex_phs = implode( ', ', array_fill( 0, count( $excluded ), '%s' ) );
+			$where .= ' AND full_name NOT IN (' . $ex_phs . ')'; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$args   = array_merge( $args, $excluded );
+		}
+
+		if ( $search ) {
+			$where .= ' AND (name LIKE %s OR owner LIKE %s)';
+			$like   = '%' . $wpdb->esc_like( $search ) . '%';
+			$args[] = $like;
+			$args[] = $like;
+		}
+
+		$limit  = $per_page + 1;
+		$args[] = $limit;
+		$args[] = $offset;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT connection_id, provider, full_name, owner, name, private, html_url, default_branch, last_activity_at, type, type_meta FROM ' . self::cache_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				' WHERE connection_id IN (' . $placeholders . ')' . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				' ORDER BY last_activity_at DESC LIMIT 101 OFFSET %d',
+				' ' . $where . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				' ORDER BY last_activity_at DESC LIMIT %d OFFSET %d',
 				...$args
 			)
 		);
 
 		if ( ! $rows && 0 === $offset ) {
-			return null;
+			// If filters are active, verify the table itself is populated before returning null.
+			if ( $excluded || $search ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$has_any = $wpdb->get_var(
+					$wpdb->prepare(
+						'SELECT 1 FROM ' . self::cache_table() . ' WHERE connection_id IN (' . $placeholders . ') LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+						...$connection_ids
+					)
+				);
+				if ( ! $has_any ) {
+					return null;
+				}
+			} else {
+				return null;
+			}
 		}
 
-		$has_more = count( $rows ) > 100;
+		$has_more = count( $rows ) > $per_page;
 		if ( $has_more ) {
 			array_pop( $rows );
 		}
@@ -88,16 +125,16 @@ class Repo_Cache {
 			'repositories' => array_map(
 				static function ( $row ) {
 					$repo = [
-						'connection_id'  => $row->connection_id,
-						'provider'       => $row->provider,
-						'full_name'      => $row->full_name,
-						'owner'          => $row->owner,
-						'name'           => $row->name,
-						'private'        => (bool) $row->private,
-						'html_url'       => $row->html_url,
-						'default_branch' => $row->default_branch,
-						'last_activity_at'  => $row->last_activity_at,
-						'type'           => $row->type,
+						'connection_id'    => $row->connection_id,
+						'provider'         => $row->provider,
+						'full_name'        => $row->full_name,
+						'owner'            => $row->owner,
+						'name'             => $row->name,
+						'private'          => (bool) $row->private,
+						'html_url'         => $row->html_url,
+						'default_branch'   => $row->default_branch,
+						'last_activity_at' => $row->last_activity_at,
+						'type'             => $row->type,
 					];
 					if ( $row->type_meta ) {
 						$repo['type_meta'] = json_decode( $row->type_meta, true );
@@ -346,6 +383,8 @@ class Repo_Cache {
 
 		$refresh_started = time();
 		$last_err        = null;
+		$max_setting     = Settings::get_public()['max_repos_per_source'] ?? 'unlimited';
+		$max             = 'unlimited' === $max_setting ? PHP_INT_MAX : (int) $max_setting;
 
 		foreach ( Connection_Resolver::all() as $conn ) {
 			$id       = $conn['id'] ?? '';
@@ -354,8 +393,9 @@ class Repo_Cache {
 				continue;
 			}
 
-			$page     = 1;
-			$conn_err = null;
+			$page          = 1;
+			$conn_err      = null;
+			$total_fetched = 0;
 
 			do {
 				$result = self::fetch_repo_list( $provider, $page, $id );
@@ -364,7 +404,8 @@ class Repo_Cache {
 					$last_err = $result;
 					break;
 				}
-				$has_more = $result['has_more'] ?? false;
+				$total_fetched += count( $result['repositories'] ?? [] );
+				$has_more       = ( $result['has_more'] ?? false ) && $total_fetched < $max;
 				++$page;
 			} while ( $has_more );
 
@@ -406,6 +447,8 @@ class Repo_Cache {
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
 	 */
 	public static function cron_refresh_repo_types(): true|\WP_Error {
+		global $wpdb;
+
 		$keys           = [];
 		$connection_ids = [];
 		$records        = Installer::get_installed();
@@ -422,10 +465,6 @@ class Repo_Cache {
 					$connection_ids[ $key ] = $rec['connection_id'];
 				}
 			}
-		}
-
-		if ( ! $keys ) {
-			return true;
 		}
 
 		$last_err = null;
@@ -462,6 +501,54 @@ class Repo_Cache {
 			}
 
 			self::set_repo_type( $provider, $owner, $repo, $full_branch, $result );
+		}
+
+		// Background detection: process a batch of cache rows that haven't been typed yet.
+		$settings = Settings::get_public();
+		if ( ! ( $settings['background_type_detection'] ?? false ) ) {
+			return $last_err ?? true;
+		}
+
+		$batch_raw   = $settings['detection_batch_size'] ?? 'auto';
+		$batch_size  = 'auto' === $batch_raw ? 10 : (int) $batch_raw;
+		$cursor      = (int) get_option( 'gitwire_detection_cursor', 0 );
+		$batch_start = time();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		$untyped = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT connection_id, provider, owner, name, full_name, default_branch FROM ' . self::cache_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				' WHERE type_meta IS NULL ORDER BY full_name ASC, connection_id ASC LIMIT %d OFFSET %d',
+				$batch_size,
+				$cursor
+			),
+			ARRAY_A
+		);
+
+		if ( empty( $untyped ) ) {
+			delete_option( 'gitwire_detection_cursor' );
+		} else {
+			foreach ( $untyped as $row ) {
+				// 25 s guard — leave time for the next item on the queue.
+				if ( time() - $batch_start > 25 ) {
+					break;
+				}
+
+				$branch        = $row['default_branch'] ? $row['default_branch'] : 'HEAD';
+				$connection_id = $row['connection_id'] ? $row['connection_id'] : null;
+
+				$result = REST::detect_type_for_repo(
+					$row['provider'],
+					$row['owner'],
+					$row['name'],
+					$branch,
+					$connection_id
+				);
+				if ( ! is_wp_error( $result ) ) {
+					self::set_repo_type( $row['provider'], $row['owner'], $row['name'], $branch, $result );
+				}
+			}
+			update_option( 'gitwire_detection_cursor', $cursor + count( $untyped ), false );
 		}
 
 		return $last_err ?? true;

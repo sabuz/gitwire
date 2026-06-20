@@ -150,12 +150,17 @@ export default function BrowsePanel( {
 	const [ activeTypeFilters, setActiveTypeFilters ] = useState( [] );
 	const [ activeSourceFilters, setActiveSourceFilters ] = useState( [] );
 	const prevConnIdsRef = useRef( null );
+	const searchTimerRef = useRef( null );
+	const isFirstSearchRef = useRef( true );
 
 	const loadRepos = useCallback(
-		async ( offset, append = false ) => {
+		async ( offset, append = false, searchTerm = '' ) => {
 			setLoading( true );
 			try {
-				const result = await api.getRepos( offset );
+				const result = await api.getRepos( {
+					offset,
+					search: searchTerm,
+				} );
 				const repos = result.repositories ?? [];
 				setRepositories( ( prev ) =>
 					append ? [ ...prev, ...repos ] : repos
@@ -191,7 +196,7 @@ export default function BrowsePanel( {
 		setRepositories( [] );
 		setHasMore( false );
 		reset();
-		loadRepos( 0 );
+		loadRepos( 0, false, '' );
 	}, [ connIds ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleRefresh = useCallback( async () => {
@@ -201,18 +206,34 @@ export default function BrowsePanel( {
 		try {
 			await api.clearCache();
 			reset();
-			await loadRepos( 0 );
+			await loadRepos( 0, false, search );
 		} catch ( e ) {
 			toast.error(
 				e.message || __( 'Failed to refresh repositories.', 'gitwire' )
 			);
 			setLoading( false );
 		}
-	}, [ loadRepos, reset ] );
+	}, [ loadRepos, reset, search ] );
 
 	const handleLoadMore = () => {
-		loadRepos( repositories.length, true );
+		loadRepos( repositories.length, true, search );
 	};
+
+	// Debounced server reload when search term changes (skips initial mount).
+	useEffect( () => {
+		if ( isFirstSearchRef.current ) {
+			isFirstSearchRef.current = false;
+			return;
+		}
+		clearTimeout( searchTimerRef.current );
+		searchTimerRef.current = setTimeout( () => {
+			setRepositories( [] );
+			setHasMore( false );
+			reset();
+			loadRepos( 0, false, search );
+		}, 350 );
+		return () => clearTimeout( searchTimerRef.current );
+	}, [ search ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const smartInstall = settings?.smart_install !== false;
 
@@ -688,7 +709,9 @@ const RepoCard = memo( function RepoCard( {
 									<circle cx="8" cy="8" r="6.25" />
 									<polyline points="8,4.5 8,8 10.5,10" />
 								</svg>
-								{ relativeTimeFromDate( repo.last_activity_at ) }
+								{ relativeTimeFromDate(
+									repo.last_activity_at
+								) }
 							</span>
 						</Tooltip>
 					) }

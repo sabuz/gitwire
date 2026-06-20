@@ -2,7 +2,13 @@ import { toast } from '../toast';
 
 import { __, sprintf } from '@wordpress/i18n';
 import { useState, useMemo, useCallback } from '@wordpress/element';
-import { Button, Flex, Icon, Tooltip } from '@wordpress/components';
+import {
+	Button,
+	Flex,
+	Icon,
+	RadioControl,
+	Tooltip,
+} from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
@@ -292,6 +298,48 @@ export default function InstalledPanel( {
 					<DeleteModal { ...props } onRefresh={ onRefresh } />
 				),
 			},
+			{
+				id: 'enable-auto-update',
+				label: __( 'Enable auto-update', 'gitwire' ),
+				icon: <Icon icon="update" />,
+				isEligible: ( item ) => ! item.auto_update,
+				RenderModal: ( props ) => (
+					<AutoUpdateModal { ...props } onRefresh={ onRefresh } />
+				),
+			},
+			{
+				id: 'disable-auto-update',
+				label: __( 'Disable auto-update', 'gitwire' ),
+				icon: <Icon icon="update" />,
+				isEligible: ( item ) => !! item.auto_update,
+				callback: async ( [ item ] ) => {
+					try {
+						await api.saveAutoUpdate(
+							item.owner,
+							item.repo,
+							item.provider ?? 'github',
+							false,
+							'current'
+						);
+						toast.success(
+							sprintf(
+								/* translators: %s: repository full name */
+								__( 'Auto-update disabled for %s.', 'gitwire' ),
+								item.full_name
+							)
+						);
+						onRefresh();
+					} catch ( e ) {
+						toast.error(
+							e.message ||
+								__(
+									'Failed to update auto-update setting.',
+									'gitwire'
+								)
+						);
+					}
+				},
+			},
 		],
 		[ onRefresh, setReconnectItem ]
 	);
@@ -357,6 +405,92 @@ export default function InstalledPanel( {
 				/>
 			) }
 		</div>
+	);
+}
+
+/**
+ * Modal body for enabling auto-update on an installed repository.
+ *
+ * @param {Object}   props            Props supplied by DataViews.
+ * @param {Array}    props.items      Selected items.
+ * @param {Function} props.closeModal Callback to close the modal.
+ * @param {Function} props.onRefresh  Callback to refresh the installed list.
+ * @return {JSX.Element} The modal body.
+ */
+function AutoUpdateModal( { items, closeModal, onRefresh } ) {
+	const [ item ] = items;
+	const [ scope, setScope ] = useState( item.auto_update_scope ?? 'current' );
+	const [ busy, setBusy ] = useState( false );
+
+	const handleConfirm = async () => {
+		setBusy( true );
+		try {
+			await api.saveAutoUpdate(
+				item.owner,
+				item.repo,
+				item.provider ?? 'github',
+				true,
+				scope
+			);
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( 'Auto-update enabled for %s.', 'gitwire' ),
+					item.full_name
+				)
+			);
+			onRefresh();
+			closeModal();
+		} catch ( e ) {
+			toast.error(
+				e.message ||
+					__( 'Failed to update auto-update setting.', 'gitwire' )
+			);
+			setBusy( false );
+		}
+	};
+
+	return (
+		<>
+			<p style={ { margin: '0 0 16px', fontSize: 13, color: '#57606a' } }>
+				{ sprintf(
+					/* translators: %s: repository full name */
+					__( 'Choose when auto-update applies to %s.', 'gitwire' ),
+					item.full_name
+				) }
+			</p>
+			<RadioControl
+				selected={ scope }
+				options={ [
+					{
+						label: __( 'Current branch only', 'gitwire' ),
+						value: 'current',
+					},
+					{
+						label: __( 'Any branch', 'gitwire' ),
+						value: 'any',
+					},
+				] }
+				onChange={ setScope }
+			/>
+			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
+				<Button
+					disabled={ busy }
+					variant="tertiary"
+					onClick={ closeModal }
+				>
+					{ __( 'Cancel', 'gitwire' ) }
+				</Button>
+				<Button
+					disabled={ busy }
+					isBusy={ busy }
+					variant="primary"
+					onClick={ handleConfirm }
+				>
+					{ __( 'Enable auto-update', 'gitwire' ) }
+				</Button>
+			</Flex>
+		</>
 	);
 }
 

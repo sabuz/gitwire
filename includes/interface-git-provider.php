@@ -51,7 +51,7 @@ interface Git_Provider_Interface {
 	 * @param string $branch Branch ref.
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD' ): array|\WP_Error;
+	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error;
 
 	/**
 	 * Returns recent commits for a branch.

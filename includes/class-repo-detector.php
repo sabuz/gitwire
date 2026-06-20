@@ -86,22 +86,34 @@ class Repo_Detector {
 	 *   'key_files'  — files that drove the decision; empty for low/unknown (skip shallow re-detect)
 	 *
 	 * @since 1.0.0
-	 * @param string   $repo_name         Repository slug used for main-file priority.
-	 * @param string   $branch            Branch ref to inspect.
-	 * @param callable $get_root_contents Callable returning root file list.
-	 * @param callable $get_file_content  Callable returning raw file contents.
+	 * @param string                    $repo_name         Repository slug used for main-file priority.
+	 * @param string                    $branch            Branch ref to inspect.
+	 * @param callable                  $get_root_contents Callable returning root file list.
+	 * @param callable                  $get_file_content  Callable returning raw file contents.
+	 * @param array<string, mixed>|null $cached_result Prior detection result for shallow re-check.
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function detect(
 		string $repo_name,
 		string $branch,
 		callable $get_root_contents,
-		callable $get_file_content
+		callable $get_file_content,
+		?array $cached_result = null
 	): array|\WP_Error {
 		$contents = $get_root_contents( $branch );
 
 		if ( is_wp_error( $contents ) ) {
 			return $contents;
+		}
+
+		// Shallow re-check: if the cached key_files are all still present, skip file fetches.
+		if (
+			$cached_result &&
+			! empty( $cached_result['key_files'] ) &&
+			( Settings::get_public()['shallow_detection'] ?? false ) &&
+			self::all_key_files_present( $cached_result['key_files'], $contents )
+		) {
+			return $cached_result;
 		}
 
 		$files = [];
@@ -255,5 +267,32 @@ class Repo_Detector {
 	 */
 	public static function is_theme( string $type ): bool {
 		return str_ends_with( $type, '-theme' );
+	}
+
+	/**
+	 * Returns true when all cached key_files are still present in the root listing.
+	 *
+	 * @since 2.0.0
+	 * @param string[]          $key_files Key files from a prior detection result.
+	 * @param array<int, mixed> $contents  Root listing items from the provider.
+	 * @return bool
+	 */
+	private static function all_key_files_present( array $key_files, array $contents ): bool {
+		$names = [];
+		foreach ( $contents as $item ) {
+			if ( isset( $item['name'] ) ) {
+				$names[ strtolower( $item['name'] ) ] = $item['type'] ?? 'file';
+			}
+		}
+
+		foreach ( $key_files as $key_file ) {
+			$is_dir = str_ends_with( $key_file, '/' );
+			$name   = strtolower( rtrim( $key_file, '/' ) );
+			$type   = $names[ $name ] ?? null;
+			if ( null === $type || ( $is_dir && 'dir' !== $type ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

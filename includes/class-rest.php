@@ -116,6 +116,11 @@ class REST {
 						'default' => 0,
 						'minimum' => 0,
 					],
+					'search' => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
 				],
 			]
 		);
@@ -312,6 +317,28 @@ class REST {
 				'callback'            => [ self::class, 'untrack_installed' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [ 'provider' => $provider_arg ],
+			]
+		);
+
+		register_rest_route(
+			$ns,
+			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/auto-update',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'save_auto_update' ],
+				'permission_callback' => [ self::class, 'can_manage' ],
+				'args'                => [
+					'provider'          => $provider_arg,
+					'auto_update'       => [
+						'required' => true,
+						'type'     => 'boolean',
+					],
+					'auto_update_scope' => [
+						'type'    => 'string',
+						'default' => 'current',
+						'enum'    => [ 'current', 'any' ],
+					],
+				],
 			]
 		);
 
@@ -972,31 +999,37 @@ class REST {
 	 */
 	public static function save_settings( \WP_REST_Request $req ): array|\WP_Error {
 		$incoming = [];
-		if ( null !== $req->get_param( 'smart_install' ) ) {
-			$incoming['smart_install'] = $req->get_param( 'smart_install' );
+		foreach ( [
+			'smart_install',
+			'show_repo_label',
+			'enable_logging',
+			'log_retention_days',
+			'log_level',
+			'remove_data_on_uninstall',
+			'repo_list_refresh_frequency',
+			'auto_detect_type',
+			'repos_per_page',
+			'max_repos_per_source',
+			'background_type_detection',
+			'detection_batch_size',
+			'shallow_detection',
+			'block_on_fatal',
+			'update_check_interval',
+		] as $key ) {
+			if ( null !== $req->get_param( $key ) ) {
+				$incoming[ $key ] = $req->get_param( $key );
+			}
 		}
-		if ( null !== $req->get_param( 'show_repo_label' ) ) {
-			$incoming['show_repo_label'] = $req->get_param( 'show_repo_label' );
-		}
-		if ( null !== $req->get_param( 'enable_logging' ) ) {
-			$incoming['enable_logging'] = $req->get_param( 'enable_logging' );
-		}
-		if ( null !== $req->get_param( 'log_retention_days' ) ) {
-			$incoming['log_retention_days'] = $req->get_param( 'log_retention_days' );
-		}
-		if ( null !== $req->get_param( 'log_level' ) ) {
-			$incoming['log_level'] = $req->get_param( 'log_level' );
-		}
-		if ( null !== $req->get_param( 'remove_data_on_uninstall' ) ) {
-			$incoming['remove_data_on_uninstall'] = $req->get_param( 'remove_data_on_uninstall' );
-		}
-		if ( null !== $req->get_param( 'repo_list_refresh_frequency' ) ) {
-			$incoming['repo_list_refresh_frequency'] = $req->get_param( 'repo_list_refresh_frequency' );
+		// excluded_repos is an array — check for it separately.
+		if ( null !== $req->get_param( 'excluded_repos' ) ) {
+			$incoming['excluded_repos'] = $req->get_param( 'excluded_repos' );
 		}
 
-		$was_logging = Settings::is_logging_enabled();
-		$prev_freq   = Settings::get_repo_list_refresh_frequency();
-		$merged      = Settings::merge_save( $incoming );
+		$was_logging          = Settings::is_logging_enabled();
+		$prev_settings        = Settings::get_public();
+		$prev_freq            = $prev_settings['repo_list_refresh_frequency'] ?? 'daily';
+		$prev_update_interval = $prev_settings['update_check_interval'] ?? 'daily';
+		$merged               = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
 
 		$now_logging = (bool) ( $merged['enable_logging'] ?? false );
@@ -1007,6 +1040,10 @@ class REST {
 		if ( ( $merged['repo_list_refresh_frequency'] ?? 'hourly' ) !== $prev_freq ) {
 			Repo_Cache::clear_repo_list();
 			Plugin::instance()->schedule_repos_cron();
+		}
+
+		if ( ( $merged['update_check_interval'] ?? 'daily' ) !== $prev_update_interval ) {
+			Plugin::instance()->schedule_update_check_cron();
 		}
 
 		return [
@@ -1024,6 +1061,7 @@ class REST {
 	 */
 	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
 		$offset = max( 0, (int) ( $req->get_param( 'offset' ) ?? 0 ) );
+		$search = sanitize_text_field( $req->get_param( 'search' ) ?? '' );
 
 		$connections = array_values(
 			array_filter(
@@ -1041,14 +1079,14 @@ class REST {
 		}
 
 		$connection_ids = array_column( $connections, 'id' );
-		$cached         = Repo_Cache::get_repo_list( $connection_ids, $offset );
+		$cached         = Repo_Cache::get_repo_list( $connection_ids, $offset, $search );
 
 		if ( null === $cached ) {
 			// Seed cache with page 1 from each connection on first browse.
 			foreach ( $connections as $conn ) {
 				Repo_Cache::fetch_repo_list( $conn['provider'], 1, $conn['id'] );
 			}
-			$cached = Repo_Cache::get_repo_list( $connection_ids, $offset );
+			$cached = Repo_Cache::get_repo_list( $connection_ids, $offset, $search );
 		}
 
 		if ( null === $cached ) {
@@ -1940,6 +1978,53 @@ class REST {
 		}
 
 		return [ 'untracked' => true ];
+	}
+
+	/**
+	 * Saves auto-update settings for an installed repository.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_REST_Request $req REST request object.
+	 * @return array<string, mixed>|\WP_Error Updated values or WP_Error on failure.
+	 */
+	public static function save_auto_update( \WP_REST_Request $req ): array|\WP_Error {
+		global $wpdb;
+
+		$owner       = sanitize_text_field( $req->get_param( 'owner' ) );
+		$repo        = sanitize_text_field( $req->get_param( 'repo' ) );
+		$provider    = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$auto_update = (bool) $req->get_param( 'auto_update' );
+		$scope_raw   = (string) ( $req->get_param( 'auto_update_scope' ) ?? 'current' );
+		$scope       = in_array( $scope_raw, [ 'current', 'any' ], true ) ? $scope_raw : 'current';
+
+		$full_name = $owner . '/' . $repo;
+
+		if ( ! Installer::get_record( $provider, $full_name ) ) {
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->update(
+			$wpdb->base_prefix . 'gitwire_installed',
+			[
+				'auto_update'       => $auto_update ? 1 : 0,
+				'auto_update_scope' => $scope,
+			],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			],
+			[ '%d', '%s' ],
+			[ '%s', '%s' ]
+		);
+		Installer::invalidate_installed_cache();
+
+		return [
+			'provider'          => $provider,
+			'full_name'         => $full_name,
+			'auto_update'       => $auto_update,
+			'auto_update_scope' => $scope,
+		];
 	}
 
 	/**

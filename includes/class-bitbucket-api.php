@@ -198,7 +198,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * @param string $branch Branch ref.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD' ): array|\WP_Error {
+	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
 		return Repo_Detector::detect(
 			$repo,
 			$branch,
@@ -221,7 +221,8 @@ class Bitbucket_API implements Git_Provider_Interface {
 					$result['values'] ?? []
 				);
 			},
-			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref )
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref ),
+			$cached_result
 		);
 	}
 

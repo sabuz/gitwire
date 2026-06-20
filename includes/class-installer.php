@@ -71,10 +71,12 @@ class Installer {
 		return array_merge(
 			$row,
 			[
-				'owner'        => $parts[0] ?? '',
-				'repo'         => $parts[1] ?? '',
-				'installed_at' => (int) ( $row['installed_at'] ?? 0 ),
-				'updated_at'   => (int) ( $row['updated_at'] ?? 0 ),
+				'owner'             => $parts[0] ?? '',
+				'repo'              => $parts[1] ?? '',
+				'installed_at'      => (int) ( $row['installed_at'] ?? 0 ),
+				'updated_at'        => (int) ( $row['updated_at'] ?? 0 ),
+				'auto_update'       => (bool) ( $row['auto_update'] ?? false ),
+				'auto_update_scope' => (string) ( $row['auto_update_scope'] ?? 'current' ),
 			]
 		);
 	}
@@ -734,6 +736,54 @@ class Installer {
 		}
 
 		return self::$installed_cache;
+	}
+
+	/**
+	 * Silently updates all installed repositories that have auto_update enabled and a pending remote head.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public static function run_auto_updates(): void {
+		$records = self::get_installed();
+
+		foreach ( $records as $rec ) {
+			if ( empty( $rec['auto_update'] ) ) {
+				continue;
+			}
+
+			$remote_head = (string) ( $rec['remote_head'] ?? '' );
+			$head        = (string) ( $rec['head'] ?? '' );
+
+			if ( ! $remote_head || $remote_head === $head ) {
+				continue;
+			}
+
+			$owner         = $rec['owner'] ?? '';
+			$repo          = $rec['repo'] ?? '';
+			$branch        = (string) ( $rec['branch'] ?? 'main' );
+			$provider      = (string) ( $rec['provider'] ?? 'github' );
+			$slug          = (string) ( $rec['slug'] ?? '' );
+			$connection_id = $rec['connection_id'] ? $rec['connection_id'] : null;
+			$type          = (string) ( $rec['type'] ?? 'plugin' );
+			$full_name     = (string) ( $rec['full_name'] ?? '' );
+
+			if ( ! $owner || ! $repo ) {
+				continue;
+			}
+
+			if ( Repo_Detector::is_theme( $type ) ) {
+				$result = self::install_theme( $owner, $repo, $branch, $slug, $provider, true, $connection_id );
+			} else {
+				$result = self::install_plugin( $owner, $repo, $branch, $slug, $provider, true, $connection_id );
+			}
+
+			if ( is_wp_error( $result ) ) {
+				Logger::log( 'Auto-update failed: ' . $full_name . ' — ' . $result->get_error_message(), 'error' );
+			} else {
+				Logger::log( 'Auto-updated: ' . $full_name . ' to ' . substr( $remote_head, 0, 7 ) );
+			}
+		}
 	}
 
 	/**
