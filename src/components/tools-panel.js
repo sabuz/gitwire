@@ -39,7 +39,7 @@ export default function ToolsPanel( { settings, onSave } ) {
 	return (
 		<div
 			className="gitwire-settings-panels"
-			style={ { maxWidth: 580, margin: '0 auto' } }
+			style={ { maxWidth: 630, margin: '0 auto' } }
 		>
 			<Card>
 				<CardHeader>

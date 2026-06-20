@@ -230,7 +230,7 @@ class Settings {
 	public static function get_repo_list_refresh_frequency(): string {
 		$s   = self::get_raw();
 		$val = $s['repo_list_refresh_frequency'] ?? 'daily';
-		return in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
+		return in_array( $val, [ 'hourly', 'twicedaily', 'daily', 'weekly' ], true ) ? $val : 'daily';
 	}
 
 	/**
@@ -241,9 +241,10 @@ class Settings {
 	 */
 	public static function get_repositories_max_age(): int {
 		return match ( self::get_repo_list_refresh_frequency() ) {
-			'daily'  => DAY_IN_SECONDS,
-			'weekly' => WEEK_IN_SECONDS,
-			default  => HOUR_IN_SECONDS,
+			'twicedaily' => 12 * HOUR_IN_SECONDS,
+			'daily'      => DAY_IN_SECONDS,
+			'weekly'     => WEEK_IN_SECONDS,
+			default      => HOUR_IN_SECONDS,
 		};
 	}
 

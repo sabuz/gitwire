@@ -90,6 +90,10 @@ final class Plugin {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function register_cron_schedules( array $schedules ): array {
+		$schedules['gitwire_5minutes']    = [
+			'interval' => 5 * MINUTE_IN_SECONDS,
+			'display'  => __( 'Every 5 minutes', 'gitwire' ),
+		];
 		$schedules['gitwire_half_hourly'] = [
 			'interval' => 1800,
 			'display'  => __( 'Every 30 minutes', 'gitwire' ),
@@ -263,10 +267,12 @@ final class Plugin {
 		}
 
 		$recurrence_map = [
-			'hourly' => 'hourly',
-			'6hours' => 'gitwire_6hours',
-			'daily'  => 'daily',
-			'weekly' => 'weekly',
+			'5minutes'   => 'gitwire_5minutes',
+			'30minutes'  => 'gitwire_half_hourly',
+			'hourly'     => 'hourly',
+			'6hours'     => 'gitwire_6hours',
+			'twicedaily' => 'twicedaily',
+			'daily'      => 'daily',
 		];
 		$recurrence = $recurrence_map[ $interval ] ?? 'daily';
 		$current    = wp_get_schedule( 'gitwire_update_check' );

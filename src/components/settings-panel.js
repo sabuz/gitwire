@@ -14,7 +14,6 @@ import {
 	FlexBlock,
 	FlexItem,
 	FormTokenField,
-	RangeControl,
 	SelectControl,
 	TextControl,
 	ToggleControl,
@@ -121,7 +120,7 @@ export default function SettingsPanel( {
 	return (
 		<div
 			className="gitwire-settings-panels"
-			style={ { maxWidth: 580, margin: '0 auto' } }
+			style={ { maxWidth: 630, margin: '0 auto' } }
 		>
 			{ accountsSection }
 
@@ -377,24 +376,28 @@ function BrowseDetectionCard( { settings, onSave } ) {
 
 				<Spacer marginTop={ 4 } />
 
-				<RangeControl
+				<ToggleGroupControl
 					__nextHasNoMarginBottom
-					label={ __( 'Repos per page', 'gitwire' ) }
+					isBlock
+					label={ __( 'Repositories per page', 'gitwire' ) }
 					help={ __(
 						'Number of repositories shown per page in the Browse tab.',
 						'gitwire'
 					) }
 					value={ reposPerPage }
 					onChange={ handleReposPerPageChange }
-					min={ 10 }
-					max={ 100 }
-					step={ 10 }
-				/>
+				>
+					<ToggleGroupControlOption label="10" value={ 10 } />
+					<ToggleGroupControlOption label="20" value={ 20 } />
+					<ToggleGroupControlOption label="50" value={ 50 } />
+					<ToggleGroupControlOption label="100" value={ 100 } />
+				</ToggleGroupControl>
 
 				<Spacer marginTop={ 4 } />
 
 				<FormTokenField
 					__nextHasNoMarginBottom
+					__next40pxDefaultSize
 					label={ __( 'Excluded repositories', 'gitwire' ) }
 					help={ __(
 						'Repositories never shown in Browse. Use owner/repo format, one per entry.',
@@ -408,25 +411,25 @@ function BrowseDetectionCard( { settings, onSave } ) {
 
 				<Spacer marginTop={ 4 } />
 
-				<SelectControl
+				<ToggleGroupControl
 					__nextHasNoMarginBottom
-					label={ __( 'Max repos per source', 'gitwire' ) }
+					isBlock
+					label={ __( 'Max per source', 'gitwire' ) }
 					help={ __(
 						'Cap total repos fetched per connection per cron cycle.',
 						'gitwire'
 					) }
 					value={ maxReposPerSource }
-					options={ [
-						{
-							label: __( 'No limit', 'gitwire' ),
-							value: 'unlimited',
-						},
-						{ label: '100', value: '100' },
-						{ label: '250', value: '250' },
-						{ label: '500', value: '500' },
-					] }
 					onChange={ handleMaxReposPerSourceChange }
-				/>
+				>
+					<ToggleGroupControlOption label="100" value="100" />
+					<ToggleGroupControlOption label="250" value="250" />
+					<ToggleGroupControlOption label="500" value="500" />
+					<ToggleGroupControlOption
+						label={ __( 'No limit', 'gitwire' ) }
+						value="unlimited"
+					/>
+				</ToggleGroupControl>
 
 				<Spacer marginTop={ 4 } />
 
@@ -447,6 +450,10 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					<ToggleGroupControlOption
 						label={ __( 'Hourly', 'gitwire' ) }
 						value="hourly"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Twice Daily', 'gitwire' ) }
+						value="twicedaily"
 					/>
 					<ToggleGroupControlOption
 						label={ __( 'Daily', 'gitwire' ) }
@@ -591,29 +598,42 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 
 				<Spacer marginTop={ 4 } />
 
-				<SelectControl
+				<ToggleGroupControl
 					__nextHasNoMarginBottom
-					label={ __( 'Update check interval', 'gitwire' ) }
+					isBlock
+					label={ __( 'Update frequency', 'gitwire' ) }
 					help={ __(
 						'How often Gitwire checks for new commits on installed repositories.',
 						'gitwire'
 					) }
 					value={ updateCheckInterval }
-					options={ [
-						{
-							label: __( 'Every hour', 'gitwire' ),
-							value: 'hourly',
-						},
-						{
-							label: __( 'Every 6 hours', 'gitwire' ),
-							value: '6hours',
-						},
-						{ label: __( 'Daily', 'gitwire' ), value: 'daily' },
-						{ label: __( 'Weekly', 'gitwire' ), value: 'weekly' },
-						{ label: __( 'Never', 'gitwire' ), value: 'never' },
-					] }
 					onChange={ handleUpdateCheckIntervalChange }
-				/>
+				>
+					<ToggleGroupControlOption
+						label={ __( '5 Minutes', 'gitwire' ) }
+						value="5minutes"
+					/>
+					<ToggleGroupControlOption
+						label={ __( '30 Minutes', 'gitwire' ) }
+						value="30minutes"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Hourly', 'gitwire' ) }
+						value="hourly"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Twice Daily', 'gitwire' ) }
+						value="twicedaily"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Daily', 'gitwire' ) }
+						value="daily"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Never', 'gitwire' ) }
+						value="never"
+					/>
+				</ToggleGroupControl>
 			</CardBody>
 		</Card>
 	);
