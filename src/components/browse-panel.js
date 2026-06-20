@@ -152,6 +152,8 @@ export default function BrowsePanel( {
 	const prevConnIdsRef = useRef( null );
 	const searchTimerRef = useRef( null );
 	const isFirstSearchRef = useRef( true );
+	const smartInstall = settings?.smart_install !== false;
+	const autoDetectType = settings?.auto_detect_type !== false;
 
 	const loadRepos = useCallback(
 		async ( offset, append = false, searchTerm = '' ) => {
@@ -167,11 +169,13 @@ export default function BrowsePanel( {
 				);
 				setHasMore( result.has_more ?? false );
 				seedFromRepos( repos );
-				runBatch(
-					repos.filter(
-						( repo ) => ! lookupInstalled( installed, repo )
-					)
-				);
+				if ( autoDetectType ) {
+					runBatch(
+						repos.filter(
+							( repo ) => ! lookupInstalled( installed, repo )
+						)
+					);
+				}
 			} catch ( e ) {
 				toast.error(
 					e.message || __( 'Failed to load repositories.', 'gitwire' )
@@ -180,7 +184,7 @@ export default function BrowsePanel( {
 				setLoading( false );
 			}
 		},
-		[ installed, runBatch, seedFromRepos ]
+		[ autoDetectType, installed, runBatch, seedFromRepos ]
 	);
 
 	const connIds = ( connections ?? [] ).map( ( c ) => c.id ).join( ',' );
@@ -234,8 +238,6 @@ export default function BrowsePanel( {
 		}, 350 );
 		return () => clearTimeout( searchTimerRef.current );
 	}, [ search ] ); // eslint-disable-line react-hooks/exhaustive-deps
-
-	const smartInstall = settings?.smart_install !== false;
 
 	const toggleTypeFilter = ( value ) => {
 		setActiveTypeFilters( ( prev ) =>
@@ -546,6 +548,7 @@ export default function BrowsePanel( {
 					{ filtered.map( ( repo ) => (
 						<RepoCard
 							key={ `${ repo.provider }:${ repo.full_name }` }
+							autoDetectType={ autoDetectType }
 							detection={ detections[ detectionKey( repo ) ] }
 							installed={ lookupInstalled( installed, repo ) }
 							repo={ repo }
@@ -605,16 +608,18 @@ const RepoCard = memo( function RepoCard( {
 	installed,
 	smartInstall,
 	showSourceBadge,
+	autoDetectType,
 	onInstall,
 } ) {
 	const isInstalled = !! installed;
-	const detecting = ! detection && ! isInstalled;
+	const detecting = autoDetectType && ! detection && ! isInstalled;
 
 	const canInstall =
 		! isInstalled &&
-		( detection
-			? detection.type !== 'unknown' || ! smartInstall
-			: ! smartInstall );
+		( ! autoDetectType ||
+			( detection
+				? detection.type !== 'unknown' || ! smartInstall
+				: ! smartInstall ) );
 
 	const blockedBySmartInstall =
 		! isInstalled && detection?.type === 'unknown' && smartInstall;

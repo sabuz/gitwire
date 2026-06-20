@@ -376,97 +376,6 @@ function BrowseDetectionCard( { settings, onSave } ) {
 
 				<Spacer marginTop={ 4 } />
 
-				<ToggleGroupControl
-					__nextHasNoMarginBottom
-					isBlock
-					label={ __( 'Repositories per page', 'gitwire' ) }
-					help={ __(
-						'Number of repositories shown per page in the Browse tab.',
-						'gitwire'
-					) }
-					value={ reposPerPage }
-					onChange={ handleReposPerPageChange }
-				>
-					<ToggleGroupControlOption label="10" value={ 10 } />
-					<ToggleGroupControlOption label="20" value={ 20 } />
-					<ToggleGroupControlOption label="50" value={ 50 } />
-					<ToggleGroupControlOption label="100" value={ 100 } />
-				</ToggleGroupControl>
-
-				<Spacer marginTop={ 4 } />
-
-				<FormTokenField
-					__nextHasNoMarginBottom
-					__next40pxDefaultSize
-					label={ __( 'Excluded repositories', 'gitwire' ) }
-					help={ __(
-						'Repositories never shown in Browse. Use owner/repo format, one per entry.',
-						'gitwire'
-					) }
-					value={ excludedRepos }
-					onChange={ handleExcludedReposChange }
-					tokenizeOnSpace={ false }
-					__experimentalExpandOnFocus
-				/>
-
-				<Spacer marginTop={ 4 } />
-
-				<ToggleGroupControl
-					__nextHasNoMarginBottom
-					isBlock
-					label={ __( 'Max per source', 'gitwire' ) }
-					help={ __(
-						'Cap total repos fetched per connection per cron cycle.',
-						'gitwire'
-					) }
-					value={ maxReposPerSource }
-					onChange={ handleMaxReposPerSourceChange }
-				>
-					<ToggleGroupControlOption label="100" value="100" />
-					<ToggleGroupControlOption label="250" value="250" />
-					<ToggleGroupControlOption label="500" value="500" />
-					<ToggleGroupControlOption
-						label={ __( 'No limit', 'gitwire' ) }
-						value="unlimited"
-					/>
-				</ToggleGroupControl>
-
-				<Spacer marginTop={ 4 } />
-
-				<ToggleGroupControl
-					__nextHasNoMarginBottom
-					isBlock
-					label={ __(
-						'Repository list refresh frequency',
-						'gitwire'
-					) }
-					help={ __(
-						'How often the repository list is refreshed in the background.',
-						'gitwire'
-					) }
-					value={ repoListRefreshFrequency }
-					onChange={ handleRepoListRefreshFrequencyChange }
-				>
-					<ToggleGroupControlOption
-						label={ __( 'Hourly', 'gitwire' ) }
-						value="hourly"
-					/>
-					<ToggleGroupControlOption
-						label={ __( 'Twice Daily', 'gitwire' ) }
-						value="twicedaily"
-					/>
-					<ToggleGroupControlOption
-						label={ __( 'Daily', 'gitwire' ) }
-						value="daily"
-					/>
-					<ToggleGroupControlOption
-						label={ __( 'Weekly', 'gitwire' ) }
-						value="weekly"
-					/>
-				</ToggleGroupControl>
-
-				<Spacer marginTop={ 4 } />
-
 				<ToggleControl
 					__nextHasNoMarginBottom
 					checked={ backgroundTypeDetection }
@@ -517,6 +426,97 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					label={ __( 'Shallow detection', 'gitwire' ) }
 					onChange={ handleShallowDetectionChange }
 				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<ToggleGroupControl
+					__nextHasNoMarginBottom
+					isBlock
+					label={ __( 'Repositories per page', 'gitwire' ) }
+					help={ __(
+						'Number of repositories shown per page in the Browse tab.',
+						'gitwire'
+					) }
+					value={ reposPerPage }
+					onChange={ handleReposPerPageChange }
+				>
+					<ToggleGroupControlOption label="10" value={ 10 } />
+					<ToggleGroupControlOption label="20" value={ 20 } />
+					<ToggleGroupControlOption label="50" value={ 50 } />
+					<ToggleGroupControlOption label="100" value={ 100 } />
+				</ToggleGroupControl>
+
+				<Spacer marginTop={ 4 } />
+
+				<FormTokenField
+					__nextHasNoMarginBottom
+					__next40pxDefaultSize
+					label={ __( 'Excluded repositories', 'gitwire' ) }
+					help={ __(
+						'Repositories never shown in Browse. Use owner/repo format, one per entry.',
+						'gitwire'
+					) }
+					value={ excludedRepos }
+					onChange={ handleExcludedReposChange }
+					tokenizeOnSpace={ false }
+					__experimentalExpandOnFocus
+				/>
+
+				<Spacer marginTop={ 4 } />
+
+				<ToggleGroupControl
+					__nextHasNoMarginBottom
+					isBlock
+					label={ __(
+						'Repository list refresh frequency',
+						'gitwire'
+					) }
+					help={ __(
+						'How often the repository list is refreshed in the background.',
+						'gitwire'
+					) }
+					value={ repoListRefreshFrequency }
+					onChange={ handleRepoListRefreshFrequencyChange }
+				>
+					<ToggleGroupControlOption
+						label={ __( 'Hourly', 'gitwire' ) }
+						value="hourly"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Twice Daily', 'gitwire' ) }
+						value="twicedaily"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Daily', 'gitwire' ) }
+						value="daily"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Weekly', 'gitwire' ) }
+						value="weekly"
+					/>
+				</ToggleGroupControl>
+
+				<Spacer marginTop={ 4 } />
+
+				<ToggleGroupControl
+					__nextHasNoMarginBottom
+					isBlock
+					label={ __( 'Max per source', 'gitwire' ) }
+					help={ __(
+						'Cap total repos fetched per connection per cron cycle.',
+						'gitwire'
+					) }
+					value={ maxReposPerSource }
+					onChange={ handleMaxReposPerSourceChange }
+				>
+					<ToggleGroupControlOption label="100" value="100" />
+					<ToggleGroupControlOption label="250" value="250" />
+					<ToggleGroupControlOption label="500" value="500" />
+					<ToggleGroupControlOption
+						label={ __( 'No limit', 'gitwire' ) }
+						value="unlimited"
+					/>
+				</ToggleGroupControl>
 			</CardBody>
 		</Card>
 	);
