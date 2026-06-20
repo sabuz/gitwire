@@ -252,6 +252,18 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const [ shallowDetection, setShallowDetection ] = useState(
 		!! settings.shallow_detection
 	);
+	const [ repoSuggestions, setRepoSuggestions ] = useState( [] );
+	const [ excludedRepoInput, setExcludedRepoInput ] = useState( '' );
+
+	useEffect( () => {
+		api.getRepos( { offset: 0 } )
+			.then( ( result ) => {
+				setRepoSuggestions(
+					( result.repositories ?? [] ).map( ( r ) => r.full_name )
+				);
+			} )
+			.catch( () => {} );
+	}, [] );
 
 	const save = ( payload, rollback ) =>
 		persistSetting( payload, onSave, rollback );
@@ -457,9 +469,17 @@ function BrowseDetectionCard( { settings, onSave } ) {
 						'gitwire'
 					) }
 					value={ excludedRepos }
+					suggestions={
+						excludedRepoInput.trim().length >= 2
+							? repoSuggestions
+							: []
+					}
 					onChange={ handleExcludedReposChange }
+					onInputChange={ setExcludedRepoInput }
 					tokenizeOnSpace={ false }
-					__experimentalExpandOnFocus
+					__experimentalExpandOnFocus={
+						excludedRepoInput.trim().length >= 2
+					}
 				/>
 
 				<Spacer marginTop={ 4 } />
