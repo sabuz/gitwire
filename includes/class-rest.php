@@ -1011,7 +1011,6 @@ class REST {
 			'repos_per_page',
 			'max_repos_per_source',
 			'background_type_detection',
-			'detection_batch_size',
 			'shallow_detection',
 			'block_on_fatal',
 			'update_check_interval',

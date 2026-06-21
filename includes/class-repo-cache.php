@@ -509,8 +509,7 @@ class Repo_Cache {
 			return $last_err ?? true;
 		}
 
-		$batch_raw   = $settings['detection_batch_size'] ?? 'auto';
-		$batch_size  = 'auto' === $batch_raw ? 10 : (int) $batch_raw;
+		$batch_size = (int) apply_filters( 'gitwire_detection_batch_size', 25 );
 		$cursor      = (int) get_option( 'gitwire_detection_cursor', 0 );
 		$batch_start = time();
 

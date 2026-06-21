@@ -14,7 +14,6 @@ import {
 	FlexBlock,
 	FlexItem,
 	FormTokenField,
-	SelectControl,
 	TextControl,
 	ToggleControl,
 	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
@@ -147,7 +146,7 @@ export default function SettingsPanel( {
 							'Record installs, removals, activations, and connection changes to the Logs page.',
 							'gitwire'
 						) }
-						label={ __( 'Enable logs', 'gitwire' ) }
+						label={ __( 'Enable Logs', 'gitwire' ) }
 						onChange={ handleEnableLoggingChange }
 					/>
 					{ enableLogging && (
@@ -165,11 +164,11 @@ export default function SettingsPanel( {
 								onChange={ handleLogLevelChange }
 							>
 								<ToggleGroupControlOption
-									label={ __( 'All activity', 'gitwire' ) }
+									label={ __( 'All Activity', 'gitwire' ) }
 									value="activity"
 								/>
 								<ToggleGroupControlOption
-									label={ __( 'Errors only', 'gitwire' ) }
+									label={ __( 'Errors Only', 'gitwire' ) }
 									value="error"
 								/>
 							</ToggleGroupControl>
@@ -246,9 +245,6 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const [ backgroundTypeDetection, setBackgroundTypeDetection ] = useState(
 		!! settings.background_type_detection
 	);
-	const [ detectionBatchSize, setDetectionBatchSize ] = useState(
-		String( settings.detection_batch_size ?? 'auto' )
-	);
 	const [ shallowDetection, setShallowDetection ] = useState(
 		!! settings.shallow_detection
 	);
@@ -270,8 +266,18 @@ function BrowseDetectionCard( { settings, onSave } ) {
 
 	const handleSmartInstallChange = ( newVal ) => {
 		setSmartInstall( newVal );
+		const payload = { smart_install: newVal };
+		if ( newVal && ! autoDetectType ) {
+			setAutoDetectType( true );
+			payload.auto_detect_type = true;
+		}
 		setSavingSi( true );
-		save( { smart_install: newVal }, () => setSmartInstall( ! newVal ) )
+		save( payload, () => {
+			setSmartInstall( ! newVal );
+			if ( newVal && ! autoDetectType ) {
+				setAutoDetectType( false );
+			}
+		} )
 			.finally( () => setSavingSi( false ) )
 			.catch( () => {} );
 	};
@@ -322,12 +328,6 @@ function BrowseDetectionCard( { settings, onSave } ) {
 		).catch( () => {} );
 	};
 
-	const handleDetectionBatchSizeChange = ( newVal ) => {
-		setDetectionBatchSize( newVal );
-		const parsed = 'auto' === newVal ? 'auto' : parseInt( newVal, 10 );
-		save( { detection_batch_size: parsed } ).catch( () => {} );
-	};
-
 	const handleShallowDetectionChange = ( newVal ) => {
 		setShallowDetection( newVal );
 		save( { shallow_detection: newVal }, () =>
@@ -353,7 +353,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					) }
 					label={
 						<>
-							{ __( 'Smart install', 'gitwire' ) }{ ' ' }
+							{ __( 'Smart Install', 'gitwire' ) }{ ' ' }
 							<span
 								className="gitwire-badge gitwire-badge--success"
 								style={ { marginLeft: 4 } }
@@ -382,7 +382,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 									'gitwire'
 							  )
 					}
-					label={ __( 'Auto-detect repository type', 'gitwire' ) }
+					label={ __( 'Auto-Detect Repository Type', 'gitwire' ) }
 					onChange={ handleAutoDetectTypeChange }
 				/>
 
@@ -391,51 +391,26 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				<ToggleControl
 					__nextHasNoMarginBottom
 					checked={ backgroundTypeDetection }
+					disabled={ ! autoDetectType }
 					help={ __(
 						'Detect types for unscanned repos in the background each cron cycle. Best for large collections.',
 						'gitwire'
 					) }
-					label={ __( 'Background type pre-detection', 'gitwire' ) }
+					label={ __( 'Background Type Pre-Detection', 'gitwire' ) }
 					onChange={ handleBackgroundTypeDetectionChange }
 				/>
-
-				{ backgroundTypeDetection && (
-					<>
-						<Spacer marginTop={ 4 } />
-						<SelectControl
-							__nextHasNoMarginBottom
-							label={ __( 'Detection batch size', 'gitwire' ) }
-							help={ __(
-								'Repos detected per cron cycle. Auto derives a safe limit from your PHP time limit.',
-								'gitwire'
-							) }
-							value={ detectionBatchSize }
-							options={ [
-								{
-									label: __( 'Auto', 'gitwire' ),
-									value: 'auto',
-								},
-								{ label: '10', value: '10' },
-								{ label: '25', value: '25' },
-								{ label: '50', value: '50' },
-								{ label: '100', value: '100' },
-								{ label: '200', value: '200' },
-							] }
-							onChange={ handleDetectionBatchSizeChange }
-						/>
-					</>
-				) }
 
 				<Spacer marginTop={ 4 } />
 
 				<ToggleControl
 					__nextHasNoMarginBottom
 					checked={ shallowDetection }
+					disabled={ ! autoDetectType }
 					help={ __(
 						'Skip full file scans on re-detection when stored key files still match. Saves API calls on large collections.',
 						'gitwire'
 					) }
-					label={ __( 'Shallow detection', 'gitwire' ) }
+					label={ __( 'Shallow Detection', 'gitwire' ) }
 					onChange={ handleShallowDetectionChange }
 				/>
 
@@ -444,7 +419,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				<ToggleGroupControl
 					__nextHasNoMarginBottom
 					isBlock
-					label={ __( 'Repositories per page', 'gitwire' ) }
+					label={ __( 'Repositories per Page', 'gitwire' ) }
 					help={ __(
 						'Number of repositories shown per page in the Browse tab.',
 						'gitwire'
@@ -463,7 +438,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				<FormTokenField
 					__nextHasNoMarginBottom
 					__next40pxDefaultSize
-					label={ __( 'Excluded repositories', 'gitwire' ) }
+					label={ __( 'Excluded Repositories', 'gitwire' ) }
 					help={ __(
 						'Repositories never shown in Browse. Use owner/repo format, one per entry.',
 						'gitwire'
@@ -488,7 +463,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					__nextHasNoMarginBottom
 					isBlock
 					label={ __(
-						'Repository list refresh frequency',
+						'Repository List Refresh Frequency',
 						'gitwire'
 					) }
 					help={ __(
@@ -521,7 +496,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				<ToggleGroupControl
 					__nextHasNoMarginBottom
 					isBlock
-					label={ __( 'Max per source', 'gitwire' ) }
+					label={ __( 'Max per Source', 'gitwire' ) }
 					help={ __(
 						'Cap total repos fetched per connection per cron cycle.',
 						'gitwire'
@@ -592,7 +567,7 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 						'Shows a [Gitwire] label next to managed plugin and theme names on the Plugins and Themes screens.',
 						'gitwire'
 					) }
-					label={ __( 'Repo label', 'gitwire' ) }
+					label={ __( 'Repo Label', 'gitwire' ) }
 					onChange={ handleShowRepoLabelChange }
 				/>
 
@@ -612,7 +587,7 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 									'gitwire'
 							  )
 					}
-					label={ __( 'Block on fatal error', 'gitwire' ) }
+					label={ __( 'Block on Fatal Error', 'gitwire' ) }
 					onChange={ handleBlockOnFatalChange }
 				/>
 
@@ -621,7 +596,7 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 				<ToggleGroupControl
 					__nextHasNoMarginBottom
 					isBlock
-					label={ __( 'Update frequency', 'gitwire' ) }
+					label={ __( 'Update Frequency', 'gitwire' ) }
 					help={ __(
 						'How often Gitwire checks for new commits on installed repositories.',
 						'gitwire'

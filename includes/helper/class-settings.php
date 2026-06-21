@@ -43,7 +43,6 @@ class Settings {
 			'max_repos_per_source'        => $s['max_repos_per_source'] ?? 'unlimited',
 			'repo_list_refresh_frequency' => $s['repo_list_refresh_frequency'] ?? 'daily',
 			'background_type_detection'   => $s['background_type_detection'] ?? false,
-			'detection_batch_size'        => $s['detection_batch_size'] ?? 'auto',
 			'shallow_detection'           => $s['shallow_detection'] ?? false,
 			'show_repo_label'             => $s['show_repo_label'] ?? true,
 			'block_on_fatal'              => $s['block_on_fatal'] ?? true,
@@ -113,16 +112,6 @@ class Settings {
 			$background_type_detection = (bool) $incoming['background_type_detection'];
 		}
 
-		$detection_batch_size = $current['detection_batch_size'] ?? 'auto';
-		if ( array_key_exists( 'detection_batch_size', $incoming ) && null !== $incoming['detection_batch_size'] ) {
-			$val = $incoming['detection_batch_size'];
-			if ( 'auto' === $val ) {
-				$detection_batch_size = 'auto';
-			} else {
-				$int                  = (int) $val;
-				$detection_batch_size = ( $int >= 10 && $int <= 200 ) ? $int : 'auto';
-			}
-		}
 
 		$shallow_detection = $current['shallow_detection'] ?? false;
 		if ( array_key_exists( 'shallow_detection', $incoming ) && null !== $incoming['shallow_detection'] ) {
@@ -175,7 +164,6 @@ class Settings {
 			'max_repos_per_source',
 			'repo_list_refresh_frequency',
 			'background_type_detection',
-			'detection_batch_size',
 			'shallow_detection',
 			'show_repo_label',
 			'block_on_fatal',

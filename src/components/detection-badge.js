@@ -58,7 +58,7 @@ export default function DetectionBadge( { detection, smartInstall } ) {
 				: __( 'Likely a Classic Theme', 'gitwire' );
 	} else {
 		badgeClass = 'gitwire-detect-unknown';
-		label = __( 'Not recognised as a WordPress project', 'gitwire' );
+		label = __( 'Not Recognised as a WordPress Project', 'gitwire' );
 	}
 
 	return (

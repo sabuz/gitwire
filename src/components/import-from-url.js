@@ -418,7 +418,7 @@ export default function ImportFromUrl( {
 								__next40pxDefaultSize
 								__nextHasNoMarginBottom
 								disabled={ isInstalling }
-								label={ __( 'Install as', 'gitwire' ) }
+								label={ __( 'Install As', 'gitwire' ) }
 								options={ [
 									{
 										label: __( 'Plugin', 'gitwire' ),
@@ -457,7 +457,7 @@ export default function ImportFromUrl( {
 						<TextControl
 							__nextHasNoMarginBottom
 							disabled={ isInstalling }
-							label={ __( 'Directory name', 'gitwire' ) }
+							label={ __( 'Directory Name', 'gitwire' ) }
 							value={ slug }
 							onChange={ ( val ) =>
 								setSlug( normalizeSlug( val ) )

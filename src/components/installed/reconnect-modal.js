@@ -150,7 +150,7 @@ export default function ReconnectModal( {
 								variant="primary"
 								onClick={ () => handlePull( conn.id ) }
 							>
-								{ __( 'Pull with this account', 'gitwire' ) }
+								{ __( 'Pull with This Account', 'gitwire' ) }
 							</Button>
 						) }
 					</Flex>

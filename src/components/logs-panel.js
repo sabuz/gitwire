@@ -37,8 +37,8 @@ const LEVEL_OPTIONS = [
 
 const DATE_OPTIONS = [
 	{ label: __( 'Today', 'gitwire' ), value: 'today' },
-	{ label: __( 'Last 7 days', 'gitwire' ), value: '7d' },
-	{ label: __( 'Last 30 days', 'gitwire' ), value: '30d' },
+	{ label: __( 'Last 7 Days', 'gitwire' ), value: '7d' },
+	{ label: __( 'Last 30 Days', 'gitwire' ), value: '30d' },
 ];
 
 function fromDateForRange( range ) {
@@ -161,7 +161,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 				>
 					<Button
 						icon={ cog }
-						label={ __( 'View options', 'gitwire' ) }
+						label={ __( 'View Options', 'gitwire' ) }
 						showTooltip
 						size="compact"
 						onMouseDown={ () => {
@@ -215,7 +215,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 								<ToggleGroupControl
 									__nextHasNoMarginBottom
 									isBlock
-									label={ __( 'Date range', 'gitwire' ) }
+									label={ __( 'Date Range', 'gitwire' ) }
 									value={ dateRange }
 									onChange={ setDateRange }
 								>

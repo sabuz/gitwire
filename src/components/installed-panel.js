@@ -278,7 +278,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'switch-theme',
-				label: __( 'Switch theme', 'gitwire' ),
+				label: __( 'Switch Theme', 'gitwire' ),
 				icon: <Icon icon="admin-appearance" />,
 				isEligible: ( item ) => item.active && item.type === 'theme',
 				callback: () => {
@@ -300,7 +300,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'enable-auto-update',
-				label: __( 'Enable auto-update', 'gitwire' ),
+				label: __( 'Enable Auto-Update', 'gitwire' ),
 				icon: <Icon icon="update" />,
 				isEligible: ( item ) => ! item.auto_update,
 				RenderModal: ( props ) => (
@@ -309,7 +309,7 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'disable-auto-update',
-				label: __( 'Disable auto-update', 'gitwire' ),
+				label: __( 'Disable Auto-Update', 'gitwire' ),
 				icon: <Icon icon="update" />,
 				isEligible: ( item ) => !! item.auto_update,
 				callback: async ( [ item ] ) => {
@@ -357,7 +357,7 @@ export default function InstalledPanel( {
 					aria-hidden="true"
 					src={ window.gitwire?.not_found_url }
 				/>
-				<h2>{ __( 'No repositories yet.', 'gitwire' ) }</h2>
+				<h2>{ __( 'No Repositories Yet.', 'gitwire' ) }</h2>
 				<p className="gitwire-installed-empty__hint">
 					{ __(
 						'Install plugins and themes directly from GitHub, GitLab, or Bitbucket.',
@@ -463,11 +463,11 @@ function AutoUpdateModal( { items, closeModal, onRefresh } ) {
 				selected={ scope }
 				options={ [
 					{
-						label: __( 'Current branch only', 'gitwire' ),
+						label: __( 'Current Branch Only', 'gitwire' ),
 						value: 'current',
 					},
 					{
-						label: __( 'Any branch', 'gitwire' ),
+						label: __( 'Any Branch', 'gitwire' ),
 						value: 'any',
 					},
 				] }
@@ -487,7 +487,7 @@ function AutoUpdateModal( { items, closeModal, onRefresh } ) {
 					variant="primary"
 					onClick={ handleConfirm }
 				>
-					{ __( 'Enable auto-update', 'gitwire' ) }
+					{ __( 'Enable Auto-Update', 'gitwire' ) }
 				</Button>
 			</Flex>
 		</>

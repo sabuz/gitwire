@@ -189,7 +189,7 @@ export function InstallForm( {
 						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 						disabled={ installing }
-						label={ __( 'Install as', 'gitwire' ) }
+						label={ __( 'Install As', 'gitwire' ) }
 						options={ [
 							{
 								label: __( 'Plugin', 'gitwire' ),
@@ -223,7 +223,7 @@ export function InstallForm( {
 				<TextControl
 					__nextHasNoMarginBottom
 					disabled={ installing }
-					label={ __( 'Directory name', 'gitwire' ) }
+					label={ __( 'Directory Name', 'gitwire' ) }
 					value={ slug }
 					onChange={ ( val ) => setSlug( normalizeSlug( val ) ) }
 				/>
