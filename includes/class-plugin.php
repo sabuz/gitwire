@@ -274,8 +274,8 @@ final class Plugin {
 			'twicedaily' => 'twicedaily',
 			'daily'      => 'daily',
 		];
-		$recurrence = $recurrence_map[ $interval ] ?? 'daily';
-		$current    = wp_get_schedule( 'gitwire_update_check' );
+		$recurrence     = $recurrence_map[ $interval ] ?? 'daily';
+		$current        = wp_get_schedule( 'gitwire_update_check' );
 
 		if ( $current === $recurrence ) {
 			return;

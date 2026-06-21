@@ -144,7 +144,7 @@ export default function InstalledPanel( {
 						) }
 						{ item.needs_reconnect && (
 							<span className="gitwire-badge gitwire-badge--warning is-needs-reconnect">
-								{ __( 'Connection Needed', 'gitwire' ) }
+								{ __( 'Connection Required', 'gitwire' ) }
 							</span>
 						) }
 						{ item.update_available &&
@@ -159,6 +159,11 @@ export default function InstalledPanel( {
 									{ __( 'Update Available', 'gitwire' ) }
 								</span>
 							) ) }
+						{ item.auto_update && (
+							<span className="gitwire-badge gitwire-badge--info is-auto-update">
+								{ __( 'Auto-Update Enabled', 'gitwire' ) }
+							</span>
+						) }
 					</Flex>
 				),
 				enableSorting: true,
@@ -304,7 +309,11 @@ export default function InstalledPanel( {
 				icon: <Icon icon="update" />,
 				isEligible: ( item ) => ! item.auto_update,
 				RenderModal: ( props ) => (
-					<AutoUpdateModal { ...props } onRefresh={ onRefresh } />
+					<AutoUpdateModal
+						{ ...props }
+						onRefresh={ onRefresh }
+						updateCheckInterval={ settings?.update_check_interval }
+					/>
 				),
 			},
 			{
@@ -341,7 +350,7 @@ export default function InstalledPanel( {
 				},
 			},
 		],
-		[ onRefresh, setReconnectItem ]
+		[ onRefresh, setReconnectItem, settings ]
 	);
 
 	const { data: shownData, paginationInfo } = useMemo(
@@ -411,13 +420,19 @@ export default function InstalledPanel( {
 /**
  * Modal body for enabling auto-update on an installed repository.
  *
- * @param {Object}   props            Props supplied by DataViews.
- * @param {Array}    props.items      Selected items.
- * @param {Function} props.closeModal Callback to close the modal.
- * @param {Function} props.onRefresh  Callback to refresh the installed list.
+ * @param {Object}   props                     Props supplied by DataViews.
+ * @param {Array}    props.items               Selected items.
+ * @param {Function} props.closeModal          Callback to close the modal.
+ * @param {Function} props.onRefresh           Callback to refresh the installed list.
+ * @param {string}   props.updateCheckInterval Current update_check_interval setting value.
  * @return {JSX.Element} The modal body.
  */
-function AutoUpdateModal( { items, closeModal, onRefresh } ) {
+function AutoUpdateModal( {
+	items,
+	closeModal,
+	onRefresh,
+	updateCheckInterval,
+} ) {
 	const [ item ] = items;
 	const [ scope, setScope ] = useState( item.auto_update_scope ?? 'current' );
 	const [ busy, setBusy ] = useState( false );
@@ -452,6 +467,23 @@ function AutoUpdateModal( { items, closeModal, onRefresh } ) {
 
 	return (
 		<>
+			{ updateCheckInterval === 'never' && (
+				<p
+					style={ {
+						margin: '0 0 16px',
+						padding: '8px 12px',
+						background: '#fff3cd',
+						color: '#664d03',
+						borderRadius: 4,
+						fontSize: 13,
+					} }
+				>
+					{ __(
+						'Update checks are disabled (Never). Auto-updates cannot trigger until you change the Update Check Frequency in Settings.',
+						'gitwire'
+					) }
+				</p>
+			) }
 			<p style={ { margin: '0 0 16px', fontSize: 13, color: '#57606a' } }>
 				{ sprintf(
 					/* translators: %s: repository full name */

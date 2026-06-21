@@ -264,6 +264,8 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const save = ( payload, rollback ) =>
 		persistSetting( payload, onSave, rollback );
 
+	const detectionActive = autoDetectType || smartInstall;
+
 	const handleSmartInstallChange = ( newVal ) => {
 		setSmartInstall( newVal );
 		const payload = { smart_install: newVal };
@@ -284,9 +286,26 @@ function BrowseDetectionCard( { settings, onSave } ) {
 
 	const handleAutoDetectTypeChange = ( newVal ) => {
 		setAutoDetectType( newVal );
-		save( { auto_detect_type: newVal }, () =>
-			setAutoDetectType( ! newVal )
-		).catch( () => {} );
+		const payload = { auto_detect_type: newVal };
+		const prevBackground = backgroundTypeDetection;
+		const prevShallow = shallowDetection;
+		if ( ! newVal ) {
+			if ( backgroundTypeDetection ) {
+				setBackgroundTypeDetection( false );
+				payload.background_type_detection = false;
+			}
+			if ( shallowDetection ) {
+				setShallowDetection( false );
+				payload.shallow_detection = false;
+			}
+		}
+		save( payload, () => {
+			setAutoDetectType( ! newVal );
+			if ( ! newVal ) {
+				setBackgroundTypeDetection( prevBackground );
+				setShallowDetection( prevShallow );
+			}
+		} ).catch( () => {} );
 	};
 
 	const handleReposPerPageChange = ( newVal ) => {
@@ -369,7 +388,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 
 				<ToggleControl
 					__nextHasNoMarginBottom
-					checked={ autoDetectType }
+					checked={ detectionActive }
 					disabled={ smartInstall }
 					help={
 						smartInstall
@@ -391,7 +410,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				<ToggleControl
 					__nextHasNoMarginBottom
 					checked={ backgroundTypeDetection }
-					disabled={ ! autoDetectType }
+					disabled={ ! detectionActive }
 					help={ __(
 						'Detect types for unscanned repos in the background each cron cycle. Best for large collections.',
 						'gitwire'
@@ -405,7 +424,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				<ToggleControl
 					__nextHasNoMarginBottom
 					checked={ shallowDetection }
-					disabled={ ! autoDetectType }
+					disabled={ ! detectionActive }
 					help={ __(
 						'Skip full file scans on re-detection when stored key files still match. Saves API calls on large collections.',
 						'gitwire'
@@ -596,9 +615,9 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 				<ToggleGroupControl
 					__nextHasNoMarginBottom
 					isBlock
-					label={ __( 'Update Frequency', 'gitwire' ) }
+					label={ __( 'Update Check Frequency', 'gitwire' ) }
 					help={ __(
-						'How often Gitwire checks for new commits on installed repositories.',
+						'How often Gitwire checks installed repositories for new commits. Applies to all installed repositories, independent of auto-update.',
 						'gitwire'
 					) }
 					value={ updateCheckInterval }

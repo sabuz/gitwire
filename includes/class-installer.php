@@ -739,7 +739,7 @@ class Installer {
 	}
 
 	/**
-	 * Silently updates all installed repositories that have auto_update enabled and a pending remote head.
+	 * Refreshes remote_head for all installed repos, then auto-updates those with auto_update enabled.
 	 *
 	 * @since 2.0.0
 	 * @return void
@@ -747,6 +747,30 @@ class Installer {
 	public static function run_auto_updates(): void {
 		$records = self::get_installed();
 
+		// First pass: refresh remote_head for every installed repo.
+		foreach ( $records as $key => $rec ) {
+			$owner    = $rec['owner'] ?? '';
+			$repo     = $rec['repo'] ?? '';
+			$branch   = (string) ( $rec['branch'] ?? 'main' );
+			$provider = (string) ( $rec['provider'] ?? 'github' );
+
+			if ( ! $owner || ! $repo ) {
+				continue;
+			}
+
+			$connection_id = $rec['connection_id'] ? $rec['connection_id'] : null;
+			$api           = Provider_Factory::make( $provider, $connection_id );
+			$remote_sha    = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+			$stored_remote = (string) ( $rec['remote_head'] ?? '' );
+
+			if ( $remote_sha && $remote_sha !== $stored_remote ) {
+				$full_name = (string) ( $rec['full_name'] ?? '' );
+				self::set_remote_head( $provider, $full_name, $remote_sha );
+				$records[ $key ]['remote_head'] = $remote_sha;
+			}
+		}
+
+		// Second pass: auto-update repos that have it enabled and have a pending commit.
 		foreach ( $records as $rec ) {
 			if ( empty( $rec['auto_update'] ) ) {
 				continue;

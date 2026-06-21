@@ -112,7 +112,6 @@ class Settings {
 			$background_type_detection = (bool) $incoming['background_type_detection'];
 		}
 
-
 		$shallow_detection = $current['shallow_detection'] ?? false;
 		if ( array_key_exists( 'shallow_detection', $incoming ) && null !== $incoming['shallow_detection'] ) {
 			$shallow_detection = (bool) $incoming['shallow_detection'];
