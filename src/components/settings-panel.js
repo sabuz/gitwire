@@ -544,7 +544,7 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 		settings.block_on_fatal !== false
 	);
 	const [ updateCheckInterval, setUpdateCheckInterval ] = useState(
-		settings.update_check_interval ?? 'daily'
+		settings.update_check_interval ?? 'halfhourly'
 	);
 
 	const save = ( payload, rollback ) =>
@@ -625,11 +625,11 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 				>
 					<ToggleGroupControlOption
 						label={ __( '5 Minutes', 'gitwire' ) }
-						value="5minutes"
+						value="everyfiveminutes"
 					/>
 					<ToggleGroupControlOption
-						label={ __( '30 Minutes', 'gitwire' ) }
-						value="30minutes"
+						label={ __( 'Half Hourly', 'gitwire' ) }
+						value="halfhourly"
 					/>
 					<ToggleGroupControlOption
 						label={ __( 'Hourly', 'gitwire' ) }

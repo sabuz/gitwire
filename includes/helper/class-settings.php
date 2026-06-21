@@ -46,7 +46,7 @@ class Settings {
 			'shallow_detection'           => $s['shallow_detection'] ?? false,
 			'show_repo_label'             => $s['show_repo_label'] ?? true,
 			'block_on_fatal'              => $s['block_on_fatal'] ?? true,
-			'update_check_interval'       => $s['update_check_interval'] ?? 'daily',
+			'update_check_interval'       => $s['update_check_interval'] ?? 'halfhourly',
 			'enable_logging'              => $s['enable_logging'] ?? false,
 			'log_retention_days'          => $s['log_retention_days'] ?? 7,
 			'log_level'                   => $s['log_level'] ?? 'activity',
@@ -127,10 +127,10 @@ class Settings {
 			$block_on_fatal = (bool) $incoming['block_on_fatal'];
 		}
 
-		$update_check_interval = $current['update_check_interval'] ?? 'daily';
+		$update_check_interval = $current['update_check_interval'] ?? 'halfhourly';
 		if ( array_key_exists( 'update_check_interval', $incoming ) && null !== $incoming['update_check_interval'] ) {
 			$val                   = (string) $incoming['update_check_interval'];
-			$update_check_interval = in_array( $val, [ 'hourly', '6hours', 'daily', 'weekly', 'never' ], true ) ? $val : 'daily';
+			$update_check_interval = in_array( $val, [ 'everyfiveminutes', 'halfhourly', 'hourly', 'twicedaily', 'daily', 'weekly', 'never' ], true ) ? $val : 'halfhourly';
 		}
 
 		$enable_logging = $current['enable_logging'] ?? false;

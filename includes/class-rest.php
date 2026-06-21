@@ -1027,7 +1027,7 @@ class REST {
 		$was_logging          = Settings::is_logging_enabled();
 		$prev_settings        = Settings::get_public();
 		$prev_freq            = $prev_settings['repo_list_refresh_frequency'] ?? 'daily';
-		$prev_update_interval = $prev_settings['update_check_interval'] ?? 'daily';
+		$prev_update_interval = $prev_settings['update_check_interval'] ?? 'halfhourly';
 		$merged               = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
 
@@ -1041,7 +1041,7 @@ class REST {
 			Plugin::instance()->schedule_repos_cron();
 		}
 
-		if ( ( $merged['update_check_interval'] ?? 'daily' ) !== $prev_update_interval ) {
+		if ( ( $merged['update_check_interval'] ?? 'halfhourly' ) !== $prev_update_interval ) {
 			Plugin::instance()->schedule_update_check_cron();
 		}
 

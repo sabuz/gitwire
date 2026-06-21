@@ -33,17 +33,6 @@ class Repo_Cache {
 	}
 
 	/**
-	 * Returns the option key for a type detection result (branch-specific fallback).
-	 *
-	 * @since 1.0.0
-	 * @param string $type_key Canonical type key from repo_type_key().
-	 * @return string
-	 */
-	private static function repo_type_option_key( string $type_key ): string {
-		return 'gitwire_repo_type_' . md5( $type_key );
-	}
-
-	/**
 	 * Returns a combined, sorted repository page from all given connections.
 	 *
 	 * Returns null only when the table has no rows for these connections at all
@@ -217,9 +206,6 @@ class Repo_Cache {
 	/**
 	 * Returns a cached detection result.
 	 *
-	 * Checks the repo cache table first (branch-agnostic; provider+full_name are sufficient
-	 * for browse), then falls back to the branch-specific option cache used by the install flow.
-	 *
 	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @param string $owner    Repository owner.
@@ -248,16 +234,14 @@ class Repo_Cache {
 			}
 		}
 
-		// Branch-specific option fallback (install flow).
-		$stored = get_option( self::repo_type_option_key( self::repo_type_key( $provider, $owner, $repo, $branch ) ) );
-		return is_array( $stored['data'] ?? null ) ? $stored['data'] : null;
+		return null;
 	}
 
 	/**
 	 * Stores a detection result.
 	 *
-	 * Writes to the repo cache table for co-located browse access and to the
-	 * branch-specific option cache for the install flow.
+	 * Updates all matching browse-cache rows, then upserts a connection-agnostic row so
+	 * repos imported directly from a URL (not yet in the browse cache) are also covered.
 	 * The result array must include 'type'; remaining fields go into type_meta.
 	 *
 	 * @since 1.0.0
@@ -273,14 +257,15 @@ class Repo_Cache {
 		$full_name = $owner . '/' . $repo;
 		$type      = $result['type'] ?? '';
 		$meta      = array_diff_key( $result, [ 'type' => true ] );
+		$meta_json = wp_json_encode( $meta );
 
-		// Update matching rows in the cache table; best-effort — row may not exist yet.
+		// Update all browse-cache rows for this repo (may match multiple connection_ids).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->update(
 			self::cache_table(),
 			[
 				'type'      => $type,
-				'type_meta' => wp_json_encode( $meta ),
+				'type_meta' => $meta_json,
 			],
 			[
 				'provider'  => $provider,
@@ -290,11 +275,24 @@ class Repo_Cache {
 			[ '%s', '%s' ]
 		);
 
-		// Branch-specific option for the install flow (branch matters there).
-		update_option(
-			self::repo_type_option_key( self::repo_type_key( $provider, $owner, $repo, $branch ) ),
-			[ 'data' => $result ],
-			false
+		// Upsert a connection-agnostic row so get_repo_type() hits the table even when
+		// the repo was never listed in the browse panel (e.g. direct URL import).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->query(
+			$wpdb->prepare(
+				'INSERT INTO ' . self::cache_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				' (connection_id, provider, owner, name, full_name, default_branch, type, type_meta)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+				ON DUPLICATE KEY UPDATE type = VALUES(type), type_meta = VALUES(type_meta)',
+				'',
+				$provider,
+				$owner,
+				$repo,
+				$full_name,
+				'',
+				$type,
+				$meta_json
+			)
 		);
 	}
 
@@ -324,9 +322,21 @@ class Repo_Cache {
 	 */
 	public static function clear_repo_types(): void {
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( 'UPDATE ' . self::cache_table() . " SET type = '', type_meta = NULL" );
 
+		// Reset type columns on all connection-specific rows.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query(
+			$wpdb->prepare(
+				'UPDATE ' . self::cache_table() . " SET type = '', type_meta = NULL WHERE connection_id != %s", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				''
+			)
+		);
+
+		// Remove connection-agnostic fallback rows written by set_repo_type() for URL imports.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->delete( self::cache_table(), [ 'connection_id' => '' ], [ '%s' ] );
+
+		// One-time cleanup of legacy gitwire_repo_type_* options from sites that ran an older build.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			$wpdb->prepare(

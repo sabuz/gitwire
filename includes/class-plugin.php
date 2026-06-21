@@ -90,21 +90,17 @@ final class Plugin {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function register_cron_schedules( array $schedules ): array {
-		$schedules['gitwire_5minutes']    = [
+		$schedules['everyfiveminutes']    = [
 			'interval' => 5 * MINUTE_IN_SECONDS,
 			'display'  => __( 'Every 5 minutes', 'gitwire' ),
 		];
-		$schedules['gitwire_half_hourly'] = [
+		$schedules['halfhourly'] = [
 			'interval' => 1800,
 			'display'  => __( 'Every 30 minutes', 'gitwire' ),
 		];
 		$schedules['gitwire_daily']       = [
 			'interval' => DAY_IN_SECONDS,
 			'display'  => __( 'Once daily', 'gitwire' ),
-		];
-		$schedules['gitwire_6hours']      = [
-			'interval' => 6 * HOUR_IN_SECONDS,
-			'display'  => __( 'Every 6 hours', 'gitwire' ),
 		];
 		return $schedules;
 	}
@@ -174,7 +170,7 @@ final class Plugin {
 		$this->schedule_repos_cron();
 
 		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_connections' );
+			wp_schedule_event( time(), 'halfhourly', 'gitwire_refresh_connections' );
 		}
 
 		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
@@ -223,7 +219,7 @@ final class Plugin {
 		}
 		$this->schedule_repos_cron();
 		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_connections' );
+			wp_schedule_event( time(), 'halfhourly', 'gitwire_refresh_connections' );
 		}
 		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
 			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
@@ -259,7 +255,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function schedule_update_check_cron(): void {
-		$interval = Settings::get_public()['update_check_interval'] ?? 'daily';
+		$interval = Settings::get_public()['update_check_interval'] ?? 'halfhourly';
 
 		if ( 'never' === $interval ) {
 			wp_clear_scheduled_hook( 'gitwire_update_check' );
@@ -267,14 +263,13 @@ final class Plugin {
 		}
 
 		$recurrence_map = [
-			'5minutes'   => 'gitwire_5minutes',
-			'30minutes'  => 'gitwire_half_hourly',
-			'hourly'     => 'hourly',
-			'6hours'     => 'gitwire_6hours',
-			'twicedaily' => 'twicedaily',
-			'daily'      => 'daily',
+			'everyfiveminutes'        => 'everyfiveminutes',
+			'halfhourly' => 'halfhourly',
+			'hourly'      => 'hourly',
+			'twicedaily'  => 'twicedaily',
+			'daily'       => 'daily',
 		];
-		$recurrence     = $recurrence_map[ $interval ] ?? 'daily';
+		$recurrence     = $recurrence_map[ $interval ] ?? 'halfhourly';
 		$current        = wp_get_schedule( 'gitwire_update_check' );
 
 		if ( $current === $recurrence ) {
