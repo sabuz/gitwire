@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Cache for repository lists and type detections.
  *
- * Both are stored in the gitwire_repo_cache table — one row per repo per connection.
+ * Both are stored in the gitwire_repositories table — one row per repo per connection.
  * Cron owns freshness; reads return whatever is in the table regardless of age.
  * updated_at is a cron-cycle marker used only for stale-row cleanup after each refresh.
  */
@@ -29,7 +29,7 @@ class Repo_Cache {
 	 */
 	private static function cache_table(): string {
 		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_repo_cache';
+		return $wpdb->base_prefix . 'gitwire_repositories';
 	}
 
 	/**
@@ -152,19 +152,22 @@ class Repo_Cache {
 	public static function set_repo_list( string $connection_id, string $provider, array $payload ): void {
 		global $wpdb;
 		$table = self::cache_table();
-		$now   = time();
+		$now   = current_time( 'mysql' );
 
 		foreach ( $payload['repositories'] ?? [] as $repo ) {
 			$full_name = $repo['full_name'] ?? '';
 			if ( ! $full_name ) {
 				continue;
 			}
+			$raw_at   = $repo['last_activity_at'] ?? '';
+			$ts       = $raw_at ? (int) strtotime( $raw_at ) : 0;
+			$last_act = $ts > 0 ? gmdate( 'Y-m-d H:i:s', $ts ) : '1970-01-01 00:00:00';
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
 			$wpdb->query(
 				$wpdb->prepare(
 					'INSERT INTO ' . $table . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 					'(connection_id, provider, owner, name, full_name, private, html_url, default_branch, last_activity_at, updated_at)
-					VALUES (%s, %s, %s, %s, %s, %d, %s, %s, %s, %d)
+					VALUES (%s, %s, %s, %s, %s, %d, %s, %s, %s, %s)
 					ON DUPLICATE KEY UPDATE
 					  provider       = VALUES(provider),
 					  owner          = VALUES(owner),
@@ -182,7 +185,7 @@ class Repo_Cache {
 					(int) ( $repo['private'] ?? false ),
 					$repo['html_url'] ?? '',
 					$repo['default_branch'] ?? 'main',
-					$repo['last_activity_at'] ?? '',
+					$last_act,
 					$now
 				)
 			);
@@ -391,7 +394,7 @@ class Repo_Cache {
 	private static function refresh_repo_lists(): true|\WP_Error {
 		global $wpdb;
 
-		$refresh_started = time();
+		$refresh_started = current_time( 'mysql' );
 		$last_err        = null;
 		$max_setting     = Settings::get_public()['max_repos_per_source'] ?? 'unlimited';
 		$max             = 'unlimited' === $max_setting ? PHP_INT_MAX : (int) $max_setting;
@@ -424,7 +427,7 @@ class Repo_Cache {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
 				$wpdb->query(
 					$wpdb->prepare(
-						'DELETE FROM ' . self::cache_table() . ' WHERE connection_id = %s AND updated_at < %d', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+						'DELETE FROM ' . self::cache_table() . ' WHERE connection_id = %s AND updated_at < %s', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 						$id,
 						$refresh_started
 					)

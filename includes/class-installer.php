@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Installer {
 
 	/**
-	 * Request-scoped cache for the gitwire_installed table rows.
+	 * Request-scoped cache for the gitwire_installations table rows.
 	 *
 	 * @var array<string, mixed>|null
 	 */
@@ -36,14 +36,14 @@ class Installer {
 	}
 
 	/**
-	 * Returns the gitwire_installed table name.
+	 * Returns the gitwire_installations table name.
 	 *
 	 * @since 1.0.0
 	 * @return string
 	 */
 	private static function installed_table(): string {
 		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_installed';
+		return $wpdb->base_prefix . 'gitwire_installations';
 	}
 
 	/**
@@ -63,7 +63,7 @@ class Installer {
 	 * Adds owner and repo (derived from full_name) so callers never need to split.
 	 *
 	 * @since 1.0.0
-	 * @param array<string, mixed> $row Raw row from gitwire_installed.
+	 * @param array<string, mixed> $row Raw row from gitwire_installations.
 	 * @return array<string, mixed>
 	 */
 	private static function hydrate_record( array $row ): array {
@@ -71,13 +71,11 @@ class Installer {
 		return array_merge(
 			$row,
 			[
-				'id'                => (int) ( $row['id'] ?? 0 ),
-				'owner'             => $parts[0] ?? '',
-				'repo'              => $parts[1] ?? '',
-				'installed_at'      => (int) ( $row['installed_at'] ?? 0 ),
-				'updated_at'        => (int) ( $row['updated_at'] ?? 0 ),
-				'auto_update'       => (bool) ( $row['auto_update'] ?? false ),
-				'auto_update_scope' => (string) ( $row['auto_update_scope'] ?? 'current' ),
+				'id'           => (int) ( $row['id'] ?? 0 ),
+				'repo'         => $parts[1] ?? '',
+				'installed_at' => $row['installed_at'] ?? '',
+				'updated_at'   => $row['updated_at'] ?? '',
+				'auto_update'  => $row['auto_update'] ?? 'disabled',
 			]
 		);
 	}
@@ -86,15 +84,15 @@ class Installer {
 	 * Deletes the commit cache for an installed repository.
 	 *
 	 * @since 1.0.0
-	 * @param int $installed_id Primary key of the gitwire_installed row.
+	 * @param int $installation_id Primary key of the gitwire_installations row.
 	 * @return void
 	 */
-	private static function delete_commits( int $installed_id ): void {
+	private static function delete_commits( int $installation_id ): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->delete(
 			self::commits_table(),
-			[ 'installed_id' => $installed_id ],
+			[ 'installation_id' => $installation_id ],
 			[ '%d' ]
 		);
 	}
@@ -112,7 +110,7 @@ class Installer {
 	public static function delete_record( string $provider, string $full_name ): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$installed_id = (int) $wpdb->get_var(
+		$installation_id = (int) $wpdb->get_var(
 			$wpdb->prepare( 'SELECT id FROM ' . self::installed_table() . ' WHERE provider = %s AND full_name = %s', $provider, $full_name )
 		);
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
@@ -124,8 +122,8 @@ class Installer {
 			],
 			[ '%s', '%s' ]
 		);
-		if ( $installed_id ) {
-			self::delete_commits( $installed_id );
+		if ( $installation_id ) {
+			self::delete_commits( $installation_id );
 		}
 		self::invalidate_installed_cache();
 	}
@@ -146,25 +144,26 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installed_table() . '
-					(provider, full_name, slug, branch, head, remote_head, type, install_path, plugin_file, connection_id, installed_at, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d)
+					(connection_id, provider, owner, slug, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
-					slug = VALUES(slug), branch = VALUES(branch), head = VALUES(head),
-					type = VALUES(type),
+					connection_id = VALUES(connection_id), slug = VALUES(slug),
+					type = VALUES(type), branch = VALUES(branch), head = VALUES(head),
 					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
-					connection_id = VALUES(connection_id), updated_at = VALUES(updated_at)',
+					updated_at = VALUES(updated_at)',
+				$record['connection_id'] ?? '',
 				$record['provider'] ?? '',
-				$record['full_name'] ?? '',
+				$record['owner'] ?? '',
 				$record['slug'] ?? '',
+				$record['full_name'] ?? '',
+				$record['type'] ?? 'plugin',
 				$record['branch'] ?? 'main',
 				$record['head'] ?? '',
 				$record['remote_head'] ?? '',
-				$record['type'] ?? 'plugin',
 				$record['install_path'] ?? '',
 				$record['plugin_file'] ?? '',
-				$record['connection_id'] ?? '',
-				(int) ( $record['installed_at'] ?? time() ),
-				time()
+				$record['installed_at'] ?? current_time( 'mysql' ),
+				current_time( 'mysql' )
 			)
 		);
 
@@ -775,7 +774,7 @@ class Installer {
 
 		// Second pass: auto-update repos that have it enabled and have a pending commit.
 		foreach ( $records as $rec ) {
-			if ( empty( $rec['auto_update'] ) ) {
+			if ( 'disabled' === ( $rec['auto_update'] ?? 'disabled' ) ) {
 				continue;
 			}
 
@@ -1115,7 +1114,7 @@ class Installer {
 		);
 
 		if ( $existing && ! empty( $existing['installed_at'] ) ) {
-			$record['installed_at'] = (int) $existing['installed_at'];
+			$record['installed_at'] = $existing['installed_at'];
 		}
 
 		if ( $head_sha ) {
@@ -1130,25 +1129,26 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installed_table() . '
-					(provider, full_name, slug, branch, head, remote_head, type, install_path, plugin_file, connection_id, installed_at, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d)
+					(connection_id, provider, owner, slug, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
-					slug = VALUES(slug), branch = VALUES(branch), head = VALUES(head),
-					type = VALUES(type),
+					connection_id = VALUES(connection_id), slug = VALUES(slug),
+					type = VALUES(type), branch = VALUES(branch), head = VALUES(head),
 					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
-					connection_id = VALUES(connection_id), updated_at = VALUES(updated_at)',
+					updated_at = VALUES(updated_at)',
+				$record['connection_id'] ?? '',
 				$provider,
-				$full_name,
+				$record['owner'] ?? '',
 				$record['slug'] ?? '',
+				$full_name,
+				$record['type'] ?? 'plugin',
 				$record['branch'] ?? 'main',
 				$record['head'] ?? '',
 				$record['remote_head'] ?? '',
-				$record['type'] ?? 'plugin',
 				$record['install_path'] ?? '',
 				$record['plugin_file'] ?? '',
-				$record['connection_id'] ?? '',
-				(int) ( $record['installed_at'] ?? time() ),
-				time()
+				$record['installed_at'] ?? current_time( 'mysql' ),
+				current_time( 'mysql' )
 			)
 		);
 
@@ -1349,8 +1349,9 @@ class Installer {
 			'connection_id' => $connection_id,
 			'install_path'  => $install_path,
 			'plugin_file'   => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
-			'installed_at'  => time(),
-			'updated_at'    => time(),
+			'owner'         => $owner,
+			'installed_at'  => current_time( 'mysql' ),
+			'updated_at'    => current_time( 'mysql' ),
 			'slug_renamed'  => $slug_renamed,
 		];
 

@@ -328,15 +328,11 @@ class REST {
 				'callback'            => [ self::class, 'save_auto_update' ],
 				'permission_callback' => [ self::class, 'can_manage' ],
 				'args'                => [
-					'provider'          => $provider_arg,
-					'auto_update'       => [
+					'provider'    => $provider_arg,
+					'auto_update' => [
 						'required' => true,
-						'type'     => 'boolean',
-					],
-					'auto_update_scope' => [
-						'type'    => 'string',
-						'default' => 'current',
-						'enum'    => [ 'current', 'any' ],
+						'type'     => 'string',
+						'enum'     => [ 'disabled', 'current', 'any' ],
 					],
 				],
 			]
@@ -1993,11 +1989,8 @@ class REST {
 		$owner       = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo        = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider    = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		$auto_update = (bool) $req->get_param( 'auto_update' );
-		$scope_raw   = (string) ( $req->get_param( 'auto_update_scope' ) ?? 'current' );
-		$scope       = in_array( $scope_raw, [ 'current', 'any' ], true ) ? $scope_raw : 'current';
-
-		$full_name = $owner . '/' . $repo;
+		$auto_update = (string) $req->get_param( 'auto_update' );
+		$full_name   = $owner . '/' . $repo;
 
 		if ( ! Installer::get_record( $provider, $full_name ) ) {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
@@ -2005,25 +1998,21 @@ class REST {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->update(
-			$wpdb->base_prefix . 'gitwire_installed',
-			[
-				'auto_update'       => $auto_update ? 1 : 0,
-				'auto_update_scope' => $scope,
-			],
+			$wpdb->base_prefix . 'gitwire_installations',
+			[ 'auto_update' => $auto_update ],
 			[
 				'provider'  => $provider,
 				'full_name' => $full_name,
 			],
-			[ '%d', '%s' ],
+			[ '%s' ],
 			[ '%s', '%s' ]
 		);
 		Installer::invalidate_installed_cache();
 
 		return [
-			'provider'          => $provider,
-			'full_name'         => $full_name,
-			'auto_update'       => $auto_update,
-			'auto_update_scope' => $scope,
+			'provider'    => $provider,
+			'full_name'   => $full_name,
+			'auto_update' => $auto_update,
 		];
 	}
 
@@ -2045,8 +2034,8 @@ class REST {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
 
-		$installed_id = $record['id'];
-		$cached       = self::get_cached_commits( $installed_id, $record['branch'] );
+		$installation_id = $record['id'];
+		$cached       = self::get_cached_commits( $installation_id, $record['branch'] );
 		if ( null !== $cached ) {
 			return self::annotate_commits_with_fatal( $cached, $provider, $full_name, $record['branch'] );
 		}
@@ -2058,7 +2047,7 @@ class REST {
 			return $commits;
 		}
 
-		self::save_cached_commits( $installed_id, $record['branch'], $commits );
+		self::save_cached_commits( $installation_id, $record['branch'], $commits );
 
 		return self::annotate_commits_with_fatal( $commits, $provider, $full_name, $record['branch'] );
 	}
@@ -2078,17 +2067,17 @@ class REST {
 	 * Returns a cached commit list from the DB, or null when not cached.
 	 *
 	 * @since 1.0.0
-	 * @param int    $installed_id Primary key of the gitwire_installed row.
+	 * @param int    $installation_id Primary key of the gitwire_installations row.
 	 * @param string $branch       Branch name.
 	 * @return array<int, array<string, mixed>>|null
 	 */
-	private static function get_cached_commits( int $installed_id, string $branch ): ?array {
+	private static function get_cached_commits( int $installation_id, string $branch ): ?array {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT data FROM ' . self::commits_table() . ' WHERE installed_id = %d AND branch = %s',
-				$installed_id,
+				'SELECT data FROM ' . self::commits_table() . ' WHERE installation_id = %d AND branch = %s',
+				$installation_id,
 				$branch
 			),
 			ARRAY_A
@@ -2104,23 +2093,23 @@ class REST {
 	 * Writes or replaces the commit cache for a repo/branch.
 	 *
 	 * @since 1.0.0
-	 * @param int                              $installed_id Primary key of the gitwire_installed row.
+	 * @param int                              $installation_id Primary key of the gitwire_installations row.
 	 * @param string                           $branch       Branch name.
 	 * @param array<int, array<string, mixed>> $commits      Commit list.
 	 * @return void
 	 */
-	private static function save_cached_commits( int $installed_id, string $branch, array $commits ): void {
+	private static function save_cached_commits( int $installation_id, string $branch, array $commits ): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->query(
 			$wpdb->prepare(
-				'INSERT INTO ' . self::commits_table() . ' (installed_id, branch, data, updated_at)
-				VALUES (%d, %s, %s, %d)
+				'INSERT INTO ' . self::commits_table() . ' (installation_id, branch, data, updated_at)
+				VALUES (%d, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)',
-				$installed_id,
+				$installation_id,
 				$branch,
 				wp_json_encode( $commits ),
-				time()
+				current_time( 'mysql' )
 			)
 		);
 	}

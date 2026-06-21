@@ -159,7 +159,7 @@ export default function InstalledPanel( {
 									{ __( 'Update Available', 'gitwire' ) }
 								</span>
 							) ) }
-						{ item.auto_update && (
+						{ item.auto_update !== 'disabled' && (
 							<span className="gitwire-badge gitwire-badge--info is-auto-update">
 								{ __( 'Auto-Update Enabled', 'gitwire' ) }
 							</span>
@@ -196,11 +196,11 @@ export default function InstalledPanel( {
 			{
 				id: 'last_updated',
 				label: __( 'Last Updated', 'gitwire' ),
-				getValue: ( { item } ) => item.updated_at ?? 0,
+				getValue: ( { item } ) => item.updated_at ?? '',
 				render: ( { item } ) => (
 					<span className="gitwire-installed-date">
 						{ item.updated_at
-							? new Date( item.updated_at * 1000 ).toLocaleString(
+							? new Date( item.updated_at?.replace( ' ', 'T' ) ).toLocaleString(
 									undefined,
 									{
 										year: 'numeric',
@@ -307,7 +307,7 @@ export default function InstalledPanel( {
 				id: 'enable-auto-update',
 				label: __( 'Enable Auto-Update', 'gitwire' ),
 				icon: <Icon icon="update" />,
-				isEligible: ( item ) => ! item.auto_update,
+				isEligible: ( item ) => item.auto_update === 'disabled',
 				RenderModal: ( props ) => (
 					<AutoUpdateModal
 						{ ...props }
@@ -320,15 +320,14 @@ export default function InstalledPanel( {
 				id: 'disable-auto-update',
 				label: __( 'Disable Auto-Update', 'gitwire' ),
 				icon: <Icon icon="update" />,
-				isEligible: ( item ) => !! item.auto_update,
+				isEligible: ( item ) => item.auto_update !== 'disabled',
 				callback: async ( [ item ] ) => {
 					try {
 						await api.saveAutoUpdate(
 							item.owner,
 							item.repo,
 							item.provider ?? 'github',
-							false,
-							'current'
+							'disabled'
 						);
 						toast.success(
 							sprintf(
@@ -434,7 +433,7 @@ function AutoUpdateModal( {
 	updateCheckInterval,
 } ) {
 	const [ item ] = items;
-	const [ scope, setScope ] = useState( item.auto_update_scope ?? 'current' );
+	const [ autoUpdate, setAutoUpdate ] = useState( item.auto_update !== 'disabled' ? item.auto_update : 'current' );
 	const [ busy, setBusy ] = useState( false );
 
 	const handleConfirm = async () => {
@@ -444,8 +443,7 @@ function AutoUpdateModal( {
 				item.owner,
 				item.repo,
 				item.provider ?? 'github',
-				true,
-				scope
+				autoUpdate
 			);
 			toast.success(
 				sprintf(
@@ -492,7 +490,7 @@ function AutoUpdateModal( {
 				) }
 			</p>
 			<RadioControl
-				selected={ scope }
+				selected={ autoUpdate }
 				options={ [
 					{
 						label: __( 'Current Branch Only', 'gitwire' ),
@@ -503,7 +501,7 @@ function AutoUpdateModal( {
 						value: 'any',
 					},
 				] }
-				onChange={ setScope }
+				onChange={ setAutoUpdate }
 			/>
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
 				<Button

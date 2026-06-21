@@ -158,15 +158,14 @@ export const saveAutoUpdate = (
 	owner,
 	repo,
 	provider = 'github',
-	autoUpdate,
-	scope = 'current'
+	autoUpdate
 ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ encodeURIComponent(
 			owner
 		) }/${ encodeURIComponent( repo ) }/auto-update`,
 		method: 'POST',
-		data: { provider, auto_update: autoUpdate, auto_update_scope: scope },
+		data: { provider, auto_update: autoUpdate },
 	} );
 
 export const resolveRepo = ( url ) =>

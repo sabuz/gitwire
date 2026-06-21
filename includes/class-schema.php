@@ -57,8 +57,7 @@ class Schema {
 				scope VARCHAR(20) NOT NULL DEFAULT 'all',
 				created_at DATETIME NOT NULL,
 				PRIMARY KEY  (id),
-				KEY provider (provider),
-				KEY scope (scope)
+				KEY provider (provider)
 			) $charset;"
 		);
 
@@ -75,25 +74,27 @@ class Schema {
 
 		// Installed repository records.
 		// type stores the flat detection value: 'plugin', 'block-theme', 'classic-theme'.
+		// auto_update: 'disabled' | 'current' (branch-locked) | 'any'.
 		dbDelta(
-			"CREATE TABLE {$prefix}gitwire_installed (
+			"CREATE TABLE {$prefix}gitwire_installations (
 				id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+				connection_id VARCHAR(64) NOT NULL DEFAULT '',
 				provider VARCHAR(20) NOT NULL,
-				full_name VARCHAR(255) NOT NULL,
+				owner VARCHAR(128) NOT NULL DEFAULT '',
 				slug VARCHAR(255) NOT NULL DEFAULT '',
+				full_name VARCHAR(255) NOT NULL,
+				type VARCHAR(20) NOT NULL DEFAULT 'plugin',
 				branch VARCHAR(255) NOT NULL DEFAULT 'main',
 				head VARCHAR(40) NOT NULL DEFAULT '',
 				remote_head VARCHAR(40) NOT NULL DEFAULT '',
-				type VARCHAR(20) NOT NULL DEFAULT 'plugin',
 				install_path VARCHAR(1024) NOT NULL DEFAULT '',
 				plugin_file VARCHAR(512) NOT NULL DEFAULT '',
-				connection_id VARCHAR(64) NOT NULL DEFAULT '',
-				installed_at INT UNSIGNED NOT NULL DEFAULT 0,
-				updated_at INT UNSIGNED NOT NULL DEFAULT 0,
-				auto_update TINYINT(1) NOT NULL DEFAULT 0,
-				auto_update_scope VARCHAR(10) NOT NULL DEFAULT 'current',
+				auto_update VARCHAR(10) NOT NULL DEFAULT 'disabled',
+				installed_at DATETIME NOT NULL,
+				updated_at DATETIME NOT NULL,
 				PRIMARY KEY  (id),
-				UNIQUE KEY repo (provider, full_name)
+				UNIQUE KEY repo (provider, full_name),
+				KEY connection_id (connection_id)
 			) $charset;"
 		);
 
@@ -101,33 +102,33 @@ class Schema {
 		// data stores the JSON-encoded commit array returned by the provider API.
 		dbDelta(
 			"CREATE TABLE {$prefix}gitwire_commits (
-				installed_id BIGINT UNSIGNED NOT NULL,
+				installation_id BIGINT UNSIGNED NOT NULL,
 				branch VARCHAR(255) NOT NULL DEFAULT 'main',
 				data MEDIUMTEXT NOT NULL,
-				updated_at INT UNSIGNED NOT NULL DEFAULT 0,
-				PRIMARY KEY  (installed_id, branch)
+				updated_at DATETIME NOT NULL,
+				PRIMARY KEY  (installation_id, branch)
 			) $charset;"
 		);
 
-		// Cached repository list and type detection — one row per repo per connection.
-		// last_activity_at: repo's last activity timestamp from the provider (ISO 8601).
-		// updated_at:    when this cache row was last written by cron (Unix timestamp).
+		// Repository listing fetched from each connection — one row per repo.
+		// last_activity_at: last activity from the provider API.
+		// updated_at:    when this row was last refreshed by cron.
 		// type:          flat detection value ('plugin','block-theme','classic-theme','unknown','').
 		// type_meta:     detection payload JSON (confidence, name, key_files).
 		dbDelta(
-			"CREATE TABLE {$prefix}gitwire_repo_cache (
-				connection_id  VARCHAR(64) NOT NULL,
-				provider       VARCHAR(20) NOT NULL,
-				owner          VARCHAR(128) NOT NULL DEFAULT '',
-				name           VARCHAR(128) NOT NULL DEFAULT '',
-				full_name      VARCHAR(255) NOT NULL,
-				private        TINYINT(1) NOT NULL DEFAULT 0,
-				html_url       VARCHAR(512) NOT NULL DEFAULT '',
-				default_branch VARCHAR(255) NOT NULL DEFAULT 'main',
-				last_activity_at  VARCHAR(32) NOT NULL DEFAULT '',
-				type           VARCHAR(20) NOT NULL DEFAULT '',
-				type_meta      TEXT DEFAULT NULL,
-				updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+			"CREATE TABLE {$prefix}gitwire_repositories (
+				connection_id    VARCHAR(64) NOT NULL,
+				provider         VARCHAR(20) NOT NULL,
+				full_name        VARCHAR(255) NOT NULL,
+				owner            VARCHAR(128) NOT NULL DEFAULT '',
+				name             VARCHAR(128) NOT NULL DEFAULT '',
+				type             VARCHAR(20) NOT NULL DEFAULT '',
+				private          TINYINT(1) NOT NULL DEFAULT 0,
+				default_branch   VARCHAR(255) NOT NULL DEFAULT 'main',
+				html_url         VARCHAR(512) NOT NULL DEFAULT '',
+				last_activity_at DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
+				type_meta        TEXT DEFAULT NULL,
+				updated_at       DATETIME NOT NULL,
 				PRIMARY KEY  (connection_id, full_name),
 				KEY provider_full_name (provider, full_name),
 				KEY type (type)
@@ -156,7 +157,7 @@ class Schema {
 	private static function tables_exist(): bool {
 		global $wpdb;
 		$prefix = $wpdb->base_prefix;
-		foreach ( [ 'gitwire_connections', 'gitwire_connection_meta', 'gitwire_installed', 'gitwire_commits', 'gitwire_repo_cache' ] as $table ) {
+		foreach ( [ 'gitwire_connections', 'gitwire_connection_meta', 'gitwire_installations', 'gitwire_commits', 'gitwire_repositories' ] as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . $table ) ) !== $prefix . $table ) {
 				return false;
@@ -179,11 +180,11 @@ class Schema {
 		$prefix = $wpdb->base_prefix;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_repo_cache" );
+		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_repositories" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_commits" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_installed" );
+		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_installations" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_connection_meta" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
