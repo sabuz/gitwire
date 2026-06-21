@@ -258,7 +258,12 @@ export default function BrowsePanel( {
 	const activeFilterCount =
 		activeTypeFilters.length + activeSourceFilters.length;
 
-	const allTypeOptions = [ 'plugin', 'theme', 'unknown' ];
+	const allTypeOptions = [
+		'plugin',
+		'block-theme',
+		'classic-theme',
+		'unknown',
+	];
 	const allSourceOptions = [
 		hasGitHub && 'github',
 		hasGitLab && 'gitlab',
@@ -421,8 +426,18 @@ export default function BrowsePanel( {
 											label: __( 'Plugin', 'gitwire' ),
 										},
 										{
-											id: 'theme',
-											label: __( 'Theme', 'gitwire' ),
+											id: 'block-theme',
+											label: __(
+												'Block Theme',
+												'gitwire'
+											),
+										},
+										{
+											id: 'classic-theme',
+											label: __(
+												'Classic Theme',
+												'gitwire'
+											),
 										},
 										{
 											id: 'unknown',
