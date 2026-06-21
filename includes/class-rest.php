@@ -2045,7 +2045,8 @@ class REST {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
 
-		$cached = self::get_cached_commits( $provider, $full_name, $record['branch'] );
+		$installed_id = $record['id'];
+		$cached       = self::get_cached_commits( $installed_id, $record['branch'] );
 		if ( null !== $cached ) {
 			return self::annotate_commits_with_fatal( $cached, $provider, $full_name, $record['branch'] );
 		}
@@ -2057,7 +2058,7 @@ class REST {
 			return $commits;
 		}
 
-		self::save_cached_commits( $provider, $full_name, $record['branch'], $commits );
+		self::save_cached_commits( $installed_id, $record['branch'], $commits );
 
 		return self::annotate_commits_with_fatal( $commits, $provider, $full_name, $record['branch'] );
 	}
@@ -2077,19 +2078,17 @@ class REST {
 	 * Returns a cached commit list from the DB, or null when not cached.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider  Git provider.
-	 * @param string $full_name Repository full name.
-	 * @param string $branch    Branch name.
+	 * @param int    $installed_id Primary key of the gitwire_installed row.
+	 * @param string $branch       Branch name.
 	 * @return array<int, array<string, mixed>>|null
 	 */
-	private static function get_cached_commits( string $provider, string $full_name, string $branch ): ?array {
+	private static function get_cached_commits( int $installed_id, string $branch ): ?array {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT data FROM ' . self::commits_table() . ' WHERE provider = %s AND full_name = %s AND branch = %s',
-				$provider,
-				$full_name,
+				'SELECT data FROM ' . self::commits_table() . ' WHERE installed_id = %d AND branch = %s',
+				$installed_id,
 				$branch
 			),
 			ARRAY_A
@@ -2105,22 +2104,20 @@ class REST {
 	 * Writes or replaces the commit cache for a repo/branch.
 	 *
 	 * @since 1.0.0
-	 * @param string                           $provider  Git provider.
-	 * @param string                           $full_name Repository full name.
-	 * @param string                           $branch    Branch name.
-	 * @param array<int, array<string, mixed>> $commits   Commit list.
+	 * @param int                              $installed_id Primary key of the gitwire_installed row.
+	 * @param string                           $branch       Branch name.
+	 * @param array<int, array<string, mixed>> $commits      Commit list.
 	 * @return void
 	 */
-	private static function save_cached_commits( string $provider, string $full_name, string $branch, array $commits ): void {
+	private static function save_cached_commits( int $installed_id, string $branch, array $commits ): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->query(
 			$wpdb->prepare(
-				'INSERT INTO ' . self::commits_table() . ' (provider, full_name, branch, data, updated_at)
-				VALUES (%s, %s, %s, %s, %d)
+				'INSERT INTO ' . self::commits_table() . ' (installed_id, branch, data, updated_at)
+				VALUES (%d, %s, %s, %d)
 				ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)',
-				$provider,
-				$full_name,
+				$installed_id,
 				$branch,
 				wp_json_encode( $commits ),
 				time()
@@ -2476,11 +2473,14 @@ class REST {
 	 * @return void
 	 */
 	private static function update_commit_history_after_pull( string $provider, string $owner, string $repo, string $branch, ?string $connection_id ): void {
-		$full_name = $owner . '/' . $repo;
-		$api       = self::make_api( $provider, $connection_id );
-		$commits   = $api->get_commits( $owner, $repo, $branch );
+		$record = Installer::get_record( $provider, $owner . '/' . $repo );
+		if ( ! $record ) {
+			return;
+		}
+		$api     = self::make_api( $provider, $connection_id );
+		$commits = $api->get_commits( $owner, $repo, $branch );
 		if ( ! is_wp_error( $commits ) ) {
-			self::save_cached_commits( $provider, $full_name, $branch, $commits );
+			self::save_cached_commits( $record['id'], $branch, $commits );
 		}
 	}
 }

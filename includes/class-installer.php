@@ -71,6 +71,7 @@ class Installer {
 		return array_merge(
 			$row,
 			[
+				'id'                => (int) ( $row['id'] ?? 0 ),
 				'owner'             => $parts[0] ?? '',
 				'repo'              => $parts[1] ?? '',
 				'installed_at'      => (int) ( $row['installed_at'] ?? 0 ),
@@ -82,23 +83,19 @@ class Installer {
 	}
 
 	/**
-	 * Deletes the commit cache for a repository.
+	 * Deletes the commit cache for an installed repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider  Git provider.
-	 * @param string $full_name Repository full name.
+	 * @param int $installed_id Primary key of the gitwire_installed row.
 	 * @return void
 	 */
-	private static function delete_commits( string $provider, string $full_name ): void {
+	private static function delete_commits( int $installed_id ): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->delete(
 			self::commits_table(),
-			[
-				'provider'  => $provider,
-				'full_name' => $full_name,
-			],
-			[ '%s', '%s' ]
+			[ 'installed_id' => $installed_id ],
+			[ '%d' ]
 		);
 	}
 
@@ -114,6 +111,10 @@ class Installer {
 	 */
 	public static function delete_record( string $provider, string $full_name ): void {
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$installed_id = (int) $wpdb->get_var(
+			$wpdb->prepare( 'SELECT id FROM ' . self::installed_table() . ' WHERE provider = %s AND full_name = %s', $provider, $full_name )
+		);
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->delete(
 			self::installed_table(),
@@ -123,7 +124,9 @@ class Installer {
 			],
 			[ '%s', '%s' ]
 		);
-		self::delete_commits( $provider, $full_name );
+		if ( $installed_id ) {
+			self::delete_commits( $installed_id );
+		}
 		self::invalidate_installed_cache();
 	}
 
