@@ -183,6 +183,11 @@ class Schema {
 		$cache     = $prefix . 'gitwire_repo_cache';
 		$installed = $prefix . 'gitwire_installed';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( $wpdb->get_var( "SHOW TABLES LIKE '$installed'" ) !== $installed ) {
+			return;
+		}
+
 		// v2.0.0 — repo cache: drop page/has_more, rename columns, add type.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$has_page = $wpdb->get_var( "SHOW COLUMNS FROM `{$cache}` LIKE 'page'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
