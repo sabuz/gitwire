@@ -1381,7 +1381,8 @@ class REST {
 
 		if ( null !== $connection_id ) {
 			$conn = Connection_Resolver::find( $connection_id );
-			if ( $conn && ( $conn['scope'] ?? 'site' ) === 'user' && (int) ( $conn['user_id'] ?? 0 ) !== get_current_user_id() ) {
+			$db_scope = $conn['scope'] ?? 'all';
+			if ( $conn && 'all' !== $db_scope && $db_scope !== (string) get_current_user_id() ) {
 				return new \WP_Error( 'forbidden', 'You do not have permission to use this connection.', [ 'status' => 403 ] );
 			}
 			// Unknown ids (public sources, stale connections) install via the public path.

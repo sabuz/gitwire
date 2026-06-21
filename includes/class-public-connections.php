@@ -1,6 +1,6 @@
 <?php
 /**
- * Manages public (no-token) browse accounts for the free plugin.
+ * Manages public (no-token) browse accounts in the unified connections table.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -13,19 +13,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Stores and retrieves public browse accounts from the custom DB table.
+ * Stores and retrieves public connections (credentials IS NULL) from the unified table.
  */
 class Public_Connections {
 
 	/**
-	 * Returns the connections table name.
+	 * Returns the unified connections table name.
 	 *
 	 * @since 1.0.0
 	 * @return string
 	 */
 	private static function table(): string {
 		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_public_connections';
+		return $wpdb->base_prefix . 'gitwire_connections';
 	}
 
 	/**
@@ -40,7 +40,7 @@ class Public_Connections {
 	}
 
 	/**
-	 * Returns all stored public connections, enriched with meta and derived fields.
+	 * Returns all public connections, enriched with meta and derived fields.
 	 *
 	 * @since 1.0.0
 	 * @return array<int, array<string, string>>
@@ -50,7 +50,7 @@ class Public_Connections {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
-			'SELECT * FROM ' . self::table() . ' ORDER BY created_at ASC',
+			'SELECT * FROM ' . self::table() . ' WHERE credentials IS NULL ORDER BY created_at ASC',
 			ARRAY_A
 		);
 
@@ -103,7 +103,7 @@ class Public_Connections {
 	}
 
 	/**
-	 * Finds a single connection by ID, or null when not found.
+	 * Finds a single public connection by ID, or null when not found.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
@@ -114,7 +114,7 @@ class Public_Connections {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE id = %s', $id ),
+			$wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE id = %s AND credentials IS NULL', $id ),
 			ARRAY_A
 		);
 
@@ -139,7 +139,7 @@ class Public_Connections {
 	}
 
 	/**
-	 * Returns the first connection for a provider, or null when none exists.
+	 * Returns the first public connection for a provider, or null when none exists.
 	 *
 	 * @since 1.0.0
 	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
@@ -151,7 +151,7 @@ class Public_Connections {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT * FROM ' . self::table() . ' WHERE provider = %s ORDER BY created_at ASC LIMIT 1',
+				'SELECT * FROM ' . self::table() . ' WHERE provider = %s AND credentials IS NULL ORDER BY created_at ASC LIMIT 1',
 				$provider
 			),
 			ARRAY_A
@@ -175,6 +175,34 @@ class Public_Connections {
 		}
 
 		return self::enrich( $row );
+	}
+
+	/**
+	 * Returns an existing public connection matching provider and identifier, or null.
+	 *
+	 * @since 3.0.0
+	 * @param string $provider   Provider key.
+	 * @param string $identifier Identifier to match.
+	 * @return array<string, string>|null
+	 */
+	public static function find_by_identifier( string $provider, string $identifier ): ?array {
+		global $wpdb;
+
+		if ( '' === $identifier ) {
+			return null;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT * FROM ' . self::table() . ' WHERE provider = %s AND identifier = %s AND credentials IS NULL LIMIT 1',
+				$provider,
+				$identifier
+			),
+			ARRAY_A
+		);
+
+		return $row ? self::enrich( $row ) : null;
 	}
 
 	/**
@@ -252,18 +280,18 @@ class Public_Connections {
 	public static function add( string $provider, string $identifier, string $gitlab_url = '' ): array {
 		global $wpdb;
 
-		$id = uniqid( 'pub_', true );
+		$id    = 'pub_' . wp_generate_uuid4();
+		$table = self::table();
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->insert(
-			self::table(),
-			[
-				'id'         => $id,
-				'provider'   => $provider,
-				'identifier' => $identifier,
-				'created_at' => current_time( 'mysql' ),
-			],
-			[ '%s', '%s', '%s', '%s' ]
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			$wpdb->prepare(
+				"INSERT INTO $table (id, provider, identifier, credentials, scope, created_at) VALUES (%s, %s, %s, NULL, 'all', %s)",
+				$id,
+				$provider,
+				$identifier,
+				current_time( 'mysql' )
+			)
 		);
 
 		if ( 'gitlab' === $provider && '' !== $gitlab_url ) {
@@ -302,7 +330,7 @@ class Public_Connections {
 	}
 
 	/**
-	 * Removes a connection and its meta by ID.
+	 * Removes a public connection and its meta by ID.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
@@ -311,8 +339,10 @@ class Public_Connections {
 	public static function delete( string $id ): bool {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$deleted = $wpdb->delete( self::table(), [ 'id' => $id ], [ '%s' ] );
+		$table = self::table();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$deleted = $wpdb->query( $wpdb->prepare( "DELETE FROM $table WHERE id = %s AND credentials IS NULL", $id ) );
 
 		if ( $deleted ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery

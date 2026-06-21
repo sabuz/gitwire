@@ -22,7 +22,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	const DB_VERSION = '2.0.0';
+	const DB_VERSION = '3.0.0';
 
 	/**
 	 * Option key used to track the installed schema version.
@@ -49,15 +49,18 @@ class Schema {
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		// Username-only (unauthenticated) connections — free plugin source of truth.
+		// Unified connection store — public (credentials IS NULL) and private (encrypted JSON).
 		dbDelta(
-			"CREATE TABLE {$prefix}gitwire_public_connections (
+			"CREATE TABLE {$prefix}gitwire_connections (
 				id VARCHAR(64) NOT NULL,
 				provider VARCHAR(20) NOT NULL,
 				identifier VARCHAR(255) NOT NULL DEFAULT '',
+				credentials TEXT NULL,
+				scope VARCHAR(20) NOT NULL DEFAULT 'all',
 				created_at DATETIME NOT NULL,
 				PRIMARY KEY  (id),
-				KEY provider (provider)
+				KEY provider (provider),
+				KEY scope (scope)
 			) $charset;"
 		);
 
@@ -154,7 +157,7 @@ class Schema {
 	private static function tables_exist(): bool {
 		global $wpdb;
 		$prefix = $wpdb->base_prefix;
-		foreach ( [ 'gitwire_public_connections', 'gitwire_connection_meta', 'gitwire_installed', 'gitwire_commits', 'gitwire_repo_cache' ] as $table ) {
+		foreach ( [ 'gitwire_connections', 'gitwire_connection_meta', 'gitwire_installed', 'gitwire_commits', 'gitwire_repo_cache' ] as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . $table ) ) !== $prefix . $table ) {
 				return false;
@@ -170,7 +173,7 @@ class Schema {
 	 * guarded by a column-existence check so it is safe to call on both fresh
 	 * installs and upgrades.
 	 *
-	 * @since 2.0.0
+	 * @since 3.0.0
 	 * @param string $prefix Table prefix.
 	 * @return void
 	 */
@@ -252,7 +255,7 @@ class Schema {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_connection_meta" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_public_connections" );
+		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_connections" );
 
 		delete_option( self::VERSION_OPTION );
 	}
