@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Handles downloading, extracting, backing up, and removing GitHub repositories
+ * Handles downloading, extracting, backing up, and removing Git repositories
  * installed as WordPress plugins or themes.
  */
 class Installer {
@@ -743,7 +743,7 @@ class Installer {
 	/**
 	 * Refreshes remote_head for all installed repos, then auto-updates those with auto_update enabled.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function run_auto_updates(): void {
@@ -831,7 +831,7 @@ class Installer {
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repo).
-	 * @param string $sha       Short commit SHA (7 characters).
+	 * @param string $sha       Full commit SHA.
 	 * @return void
 	 */
 	public static function set_head( string $provider, string $full_name, string $sha ): void {
@@ -1349,7 +1349,6 @@ class Installer {
 			'connection_id' => $connection_id,
 			'install_path'  => $install_path,
 			'plugin_file'   => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
-			'owner'         => $owner,
 			'installed_at'  => current_time( 'mysql' ),
 			'updated_at'    => current_time( 'mysql' ),
 			'slug_renamed'  => $slug_renamed,

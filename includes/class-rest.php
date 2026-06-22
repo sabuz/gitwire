@@ -1979,7 +1979,7 @@ class REST {
 	/**
 	 * Saves auto-update settings for an installed repository.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>|\WP_Error Updated values or WP_Error on failure.
 	 */

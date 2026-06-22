@@ -284,8 +284,8 @@ class Repo_Cache {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::cache_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				' (connection_id, provider, owner, name, full_name, default_branch, type, type_meta)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+				' (connection_id, provider, owner, name, full_name, default_branch, type, type_meta, updated_at)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE type = VALUES(type), type_meta = VALUES(type_meta)',
 				'',
 				$provider,
@@ -294,7 +294,8 @@ class Repo_Cache {
 				$full_name,
 				'',
 				$type,
-				$meta_json
+				$meta_json,
+				current_time( 'mysql' )
 			)
 		);
 	}
