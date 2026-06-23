@@ -177,7 +177,7 @@ class GitHub_API implements Git_Provider_Interface {
 		return array_map(
 			static function ( $c ) {
 				return [
-					'sha'     => substr( $c['sha'], 0, 7 ),
+					'sha'     => $c['sha'],
 					'message' => explode( "\n", trim( $c['commit']['message'] ) )[0],
 					'author'  => $c['commit']['author']['name'] ?? '',
 					'date'    => $c['commit']['author']['date'] ?? '',

@@ -248,9 +248,8 @@ class Bitbucket_API implements Git_Provider_Interface {
 
 		return array_map(
 			static function ( $c ) {
-				$hash = $c['hash'] ?? '';
 				return [
-					'sha'     => substr( $hash, 0, 7 ),
+					'sha'     => $c['hash'] ?? '',
 					'message' => $c['message'] ?? '',
 					'author'  => $c['author']['user']['display_name'] ?? $c['author']['raw'] ?? '',
 					'date'    => $c['date'] ?? '',

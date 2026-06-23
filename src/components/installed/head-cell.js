@@ -58,8 +58,8 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 	}, [ item, onRefresh ] );
 
 	const displaySha = item.activation_pending
-		? item.head || '···'
-		: item.head || '—';
+		? ( item.head ? item.head.slice( 0, 7 ) : '···' )
+		: ( item.head ? item.head.slice( 0, 7 ) : '—' );
 
 	return (
 		<Flex align="center" gap={ 1 } justify="flex-start">

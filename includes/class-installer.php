@@ -858,7 +858,7 @@ class Installer {
 	 * @param string                 $owner  Repository owner.
 	 * @param string                 $repo   Repository name.
 	 * @param string                 $branch Branch name.
-	 * @return string|null Short SHA or null when unavailable.
+	 * @return string|null Full 40-char SHA or null when unavailable.
 	 */
 	public static function fetch_remote_head_sha( Git_Provider_Interface $api, string $owner, string $repo, string $branch ): ?string {
 		$commits = $api->get_commits( $owner, $repo, $branch, 1 );
