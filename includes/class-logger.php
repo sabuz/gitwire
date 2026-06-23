@@ -87,15 +87,13 @@ class Logger {
 		if ( ! file_exists( $this->log_file ) ) {
 			return [];
 		}
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$contents = file_get_contents( $this->log_file );
-		if ( ! is_string( $contents ) || '' === trim( $contents ) ) {
-			return [];
-		}
+
+		$file = new \SplFileObject( $this->log_file, 'r' );
+		$file->setFlags( \SplFileObject::READ_AHEAD | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE );
 
 		$entries = [];
-		foreach ( array_filter( explode( PHP_EOL, trim( $contents ) ) ) as $line ) {
-			$entry = self::parse_line( $line );
+		foreach ( $file as $line ) {
+			$entry = self::parse_line( (string) $line );
 			if ( null === $entry ) {
 				continue;
 			}
@@ -114,6 +112,8 @@ class Logger {
 			}
 			$entries[] = $entry;
 		}
+
+		unset( $file );
 
 		return array_reverse( $entries );
 	}
@@ -164,22 +164,35 @@ class Logger {
 		if ( ! file_exists( $this->log_file ) ) {
 			return;
 		}
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$contents = file_get_contents( $this->log_file );
-		if ( ! is_string( $contents ) ) {
+
+		$cutoff = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
+		$tmp    = $this->log_file . '.tmp';
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+		$out = fopen( $tmp, 'w' );
+		if ( ! $out ) {
 			return;
 		}
 
-		$cutoff = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
-		$kept   = [];
-		foreach ( array_filter( explode( PHP_EOL, trim( $contents ) ) ) as $line ) {
-			$entry = self::parse_line( $line );
+		$file = new \SplFileObject( $this->log_file, 'r' );
+		$file->setFlags( \SplFileObject::READ_AHEAD | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE );
+
+		foreach ( $file as $line ) {
+			$entry = self::parse_line( (string) $line );
 			if ( null === $entry || substr( $entry['timestamp'], 0, 10 ) >= $cutoff ) {
-				$kept[] = $line;
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+				fwrite( $out, $line . PHP_EOL );
 			}
 		}
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		file_put_contents( $this->log_file, $kept ? implode( PHP_EOL, $kept ) . PHP_EOL : '', LOCK_EX );
+
+		unset( $file );
+
+		if ( fclose( $out ) ) {
+			rename( $tmp, $this->log_file );
+		} else {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_unlink
+			unlink( $tmp );
+		}
 	}
 
 	/**
