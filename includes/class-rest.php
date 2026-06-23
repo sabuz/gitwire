@@ -1703,7 +1703,7 @@ class REST {
 			return [ 'detections' => $results ];
 		}
 
-		$repositories = array_slice( $repositories, 0, 50 );
+		$repositories = array_slice( $repositories, 0, 10 );
 
 		foreach ( $repositories as $entry ) {
 			if ( ! is_array( $entry ) ) {
