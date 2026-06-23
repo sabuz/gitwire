@@ -38,7 +38,7 @@ class Admin {
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
 
 		// Native list repo labels.
-		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
+		add_filter( 'plugin_action_links', [ self::class, 'label_managed_plugins' ], 10, 2 );
 		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'label_managed_themes' ] );
 	}
 
@@ -264,26 +264,26 @@ class Admin {
 	}
 
 	/**
-	 * Appends a [Gitwire] label to managed plugin names in the plugins list table.
+	 * Adds a [Gitwire] badge to managed plugin action links in the plugins list table.
 	 *
 	 * @since 1.0.0
-	 * @param array<string, array<string, string>> $all_plugins All installed plugins keyed by plugin file.
-	 * @return array<string, array<string, string>>
+	 * @param array<string, string> $actions     Existing action links for the plugin.
+	 * @param string                $plugin_file Plugin file path relative to wp-content/plugins.
+	 * @return array<string, string>
 	 */
-	public static function label_managed_plugins( array $all_plugins ): array {
+	public static function label_managed_plugins( array $actions, string $plugin_file ): array {
 		if ( ! ( Settings::get_raw()['show_repo_label'] ?? true ) ) {
-			return $all_plugins;
+			return $actions;
 		}
 
 		foreach ( Installer::get_installed() as $rec ) {
-			$file = $rec['plugin_file'] ?? '';
-			if ( '' === $file || ! isset( $all_plugins[ $file ] ) ) {
-				continue;
+			if ( ( $rec['plugin_file'] ?? '' ) === $plugin_file ) {
+				$actions['gitwire-badge'] = '<span style="color:#666">[Gitwire]</span>';
+				break;
 			}
-			$all_plugins[ $file ]['Name'] .= ' [Gitwire]';
 		}
 
-		return $all_plugins;
+		return $actions;
 	}
 
 	/**
