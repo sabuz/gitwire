@@ -1042,6 +1042,7 @@ class REST {
 		$prev_update_interval = $prev_settings['update_check_interval'] ?? 'halfhourly';
 		$merged               = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
+		Settings::invalidate_cache();
 
 		$now_logging = (bool) ( $merged['enable_logging'] ?? false );
 		if ( ! $was_logging && $now_logging ) {

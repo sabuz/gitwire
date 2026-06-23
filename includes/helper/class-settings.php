@@ -18,13 +18,31 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Settings {
 
 	/**
+	 * Request-scope cache for get_raw().
+	 *
+	 * @var array<string, mixed>|null
+	 */
+	private static ?array $cache = null;
+
+	/**
 	 * Returns raw settings from the database.
 	 *
 	 * @since 1.0.0
 	 * @return array<string, mixed>
 	 */
 	public static function get_raw(): array {
-		return (array) get_option( 'gitwire_settings', [] );
+		self::$cache ??= (array) get_option( 'gitwire_settings', [] );
+		return self::$cache;
+	}
+
+	/**
+	 * Clears the request-scope cache after a settings save.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function invalidate_cache(): void {
+		self::$cache = null;
 	}
 
 	/**

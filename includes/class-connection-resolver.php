@@ -20,6 +20,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Connection_Resolver {
 
 	/**
+	 * Request-scope cache for all_rows().
+	 *
+	 * @var array<int, array<string, mixed>>|null
+	 */
+	private static ?array $rows_cache = null;
+
+	/**
+	 * Clears the request-scope cache after any write operation.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function invalidate_cache(): void {
+		self::$rows_cache = null;
+	}
+
+	/**
 	 * Returns all stored connection records.
 	 *
 	 * @since 1.0.0
@@ -146,6 +163,10 @@ class Connection_Resolver {
 	 * @return array<int, array<string, mixed>>
 	 */
 	private static function all_rows(): array {
+		if ( null !== self::$rows_cache ) {
+			return self::$rows_cache;
+		}
+
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -154,6 +175,7 @@ class Connection_Resolver {
 			ARRAY_A
 		);
 
-		return $rows ?: [];
+		self::$rows_cache = $rows ?: [];
+		return self::$rows_cache;
 	}
 }
