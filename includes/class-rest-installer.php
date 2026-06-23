@@ -234,7 +234,7 @@ class REST_Installer {
 					'type'     => [
 						'type'    => 'string',
 						'default' => 'plugin',
-						'enum'    => [ 'plugin', 'theme' ],
+						'enum'    => [ 'plugin', 'theme', 'block-theme', 'classic-theme' ],
 					],
 					'provider' => [
 						'type'    => 'string',
@@ -261,7 +261,7 @@ class REST_Installer {
 					'type' => [
 						'type'    => 'string',
 						'default' => 'plugin',
-						'enum'    => [ 'plugin', 'theme' ],
+						'enum'    => [ 'plugin', 'theme', 'block-theme', 'classic-theme' ],
 					],
 				],
 			]
@@ -388,9 +388,6 @@ class REST_Installer {
 		$replace    = (bool) $req->get_param( 'replace' );
 		$force_type = (bool) $req->get_param( 'force_type' );
 
-		if ( ! in_array( $type, [ 'plugin', 'theme' ], true ) ) {
-			return new \WP_Error( 'invalid_type', 'Type must be plugin or theme.', [ 'status' => 400 ] );
-		}
 		if ( ! $owner || ! $repo ) {
 			return new \WP_Error( 'missing_params', 'Missing owner or repo.', [ 'status' => 400 ] );
 		}
@@ -437,7 +434,8 @@ class REST_Installer {
 				);
 			}
 
-			if ( $detected_type !== $type ) {
+			$is_theme      = static fn( string $t ) => in_array( $t, [ 'theme', 'block-theme', 'classic-theme' ], true );
+			if ( $is_theme( $detected_type ) !== $is_theme( $type ) ) {
 				return new \WP_Error(
 					'type_mismatch',
 					sprintf(
@@ -460,7 +458,7 @@ class REST_Installer {
 			$provider = 'github';
 		}
 
-		$method    = 'theme' === $type ? 'install_theme' : 'install_plugin';
+		$method    = in_array( $type, [ 'theme', 'block-theme', 'classic-theme' ], true ) ? 'install_theme' : 'install_plugin';
 		$is_update = null !== Installer::get_record( $provider, $owner . '/' . $repo );
 		$result    = Installer::$method( $owner, $repo, $branch, $slug, $provider, $replace, $connection_id );
 
@@ -494,7 +492,7 @@ class REST_Installer {
 		$slug = sanitize_file_name( $req->get_param( 'slug' ) );
 		$type = $req->get_param( 'type' ) ?? 'plugin';
 
-		$path = 'theme' === $type
+		$path = in_array( $type, [ 'theme', 'block-theme', 'classic-theme' ], true )
 			? get_theme_root() . '/' . $slug
 			: WP_PLUGIN_DIR . '/' . $slug;
 
