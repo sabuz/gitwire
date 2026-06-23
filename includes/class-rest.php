@@ -1545,14 +1545,6 @@ class REST {
 		$records  = Installer::get_installed();
 		$orphaned = [];
 
-		$pending       = self::get_running_task();
-		$pending_key   = '';
-		$pending_guard = is_array( $pending )
-			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
-		if ( $pending_guard ) {
-			$pending_key = ( $pending['provider'] ?? 'github' ) . ':' . ( $pending['full_name'] ?? '' );
-		}
-
 		foreach ( $records as $key => &$rec ) {
 			if ( empty( $rec['provider'] ) || ! in_array( $rec['provider'], [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
 				$rec['provider'] = 'github';
@@ -1575,31 +1567,6 @@ class REST {
 					Installer::set_plugin_file( $rec['provider'] ?? 'github', $rec['full_name'] ?? '', $found );
 				}
 			}
-
-			if ( empty( $rec['head'] ) && ! empty( $rec['owner'] ) && ! empty( $rec['repo'] ) && ! empty( $rec['branch'] ) ) {
-				$record_key = ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? ( $rec['owner'] . '/' . $rec['repo'] ) );
-				if ( $pending_guard && $record_key === $pending_key ) {
-					continue;
-				}
-
-				$provider  = $rec['provider'] ?? 'github';
-				$api       = self::make_api( $provider, $rec['connection_id'] ?? null );
-				$commits   = $api->get_commits( $rec['owner'], $rec['repo'], $rec['branch'], 1 );
-				$full_name = $rec['full_name'] ?? ( $rec['owner'] . '/' . $rec['repo'] );
-				if ( ! is_wp_error( $commits ) && ! empty( $commits[0]['sha'] ) ) {
-					$rec['head'] = $commits[0]['sha'];
-					Installer::set_head( $provider, $full_name, $rec['head'] );
-				}
-			}
-
-			$record_key = ( $rec['provider'] ?? 'github' ) . ':' . ( $rec['full_name'] ?? '' );
-			if ( ! $pending_guard || $record_key !== $pending_key ) {
-				$remote_head = self::fetch_remote_head( $rec );
-				if ( $remote_head && $remote_head !== ( $rec['remote_head'] ?? '' ) ) {
-					$rec['remote_head'] = $remote_head;
-					Installer::set_remote_head( $rec['provider'] ?? 'github', $rec['full_name'] ?? '', $remote_head );
-				}
-			}
 		}
 		unset( $rec );
 
@@ -1616,7 +1583,7 @@ class REST {
 	 * @param array<string, array<string, mixed>> $records Raw installed records.
 	 * @return array<string, array<string, mixed>>
 	 */
-	private static function annotate_installed( array $records ): array {
+	public static function annotate_installed( array $records ): array {
 		if ( ! function_exists( 'is_plugin_active' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}

@@ -197,15 +197,15 @@ class Admin {
 
 		wp_set_script_translations( 'gitwire-app', 'gitwire', GITWIRE_DIR . 'languages' );
 
-		$settings = Settings::get_public();
+		$settings    = Settings::get_public();
 		Error_Handler::clear_stale_activation_guard();
-		$installed_result = REST::get_installed();
-		$installed        = $installed_result['installed'];
-		$orphaned         = $installed_result['orphaned'];
-		$pending_msg      = get_option( 'gitwire_pending_message' );
+		$pending_msg = get_option( 'gitwire_pending_message' );
 		if ( $pending_msg ) {
 			delete_option( 'gitwire_pending_message' );
 		}
+		// Boot data uses only DB records — orphan detection runs via REST on app init.
+		$installed = REST::annotate_installed( Installer::get_installed() );
+		$orphaned  = [];
 
 		// Derive initial tab from path param or setup status.
 		$path = sanitize_key( $_GET['path'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
