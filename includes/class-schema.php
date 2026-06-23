@@ -22,7 +22,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	const DB_VERSION = '1.2.0';
+	const DB_VERSION = '1.0.0';
 
 	/**
 	 * Option key used to track the installed schema version.
