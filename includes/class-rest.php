@@ -487,6 +487,22 @@ class REST {
 	}
 
 	/**
+	 * Returns a WP_Error if the current user cannot use the given connection, null otherwise.
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_id Connection ID to check.
+	 * @return \WP_Error|null
+	 */
+	private static function assert_connection_scope( string $connection_id ): ?\WP_Error {
+		$conn     = Connection_Resolver::find( $connection_id );
+		$db_scope = $conn['scope'] ?? 'all';
+		if ( $conn && 'all' !== $db_scope && $db_scope !== (string) get_current_user_id() ) {
+			return new \WP_Error( 'forbidden', 'You do not have permission to use this connection.', [ 'status' => 403 ] );
+		}
+		return null;
+	}
+
+	/**
 	 * Returns all public (no-token) browse connections.
 	 *
 	 * @since 1.0.0
@@ -1294,7 +1310,15 @@ class REST {
 		$repo          = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider      = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
-		$result        = self::make_api( $provider, '' !== $connection_id ? $connection_id : null )->get_branches( $owner, $repo );
+
+		if ( '' !== $connection_id ) {
+			$scope_error = self::assert_connection_scope( $connection_id );
+			if ( null !== $scope_error ) {
+				return $scope_error;
+			}
+		}
+
+		$result = self::make_api( $provider, '' !== $connection_id ? $connection_id : null )->get_branches( $owner, $repo );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -1376,13 +1400,12 @@ class REST {
 		$connection_id = '' !== $connection_id ? $connection_id : null;
 
 		if ( null !== $connection_id ) {
-			$conn = Connection_Resolver::find( $connection_id );
-			$db_scope = $conn['scope'] ?? 'all';
-			if ( $conn && 'all' !== $db_scope && $db_scope !== (string) get_current_user_id() ) {
-				return new \WP_Error( 'forbidden', 'You do not have permission to use this connection.', [ 'status' => 403 ] );
+			$scope_error = self::assert_connection_scope( $connection_id );
+			if ( null !== $scope_error ) {
+				return $scope_error;
 			}
 			// Unknown ids (public sources, stale connections) install via the public path.
-			if ( ! $conn ) {
+			if ( ! Connection_Resolver::find( $connection_id ) ) {
 				$connection_id = null;
 			}
 		}
@@ -1740,6 +1763,19 @@ class REST {
 			if ( is_array( $cached ) ) {
 				$results[ $key ] = $cached;
 				continue;
+			}
+
+			if ( null !== $connection_id ) {
+				$scope_error = self::assert_connection_scope( $connection_id );
+				if ( null !== $scope_error ) {
+					$results[ $key ] = [
+						'type'       => 'unknown',
+						'confidence' => 'none',
+						'name'       => '',
+						'error_code' => 'forbidden',
+					];
+					continue;
+				}
 			}
 
 			$result = self::detect_type_for_repo( $provider, $owner, $repo, $branch, $connection_id );
