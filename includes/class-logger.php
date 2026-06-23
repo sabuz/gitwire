@@ -88,7 +88,11 @@ class Logger {
 			return [];
 		}
 
-		$file = new \SplFileObject( $this->log_file, 'r' );
+		try {
+			$file = new \SplFileObject( $this->log_file, 'r' );
+		} catch ( \RuntimeException $e ) {
+			return [];
+		}
 		$file->setFlags( \SplFileObject::READ_AHEAD | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE );
 
 		$entries = [];
@@ -174,7 +178,14 @@ class Logger {
 			return;
 		}
 
-		$file = new \SplFileObject( $this->log_file, 'r' );
+		try {
+			$file = new \SplFileObject( $this->log_file, 'r' );
+		} catch ( \RuntimeException $e ) {
+			fclose( $out );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_unlink
+			unlink( $tmp );
+			return;
+		}
 		$file->setFlags( \SplFileObject::READ_AHEAD | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE );
 
 		foreach ( $file as $line ) {
