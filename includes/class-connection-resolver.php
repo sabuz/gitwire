@@ -159,7 +159,7 @@ class Connection_Resolver {
 	/**
 	 * Queries all rows from the unified connections table.
 	 *
-	 * @since 3.0.0
+	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>>
 	 */
 	private static function all_rows(): array {
