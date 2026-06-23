@@ -1182,6 +1182,71 @@ class Installer {
 	}
 
 	/**
+	 * Acquires a per-repository install lock then delegates to execute_run().
+	 *
+	 * @since 1.0.0
+	 * @param string      $owner         Git owner or organisation.
+	 * @param string      $repo          Repository name.
+	 * @param string      $branch        Branch, tag, or SHA.
+	 * @param string      $slug          Directory slug for the installation.
+	 * @param string      $install_path  Absolute filesystem path for the installation.
+	 * @param string      $type          Installation type: "plugin" or "theme".
+	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
+	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
+	 * @return array<string, mixed>|\WP_Error Installed record on success, WP_Error on failure.
+	 */
+	private static function run(
+		string $owner,
+		string $repo,
+		string $branch,
+		string $slug,
+		string $install_path,
+		string $type,
+		string $provider = 'github',
+		bool $replace = false,
+		?string $connection_id = null
+	): array|\WP_Error {
+		$full_name = $owner . '/' . $repo;
+
+		if ( ! self::acquire_install_lock( $provider, $full_name ) ) {
+			return new \WP_Error( 'gitwire_locked', 'Another install is already in progress for this repository.', [ 'status' => 409 ] );
+		}
+
+		try {
+			return self::execute_run( $owner, $repo, $branch, $slug, $install_path, $type, $provider, $replace, $connection_id );
+		} finally {
+			self::release_install_lock( $provider, $full_name );
+		}
+	}
+
+	/**
+	 * Acquires a transient-based install lock for a repository.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @return bool True when the lock was acquired, false when already held.
+	 */
+	private static function acquire_install_lock( string $provider, string $full_name ): bool {
+		$key = 'gitwire_lock_' . md5( $provider . ':' . $full_name );
+		return wp_cache_add( $key, 1, 'gitwire_locks', 5 * MINUTE_IN_SECONDS );
+	}
+
+	/**
+	 * Releases the install lock for a repository.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @return void
+	 */
+	private static function release_install_lock( string $provider, string $full_name ): void {
+		$key = 'gitwire_lock_' . md5( $provider . ':' . $full_name );
+		wp_cache_delete( $key, 'gitwire_locks' );
+	}
+
+	/**
 	 * Core install routine: downloads, backs up, extracts, and records a repository.
 	 *
 	 * @since 1.0.0
@@ -1196,7 +1261,7 @@ class Installer {
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
 	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
 	 */
-	private static function run(
+	private static function execute_run(
 		string $owner,
 		string $repo,
 		string $branch,
