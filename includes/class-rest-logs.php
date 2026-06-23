@@ -136,6 +136,7 @@ class REST_Logs {
 	public static function clear_logs(): array {
 		$cleared = Logger::get_instance()->clear();
 		if ( $cleared ) {
+			Logger::purge_log_dir();
 			Logger::log( 'Log cleared' );
 		}
 		return [ 'cleared' => $cleared ];

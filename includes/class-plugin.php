@@ -113,6 +113,7 @@ final class Plugin {
 	public function run_maintenance(): void {
 		REST_Installer::sync_installed();
 		Installer::purge_orphaned_backups();
+		Logger::purge_log_dir();
 	}
 
 	/**

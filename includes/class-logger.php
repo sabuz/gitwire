@@ -50,7 +50,8 @@ class Logger {
 	private function __construct() {
 		$upload_dir     = wp_upload_dir();
 		$dir            = $upload_dir['basedir'] . '/gitwire';
-		$this->log_file = $dir . '/activity.log';
+		$hash           = substr( hash( 'sha256', wp_salt( 'auth' ) . 'gitwire-log' ), 0, 12 );
+		$this->log_file = $dir . '/' . $hash . '.log';
 		$this->ensure_dir( $dir );
 	}
 
@@ -223,6 +224,45 @@ class Logger {
 			'actor'     => '' !== $m[3] ? $m[3] : 'system',
 			'message'   => $m[4],
 		];
+	}
+
+	/**
+	 * Called from the maintenance cron to clean up the log directory.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function purge_log_dir(): void {
+		$instance = self::get_instance();
+		$instance->purge_stale_log_files( dirname( $instance->log_file ) );
+	}
+
+	/**
+	 * Removes anything from the log directory that should not be there.
+	 *
+	 * Keeps only index.html and the current log file. Everything else — stale log
+	 * files from a salt rotation, leftover .tmp files from interrupted trims, any
+	 * unexpected files — is deleted. Empty subdirectories are removed; non-empty
+	 * ones are left alone.
+	 *
+	 * @since 1.0.0
+	 * @param string $dir Absolute path to the log directory.
+	 * @return void
+	 */
+	private function purge_stale_log_files( string $dir ): void {
+		$keep  = [ 'index.html', basename( $this->log_file ) ];
+		$files = glob( $dir . '/*' );
+		if ( ! $files ) {
+			return;
+		}
+		foreach ( $files as $file ) {
+			if ( is_dir( $file ) ) {
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				@rmdir( $file );
+			} elseif ( ! in_array( basename( $file ), $keep, true ) ) {
+				wp_delete_file( $file );
+			}
+		}
 	}
 
 	/**
