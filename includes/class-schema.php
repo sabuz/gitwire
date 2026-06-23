@@ -138,10 +138,6 @@ class Schema {
 			) $charset;"
 		);
 
-		// 1.2.0: rename installations.slug → installations.name.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "ALTER TABLE {$prefix}gitwire_installations CHANGE COLUMN slug name VARCHAR(255) NOT NULL DEFAULT ''" );
-
 		update_option( self::VERSION_OPTION, self::DB_VERSION, false );
 	}
 
