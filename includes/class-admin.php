@@ -207,7 +207,7 @@ class Admin {
 			delete_option( 'gitwire_pending_message' );
 		}
 		// Boot data uses only DB records — orphan detection runs via REST on app init.
-		$installed = REST::annotate_installed( Installer::get_installed() );
+		$installed = REST_Installer::annotate_installed( Installer::get_installed() );
 		$orphaned  = [];
 
 		// Derive initial tab from path param or setup status.
@@ -228,7 +228,7 @@ class Admin {
 				[
 					'nonce'                => wp_create_nonce( 'wp_rest' ),
 					'public_connections'   => Public_Connections::all(),
-					'connections_metadata' => REST::get_connection_cache(),
+					'connections_metadata' => REST_Connection_Cache::get_connection_cache(),
 					'icon_url'             => GITWIRE_URL . 'assets/images/icon.svg',
 					'disconnected_url'     => GITWIRE_URL . 'assets/images/cloud-alert.svg',
 					'not_found_url'        => GITWIRE_URL . 'assets/images/folder-x.svg',
