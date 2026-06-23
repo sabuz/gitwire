@@ -157,14 +157,14 @@ class REST_Repositories {
 		}
 
 		$connection_ids = array_column( $connections, 'id' );
-		$cached         = Repository_Cache::get_repositories( $connection_ids, $offset, $search );
+		$cached         = Repositories::get_repositories( $connection_ids, $offset, $search );
 
 		if ( null === $cached ) {
 			// Seed cache with page 1 from each connection on first browse.
 			foreach ( $connections as $conn ) {
-				Repository_Cache::fetch_repositories( $conn['provider'], 1, $conn['id'] );
+				Repositories::fetch_repositories( $conn['provider'], 1, $conn['id'] );
 			}
-			$cached = Repository_Cache::get_repositories( $connection_ids, $offset, $search );
+			$cached = Repositories::get_repositories( $connection_ids, $offset, $search );
 		}
 
 		if ( null === $cached ) {
@@ -409,7 +409,7 @@ class REST_Repositories {
 
 		// Only use cache for unauthenticated lookups; a specific connection may access private repositories.
 		if ( '' === $connection_id ) {
-			$cached = Repository_Cache::get_repository_type( $provider, $owner, $repo, $branch );
+			$cached = Repositories::get_repository_type( $provider, $owner, $repo, $branch );
 			if ( is_array( $cached ) ) {
 				return $cached;
 			}
@@ -431,7 +431,7 @@ class REST_Repositories {
 		}
 
 		if ( '' === $connection_id ) {
-			Repository_Cache::set_repository_type( $provider, $owner, $repo, $branch, $result );
+			Repositories::set_repository_type( $provider, $owner, $repo, $branch, $result );
 		}
 
 		return $result;
@@ -475,7 +475,7 @@ class REST_Repositories {
 			}
 
 			$key    = $provider . ':' . $owner . '/' . $repo;
-			$cached = Repository_Cache::get_repository_type( $provider, $owner, $repo, $branch );
+			$cached = Repositories::get_repository_type( $provider, $owner, $repo, $branch );
 			if ( is_array( $cached ) ) {
 				$results[ $key ] = $cached;
 				continue;
@@ -508,7 +508,7 @@ class REST_Repositories {
 				continue;
 			}
 
-			Repository_Cache::set_repository_type( $provider, $owner, $repo, $branch, $result );
+			Repositories::set_repository_type( $provider, $owner, $repo, $branch, $result );
 			$results[ $key ] = $result;
 		}
 
@@ -531,7 +531,7 @@ class REST_Repositories {
 					unset( $repo['type_meta'] );
 					return $repo;
 				}
-				$detection = Repository_Cache::get_repository_type(
+				$detection = Repositories::get_repository_type(
 					$repo['provider'] ?? '',
 					$repo['owner'] ?? '',
 					$repo['name'] ?? '',
@@ -554,7 +554,7 @@ class REST_Repositories {
 	 * @return array<string, bool> Confirmation payload.
 	 */
 	public static function clear_cache(): array {
-		Repository_Cache::clear_all();
+		Repositories::clear_all();
 		return [ 'cleared' => true ];
 	}
 

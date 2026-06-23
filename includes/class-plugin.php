@@ -58,7 +58,7 @@ final class Plugin {
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] );
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
 		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
-		add_action( 'gitwire_refresh_repositories', [ Repository_Cache::class, 'scheduled_refresh' ] );
+		add_action( 'gitwire_refresh_repositories', [ Repositories::class, 'scheduled_refresh' ] );
 		add_action( 'gitwire_refresh_connections', [ REST_Connection_Cache::class, 'refresh_public_connections' ] );
 		add_action( 'gitwire_update_check', [ Installer::class, 'run_auto_updates' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
@@ -285,7 +285,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function deactivate(): void {
-		Repository_Cache::clear_all();
+		Repositories::clear_all();
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
 		wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );

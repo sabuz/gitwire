@@ -13,13 +13,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Cache for repository lists and type detections.
+ * Data layer for the gitwire_repositories table.
  *
- * Both are stored in the gitwire_repositories table — one row per repo per connection.
- * Cron owns freshness; reads return whatever is in the table regardless of age.
- * updated_at is a cron-cycle marker used only for stale-row cleanup after each refresh.
+ * One row per repo per connection. Cron owns freshness; reads return whatever is in
+ * the table regardless of age. updated_at is a cron-cycle marker used only for
+ * stale-row cleanup after each refresh.
  */
-class Repository_Cache {
+class Repositories {
 
 	/**
 	 * Returns the repo cache table name.
