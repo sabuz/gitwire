@@ -2,7 +2,7 @@ import { useReducer, useRef, useCallback } from '@wordpress/element';
 
 import * as api from '../api';
 
-const BATCH_SIZE = 25;
+const BATCH_SIZE = 10;
 
 /**
  * @param {string} repo Repository object with provider and full_name.
@@ -61,7 +61,7 @@ export function useRepositoryDetection() {
 						repo: repo.name,
 						branch: repo.default_branch,
 						provider: repo.provider,
-						connection_id: repo.connectionId || '',
+						connection_id: repo.connection_id || '',
 					} ) )
 				);
 				dispatch( { type: 'set_batch', payload: batch } );

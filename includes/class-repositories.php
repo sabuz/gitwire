@@ -278,26 +278,38 @@ class Repositories {
 			[ '%s', '%s' ]
 		);
 
-		// Upsert a connection-agnostic row so get_repository_type() hits the table even when
-		// the repo was never listed in the browse panel (e.g. direct URL import).
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->query(
+		// Only insert the connection-agnostic fallback row when no real connection row exists yet
+		// (e.g. direct URL import before the repo has appeared in the browse panel).
+		// The UPDATE above already stamped type/type_meta onto any existing real rows.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$has_real_row = (bool) $wpdb->get_var(
 			$wpdb->prepare(
-				'INSERT INTO ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				' (connection_id, provider, owner, name, full_name, default_branch, type, type_meta, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-				ON DUPLICATE KEY UPDATE type = VALUES(type), type_meta = VALUES(type_meta)',
-				'',
+				'SELECT 1 FROM ' . self::repositories_table() . " WHERE provider = %s AND full_name = %s AND connection_id != '' LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				$provider,
-				$owner,
-				$repo,
-				$full_name,
-				'',
-				$type,
-				$meta_json,
-				current_time( 'mysql' )
+				$full_name
 			)
 		);
+
+		if ( ! $has_real_row ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->query(
+				$wpdb->prepare(
+					'INSERT INTO ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					' (connection_id, provider, owner, name, full_name, default_branch, type, type_meta, updated_at)
+					VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+					ON DUPLICATE KEY UPDATE type = VALUES(type), type_meta = VALUES(type_meta)',
+					'',
+					$provider,
+					$owner,
+					$repo,
+					$full_name,
+					'',
+					$type,
+					$meta_json,
+					current_time( 'mysql' )
+				)
+			);
+		}
 	}
 
 	/**
