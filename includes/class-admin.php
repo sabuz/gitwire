@@ -38,7 +38,7 @@ class Admin {
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
 
 		// Native list repo labels.
-		add_filter( 'plugin_action_links', [ self::class, 'label_managed_plugins' ], 10, 2 );
+		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
 		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'label_managed_themes' ] );
 
 		// Settings link in the plugins list table.
@@ -280,26 +280,30 @@ class Admin {
 	}
 
 	/**
-	 * Adds a [Gitwire] badge to managed plugin action links in the plugins list table.
+	 * Appends a [Gitwire] label to managed plugin names in the plugins list table.
 	 *
 	 * @since 1.0.0
-	 * @param array<string, string> $actions     Existing action links for the plugin.
-	 * @param string                $plugin_file Plugin file path relative to wp-content/plugins.
-	 * @return array<string, string>
+	 * @param array<string, array<string, string>> $all_plugins All installed plugins keyed by plugin file.
+	 * @return array<string, array<string, string>>
 	 */
-	public static function label_managed_plugins( array $actions, string $plugin_file ): array {
+	public static function label_managed_plugins( array $all_plugins ): array {
+		global $pagenow;
+		if ( 'plugins.php' !== $pagenow ) {
+			return $all_plugins;
+		}
 		if ( ! ( Settings::get_raw()['show_repo_label'] ?? true ) ) {
-			return $actions;
+			return $all_plugins;
 		}
 
 		foreach ( Installer::get_installed() as $rec ) {
-			if ( ( $rec['plugin_file'] ?? '' ) === $plugin_file ) {
-				$actions['gitwire-badge'] = '<span style="color:#666">[Gitwire]</span>';
-				break;
+			$file = $rec['plugin_file'] ?? '';
+			if ( '' === $file || ! isset( $all_plugins[ $file ] ) ) {
+				continue;
 			}
+			$all_plugins[ $file ]['Name'] .= ' [Gitwire]';
 		}
 
-		return $actions;
+		return $all_plugins;
 	}
 
 	/**
@@ -316,7 +320,7 @@ class Admin {
 
 		$slugs = [];
 		foreach ( Installer::get_installed() as $rec ) {
-			if ( 'theme' === ( $rec['type'] ?? '' ) && '' !== ( $rec['slug'] ?? '' ) ) {
+			if ( in_array( $rec['type'] ?? '', [ 'theme', 'block-theme', 'classic-theme' ], true ) && '' !== ( $rec['slug'] ?? '' ) ) {
 				$slugs[ $rec['slug'] ] = true;
 			}
 		}
