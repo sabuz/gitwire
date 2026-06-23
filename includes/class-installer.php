@@ -509,29 +509,13 @@ class Installer {
 				require_once ABSPATH . 'wp-admin/includes/plugin.php';
 			}
 
-			$plugin_file = $rec['plugin_file'] ?? null;
-
-			// Self-heal: re-scan when file is missing or path is stale/wrong.
-			if ( ! $plugin_file || ! file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
-				if ( ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
-					$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
-					if ( $plugin_file ) {
-						global $wpdb;
-						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-						$wpdb->update(
-							self::installed_table(),
-							[ 'plugin_file' => $plugin_file ],
-							[
-								'provider'  => $provider,
-								'full_name' => $full_name,
-							],
-							[ '%s' ],
-							[ '%s', '%s' ]
-						);
-						self::invalidate_installed_cache();
-					}
-				}
-			}
+			$plugin_file = self::heal_plugin_file(
+				$provider,
+				$full_name,
+				$rec['install_path'] ?? '',
+				$rec['slug'] ?? '',
+				$rec['plugin_file'] ?? null
+			);
 
 			if ( ! $plugin_file ) {
 				return new \WP_Error(
@@ -679,29 +663,13 @@ class Installer {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		$plugin_file = $rec['plugin_file'] ?? null;
-
-		// Self-heal: re-scan when file is missing or path is stale/wrong.
-		if ( ! $plugin_file || ! file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
-			if ( ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
-				$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
-				if ( $plugin_file ) {
-					global $wpdb;
-					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-					$wpdb->update(
-						self::installed_table(),
-						[ 'plugin_file' => $plugin_file ],
-						[
-							'provider'  => $provider,
-							'full_name' => $full_name,
-						],
-						[ '%s' ],
-						[ '%s', '%s' ]
-					);
-					self::invalidate_installed_cache();
-				}
-			}
-		}
+		$plugin_file = self::heal_plugin_file(
+			$provider,
+			$full_name,
+			$rec['install_path'] ?? '',
+			$rec['slug'] ?? '',
+			$rec['plugin_file'] ?? null
+		);
 
 		if ( ! $plugin_file ) {
 			return new \WP_Error(
@@ -714,6 +682,48 @@ class Installer {
 		deactivate_plugins( $plugin_file );
 
 		return true;
+	}
+
+	/**
+	 * Re-scans the install directory for the plugin entry file when the stored path is missing.
+	 *
+	 * @since 1.0.0
+	 * @param string      $provider    Git provider.
+	 * @param string      $full_name   Repository full name.
+	 * @param string      $install_path Absolute installation path.
+	 * @param string      $slug        Plugin slug.
+	 * @param string|null $plugin_file Stored plugin file (may be empty or stale).
+	 * @return string|null Healed plugin file path, or null when not found.
+	 */
+	private static function heal_plugin_file( string $provider, string $full_name, string $install_path, string $slug, ?string $plugin_file ): ?string {
+		if ( $plugin_file && file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
+			return $plugin_file;
+		}
+
+		if ( empty( $install_path ) || ! is_dir( $install_path ) ) {
+			return null;
+		}
+
+		$found = self::find_plugin_file( $install_path, $slug );
+		if ( ! $found ) {
+			return null;
+		}
+
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->update(
+			self::installed_table(),
+			[ 'plugin_file' => $found ],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			],
+			[ '%s' ],
+			[ '%s', '%s' ]
+		);
+		self::invalidate_installed_cache();
+
+		return $found;
 	}
 
 	/**
