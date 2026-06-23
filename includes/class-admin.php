@@ -40,6 +40,9 @@ class Admin {
 		// Native list repo labels.
 		add_filter( 'plugin_action_links', [ self::class, 'label_managed_plugins' ], 10, 2 );
 		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'label_managed_themes' ] );
+
+		// Settings link in the plugins list table.
+		add_filter( 'plugin_action_links_' . GITWIRE_BASENAME, [ self::class, 'add_settings_link' ] );
 	}
 
 	/**
@@ -261,6 +264,19 @@ class Admin {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'gitwire' ) );
 		}
 		require_once GITWIRE_DIR . 'views/admin-page.php';
+	}
+
+	/**
+	 * Adds a Settings link to the Gitwire row in the plugins list table.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, string> $actions Existing action links.
+	 * @return array<string, string>
+	 */
+	public static function add_settings_link( array $actions ): array {
+		$url             = add_query_arg( 'page', 'gitwire', admin_url( 'admin.php' ) );
+		$actions['settings'] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Settings', 'gitwire' ) . '</a>';
+		return $actions;
 	}
 
 	/**
