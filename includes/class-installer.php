@@ -761,8 +761,18 @@ class Installer {
 			}
 
 			$connection_id = $rec['connection_id'] ? $rec['connection_id'] : null;
-			$api           = Provider_Factory::make( $provider, $connection_id );
-			$remote_sha    = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+
+			if ( 'github' === $provider ) {
+				$rl_key   = 'gitwire_gh_rl_' . ( $connection_id ?? 'anon' );
+				$rl_value = get_transient( $rl_key );
+				if ( false !== $rl_value && (int) $rl_value < 5 ) {
+					Logger::log( sprintf( 'Auto-update skipped for %s — GitHub rate limit low (%d remaining)', $rec['full_name'] ?? '', (int) $rl_value ), 'error' );
+					continue;
+				}
+			}
+
+			$api        = Provider_Factory::make( $provider, $connection_id );
+			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
 			$stored_remote = (string) ( $rec['remote_head'] ?? '' );
 
 			if ( $remote_sha && $remote_sha !== $stored_remote ) {

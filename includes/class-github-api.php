@@ -26,6 +26,13 @@ class GitHub_API implements Git_Provider_Interface {
 	private string $token;
 
 	/**
+	 * Connection ID used as the rate-limit cache key.
+	 *
+	 * @var string
+	 */
+	private string $connection_id;
+
+	/**
 	 * GitHub API base URL.
 	 *
 	 * @var string
@@ -36,10 +43,12 @@ class GitHub_API implements Git_Provider_Interface {
 	 * Constructor.
 	 *
 	 * @since 1.0.0
-	 * @param string $token Optional personal access token.
+	 * @param string $token         Optional personal access token.
+	 * @param string $connection_id Connection ID used for the rate-limit cache key.
 	 */
-	public function __construct( string $token = '' ) {
-		$this->token = $token;
+	public function __construct( string $token = '', string $connection_id = '' ) {
+		$this->token         = $token;
+		$this->connection_id = $connection_id;
 	}
 
 	/**
@@ -312,6 +321,13 @@ class GitHub_API implements Git_Provider_Interface {
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		$remaining_raw = wp_remote_retrieve_header( $response, 'x-ratelimit-remaining' );
+		if ( '' !== (string) $remaining_raw ) {
+			$reset = (int) wp_remote_retrieve_header( $response, 'x-ratelimit-reset' );
+			$ttl   = $reset > time() ? min( $reset - time(), HOUR_IN_SECONDS ) : HOUR_IN_SECONDS;
+			set_transient( 'gitwire_gh_rl_' . ( $this->connection_id ?: 'anon' ), (int) $remaining_raw, $ttl );
+		}
 
 		if ( $code >= 400 ) {
 			return new \WP_Error(
