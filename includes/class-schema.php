@@ -22,7 +22,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	const DB_VERSION = '1.0.0';
+	const DB_VERSION = '1.1.0';
 
 	/**
 	 * Option key used to track the installed schema version.
@@ -68,7 +68,8 @@ class Schema {
 				connection_id VARCHAR(64) NOT NULL,
 				meta_key VARCHAR(100) NOT NULL,
 				meta_value TEXT NOT NULL,
-				PRIMARY KEY  (connection_id, meta_key)
+				PRIMARY KEY  (connection_id, meta_key),
+				KEY meta_key (meta_key)
 			) $charset;"
 		);
 
@@ -94,7 +95,8 @@ class Schema {
 				updated_at DATETIME NOT NULL,
 				PRIMARY KEY  (id),
 				UNIQUE KEY repo (provider, full_name),
-				KEY connection_id (connection_id)
+				KEY connection_id (connection_id),
+				KEY conn_type (connection_id, type)
 			) $charset;"
 		);
 
@@ -131,7 +133,8 @@ class Schema {
 				updated_at       DATETIME NOT NULL,
 				PRIMARY KEY  (connection_id, full_name),
 				KEY provider_full_name (provider, full_name),
-				KEY type (type)
+				KEY type (type),
+				KEY conn_last_activity (connection_id, last_activity_at)
 			) $charset;"
 		);
 
