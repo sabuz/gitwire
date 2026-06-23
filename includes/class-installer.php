@@ -41,7 +41,7 @@ class Installer {
 	 * @since 1.0.0
 	 * @return string
 	 */
-	private static function installed_table(): string {
+	private static function installations_table(): string {
 		global $wpdb;
 		return $wpdb->base_prefix . 'gitwire_installations';
 	}
@@ -111,11 +111,11 @@ class Installer {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$installation_id = (int) $wpdb->get_var(
-			$wpdb->prepare( 'SELECT id FROM ' . self::installed_table() . ' WHERE provider = %s AND full_name = %s', $provider, $full_name )
+			$wpdb->prepare( 'SELECT id FROM ' . self::installations_table() . ' WHERE provider = %s AND full_name = %s', $provider, $full_name )
 		);
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->delete(
-			self::installed_table(),
+			self::installations_table(),
 			[
 				'provider'  => $provider,
 				'full_name' => $full_name,
@@ -143,7 +143,7 @@ class Installer {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->query(
 			$wpdb->prepare(
-				'INSERT INTO ' . self::installed_table() . '
+				'INSERT INTO ' . self::installations_table() . '
 					(connection_id, provider, owner, slug, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
 				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
@@ -183,7 +183,7 @@ class Installer {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->update(
-			self::installed_table(),
+			self::installations_table(),
 			[ 'remote_head' => $sha ],
 			[
 				'provider'  => $provider,
@@ -208,7 +208,7 @@ class Installer {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->update(
-			self::installed_table(),
+			self::installations_table(),
 			[ 'plugin_file' => $plugin_file ],
 			[
 				'provider'  => $provider,
@@ -251,7 +251,7 @@ class Installer {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::installed_table() . ' WHERE install_path = %s LIMIT 1', $deleted_dir ),
+			$wpdb->prepare( 'SELECT * FROM ' . self::installations_table() . ' WHERE install_path = %s LIMIT 1', $deleted_dir ),
 			ARRAY_A
 		);
 
@@ -281,7 +281,7 @@ class Installer {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::installed_table() . ' WHERE install_path = %s LIMIT 1', $deleted_dir ),
+			$wpdb->prepare( 'SELECT * FROM ' . self::installations_table() . ' WHERE install_path = %s LIMIT 1', $deleted_dir ),
 			ARRAY_A
 		);
 
@@ -712,7 +712,7 @@ class Installer {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->update(
-			self::installed_table(),
+			self::installations_table(),
 			[ 'plugin_file' => $found ],
 			[
 				'provider'  => $provider,
@@ -739,7 +739,7 @@ class Installer {
 
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$rows = $wpdb->get_results( 'SELECT * FROM ' . self::installed_table(), ARRAY_A );
+		$rows = $wpdb->get_results( 'SELECT * FROM ' . self::installations_table(), ARRAY_A );
 
 		self::$installed_cache = [];
 		foreach ( (array) $rows as $row ) {
@@ -858,7 +858,7 @@ class Installer {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->update(
-			self::installed_table(),
+			self::installations_table(),
 			[ 'head' => $sha ],
 			[
 				'provider'  => $provider,
@@ -1133,7 +1133,7 @@ class Installer {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->query(
 			$wpdb->prepare(
-				'INSERT INTO ' . self::installed_table() . '
+				'INSERT INTO ' . self::installations_table() . '
 					(connection_id, provider, owner, slug, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
 				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
@@ -1166,7 +1166,7 @@ class Installer {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$evicted_rows = $wpdb->get_results(
 				$wpdb->prepare(
-					'SELECT * FROM ' . self::installed_table() . ' WHERE install_path = %s AND NOT (provider = %s AND full_name = %s)',
+					'SELECT * FROM ' . self::installations_table() . ' WHERE install_path = %s AND NOT (provider = %s AND full_name = %s)',
 					$new_path,
 					$provider,
 					$full_name

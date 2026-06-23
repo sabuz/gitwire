@@ -18,7 +18,6 @@ require_once plugin_dir_path( __FILE__ ) . 'autoload.php';
 
 $options = [
 	'gitwire_settings',
-	'gitwire_installed',
 	'gitwire_running_task',
 	'gitwire_pending_message',
 	'gitwire_orphan_queue',
