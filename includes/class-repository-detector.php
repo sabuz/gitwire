@@ -261,7 +261,7 @@ class Repository_Detector {
 	/**
 	 * Returns true when the flat type value represents a theme.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $type Flat type value.
 	 * @return bool
 	 */
@@ -272,7 +272,7 @@ class Repository_Detector {
 	/**
 	 * Returns true when all cached key_files are still present in the root listing.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string[]          $key_files Key files from a prior detection result.
 	 * @param array<int, mixed> $contents  Root listing items from the provider.
 	 * @return bool

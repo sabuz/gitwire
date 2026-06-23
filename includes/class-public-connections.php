@@ -180,7 +180,7 @@ class Public_Connections {
 	/**
 	 * Returns an existing public connection matching provider and identifier, or null.
 	 *
-	 * @since 3.0.0
+	 * @since 1.0.0
 	 * @param string $provider   Provider key.
 	 * @param string $identifier Identifier to match.
 	 * @return array<string, string>|null

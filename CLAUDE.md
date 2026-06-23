@@ -73,4 +73,3 @@ Detection priority — highest confidence first:
 - `Repo_Detector::detect()` is provider-agnostic — takes callables for fetching contents so GitHub and GitLab share the same logic
 - `class-installer.php` handles download, extract, backup, and WP hooks for cleanup on plugin/theme deletion
 - REST endpoints in `class-rest.php`, provider abstraction via `interface-git-provider.php`
-- Transient-based cache in `class-repo-cache.php`

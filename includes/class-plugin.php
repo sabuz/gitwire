@@ -252,7 +252,7 @@ final class Plugin {
 	 * When update_check_interval is 'never', the event is removed entirely.
 	 * Safe to call on every boot — only reschedules when the stored interval differs.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function schedule_update_check_cron(): void {
