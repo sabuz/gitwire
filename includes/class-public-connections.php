@@ -347,7 +347,7 @@ class Public_Connections {
 		if ( $deleted ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->delete( self::meta_table(), [ 'connection_id' => $id ], [ '%s' ] );
-			Repo_Cache::clear_repo_list( $id );
+			Repo_Cache::clear_repositories( $id );
 		}
 
 		return (bool) $deleted;

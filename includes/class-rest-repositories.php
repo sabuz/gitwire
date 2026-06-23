@@ -157,14 +157,14 @@ class REST_Repositories {
 		}
 
 		$connection_ids = array_column( $connections, 'id' );
-		$cached         = Repo_Cache::get_repo_list( $connection_ids, $offset, $search );
+		$cached         = Repo_Cache::get_repositories( $connection_ids, $offset, $search );
 
 		if ( null === $cached ) {
 			// Seed cache with page 1 from each connection on first browse.
 			foreach ( $connections as $conn ) {
-				Repo_Cache::fetch_repo_list( $conn['provider'], 1, $conn['id'] );
+				Repo_Cache::fetch_repositories( $conn['provider'], 1, $conn['id'] );
 			}
-			$cached = Repo_Cache::get_repo_list( $connection_ids, $offset, $search );
+			$cached = Repo_Cache::get_repositories( $connection_ids, $offset, $search );
 		}
 
 		if ( null === $cached ) {
@@ -208,7 +208,7 @@ class REST_Repositories {
 	 * @param string $connection_id Connection ID to use for credentials.
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	public static function build_repo_list( string $provider, int $page, string $connection_id = '' ): array|\WP_Error {
+	public static function build_repositories( string $provider, int $page, string $connection_id = '' ): array|\WP_Error {
 		$creds = '' !== $connection_id
 			? Connection_Resolver::get_credentials( $connection_id )
 			: Connection_Resolver::get_credentials_for_provider( $provider );
@@ -525,7 +525,7 @@ class REST_Repositories {
 	private static function enrich_with_detections( array $payload ): array {
 		$payload['repositories'] = array_map(
 			static function ( $repo ) {
-				// type_meta is embedded by get_repo_list() directly from the cache table row.
+				// type_meta is embedded by get_repositories() directly from the cache table row.
 				if ( isset( $repo['type_meta'] ) ) {
 					$repo['detection'] = array_merge( $repo['type_meta'], [ 'type' => $repo['type'] ?? '' ] );
 					unset( $repo['type_meta'] );

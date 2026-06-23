@@ -45,7 +45,7 @@ class Repo_Cache {
 	 * @param string   $search         Optional name/owner search filter.
 	 * @return array<string, mixed>|null Cached payload or null when cache is empty.
 	 */
-	public static function get_repo_list( array $connection_ids, int $offset = 0, string $search = '' ): ?array {
+	public static function get_repositories( array $connection_ids, int $offset = 0, string $search = '' ): ?array {
 		global $wpdb;
 
 		if ( empty( $connection_ids ) ) {
@@ -149,7 +149,7 @@ class Repo_Cache {
 	 * @param array<string, mixed> $payload       Repos payload.
 	 * @return void
 	 */
-	public static function set_repo_list( string $connection_id, string $provider, array $payload ): void {
+	public static function set_repositories( string $connection_id, string $provider, array $payload ): void {
 		global $wpdb;
 		$table = self::cache_table();
 		$now   = current_time( 'mysql' );
@@ -307,7 +307,7 @@ class Repo_Cache {
 	 * @param string|null $connection_id Optional connection ID to clear one slot only. Null clears all.
 	 * @return void
 	 */
-	public static function clear_repo_list( ?string $connection_id = null ): void {
+	public static function clear_repositories( ?string $connection_id = null ): void {
 		global $wpdb;
 		if ( null !== $connection_id ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
@@ -357,7 +357,7 @@ class Repo_Cache {
 	 * @return void
 	 */
 	public static function clear_all(): void {
-		self::clear_repo_list();
+		self::clear_repositories();
 		self::clear_repo_types();
 	}
 
@@ -370,15 +370,15 @@ class Repo_Cache {
 	 * @param string $connection_id Connection ID to use for credentials.
 	 * @return array<string, mixed>|\WP_Error Stored payload on success.
 	 */
-	public static function fetch_repo_list( string $provider, int $page, string $connection_id ): array|\WP_Error {
+	public static function fetch_repositories( string $provider, int $page, string $connection_id ): array|\WP_Error {
 		$cache_id = '' !== $connection_id ? $connection_id : 'public:' . $provider;
-		$payload  = REST_Repositories::build_repo_list( $provider, $page, $connection_id );
+		$payload  = REST_Repositories::build_repositories( $provider, $page, $connection_id );
 
 		if ( is_wp_error( $payload ) ) {
 			return $payload;
 		}
 
-		self::set_repo_list( $cache_id, $provider, $payload );
+		self::set_repositories( $cache_id, $provider, $payload );
 
 		return $payload;
 	}
@@ -392,7 +392,7 @@ class Repo_Cache {
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when any source fails.
 	 */
-	private static function refresh_repo_lists(): true|\WP_Error {
+	private static function refresh_repositories(): true|\WP_Error {
 		global $wpdb;
 
 		$refresh_started = current_time( 'mysql' );
@@ -412,7 +412,7 @@ class Repo_Cache {
 			$total_fetched = 0;
 
 			do {
-				$result = self::fetch_repo_list( $provider, $page, $id );
+				$result = self::fetch_repositories( $provider, $page, $id );
 				if ( is_wp_error( $result ) ) {
 					$conn_err = $result;
 					$last_err = $result;
@@ -446,7 +446,7 @@ class Repo_Cache {
 	 * @return true|\WP_Error
 	 */
 	public static function scheduled_refresh(): true|\WP_Error {
-		$result = self::refresh_repo_lists();
+		$result = self::refresh_repositories();
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
@@ -584,7 +584,7 @@ class Repo_Cache {
 	 * @return true|\WP_Error
 	 */
 	public static function force_refresh(): true|\WP_Error {
-		$result = self::refresh_repo_lists();
+		$result = self::refresh_repositories();
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}

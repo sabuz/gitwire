@@ -33,7 +33,7 @@ foreach ( $options as $option ) {
 
 wp_clear_scheduled_hook( 'gitwire_maintenance' );
 wp_clear_scheduled_hook( 'gitwire_trim_logs' );
-wp_clear_scheduled_hook( 'gitwire_refresh_repo_list' );
+wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
 wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
 
 global $wpdb;

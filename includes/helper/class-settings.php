@@ -59,7 +59,7 @@ class Settings {
 			'repos_per_page'              => $s['repos_per_page'] ?? 50,
 			'excluded_repos'              => $s['excluded_repos'] ?? [],
 			'max_repos_per_source'        => $s['max_repos_per_source'] ?? 'unlimited',
-			'repo_list_refresh_frequency' => $s['repo_list_refresh_frequency'] ?? 'daily',
+			'repositories_refresh_frequency' => $s['repositories_refresh_frequency'] ?? 'daily',
 			'background_type_detection'   => $s['background_type_detection'] ?? false,
 			'shallow_detection'           => $s['shallow_detection'] ?? false,
 			'show_repo_label'             => $s['show_repo_label'] ?? true,
@@ -119,10 +119,10 @@ class Settings {
 			}
 		}
 
-		$repo_list_refresh_frequency = $current['repo_list_refresh_frequency'] ?? 'daily';
-		if ( array_key_exists( 'repo_list_refresh_frequency', $incoming ) && null !== $incoming['repo_list_refresh_frequency'] ) {
-			$val                         = (string) $incoming['repo_list_refresh_frequency'];
-			$repo_list_refresh_frequency = in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
+		$repositories_refresh_frequency = $current['repositories_refresh_frequency'] ?? 'daily';
+		if ( array_key_exists( 'repositories_refresh_frequency', $incoming ) && null !== $incoming['repositories_refresh_frequency'] ) {
+			$val                            = (string) $incoming['repositories_refresh_frequency'];
+			$repositories_refresh_frequency = in_array( $val, [ 'hourly', 'daily', 'weekly' ], true ) ? $val : 'hourly';
 		}
 
 		$background_type_detection = $current['background_type_detection'] ?? false;
@@ -179,7 +179,7 @@ class Settings {
 			'repos_per_page',
 			'excluded_repos',
 			'max_repos_per_source',
-			'repo_list_refresh_frequency',
+			'repositories_refresh_frequency',
 			'background_type_detection',
 			'shallow_detection',
 			'show_repo_label',
@@ -232,9 +232,9 @@ class Settings {
 	 * @since 1.0.0
 	 * @return string WP cron recurrence: 'hourly', 'daily', or 'weekly'.
 	 */
-	public static function get_repo_list_refresh_frequency(): string {
+	public static function get_repositories_refresh_frequency(): string {
 		$s   = self::get_raw();
-		$val = $s['repo_list_refresh_frequency'] ?? 'daily';
+		$val = $s['repositories_refresh_frequency'] ?? 'daily';
 		return in_array( $val, [ 'hourly', 'twicedaily', 'daily', 'weekly' ], true ) ? $val : 'daily';
 	}
 
@@ -245,7 +245,7 @@ class Settings {
 	 * @return int
 	 */
 	public static function get_repositories_max_age(): int {
-		return match ( self::get_repo_list_refresh_frequency() ) {
+		return match ( self::get_repositories_refresh_frequency() ) {
 			'twicedaily' => 12 * HOUR_IN_SECONDS,
 			'daily'      => DAY_IN_SECONDS,
 			'weekly'     => WEEK_IN_SECONDS,

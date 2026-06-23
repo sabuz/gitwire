@@ -58,7 +58,7 @@ final class Plugin {
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] );
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
 		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
-		add_action( 'gitwire_refresh_repo_list', [ Repo_Cache::class, 'scheduled_refresh' ] );
+		add_action( 'gitwire_refresh_repositories', [ Repo_Cache::class, 'scheduled_refresh' ] );
 		add_action( 'gitwire_refresh_connections', [ REST_Connection_Cache::class, 'refresh_public_connections' ] );
 		add_action( 'gitwire_update_check', [ Installer::class, 'run_auto_updates' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
@@ -208,7 +208,7 @@ final class Plugin {
 					'log_retention_days'          => 7,
 					'log_level'                   => 'activity',
 					'remove_data_on_uninstall'    => false,
-					'repo_list_refresh_frequency' => 'daily',
+					'repositories_refresh_frequency' => 'daily',
 				],
 				'',
 				false
@@ -236,13 +236,13 @@ final class Plugin {
 	 * @return void
 	 */
 	public function schedule_repos_cron(): void {
-		$freq    = Settings::get_repo_list_refresh_frequency();
-		$current = wp_get_schedule( 'gitwire_refresh_repo_list' );
+		$freq    = Settings::get_repositories_refresh_frequency();
+		$current = wp_get_schedule( 'gitwire_refresh_repositories' );
 		if ( $current === $freq ) {
 			return;
 		}
-		wp_clear_scheduled_hook( 'gitwire_refresh_repo_list' );
-		wp_schedule_event( time(), $freq, 'gitwire_refresh_repo_list' );
+		wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
+		wp_schedule_event( time(), $freq, 'gitwire_refresh_repositories' );
 	}
 
 	/**
@@ -288,7 +288,7 @@ final class Plugin {
 		Repo_Cache::clear_all();
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
 		wp_clear_scheduled_hook( 'gitwire_trim_logs' );
-		wp_clear_scheduled_hook( 'gitwire_refresh_repo_list' );
+		wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
 		wp_clear_scheduled_hook( 'gitwire_update_check' );
 	}

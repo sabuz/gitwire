@@ -68,7 +68,7 @@ class REST_Settings {
 			'log_retention_days',
 			'log_level',
 			'remove_data_on_uninstall',
-			'repo_list_refresh_frequency',
+			'repositories_refresh_frequency',
 			'auto_detect_type',
 			'repos_per_page',
 			'max_repos_per_source',
@@ -88,7 +88,7 @@ class REST_Settings {
 
 		$was_logging          = Settings::is_logging_enabled();
 		$prev_settings        = Settings::get_public();
-		$prev_freq            = $prev_settings['repo_list_refresh_frequency'] ?? 'daily';
+		$prev_freq            = $prev_settings['repositories_refresh_frequency'] ?? 'daily';
 		$prev_update_interval = $prev_settings['update_check_interval'] ?? 'halfhourly';
 		$merged               = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
@@ -99,8 +99,8 @@ class REST_Settings {
 			Logger::log( 'Logging enabled' );
 		}
 
-		if ( ( $merged['repo_list_refresh_frequency'] ?? 'hourly' ) !== $prev_freq ) {
-			Repo_Cache::clear_repo_list();
+		if ( ( $merged['repositories_refresh_frequency'] ?? 'hourly' ) !== $prev_freq ) {
+			Repo_Cache::clear_repositories();
 			Plugin::instance()->schedule_repos_cron();
 		}
 

@@ -239,8 +239,8 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const [ maxReposPerSource, setMaxReposPerSource ] = useState(
 		String( settings.max_repos_per_source ?? 'unlimited' )
 	);
-	const [ repoListRefreshFrequency, setRepoListRefreshFrequency ] = useState(
-		settings.repo_list_refresh_frequency ?? 'daily'
+	const [ repositoriesRefreshFrequency, setRepositoriesRefreshFrequency ] = useState(
+		settings.repositories_refresh_frequency ?? 'daily'
 	);
 	const [ backgroundTypeDetection, setBackgroundTypeDetection ] = useState(
 		!! settings.background_type_detection
@@ -333,10 +333,10 @@ function BrowseDetectionCard( { settings, onSave } ) {
 		save( { max_repos_per_source: parsed } ).catch( () => {} );
 	};
 
-	const handleRepoListRefreshFrequencyChange = ( newVal ) => {
-		setRepoListRefreshFrequency( newVal );
-		save( { repo_list_refresh_frequency: newVal }, () =>
-			setRepoListRefreshFrequency( repoListRefreshFrequency )
+	const handleRepositoriesRefreshFrequencyChange = ( newVal ) => {
+		setRepositoriesRefreshFrequency( newVal );
+		save( { repositories_refresh_frequency: newVal }, () =>
+			setRepositoriesRefreshFrequency( repositoriesRefreshFrequency )
 		).catch( () => {} );
 	};
 
@@ -482,15 +482,15 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					__nextHasNoMarginBottom
 					isBlock
 					label={ __(
-						'Repository List Refresh Frequency',
+						'Repository Refresh Frequency',
 						'gitwire'
 					) }
 					help={ __(
 						'How often the repository list is refreshed in the background.',
 						'gitwire'
 					) }
-					value={ repoListRefreshFrequency }
-					onChange={ handleRepoListRefreshFrequencyChange }
+					value={ repositoriesRefreshFrequency }
+					onChange={ handleRepositoriesRefreshFrequencyChange }
 				>
 					<ToggleGroupControlOption
 						label={ __( 'Hourly', 'gitwire' ) }
