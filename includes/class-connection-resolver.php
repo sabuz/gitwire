@@ -27,6 +27,17 @@ class Connection_Resolver {
 	private static ?array $rows_cache = null;
 
 	/**
+	 * Returns the connections table name.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
+	private static function connections_table(): string {
+		global $wpdb;
+		return self::connections_table();
+	}
+
+	/**
 	 * Clears the request-scope cache after any write operation.
 	 *
 	 * @since 1.0.0

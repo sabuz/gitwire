@@ -23,7 +23,7 @@ class Public_Connections {
 	 * @since 1.0.0
 	 * @return string
 	 */
-	private static function table(): string {
+	private static function connections_table(): string {
 		global $wpdb;
 		return $wpdb->base_prefix . 'gitwire_connections';
 	}
@@ -34,7 +34,7 @@ class Public_Connections {
 	 * @since 1.0.0
 	 * @return string
 	 */
-	private static function meta_table(): string {
+	private static function connection_meta_table(): string {
 		global $wpdb;
 		return $wpdb->base_prefix . 'gitwire_connection_meta';
 	}
@@ -50,7 +50,7 @@ class Public_Connections {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
-			'SELECT * FROM ' . self::table() . ' WHERE credentials IS NULL ORDER BY created_at ASC',
+			'SELECT * FROM ' . self::connections_table() . ' WHERE credentials IS NULL ORDER BY created_at ASC',
 			ARRAY_A
 		);
 
@@ -64,7 +64,7 @@ class Public_Connections {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		$meta_rows = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT connection_id, meta_key, meta_value FROM ' . self::meta_table() . " WHERE connection_id IN ($placeholders)",
+				'SELECT connection_id, meta_key, meta_value FROM ' . self::connection_meta_table() . " WHERE connection_id IN ($placeholders)",
 				...$ids
 			),
 			ARRAY_A
@@ -114,7 +114,7 @@ class Public_Connections {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE id = %s AND credentials IS NULL', $id ),
+			$wpdb->prepare( 'SELECT * FROM ' . self::connections_table() . ' WHERE id = %s AND credentials IS NULL', $id ),
 			ARRAY_A
 		);
 
@@ -125,7 +125,7 @@ class Public_Connections {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$meta_rows = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT meta_key, meta_value FROM ' . self::meta_table() . ' WHERE connection_id = %s',
+				'SELECT meta_key, meta_value FROM ' . self::connection_meta_table() . ' WHERE connection_id = %s',
 				$id
 			),
 			ARRAY_A
@@ -151,7 +151,7 @@ class Public_Connections {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT * FROM ' . self::table() . ' WHERE provider = %s AND credentials IS NULL ORDER BY created_at ASC LIMIT 1',
+				'SELECT * FROM ' . self::connections_table() . ' WHERE provider = %s AND credentials IS NULL ORDER BY created_at ASC LIMIT 1',
 				$provider
 			),
 			ARRAY_A
@@ -164,7 +164,7 @@ class Public_Connections {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$meta_rows = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT meta_key, meta_value FROM ' . self::meta_table() . ' WHERE connection_id = %s',
+				'SELECT meta_key, meta_value FROM ' . self::connection_meta_table() . ' WHERE connection_id = %s',
 				$row['id']
 			),
 			ARRAY_A
@@ -195,7 +195,7 @@ class Public_Connections {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT * FROM ' . self::table() . ' WHERE provider = %s AND identifier = %s AND credentials IS NULL LIMIT 1',
+				'SELECT * FROM ' . self::connections_table() . ' WHERE provider = %s AND identifier = %s AND credentials IS NULL LIMIT 1',
 				$provider,
 				$identifier
 			),
@@ -281,7 +281,7 @@ class Public_Connections {
 		global $wpdb;
 
 		$id    = 'pub_' . wp_generate_uuid4();
-		$table = self::table();
+		$table = self::connections_table();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query(
@@ -319,7 +319,7 @@ class Public_Connections {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->replace(
-			self::meta_table(),
+			self::connection_meta_table(),
 			[
 				'connection_id' => $connection_id,
 				'meta_key'      => $meta_key,
@@ -339,14 +339,14 @@ class Public_Connections {
 	public static function delete( string $id ): bool {
 		global $wpdb;
 
-		$table = self::table();
+		$table = self::connections_table();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$deleted = $wpdb->query( $wpdb->prepare( "DELETE FROM $table WHERE id = %s AND credentials IS NULL", $id ) );
 
 		if ( $deleted ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->delete( self::meta_table(), [ 'connection_id' => $id ], [ '%s' ] );
+			$wpdb->delete( self::connection_meta_table(), [ 'connection_id' => $id ], [ '%s' ] );
 			Repo_Cache::clear_repositories( $id );
 		}
 

@@ -34,7 +34,7 @@ class REST_Connection_Cache {
 	 * @since 1.0.0
 	 * @return string
 	 */
-	private static function meta_table(): string {
+	private static function connection_meta_table(): string {
 		global $wpdb;
 		return $wpdb->base_prefix . 'gitwire_connection_meta';
 	}
@@ -55,7 +55,7 @@ class REST_Connection_Cache {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT connection_id, meta_key, meta_value FROM ' . self::meta_table() . ' WHERE meta_key IN (' . $in_sql . ')',
+				'SELECT connection_id, meta_key, meta_value FROM ' . self::connection_meta_table() . ' WHERE meta_key IN (' . $in_sql . ')',
 				...self::PROFILE_KEYS
 			),
 			ARRAY_A
@@ -95,7 +95,7 @@ class REST_Connection_Cache {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT meta_key, meta_value FROM ' . self::meta_table() . ' WHERE connection_id = %s AND meta_key IN (' . $in_sql . ')',
+				'SELECT meta_key, meta_value FROM ' . self::connection_meta_table() . ' WHERE connection_id = %s AND meta_key IN (' . $in_sql . ')',
 				$id,
 				...self::PROFILE_KEYS
 			),
@@ -178,7 +178,7 @@ class REST_Connection_Cache {
 			};
 		}
 
-		$sql = 'INSERT INTO ' . self::meta_table() . ' (connection_id, meta_key, meta_value) VALUES '
+		$sql = 'INSERT INTO ' . self::connection_meta_table() . ' (connection_id, meta_key, meta_value) VALUES '
 			. implode( ', ', $value_parts )
 			. ' ON DUPLICATE KEY UPDATE meta_value = VALUES(meta_value)';
 
@@ -200,7 +200,7 @@ class REST_Connection_Cache {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 		$wpdb->query(
 			$wpdb->prepare(
-				'DELETE FROM ' . self::meta_table() . ' WHERE connection_id = %s AND meta_key IN (' . $in_sql . ')',
+				'DELETE FROM ' . self::connection_meta_table() . ' WHERE connection_id = %s AND meta_key IN (' . $in_sql . ')',
 				$id,
 				...self::PROFILE_KEYS
 			)

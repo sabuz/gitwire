@@ -67,6 +67,11 @@ class REST_Installer {
 	 * @since 1.0.0
 	 * @return string
 	 */
+	private static function installations_table(): string {
+		global $wpdb;
+		return $wpdb->base_prefix . 'gitwire_installations';
+	}
+
 	private static function commits_table(): string {
 		global $wpdb;
 		return $wpdb->base_prefix . 'gitwire_commits';
@@ -924,7 +929,7 @@ class REST_Installer {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->update(
-			$wpdb->base_prefix . 'gitwire_installations',
+			self::installations_table(),
 			[ 'auto_update' => $auto_update ],
 			[
 				'provider'  => $provider,

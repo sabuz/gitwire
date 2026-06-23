@@ -27,7 +27,7 @@ class Repo_Cache {
 	 * @since 1.0.0
 	 * @return string
 	 */
-	private static function cache_table(): string {
+	private static function repositories_table(): string {
 		global $wpdb;
 		return $wpdb->base_prefix . 'gitwire_repositories';
 	}
@@ -80,7 +80,7 @@ class Repo_Cache {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT connection_id, provider, full_name, owner, name, private, html_url, default_branch, last_activity_at, type, type_meta FROM ' . self::cache_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				'SELECT connection_id, provider, full_name, owner, name, private, html_url, default_branch, last_activity_at, type, type_meta FROM ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				' ' . $where . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				' ORDER BY last_activity_at DESC LIMIT %d OFFSET %d',
 				...$args
@@ -93,7 +93,7 @@ class Repo_Cache {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$has_any = $wpdb->get_var(
 					$wpdb->prepare(
-						'SELECT 1 FROM ' . self::cache_table() . ' WHERE connection_id IN (' . $placeholders . ') LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+						'SELECT 1 FROM ' . self::repositories_table() . ' WHERE connection_id IN (' . $placeholders . ') LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 						...$connection_ids
 					)
 				);
@@ -151,7 +151,7 @@ class Repo_Cache {
 	 */
 	public static function set_repositories( string $connection_id, string $provider, array $payload ): void {
 		global $wpdb;
-		$table = self::cache_table();
+		$table = self::repositories_table();
 		$now   = current_time( 'mysql' );
 
 		foreach ( $payload['repositories'] ?? [] as $repo ) {
@@ -223,7 +223,7 @@ class Repo_Cache {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				'SELECT type, type_meta FROM ' . self::cache_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				'SELECT type, type_meta FROM ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				' WHERE provider = %s AND full_name = %s AND type_meta IS NOT NULL LIMIT 1',
 				$provider,
 				$full_name
@@ -265,7 +265,7 @@ class Repo_Cache {
 		// Update all browse-cache rows for this repo (may match multiple connection_ids).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->update(
-			self::cache_table(),
+			self::repositories_table(),
 			[
 				'type'      => $type,
 				'type_meta' => $meta_json,
@@ -283,7 +283,7 @@ class Repo_Cache {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->query(
 			$wpdb->prepare(
-				'INSERT INTO ' . self::cache_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				'INSERT INTO ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				' (connection_id, provider, owner, name, full_name, default_branch, type, type_meta, updated_at)
 				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE type = VALUES(type), type_meta = VALUES(type_meta)',
@@ -311,11 +311,11 @@ class Repo_Cache {
 		global $wpdb;
 		if ( null !== $connection_id ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->delete( self::cache_table(), [ 'connection_id' => $connection_id ], [ '%s' ] );
+			$wpdb->delete( self::repositories_table(), [ 'connection_id' => $connection_id ], [ '%s' ] );
 			return;
 		}
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( 'DELETE FROM ' . self::cache_table() );
+		$wpdb->query( 'DELETE FROM ' . self::repositories_table() );
 	}
 
 	/**
@@ -331,14 +331,14 @@ class Repo_Cache {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
 		$wpdb->query(
 			$wpdb->prepare(
-				'UPDATE ' . self::cache_table() . " SET type = '', type_meta = NULL WHERE connection_id != %s", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				'UPDATE ' . self::repositories_table() . " SET type = '', type_meta = NULL WHERE connection_id != %s", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				''
 			)
 		);
 
 		// Remove connection-agnostic fallback rows written by set_repo_type() for URL imports.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->delete( self::cache_table(), [ 'connection_id' => '' ], [ '%s' ] );
+		$wpdb->delete( self::repositories_table(), [ 'connection_id' => '' ], [ '%s' ] );
 
 		// One-time cleanup of legacy gitwire_repo_type_* options from sites that ran an older build.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -428,7 +428,7 @@ class Repo_Cache {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
 				$wpdb->query(
 					$wpdb->prepare(
-						'DELETE FROM ' . self::cache_table() . ' WHERE connection_id = %s AND updated_at < %s', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+						'DELETE FROM ' . self::repositories_table() . ' WHERE connection_id = %s AND updated_at < %s', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 						$id,
 						$refresh_started
 					)
@@ -530,7 +530,7 @@ class Repo_Cache {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 		$untyped = $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT connection_id, provider, owner, name, full_name, default_branch FROM ' . self::cache_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				'SELECT connection_id, provider, owner, name, full_name, default_branch FROM ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				' WHERE type_meta IS NULL ORDER BY full_name ASC, connection_id ASC LIMIT %d OFFSET %d',
 				$batch_size,
 				$cursor
