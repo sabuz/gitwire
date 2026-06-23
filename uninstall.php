@@ -22,6 +22,7 @@ $options = [
 	'gitwire_running_task',
 	'gitwire_pending_message',
 	'gitwire_orphan_queue',
+	'gitwire_detection_cursor',
 ];
 
 foreach ( $options as $option ) {
@@ -47,3 +48,5 @@ $wpdb->query(
 		$wpdb->esc_like( 'gitwire_repo_type_' ) . '%'
 	)
 );
+
+\Gitwire\Installer::purge_orphaned_backups();
