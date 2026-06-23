@@ -296,7 +296,7 @@ export default function App( { initialData } ) {
 							'Installed as "%s" to avoid a directory conflict with an existing installation.',
 							'gitwire'
 						),
-						result.slug
+						result.name
 					),
 					variant: 'warning',
 				} );

@@ -314,7 +314,7 @@ class Error_Handler {
 			return;
 		}
 
-		$slug = $pending['slug'] ?? '';
+		$slug = $pending['name'] ?? '';
 		if ( ! $slug || ! function_exists( 'get_stylesheet' ) ) {
 			delete_option( 'gitwire_running_task' );
 
@@ -433,7 +433,7 @@ class Error_Handler {
 		if ( 'theme' === ( $pending['type'] ?? '' ) ) {
 			Installer::refresh_theme_runtime(
 				$pending['install_path'] ?? '',
-				$pending['slug'] ?? ''
+				$pending['name'] ?? ''
 			);
 		}
 
@@ -488,7 +488,7 @@ class Error_Handler {
 			return;
 		}
 
-		$stylesheet = $pending['target_stylesheet'] ?? $pending['slug'] ?? '';
+		$stylesheet = $pending['target_stylesheet'] ?? $pending['name'] ?? '';
 		$template   = $pending['target_template'] ?? $stylesheet;
 		if ( ! $stylesheet ) {
 			return;

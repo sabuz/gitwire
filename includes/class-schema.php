@@ -22,7 +22,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	const DB_VERSION = '1.1.0';
+	const DB_VERSION = '1.2.0';
 
 	/**
 	 * Option key used to track the installed schema version.
@@ -82,7 +82,7 @@ class Schema {
 				connection_id VARCHAR(64) NOT NULL DEFAULT '',
 				provider VARCHAR(20) NOT NULL,
 				owner VARCHAR(128) NOT NULL DEFAULT '',
-				slug VARCHAR(255) NOT NULL DEFAULT '',
+				name VARCHAR(255) NOT NULL DEFAULT '',
 				full_name VARCHAR(255) NOT NULL,
 				type VARCHAR(20) NOT NULL DEFAULT 'plugin',
 				branch VARCHAR(255) NOT NULL DEFAULT 'main',
@@ -121,15 +121,15 @@ class Schema {
 			"CREATE TABLE {$prefix}gitwire_repositories (
 				connection_id    VARCHAR(64) NOT NULL,
 				provider         VARCHAR(20) NOT NULL,
-				full_name        VARCHAR(255) NOT NULL,
 				owner            VARCHAR(128) NOT NULL DEFAULT '',
 				name             VARCHAR(128) NOT NULL DEFAULT '',
-				type             VARCHAR(20) NOT NULL DEFAULT '',
+				full_name        VARCHAR(255) NOT NULL,
 				private          TINYINT(1) NOT NULL DEFAULT 0,
 				default_branch   VARCHAR(255) NOT NULL DEFAULT 'main',
 				html_url         VARCHAR(512) NOT NULL DEFAULT '',
-				last_activity_at DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
+				type             VARCHAR(20) NOT NULL DEFAULT '',
 				type_meta        TEXT DEFAULT NULL,
+				last_activity_at DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
 				updated_at       DATETIME NOT NULL,
 				PRIMARY KEY  (connection_id, full_name),
 				KEY provider_full_name (provider, full_name),
@@ -137,6 +137,10 @@ class Schema {
 				KEY conn_last_activity (connection_id, last_activity_at)
 			) $charset;"
 		);
+
+		// 1.2.0: rename installations.slug → installations.name.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "ALTER TABLE {$prefix}gitwire_installations CHANGE COLUMN slug name VARCHAR(255) NOT NULL DEFAULT ''" );
 
 		update_option( self::VERSION_OPTION, self::DB_VERSION, false );
 	}

@@ -560,7 +560,7 @@ class REST_Installer {
 			}
 
 			if ( 'plugin' === ( $rec['type'] ?? '' ) && empty( $rec['plugin_file'] ) && ! empty( $rec['install_path'] ) ) {
-				$found = Installer::find_plugin_file( $rec['install_path'], $rec['slug'] ?? '' );
+				$found = Installer::find_plugin_file( $rec['install_path'], $rec['name'] ?? '' );
 				if ( $found ) {
 					$rec['plugin_file'] = $found;
 					Installer::set_plugin_file( $rec['provider'] ?? 'github', $rec['full_name'] ?? '', $found );
@@ -611,7 +611,7 @@ class REST_Installer {
 			if ( 'plugin' === ( $rec['type'] ?? '' ) ) {
 				$rec['active'] = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
 			} else {
-				$rec['active'] = ( $rec['slug'] ?? '' ) === $active_theme;
+				$rec['active'] = ( $rec['name'] ?? '' ) === $active_theme;
 			}
 
 			if (
@@ -850,7 +850,7 @@ class REST_Installer {
 		}
 
 		if ( 'theme' === ( $record['type'] ?? '' ) ) {
-			$slug           = $record['slug'] ?? '';
+			$slug           = $record['name'] ?? '';
 			$active_theme   = get_stylesheet();
 			$template_theme = get_template();
 			if ( $slug && ( $slug === $active_theme || $slug === $template_theme ) ) {

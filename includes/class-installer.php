@@ -144,17 +144,17 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, slug, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
+					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
 				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
-					connection_id = VALUES(connection_id), slug = VALUES(slug),
+					connection_id = VALUES(connection_id), name = VALUES(name),
 					type = VALUES(type), branch = VALUES(branch), head = VALUES(head),
 					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
 					updated_at = VALUES(updated_at)',
 				$record['connection_id'] ?? '',
 				$record['provider'] ?? '',
 				$record['owner'] ?? '',
-				$record['slug'] ?? '',
+				$record['name'] ?? '',
 				$record['full_name'] ?? '',
 				$record['type'] ?? 'plugin',
 				$record['branch'] ?? 'main',
@@ -427,7 +427,7 @@ class Installer {
 			);
 		}
 
-		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider, false, $connection_id );
+		$result = self::$method( $owner, $repo, $new_branch, $rec['name'], $provider, false, $connection_id );
 
 		if ( $was_stale && is_wp_error( $result ) ) {
 			return new \WP_Error(
@@ -513,7 +513,7 @@ class Installer {
 				$provider,
 				$full_name,
 				$rec['install_path'] ?? '',
-				$rec['slug'] ?? '',
+				$rec['name'] ?? '',
 				$rec['plugin_file'] ?? null
 			);
 
@@ -543,7 +543,7 @@ class Installer {
 			self::complete_plugin_activation_guard();
 		} elseif ( Repository_Detector::is_theme( $rec['type'] ) ) {
 			Error_Handler::clear_stale_activation_guard();
-			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
+			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['name'] ?? '' );
 
 			$ready = self::validate_theme_for_activation( $rec );
 			if ( is_wp_error( $ready ) ) {
@@ -552,7 +552,7 @@ class Installer {
 
 			$pending = self::begin_activation_guard( $rec, $full_name );
 
-			$requirements = validate_theme_requirements( $rec['slug'] );
+			$requirements = validate_theme_requirements( $rec['name'] );
 			if ( is_wp_error( $requirements ) ) {
 				self::clear_activation_guard();
 				return new \WP_Error(
@@ -562,8 +562,8 @@ class Installer {
 				);
 			}
 
-			switch_theme( $rec['slug'] );
-			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
+			switch_theme( $rec['name'] );
+			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['name'] ?? '' );
 
 			delete_option( 'gitwire_running_task' );
 
@@ -600,7 +600,7 @@ class Installer {
 			'context'             => 'activation',
 			'full_name'           => $full_name,
 			'type'                => $rec['type'],
-			'slug'                => $rec['slug'] ?? '',
+			'name'                => $rec['name'] ?? '',
 			'install_path'        => $rec['install_path'] ?? '',
 			'plugin_file'         => $plugin_file,
 			'previous_stylesheet' => get_stylesheet(),
@@ -608,7 +608,7 @@ class Installer {
 		];
 
 		if ( Repository_Detector::is_theme( $rec['type'] ) ) {
-			$pending['target_stylesheet'] = $rec['slug'];
+			$pending['target_stylesheet'] = $rec['name'];
 		}
 
 		self::clear_guard_feedback();
@@ -667,7 +667,7 @@ class Installer {
 			$provider,
 			$full_name,
 			$rec['install_path'] ?? '',
-			$rec['slug'] ?? '',
+			$rec['name'] ?? '',
 			$rec['plugin_file'] ?? null
 		);
 
@@ -809,7 +809,7 @@ class Installer {
 			$repo          = $rec['repo'] ?? '';
 			$branch        = (string) ( $rec['branch'] ?? 'main' );
 			$provider      = (string) ( $rec['provider'] ?? 'github' );
-			$slug          = (string) ( $rec['slug'] ?? '' );
+			$slug          = (string) ( $rec['name'] ?? '' );
 			$connection_id = $rec['connection_id'] ? $rec['connection_id'] : null;
 			$type          = (string) ( $rec['type'] ?? 'plugin' );
 			$full_name     = (string) ( $rec['full_name'] ?? '' );
@@ -1134,10 +1134,10 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, slug, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
+					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
 				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
-					connection_id = VALUES(connection_id), slug = VALUES(slug),
+					connection_id = VALUES(connection_id), name = VALUES(name),
 					type = VALUES(type), branch = VALUES(branch),
 					head = IF(VALUES(head) != \'\', VALUES(head), head),
 					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
@@ -1146,7 +1146,7 @@ class Installer {
 				$record['connection_id'] ?? '',
 				$provider,
 				$record['owner'] ?? '',
-				$record['slug'] ?? '',
+				$record['name'] ?? '',
 				$full_name,
 				$record['type'] ?? 'plugin',
 				$record['branch'] ?? 'main',
@@ -1372,7 +1372,7 @@ class Installer {
 		$pending = [
 			'full_name'         => $full_name,
 			'type'              => $type,
-			'slug'              => $slug,
+			'name'              => $slug,
 			'install_path'      => $install_path,
 			'backup_path'       => $backup_path,
 			'plugin_file'       => $plugin_file,
@@ -1411,7 +1411,7 @@ class Installer {
 
 		// Save record.
 		$record = [
-			'slug'          => $slug,
+			'name'          => $slug,
 			'repo'          => $repo,
 			'owner'         => $owner,
 			'full_name'     => $full_name,
@@ -1491,7 +1491,7 @@ class Installer {
 
 			$validated = self::validate_theme_for_active_pull(
 				[
-					'slug'         => $slug,
+					'name'         => $slug,
 					'install_path' => $install_path,
 					'full_name'    => $full_name,
 				]
@@ -1899,7 +1899,7 @@ class Installer {
 	 * @return true|\WP_Error True when the theme can be activated.
 	 */
 	private static function validate_theme_for_activation( array $rec ): bool|\WP_Error {
-		$slug         = $rec['slug'] ?? '';
+		$slug         = $rec['name'] ?? '';
 		$install_path = $rec['install_path'] ?? '';
 		$full_name    = $rec['full_name'] ?? $slug;
 
@@ -1971,7 +1971,7 @@ class Installer {
 			return $ready;
 		}
 
-		$slug = $rec['slug'] ?? '';
+		$slug = $rec['name'] ?? '';
 		if ( ! $slug ) {
 			return new \WP_Error(
 				'gitwire_theme_missing',

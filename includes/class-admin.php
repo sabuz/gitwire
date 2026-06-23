@@ -320,8 +320,8 @@ class Admin {
 
 		$slugs = [];
 		foreach ( Installer::get_installed() as $rec ) {
-			if ( in_array( $rec['type'] ?? '', [ 'theme', 'block-theme', 'classic-theme' ], true ) && '' !== ( $rec['slug'] ?? '' ) ) {
-				$slugs[ $rec['slug'] ] = true;
+			if ( in_array( $rec['type'] ?? '', [ 'theme', 'block-theme', 'classic-theme' ], true ) && '' !== ( $rec['name'] ?? '' ) ) {
+				$slugs[ $rec['name'] ] = true;
 			}
 		}
 
