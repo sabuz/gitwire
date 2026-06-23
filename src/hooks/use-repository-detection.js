@@ -28,7 +28,7 @@ function detectionsReducer( state, action ) {
  *
  * @return {Object} Detection state and helpers.
  */
-export function useRepoDetection() {
+export function useRepositoryDetection() {
 	const [ detections, dispatch ] = useReducer( detectionsReducer, {} );
 	const pendingRef = useRef( new Set() );
 	const detectionsRef = useRef( detections );

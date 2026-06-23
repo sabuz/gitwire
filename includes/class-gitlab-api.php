@@ -138,7 +138,7 @@ class GitLab_API implements Git_Provider_Interface {
 	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
 		$project_id = rawurlencode( $owner . '/' . $repo );
 
-		return Repo_Detector::detect(
+		return Repository_Detector::detect(
 			$repo,
 			$branch,
 			function ( $ref ) use ( $project_id ) {

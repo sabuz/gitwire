@@ -199,7 +199,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
 	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
-		return Repo_Detector::detect(
+		return Repository_Detector::detect(
 			$repo,
 			$branch,
 			function ( $ref ) use ( $owner, $repo ) {

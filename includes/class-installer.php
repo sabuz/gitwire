@@ -393,7 +393,7 @@ class Installer {
 		$rec       = $installed[ $key ];
 		$owner     = $rec['owner'];
 		$repo      = $rec['repo'];
-		$method    = Repo_Detector::is_theme( $rec['type'] ) ? 'install_theme' : 'install_plugin';
+		$method    = Repository_Detector::is_theme( $rec['type'] ) ? 'install_theme' : 'install_plugin';
 		$was_stale = false;
 		if ( null !== $override_connection_id ) {
 			$connection_id = $override_connection_id;
@@ -541,7 +541,7 @@ class Installer {
 			}
 
 			self::complete_plugin_activation_guard();
-		} elseif ( Repo_Detector::is_theme( $rec['type'] ) ) {
+		} elseif ( Repository_Detector::is_theme( $rec['type'] ) ) {
 			Error_Handler::clear_stale_activation_guard();
 			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
 
@@ -607,7 +607,7 @@ class Installer {
 			'previous_template'   => get_template(),
 		];
 
-		if ( Repo_Detector::is_theme( $rec['type'] ) ) {
+		if ( Repository_Detector::is_theme( $rec['type'] ) ) {
 			$pending['target_stylesheet'] = $rec['slug'];
 		}
 
@@ -818,7 +818,7 @@ class Installer {
 				continue;
 			}
 
-			if ( Repo_Detector::is_theme( $type ) ) {
+			if ( Repository_Detector::is_theme( $type ) ) {
 				$result = self::install_theme( $owner, $repo, $branch, $slug, $provider, true, $connection_id );
 			} else {
 				$result = self::install_plugin( $owner, $repo, $branch, $slug, $provider, true, $connection_id );

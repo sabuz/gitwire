@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Detects whether a repository root is a WordPress plugin, theme, or unknown.
  */
-class Repo_Detector {
+class Repository_Detector {
 
 	/**
 	 * Directories that are never relevant to WP type detection.

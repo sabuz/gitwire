@@ -23,7 +23,7 @@ import {
 } from '@wordpress/components';
 
 import * as api from '../api';
-import { detectionKey, useRepoDetection } from '../hooks/use-repo-detection';
+import { detectionKey, useRepositoryDetection } from '../hooks/use-repository-detection';
 import InstallModal from './install-modal';
 import { ProviderIcon, providerLabel } from './provider';
 import { relativeTimeFromDate } from '../relative-time';
@@ -140,7 +140,7 @@ export default function BrowsePanel( {
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 
-	const { detections, runBatch, seedFromRepos, reset } = useRepoDetection();
+	const { detections, runBatch, seedFromRepos, reset } = useRepositoryDetection();
 
 	const [ repositories, setRepositories ] = useState( [] );
 	const [ hasMore, setHasMore ] = useState( false );

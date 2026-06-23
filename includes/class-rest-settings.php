@@ -100,7 +100,7 @@ class REST_Settings {
 		}
 
 		if ( ( $merged['repositories_refresh_frequency'] ?? 'hourly' ) !== $prev_freq ) {
-			Repo_Cache::clear_repositories();
+			Repository_Cache::clear_repositories();
 			Plugin::instance()->schedule_repos_cron();
 		}
 

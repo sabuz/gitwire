@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Cron owns freshness; reads return whatever is in the table regardless of age.
  * updated_at is a cron-cycle marker used only for stale-row cleanup after each refresh.
  */
-class Repo_Cache {
+class Repository_Cache {
 
 	/**
 	 * Returns the repo cache table name.
@@ -202,7 +202,7 @@ class Repo_Cache {
 	 * @param string $branch   Branch name.
 	 * @return string
 	 */
-	public static function repo_type_key( string $provider, string $owner, string $repo, string $branch ): string {
+	public static function repository_type_key( string $provider, string $owner, string $repo, string $branch ): string {
 		return $provider . ':' . $owner . '/' . $repo . ':' . $branch;
 	}
 
@@ -216,7 +216,7 @@ class Repo_Cache {
 	 * @param string $branch   Branch name.
 	 * @return array<string, mixed>|null Cached detection or null when missing.
 	 */
-	public static function get_repo_type( string $provider, string $owner, string $repo, string $branch ): ?array {
+	public static function get_repository_type( string $provider, string $owner, string $repo, string $branch ): ?array {
 		global $wpdb;
 		$full_name = $owner . '/' . $repo;
 
@@ -255,7 +255,7 @@ class Repo_Cache {
 	 * @param array<string, mixed> $result   Detection payload (must include 'type').
 	 * @return void
 	 */
-	public static function set_repo_type( string $provider, string $owner, string $repo, string $branch, array $result ): void {
+	public static function set_repository_type( string $provider, string $owner, string $repo, string $branch, array $result ): void {
 		global $wpdb;
 		$full_name = $owner . '/' . $repo;
 		$type      = $result['type'] ?? '';
@@ -278,7 +278,7 @@ class Repo_Cache {
 			[ '%s', '%s' ]
 		);
 
-		// Upsert a connection-agnostic row so get_repo_type() hits the table even when
+		// Upsert a connection-agnostic row so get_repository_type() hits the table even when
 		// the repo was never listed in the browse panel (e.g. direct URL import).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->query(
@@ -324,7 +324,7 @@ class Repo_Cache {
 	 * @since 1.0.0
 	 * @return void
 	 */
-	public static function clear_repo_types(): void {
+	public static function clear_repository_types(): void {
 		global $wpdb;
 
 		// Reset type columns on all connection-specific rows.
@@ -336,7 +336,7 @@ class Repo_Cache {
 			)
 		);
 
-		// Remove connection-agnostic fallback rows written by set_repo_type() for URL imports.
+		// Remove connection-agnostic fallback rows written by set_repository_type() for URL imports.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->delete( self::repositories_table(), [ 'connection_id' => '' ], [ '%s' ] );
 
@@ -358,7 +358,7 @@ class Repo_Cache {
 	 */
 	public static function clear_all(): void {
 		self::clear_repositories();
-		self::clear_repo_types();
+		self::clear_repository_types();
 	}
 
 	/**
@@ -451,7 +451,7 @@ class Repo_Cache {
 			return $result;
 		}
 
-		return self::cron_refresh_repo_types();
+		return self::cron_refresh_repository_types();
 	}
 
 	/**
@@ -460,7 +460,7 @@ class Repo_Cache {
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
 	 */
-	public static function cron_refresh_repo_types(): true|\WP_Error {
+	public static function cron_refresh_repository_types(): true|\WP_Error {
 		global $wpdb;
 
 		$keys           = [];
@@ -473,7 +473,7 @@ class Repo_Cache {
 			$repo     = $rec['repo'] ?? '';
 			$branch   = $rec['branch'] ?? 'main';
 			if ( $owner && $repo ) {
-				$key          = self::repo_type_key( $provider, $owner, $repo, $branch );
+				$key          = self::repository_type_key( $provider, $owner, $repo, $branch );
 				$keys[ $key ] = true;
 				if ( ! empty( $rec['connection_id'] ) ) {
 					$connection_ids[ $key ] = $rec['connection_id'];
@@ -514,7 +514,7 @@ class Repo_Cache {
 				continue;
 			}
 
-			self::set_repo_type( $provider, $owner, $repo, $full_branch, $result );
+			self::set_repository_type( $provider, $owner, $repo, $full_branch, $result );
 		}
 
 		// Background detection: process a batch of cache rows that haven't been typed yet.
@@ -559,7 +559,7 @@ class Repo_Cache {
 					$connection_id
 				);
 				if ( ! is_wp_error( $result ) ) {
-					self::set_repo_type( $row['provider'], $row['owner'], $row['name'], $branch, $result );
+					self::set_repository_type( $row['provider'], $row['owner'], $row['name'], $branch, $result );
 				}
 				++$processed;
 			}
@@ -589,6 +589,6 @@ class Repo_Cache {
 			return $result;
 		}
 
-		return self::cron_refresh_repo_types();
+		return self::cron_refresh_repository_types();
 	}
 }

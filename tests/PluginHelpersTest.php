@@ -5,14 +5,14 @@
  * @package Gitwire
  */
 
-use Gitwire\Repo_Detector;
+use Gitwire\Repository_Detector;
 use Gitwire\Settings;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Tests for Repo_Detector and Settings helpers.
+ * Tests for Repository_Detector and Settings helpers.
  *
- * @covers Gitwire\Repo_Detector
+ * @covers Gitwire\Repository_Detector
  * @covers Gitwire\Settings
  */
 class PluginHelpersTest extends TestCase {
@@ -39,7 +39,7 @@ class PluginHelpersTest extends TestCase {
 	 */
 	public function test_has_header_finds_plugin_name(): void {
 		$content = "<?php\n/**\n * Plugin Name: Git\n */";
-		$this->assertTrue( Repo_Detector::has_header( $content, 'Plugin Name' ) );
+		$this->assertTrue( Repository_Detector::has_header( $content, 'Plugin Name' ) );
 	}
 
 	/**
@@ -47,7 +47,7 @@ class PluginHelpersTest extends TestCase {
 	 */
 	public function test_extract_header_returns_value(): void {
 		$content = "<?php\n/**\n * Theme Name: Demo Theme\n */";
-		$this->assertSame( 'Demo Theme', Repo_Detector::extract_header( $content, 'Theme Name' ) );
+		$this->assertSame( 'Demo Theme', Repository_Detector::extract_header( $content, 'Theme Name' ) );
 	}
 
 	/**

@@ -622,7 +622,7 @@ class REST_Installer {
 			) {
 				$rec['activation_pending'] = true;
 				if (
-					Repo_Detector::is_theme( $rec['type'] ?? '' )
+					Repository_Detector::is_theme( $rec['type'] ?? '' )
 					&& 'activation' === ( $pending['context'] ?? '' )
 				) {
 					$rec['active'] = false;
