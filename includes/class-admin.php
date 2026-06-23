@@ -200,7 +200,7 @@ class Admin {
 
 		wp_set_script_translations( 'gitwire-app', 'gitwire', GITWIRE_DIR . 'languages' );
 
-		$settings    = Settings::get_public();
+		$settings = Settings::get_public();
 		Error_Handler::clear_stale_activation_guard();
 		$pending_msg = get_option( 'gitwire_pending_message' );
 		if ( $pending_msg ) {
@@ -274,7 +274,7 @@ class Admin {
 	 * @return array<string, string>
 	 */
 	public static function add_settings_link( array $actions ): array {
-		$url             = add_query_arg( 'page', 'gitwire', admin_url( 'admin.php' ) );
+		$url                 = add_query_arg( 'page', 'gitwire', admin_url( 'admin.php' ) );
 		$actions['settings'] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Settings', 'gitwire' ) . '</a>';
 		return $actions;
 	}

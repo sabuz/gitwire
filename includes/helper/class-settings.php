@@ -54,21 +54,21 @@ class Settings {
 	public static function get_public(): array {
 		$s = self::get_raw();
 		return [
-			'smart_install'               => $s['smart_install'] ?? true,
-			'auto_detect_type'            => $s['auto_detect_type'] ?? true,
-			'repos_per_page'              => $s['repos_per_page'] ?? 50,
-			'excluded_repos'              => $s['excluded_repos'] ?? [],
-			'max_repos_per_source'        => $s['max_repos_per_source'] ?? 'unlimited',
+			'smart_install'                  => $s['smart_install'] ?? true,
+			'auto_detect_type'               => $s['auto_detect_type'] ?? true,
+			'repos_per_page'                 => $s['repos_per_page'] ?? 50,
+			'excluded_repos'                 => $s['excluded_repos'] ?? [],
+			'max_repos_per_source'           => $s['max_repos_per_source'] ?? 'unlimited',
 			'repositories_refresh_frequency' => $s['repositories_refresh_frequency'] ?? 'daily',
-			'background_type_detection'   => $s['background_type_detection'] ?? false,
-			'shallow_detection'           => $s['shallow_detection'] ?? false,
-			'show_repo_label'             => $s['show_repo_label'] ?? true,
-			'block_on_fatal'              => $s['block_on_fatal'] ?? true,
-			'update_check_interval'       => $s['update_check_interval'] ?? 'halfhourly',
-			'enable_logging'              => $s['enable_logging'] ?? false,
-			'log_retention_days'          => $s['log_retention_days'] ?? 7,
-			'log_level'                   => $s['log_level'] ?? 'activity',
-			'remove_data_on_uninstall'    => $s['remove_data_on_uninstall'] ?? false,
+			'background_type_detection'      => $s['background_type_detection'] ?? false,
+			'shallow_detection'              => $s['shallow_detection'] ?? false,
+			'show_repo_label'                => $s['show_repo_label'] ?? true,
+			'block_on_fatal'                 => $s['block_on_fatal'] ?? true,
+			'update_check_interval'          => $s['update_check_interval'] ?? 'halfhourly',
+			'enable_logging'                 => $s['enable_logging'] ?? false,
+			'log_retention_days'             => $s['log_retention_days'] ?? 7,
+			'log_level'                      => $s['log_level'] ?? 'activity',
+			'remove_data_on_uninstall'       => $s['remove_data_on_uninstall'] ?? false,
 		];
 	}
 

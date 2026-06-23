@@ -90,15 +90,15 @@ final class Plugin {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function register_cron_schedules( array $schedules ): array {
-		$schedules['everyfiveminutes']    = [
+		$schedules['everyfiveminutes'] = [
 			'interval' => 5 * MINUTE_IN_SECONDS,
 			'display'  => __( 'Every 5 minutes', 'gitwire' ),
 		];
-		$schedules['halfhourly'] = [
+		$schedules['halfhourly']       = [
 			'interval' => 1800,
 			'display'  => __( 'Every 30 minutes', 'gitwire' ),
 		];
-		$schedules['gitwire_daily']       = [
+		$schedules['gitwire_daily']    = [
 			'interval' => DAY_IN_SECONDS,
 			'display'  => __( 'Once daily', 'gitwire' ),
 		];
@@ -202,12 +202,12 @@ final class Plugin {
 			add_option(
 				'gitwire_settings',
 				[
-					'smart_install'               => true,
-					'show_repo_label'             => true,
-					'enable_logging'              => true,
-					'log_retention_days'          => 7,
-					'log_level'                   => 'activity',
-					'remove_data_on_uninstall'    => false,
+					'smart_install'                  => true,
+					'show_repo_label'                => true,
+					'enable_logging'                 => true,
+					'log_retention_days'             => 7,
+					'log_level'                      => 'activity',
+					'remove_data_on_uninstall'       => false,
 					'repositories_refresh_frequency' => 'daily',
 				],
 				'',
@@ -263,11 +263,11 @@ final class Plugin {
 		}
 
 		$recurrence_map = [
-			'everyfiveminutes'        => 'everyfiveminutes',
-			'halfhourly' => 'halfhourly',
-			'hourly'      => 'hourly',
-			'twicedaily'  => 'twicedaily',
-			'daily'       => 'daily',
+			'everyfiveminutes' => 'everyfiveminutes',
+			'halfhourly'       => 'halfhourly',
+			'hourly'           => 'hourly',
+			'twicedaily'       => 'twicedaily',
+			'daily'            => 'daily',
 		];
 		$recurrence     = $recurrence_map[ $interval ] ?? 'halfhourly';
 		$current        = wp_get_schedule( 'gitwire_update_check' );

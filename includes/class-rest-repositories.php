@@ -223,7 +223,7 @@ class REST_Repositories {
 				}
 			}
 
-			$api    = $has_auth
+			$api = $has_auth
 				? new Bitbucket_API( sanitize_email( $creds['email'] ), $creds['api_token'] )
 				: new Bitbucket_API( '', '' );
 			// Authenticated: empty string — get_repos auto-discovers workspaces via /user/workspaces.

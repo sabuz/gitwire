@@ -781,8 +781,8 @@ class Installer {
 				}
 			}
 
-			$api        = Provider_Factory::make( $provider, $connection_id );
-			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+			$api           = Provider_Factory::make( $provider, $connection_id );
+			$remote_sha    = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
 			$stored_remote = (string) ( $rec['remote_head'] ?? '' );
 
 			if ( $remote_sha && $remote_sha !== $stored_remote ) {
