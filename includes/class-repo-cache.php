@@ -541,6 +541,7 @@ class Repo_Cache {
 		if ( empty( $untyped ) ) {
 			delete_option( 'gitwire_detection_cursor' );
 		} else {
+			$processed = 0;
 			foreach ( $untyped as $row ) {
 				// 25 s guard — leave time for the next item on the queue.
 				if ( time() - $batch_start > 25 ) {
@@ -560,8 +561,17 @@ class Repo_Cache {
 				if ( ! is_wp_error( $result ) ) {
 					self::set_repo_type( $row['provider'], $row['owner'], $row['name'], $branch, $result );
 				}
+				++$processed;
 			}
-			update_option( 'gitwire_detection_cursor', $cursor + count( $untyped ), false );
+
+			$fetched    = count( $untyped );
+			$new_cursor = $cursor + $processed;
+			// Last (partial) batch or time guard exhausted the batch — wrap to 0 so newly inserted rows aren't skipped.
+			if ( $processed < $fetched || $fetched < $batch_size ) {
+				delete_option( 'gitwire_detection_cursor' );
+			} else {
+				update_option( 'gitwire_detection_cursor', $new_cursor, false );
+			}
 		}
 
 		return $last_err ?? true;
