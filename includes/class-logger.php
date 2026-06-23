@@ -219,10 +219,10 @@ class Logger {
 			file_put_contents( $htaccess, 'Deny from all' );
 		}
 
-		$index = $dir . '/index.php';
+		$index = $dir . '/index.html';
 		if ( ! file_exists( $index ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			file_put_contents( $index, '<?php // Silence is golden.' );
+			file_put_contents( $index, '' );
 		}
 	}
 }
