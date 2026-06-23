@@ -225,6 +225,11 @@ class GitLab_API implements Git_Provider_Interface {
 	 * @return string|\WP_Error Local temp file path on success, WP_Error on failure.
 	 */
 	public function download_zip( string $owner, string $repo, string $branch ): string|\WP_Error {
+		$safe = $this->assert_base_url_safe();
+		if ( is_wp_error( $safe ) ) {
+			return $safe;
+		}
+
 		$project_id = rawurlencode( $owner . '/' . $repo );
 		$url        = $this->base . '/projects/' . $project_id
 			. '/repository/archive.zip?sha=' . rawurlencode( $branch );
@@ -273,6 +278,11 @@ class GitLab_API implements Git_Provider_Interface {
 	 * @return string|\WP_Error File content on success, WP_Error on failure.
 	 */
 	private function get_raw_content( string $owner, string $repo, string $path, string $branch ): string|\WP_Error {
+		$safe = $this->assert_base_url_safe();
+		if ( is_wp_error( $safe ) ) {
+			return $safe;
+		}
+
 		$project_id = rawurlencode( $owner . '/' . $repo );
 		$file_path  = rawurlencode( $path );
 
@@ -294,6 +304,22 @@ class GitLab_API implements Git_Provider_Interface {
 		}
 
 		return wp_remote_retrieve_body( $response );
+	}
+
+	/**
+	 * Guards against SSRF by re-validating the base URL at call time.
+	 *
+	 * Re-resolving the hostname on each request narrows the DNS-rebinding
+	 * window compared to validating only at settings-save time.
+	 *
+	 * @since 1.0.0
+	 * @return true|\WP_Error
+	 */
+	private function assert_base_url_safe(): true|\WP_Error {
+		if ( ! Settings::is_allowed_gitlab_url( $this->base ) ) {
+			return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolved to a disallowed address.' );
+		}
+		return true;
 	}
 
 	/**
@@ -320,6 +346,11 @@ class GitLab_API implements Git_Provider_Interface {
 	 * @return array<mixed>|\WP_Error Decoded JSON array on success, WP_Error on failure.
 	 */
 	private function get( string $endpoint ): array|\WP_Error {
+		$safe = $this->assert_base_url_safe();
+		if ( is_wp_error( $safe ) ) {
+			return $safe;
+		}
+
 		$response = wp_remote_get(
 			$this->base . $endpoint,
 			[

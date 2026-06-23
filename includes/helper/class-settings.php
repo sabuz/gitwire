@@ -257,6 +257,9 @@ class Settings {
 	/**
 	 * Blocks private/reserved hosts for self-hosted GitLab URLs.
 	 *
+	 * Validates at parse time. Call this again at HTTP-request time inside the
+	 * API client to narrow the DNS-rebinding race window.
+	 *
 	 * @since 1.0.0
 	 * @param string $url GitLab instance URL.
 	 * @return bool
@@ -277,18 +280,65 @@ class Settings {
 			return false;
 		}
 
-		if ( in_array( $host, [ 'localhost', '127.0.0.1', '0.0.0.0' ], true ) ) {
+		if ( 'localhost' === $host ) {
 			return false;
 		}
 
 		if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
-			return (bool) filter_var(
-				$host,
-				FILTER_VALIDATE_IP,
-				FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-			);
+			return self::is_safe_ip( $host );
+		}
+
+		// Resolve IPv4 and check the returned address.
+		// Both functions live in ext/standard but can be blocked via disable_functions.
+		if ( function_exists( 'gethostbyname' ) ) {
+			$ipv4 = gethostbyname( $host );
+			if ( $ipv4 !== $host && ! self::is_safe_ip( $ipv4 ) ) {
+				return false;
+			}
+		}
+
+		// Resolve IPv6 (gethostbyname only covers A records).
+		if ( function_exists( 'dns_get_record' ) ) {
+			$aaaa = dns_get_record( $host, DNS_AAAA );
+			if ( is_array( $aaaa ) ) {
+				foreach ( $aaaa as $record ) {
+					if ( ! empty( $record['ipv6'] ) && ! self::is_safe_ip( $record['ipv6'] ) ) {
+						return false;
+					}
+				}
+			}
 		}
 
 		return true;
+	}
+
+	/**
+	 * Returns true only for publicly routable IP addresses.
+	 *
+	 * @since 1.0.0
+	 * @param string $ip IPv4 or IPv6 address.
+	 * @return bool
+	 */
+	private static function is_safe_ip( string $ip ): bool {
+		// IPv6 loopback and unspecified.
+		if ( in_array( $ip, [ '::1', '::' ], true ) ) {
+			return false;
+		}
+
+		// 127.0.0.0/8 loopback range — not covered by FILTER_FLAG_NO_RES_RANGE.
+		if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) && str_starts_with( $ip, '127.' ) ) {
+			return false;
+		}
+
+		// Cloud metadata service IPs (link-local IPv4 and AWS IPv6).
+		if ( in_array( $ip, [ '169.254.169.254', 'fd00:ec2::254' ], true ) ) {
+			return false;
+		}
+
+		return (bool) filter_var(
+			$ip,
+			FILTER_VALIDATE_IP,
+			FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+		);
 	}
 }
