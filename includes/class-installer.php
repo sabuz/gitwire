@@ -1122,29 +1122,14 @@ class Installer {
 		$provider  = $record['provider'] ?? '';
 		$full_name = $record['full_name'] ?? '';
 
-		// Preserve installed_at and head from existing row.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$existing = $wpdb->get_row(
-			$wpdb->prepare(
-				'SELECT installed_at, head FROM ' . self::installed_table() . ' WHERE provider = %s AND full_name = %s',
-				$provider,
-				$full_name
-			),
-			ARRAY_A
-		);
-
-		if ( $existing && ! empty( $existing['installed_at'] ) ) {
-			$record['installed_at'] = $existing['installed_at'];
-		}
-
 		if ( $head_sha ) {
 			$record['head'] = $head_sha;
-		} elseif ( $existing && ! empty( $existing['head'] ) && empty( $record['head'] ) ) {
-			$record['head'] = $existing['head'];
 		}
 
-		// Upsert. remote_head is intentionally excluded from the UPDATE clause so
-		// a reinstall does not wipe a cached remote SHA written by sync_installed.
+		// Upsert. COALESCE preserves installed_at from existing rows (no pre-SELECT needed).
+		// IF() keeps the existing head when the new value is empty.
+		// remote_head is excluded from the UPDATE clause so a reinstall does not wipe a
+		// cached remote SHA written by the maintenance cron.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->query(
 			$wpdb->prepare(
@@ -1153,8 +1138,10 @@ class Installer {
 				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
 					connection_id = VALUES(connection_id), slug = VALUES(slug),
-					type = VALUES(type), branch = VALUES(branch), head = VALUES(head),
+					type = VALUES(type), branch = VALUES(branch),
+					head = IF(VALUES(head) != \'\', VALUES(head), head),
 					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
+					installed_at = COALESCE(installed_at, VALUES(installed_at)),
 					updated_at = VALUES(updated_at)',
 				$record['connection_id'] ?? '',
 				$provider,
