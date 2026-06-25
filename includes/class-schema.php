@@ -83,7 +83,7 @@ class Schema {
 				provider VARCHAR(20) NOT NULL,
 				owner VARCHAR(128) NOT NULL DEFAULT '',
 				name VARCHAR(255) NOT NULL DEFAULT '',
-				full_name VARCHAR(255) NOT NULL,
+				full_name VARCHAR(255) NOT NULL DEFAULT '',
 				type VARCHAR(20) NOT NULL DEFAULT 'plugin',
 				branch VARCHAR(255) NOT NULL DEFAULT 'main',
 				head VARCHAR(40) NOT NULL DEFAULT '',
@@ -123,7 +123,7 @@ class Schema {
 				provider         VARCHAR(20) NOT NULL,
 				owner            VARCHAR(128) NOT NULL DEFAULT '',
 				name             VARCHAR(128) NOT NULL DEFAULT '',
-				full_name        VARCHAR(255) NOT NULL,
+				full_name        VARCHAR(255) NOT NULL DEFAULT '',
 				private          TINYINT(1) NOT NULL DEFAULT 0,
 				default_branch   VARCHAR(255) NOT NULL DEFAULT 'main',
 				html_url         VARCHAR(512) NOT NULL DEFAULT '',
@@ -148,7 +148,7 @@ class Schema {
 	 * @return bool
 	 */
 	public static function needs_install(): bool {
-		return ! self::tables_exist() || get_option( self::VERSION_OPTION ) !== self::DB_VERSION;
+		return ! self::tables_exist() || version_compare( (string) get_option( self::VERSION_OPTION, '1.0.0' ), self::DB_VERSION, '<' );
 	}
 
 	/**
