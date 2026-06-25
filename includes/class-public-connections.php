@@ -29,21 +29,10 @@ class Public_Connections {
 	}
 
 	/**
-	 * Returns the connection meta table name.
+	 * Returns all public connections with profile data and derived fields.
 	 *
 	 * @since 1.0.0
-	 * @return string
-	 */
-	private static function connection_meta_table(): string {
-		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_connection_meta';
-	}
-
-	/**
-	 * Returns all public connections, enriched with meta and derived fields.
-	 *
-	 * @since 1.0.0
-	 * @return array<int, array<string, string>>
+	 * @return array<int, array<string, mixed>>
 	 */
 	public static function all(): array {
 		global $wpdb;
@@ -58,28 +47,9 @@ class Public_Connections {
 			return [];
 		}
 
-		$ids          = array_column( $rows, 'id' );
-		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%s' ) );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$meta_rows = $wpdb->get_results(
-			$wpdb->prepare(
-				'SELECT connection_id, meta_key, meta_value FROM ' . self::connection_meta_table() . " WHERE connection_id IN ($placeholders)",
-				...$ids
-			),
-			ARRAY_A
-		);
-
-		$meta_by_id = [];
-		foreach ( $meta_rows as $meta ) {
-			$meta_by_id[ $meta['connection_id'] ][ $meta['meta_key'] ] = $meta['meta_value'];
-		}
-
 		return array_values(
 			array_map(
-				static function ( $row ) use ( $meta_by_id ) {
-					return self::enrich( array_merge( $row, $meta_by_id[ $row['id'] ] ?? [] ) );
-				},
+				static fn( $row ) => self::enrich( self::strip_credentials( $row ) ),
 				$rows
 			)
 		);
@@ -89,11 +59,11 @@ class Public_Connections {
 	 * Injects derived fields that do not need to be persisted.
 	 *
 	 * GitHub avatar URLs are deterministic from the username, so we compute
-	 * them rather than store them.
+	 * them rather than store them when the profile fetch hasn't run yet.
 	 *
 	 * @since 1.0.0
-	 * @param array<string, string> $conn Connection row merged with meta.
-	 * @return array<string, string>
+	 * @param array<string, mixed> $conn Connection row.
+	 * @return array<string, mixed>
 	 */
 	private static function enrich( array $conn ): array {
 		if ( 'github' === ( $conn['provider'] ?? '' ) && empty( $conn['avatar_url'] ) ) {
@@ -103,11 +73,26 @@ class Public_Connections {
 	}
 
 	/**
+	 * Removes the credentials column before returning a row to callers.
+	 *
+	 * Public connections always have credentials IS NULL, but we unset the key
+	 * to keep the returned shape clean.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed> $row Raw row from gitwire_connections.
+	 * @return array<string, mixed>
+	 */
+	private static function strip_credentials( array $row ): array {
+		unset( $row['credentials'] );
+		return $row;
+	}
+
+	/**
 	 * Finds a single public connection by ID, or null when not found.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
-	 * @return array<string, string>|null
+	 * @return array<string, mixed>|null
 	 */
 	public static function find( string $id ): ?array {
 		global $wpdb;
@@ -118,24 +103,7 @@ class Public_Connections {
 			ARRAY_A
 		);
 
-		if ( ! $row ) {
-			return null;
-		}
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$meta_rows = $wpdb->get_results(
-			$wpdb->prepare(
-				'SELECT meta_key, meta_value FROM ' . self::connection_meta_table() . ' WHERE connection_id = %s',
-				$id
-			),
-			ARRAY_A
-		);
-
-		foreach ( $meta_rows as $meta ) {
-			$row[ $meta['meta_key'] ] = $meta['meta_value'];
-		}
-
-		return self::enrich( $row );
+		return $row ? self::enrich( self::strip_credentials( $row ) ) : null;
 	}
 
 	/**
@@ -143,7 +111,7 @@ class Public_Connections {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
-	 * @return array<string, string>|null
+	 * @return array<string, mixed>|null
 	 */
 	public static function get_first_for_provider( string $provider ): ?array {
 		global $wpdb;
@@ -157,24 +125,7 @@ class Public_Connections {
 			ARRAY_A
 		);
 
-		if ( ! $row ) {
-			return null;
-		}
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$meta_rows = $wpdb->get_results(
-			$wpdb->prepare(
-				'SELECT meta_key, meta_value FROM ' . self::connection_meta_table() . ' WHERE connection_id = %s',
-				$row['id']
-			),
-			ARRAY_A
-		);
-
-		foreach ( $meta_rows as $meta ) {
-			$row[ $meta['meta_key'] ] = $meta['meta_value'];
-		}
-
-		return self::enrich( $row );
+		return $row ? self::enrich( self::strip_credentials( $row ) ) : null;
 	}
 
 	/**
@@ -183,7 +134,7 @@ class Public_Connections {
 	 * @since 1.0.0
 	 * @param string $provider   Provider key.
 	 * @param string $identifier Identifier to match.
-	 * @return array<string, string>|null
+	 * @return array<string, mixed>|null
 	 */
 	public static function find_by_identifier( string $provider, string $identifier ): ?array {
 		global $wpdb;
@@ -202,14 +153,14 @@ class Public_Connections {
 			ARRAY_A
 		);
 
-		return $row ? self::enrich( $row ) : null;
+		return $row ? self::enrich( self::strip_credentials( $row ) ) : null;
 	}
 
 	/**
 	 * Converts a public connection record to the credential format used by API clients.
 	 *
 	 * @since 1.0.0
-	 * @param array<string, string> $conn Public connection record.
+	 * @param array<string, mixed> $conn Public connection record.
 	 * @return array<string, string>
 	 */
 	public static function to_credentials( array $conn ): array {
@@ -218,7 +169,7 @@ class Public_Connections {
 		if ( 'gitlab' === $conn['provider'] ) {
 			return [
 				'username'   => $identifier,
-				'gitlab_url' => $conn['gitlab_url'] ?? '',
+				'gitlab_url' => $conn['host_url'] ?? '',
 			];
 		}
 
@@ -238,10 +189,10 @@ class Public_Connections {
 	 * @since 1.0.0
 	 * @param string $provider   Provider key.
 	 * @param string $identifier GitHub/GitLab username or Bitbucket workspace slug.
-	 * @param string $gitlab_url Raw self-hosted GitLab instance URL.
+	 * @param string $host_url   Raw self-hosted GitLab instance URL.
 	 * @return array{identifier: string, gitlab_url: string}|\WP_Error Normalized fields, or WP_Error on invalid input.
 	 */
-	public static function validate( string $provider, string $identifier, string $gitlab_url = '' ): array|\WP_Error {
+	public static function validate( string $provider, string $identifier, string $host_url = '' ): array|\WP_Error {
 		$identifier = sanitize_text_field( $identifier );
 		if ( '' === $identifier ) {
 			$message = 'bitbucket' === $provider
@@ -251,8 +202,8 @@ class Public_Connections {
 		}
 
 		$normalized_url = '';
-		if ( 'gitlab' === $provider && '' !== $gitlab_url ) {
-			$normalized_url = esc_url_raw( $gitlab_url );
+		if ( 'gitlab' === $provider && '' !== $host_url ) {
+			$normalized_url = esc_url_raw( $host_url );
 			if ( '' !== $normalized_url && ! Settings::is_allowed_gitlab_url( $normalized_url ) ) {
 				return new \WP_Error(
 					'invalid_gitlab_url',
@@ -274,29 +225,28 @@ class Public_Connections {
 	 * @since 1.0.0
 	 * @param string $provider   Provider key.
 	 * @param string $identifier GitHub/GitLab username or Bitbucket workspace slug.
-	 * @param string $gitlab_url Optional self-hosted GitLab instance URL.
-	 * @return array<string, string> The new connection record.
+	 * @param string $host_url   Optional self-hosted GitLab instance URL.
+	 * @return array<string, mixed> The new connection record.
 	 */
-	public static function add( string $provider, string $identifier, string $gitlab_url = '' ): array {
+	public static function add( string $provider, string $identifier, string $host_url = '' ): array {
 		global $wpdb;
 
 		$id    = 'pub_' . wp_generate_uuid4();
 		$table = self::connections_table();
+		$now   = current_time( 'mysql' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query(
 			$wpdb->prepare(
-				"INSERT INTO $table (id, provider, identifier, credentials, scope, created_at) VALUES (%s, %s, %s, NULL, 'all', %s)",
+				"INSERT INTO $table (id, provider, identifier, credentials, host_url, scope, created_at, updated_at) VALUES (%s, %s, %s, NULL, %s, 'all', %s, %s)",
 				$id,
 				$provider,
 				$identifier,
-				current_time( 'mysql' )
+				( '' !== $host_url ) ? $host_url : null,
+				$now,
+				$now
 			)
 		);
-
-		if ( 'gitlab' === $provider && '' !== $gitlab_url ) {
-			self::set_meta( $id, 'gitlab_url', $gitlab_url );
-		}
 
 		return self::find( $id ) ?? [
 			'id'         => $id,
@@ -306,31 +256,7 @@ class Public_Connections {
 	}
 
 	/**
-	 * Upserts a single meta value for a connection.
-	 *
-	 * @since 1.0.0
-	 * @param string $connection_id Connection ID.
-	 * @param string $meta_key      Meta key.
-	 * @param string $meta_value    Meta value.
-	 * @return void
-	 */
-	private static function set_meta( string $connection_id, string $meta_key, string $meta_value ): void {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->replace(
-			self::connection_meta_table(),
-			[
-				'connection_id' => $connection_id,
-				'meta_key'      => $meta_key,
-				'meta_value'    => $meta_value,
-			],
-			[ '%s', '%s', '%s' ]
-		);
-	}
-
-	/**
-	 * Removes a public connection and its meta by ID.
+	 * Removes a public connection by ID.
 	 *
 	 * @since 1.0.0
 	 * @param string $id Connection ID.
@@ -345,8 +271,6 @@ class Public_Connections {
 		$deleted = $wpdb->query( $wpdb->prepare( "DELETE FROM $table WHERE id = %s AND credentials IS NULL", $id ) );
 
 		if ( $deleted ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->delete( self::connection_meta_table(), [ 'connection_id' => $id ], [ '%s' ] );
 			Repositories::clear_repositories( $id );
 		}
 

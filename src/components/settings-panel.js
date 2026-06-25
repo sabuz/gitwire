@@ -831,7 +831,7 @@ function PublicConnectionsSummary( {
 										@
 										{ rateCache[ conn.id ]?.username ||
 											conn.identifier }
-										{ conn.gitlab_url && (
+										{ conn.host_url && (
 											<span
 												style={ {
 													fontWeight: 400,
@@ -839,7 +839,7 @@ function PublicConnectionsSummary( {
 													marginLeft: 4,
 												} }
 											>
-												({ conn.gitlab_url })
+												({ conn.host_url })
 											</span>
 										) }
 									</span>
@@ -986,9 +986,9 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 						>
 							@{ rateData?.username || rec.identifier }
 						</div>
-						{ rec.gitlab_url && (
+						{ rec.host_url && (
 							<div style={ { fontSize: 12, color: '#57606a' } }>
-								{ rec.gitlab_url }
+								{ rec.host_url }
 							</div>
 						) }
 						{ checkedAt && (
@@ -1149,7 +1149,7 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 				provider,
 				username: trimmed,
 				...( 'gitlab' === provider
-					? { gitlab_url: gitlabUrl.trim() }
+					? { host_url: gitlabUrl.trim() }
 					: {} ),
 			} );
 			toast.success( __( 'Connection added.', 'gitwire' ) );

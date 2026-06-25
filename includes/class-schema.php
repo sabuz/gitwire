@@ -22,7 +22,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	const DB_VERSION = '1.0.0';
+	const DB_VERSION = '2.0.0';
 
 	/**
 	 * Option key used to track the installed schema version.
@@ -47,29 +47,27 @@ class Schema {
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		// Unified connection store — public (credentials IS NULL) and private (encrypted JSON).
+		// Unified connection store — identity, auth config, profile cache, and timestamps.
 		dbDelta(
 			"CREATE TABLE {$prefix}gitwire_connections (
-				id VARCHAR(64) NOT NULL,
-				provider VARCHAR(20) NOT NULL,
-				identifier VARCHAR(255) NOT NULL DEFAULT '',
-				credentials TEXT NULL,
-				scope VARCHAR(20) NOT NULL DEFAULT 'all',
-				created_at DATETIME NOT NULL,
+				id             VARCHAR(64) NOT NULL,
+				provider       VARCHAR(20) NOT NULL,
+				identifier     VARCHAR(255) NOT NULL DEFAULT '',
+				credentials    TEXT NULL,
+				email          VARCHAR(255) NULL,
+				host_url       VARCHAR(512) NULL,
+				scope          VARCHAR(20) NOT NULL DEFAULT 'all',
+				authenticated  TINYINT(1) NOT NULL DEFAULT 0,
+				name           VARCHAR(255) NOT NULL DEFAULT '',
+				avatar_url     VARCHAR(512) NOT NULL DEFAULT '',
+				rate_limit     INT UNSIGNED NOT NULL DEFAULT 0,
+				rate_remaining INT UNSIGNED NOT NULL DEFAULT 0,
+				rate_reset     INT UNSIGNED NOT NULL DEFAULT 0,
+				error          TEXT NULL,
+				created_at     DATETIME NOT NULL,
+				updated_at     DATETIME NOT NULL,
 				PRIMARY KEY  (id),
 				KEY provider (provider)
-			) $charset;"
-		);
-
-		// Key-value store for all connection extras: gitlab_url (config) and
-		// profile cache fields (provider, username, avatar_url, rate data, etc.).
-		dbDelta(
-			"CREATE TABLE {$prefix}gitwire_connection_meta (
-				connection_id VARCHAR(64) NOT NULL,
-				meta_key VARCHAR(100) NOT NULL,
-				meta_value TEXT NOT NULL,
-				PRIMARY KEY  (connection_id, meta_key),
-				KEY meta_key (meta_key)
 			) $charset;"
 		);
 
@@ -114,9 +112,9 @@ class Schema {
 
 		// Repository listing fetched from each connection — one row per repo.
 		// last_activity_at: last activity from the provider API.
-		// updated_at:    when this row was last refreshed by cron.
-		// type:          flat detection value ('plugin','block-theme','classic-theme','unknown','').
-		// type_meta:     detection payload JSON (confidence, name, key_files).
+		// updated_at:       when this row was last refreshed by cron.
+		// type:             flat detection value ('plugin','block-theme','classic-theme','unknown','').
+		// type_meta:        detection payload JSON (confidence, name, key_files).
 		dbDelta(
 			"CREATE TABLE {$prefix}gitwire_repositories (
 				connection_id    VARCHAR(64) NOT NULL,
@@ -160,7 +158,7 @@ class Schema {
 	private static function tables_exist(): bool {
 		global $wpdb;
 		$prefix = $wpdb->base_prefix;
-		foreach ( [ 'gitwire_connections', 'gitwire_connection_meta', 'gitwire_installations', 'gitwire_commits', 'gitwire_repositories' ] as $table ) {
+		foreach ( [ 'gitwire_connections', 'gitwire_installations', 'gitwire_commits', 'gitwire_repositories' ] as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $prefix . $table ) ) !== $prefix . $table ) {
 				return false;
@@ -188,8 +186,6 @@ class Schema {
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_commits" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_installations" );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_connection_meta" );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS {$prefix}gitwire_connections" );
 

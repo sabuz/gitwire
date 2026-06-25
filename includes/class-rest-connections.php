@@ -40,17 +40,17 @@ class REST_Connections {
 					'callback'            => [ self::class, 'add_public_connection' ],
 					'permission_callback' => [ REST::class, 'can_manage' ],
 					'args'                => [
-						'provider'   => [
+						'provider'  => [
 							'required' => true,
 							'type'     => 'string',
 							'enum'     => [ 'github', 'gitlab', 'bitbucket' ],
 						],
-						'username'   => [
+						'username'  => [
 							'required'          => true,
 							'type'              => 'string',
 							'sanitize_callback' => 'sanitize_text_field',
 						],
-						'gitlab_url' => [
+						'host_url'  => [
 							'type'    => 'string',
 							'default' => '',
 						],
@@ -102,7 +102,7 @@ class REST_Connections {
 		$valid    = Public_Connections::validate(
 			$provider,
 			(string) $req->get_param( 'username' ),
-			(string) $req->get_param( 'gitlab_url' )
+			(string) $req->get_param( 'host_url' )
 		);
 		if ( is_wp_error( $valid ) ) {
 			return $valid;
@@ -134,8 +134,6 @@ class REST_Connections {
 		if ( ! Public_Connections::delete( $id ) ) {
 			return new \WP_Error( 'not_found', __( 'Connection not found.', 'gitwire' ), [ 'status' => 404 ] );
 		}
-
-		Connection_Meta::clear_public_connection_metadata( $id );
 
 		return [ 'deleted' => true ];
 	}

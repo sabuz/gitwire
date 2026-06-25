@@ -1,24 +1,23 @@
 Table gitwire_connections {
-  id          varchar(64)  [primary key, note: 'e.g. pub_a1b2c3d4-e5f6-7890-abcd-ef1234567890 (public) or prv_7f3e9c1a-… (Pro private)']
-  provider    varchar(20)  [not null, note: '"github" | "gitlab" | "bitbucket"']
-  identifier  varchar(255) [not null, default: '', note: 'GitHub/GitLab: username — e.g. "nazmulsabuz". Bitbucket free: workspace slug — e.g. "acme-org". Pro PAT: Bitbucket account nickname']
-  credentials text         [null, note: 'NULL = public connection; encrypted JSON for Pro — e.g. {"api_token":"ghp_…"} (GitHub/GitLab) or {"email":"dev@acme.com","api_token":"ATB…"} (Bitbucket)']
-  scope       varchar(20)  [not null, default: 'all', note: '"all" = site-wide; WP user ID string = user-scoped — e.g. "42"']
-  created_at  datetime     [not null, note: 'e.g. 2025-03-14 09:00:00']
+  id            varchar(64)    [primary key, note: 'e.g. pub_a1b2c3d4-e5f6-7890-abcd-ef1234567890 (public) or prv_7f3e9c1a-… (Pro private)']
+  provider      varchar(20)    [not null, note: '"github" | "gitlab" | "bitbucket"']
+  identifier    varchar(255)   [not null, default: '', note: 'GitHub/GitLab: username — e.g. "nazmulsabuz". Bitbucket: workspace slug — e.g. "acme-org"']
+  credentials   text           [null, note: 'NULL = public connection; encrypted JSON for Pro — e.g. {"api_token":"ghp_…"} (GitHub/GitLab) or {"email":"dev@acme.com","api_token":"ATB…"} (Bitbucket)']
+  email         varchar(255)   [null, note: 'Bitbucket Pro only — account email used for PAT auth — e.g. "dev@acme.com". NULL otherwise']
+  host_url      varchar(512)   [null, note: 'GitLab self-hosted base URL — e.g. "https://gitlab.acme.com". NULL for github.com/gitlab.com. Reserved for future Gitea support']
+  scope         varchar(20)    [not null, default: 'all', note: '"all" = site-wide; WP user ID string = user-scoped — e.g. "42"']
+  authenticated tinyint(1)     [not null, default: 0, note: '1 = last credentials test passed; 0 = untested or failed. Distinct from credentials IS NOT NULL']
+  name          varchar(255)   [not null, default: '', note: 'Profile display name from provider API — e.g. "Nazmul Sabuz". Empty until first credentials test']
+  avatar_url    varchar(512)   [not null, default: '', note: 'Profile avatar URL — e.g. "https://avatars.githubusercontent.com/u/123456". Empty until first test']
+  rate_limit    int unsigned   [not null, default: 0, note: 'API rate limit ceiling — e.g. 5000 (GitHub authenticated). 0 until first test']
+  rate_remaining int unsigned  [not null, default: 0, note: 'Remaining API calls in the current window — e.g. 4982. 0 until first test']
+  rate_reset    int unsigned   [not null, default: 0, note: 'Unix timestamp when the rate-limit window resets — e.g. 1741946400. 0 until first test']
+  error         text           [null, note: 'Last test error message — e.g. "Invalid credentials". NULL when last test passed or untested']
+  created_at    datetime       [not null, note: 'e.g. 2025-03-14 09:00:00']
+  updated_at    datetime       [not null, note: 'Last profile cache write — e.g. 2025-03-20 11:30:00. Returned to JS as checked_at (Unix int via strtotime)']
 
   indexes {
     provider
-  }
-}
-
-Table gitwire_connection_meta {
-  connection_id varchar(64)  [not null, note: 'FK → gitwire_connections.id']
-  meta_key      varchar(100) [not null, note: 'Profile keys (free): provider, authenticated, username, workspace, name, avatar_url, rate_limit, rate_remaining, rate_reset, checked_at, error. Pro adds: email. Config key: gitlab_url']
-  meta_value    text         [not null, note: 'Always stored as string. Examples — authenticated: "1", rate_limit: "5000", rate_reset: "1741946400", workspace: "acme-org", email: "dev@acme.com", avatar_url: "https://avatars.githubusercontent.com/u/123456"']
-
-  indexes {
-    (connection_id, meta_key) [pk]
-    meta_key
   }
 }
 
@@ -79,7 +78,6 @@ Table gitwire_repositories {
   }
 }
 
-Ref conn_meta:          gitwire_connection_meta.connection_id  > gitwire_connections.id
 Ref conn_installations: gitwire_installations.connection_id    > gitwire_connections.id
 Ref installation_commits: gitwire_commits.installation_id      > gitwire_installations.id
 Ref conn_repositories:  gitwire_repositories.connection_id     > gitwire_connections.id

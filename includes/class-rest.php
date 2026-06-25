@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   REST_Installer     — /install, /installed
  *   REST_Connections   — /public-connections
  *   REST_Logs          — /logs, /log-actors
- *   Connection_Meta — connection_meta EAV table (no routes; used by Pro)
+ *   Connection_Meta — profile cache on gitwire_connections (no routes; used by Pro)
  */
 class REST {
 
