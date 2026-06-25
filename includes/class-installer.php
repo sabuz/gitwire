@@ -73,7 +73,7 @@ class Installer {
 			[
 				'id'           => (int) ( $row['id'] ?? 0 ),
 				'repo'         => $parts[1] ?? '',
-				'installed_at' => $row['installed_at'] ?? '',
+				'created_at' => $row['created_at'] ?? '',
 				'updated_at'   => $row['updated_at'] ?? '',
 				'auto_update'  => $row['auto_update'] ?? 'disabled',
 			]
@@ -144,7 +144,7 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
+					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, created_at, updated_at)
 				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
 					connection_id = VALUES(connection_id), name = VALUES(name),
@@ -162,7 +162,7 @@ class Installer {
 				$record['remote_head'] ?? '',
 				$record['install_path'] ?? '',
 				$record['plugin_file'] ?? '',
-				$record['installed_at'] ?? current_time( 'mysql' ),
+				$record['created_at'] ?? current_time( 'mysql' ),
 				current_time( 'mysql' )
 			)
 		);
@@ -1108,7 +1108,7 @@ class Installer {
 	}
 
 	/**
-	 * Persists an installed record while preserving metadata such as head and installed_at.
+	 * Persists an installed record while preserving metadata such as head and created_at.
 	 *
 	 * @since 1.0.0
 	 * @param string               $record_key Installed record key.
@@ -1126,7 +1126,7 @@ class Installer {
 			$record['head'] = $head_sha;
 		}
 
-		// Upsert. COALESCE preserves installed_at from existing rows (no pre-SELECT needed).
+		// Upsert. COALESCE preserves created_at from existing rows (no pre-SELECT needed).
 		// IF() keeps the existing head when the new value is empty.
 		// remote_head is excluded from the UPDATE clause so a reinstall does not wipe a
 		// cached remote SHA written by the maintenance cron.
@@ -1134,14 +1134,14 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, installed_at, updated_at)
+					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, created_at, updated_at)
 				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
 					connection_id = VALUES(connection_id), name = VALUES(name),
 					type = VALUES(type), branch = VALUES(branch),
 					head = IF(VALUES(head) != \'\', VALUES(head), head),
 					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
-					installed_at = COALESCE(installed_at, VALUES(installed_at)),
+					created_at = COALESCE(created_at, VALUES(created_at)),
 					updated_at = VALUES(updated_at)',
 				$record['connection_id'] ?? '',
 				$provider,
@@ -1154,7 +1154,7 @@ class Installer {
 				$record['remote_head'] ?? '',
 				$record['install_path'] ?? '',
 				$record['plugin_file'] ?? '',
-				$record['installed_at'] ?? current_time( 'mysql' ),
+				$record['created_at'] ?? current_time( 'mysql' ),
 				current_time( 'mysql' )
 			)
 		);
@@ -1421,7 +1421,7 @@ class Installer {
 			'connection_id' => $connection_id,
 			'install_path'  => $install_path,
 			'plugin_file'   => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
-			'installed_at'  => current_time( 'mysql' ),
+			'created_at'  => current_time( 'mysql' ),
 			'updated_at'    => current_time( 'mysql' ),
 			'slug_renamed'  => $slug_renamed,
 		];
