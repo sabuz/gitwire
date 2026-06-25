@@ -77,23 +77,28 @@ Port directly from fit-assistant. Provides:
 protected function table_exists( string $table ): bool
 protected function column_exists( string $table, string $column ): bool
 protected function index_exists( string $table, string $index ): bool
-protected function get_table_name( string $name ): string
+protected function get_table_name( string $name ): string  // must use $wpdb->base_prefix, not $wpdb->prefix — current Schema uses base_prefix; switching to prefix would silently move tables on multisite
 ```
 
 ### `Model_Base`
 
-Adapted from fit-assistant. Composite PK support via array conditions:
+Adapted from fit-assistant. Composite PK support via array conditions.
+
+Base methods use internal names to avoid signature conflicts with domain methods on concrete models:
 
 ```php
 abstract protected function table(): string;
+abstract protected function columns(): array;          // whitelist of valid column names — all $where/$data keys are validated against this before SQL is built
 
-public function get( array $where ): ?array          // single row
-public function get_all( array $where = [] ): array  // all matching rows
-public function insert( array $data ): bool
-public function update( array $data, array $where ): bool
-public function delete( array $where ): bool
-public function upsert( array $data ): bool          // INSERT ... ON DUPLICATE KEY UPDATE
+protected function get_row( array $where ): ?array
+protected function get_rows( array $where = [] ): array
+protected function insert_row( array $data ): bool
+protected function update_rows( array $data, array $where ): bool
+protected function delete_rows( array $where ): bool
+protected function upsert_row( array $data ): bool    // INSERT ... ON DUPLICATE KEY UPDATE
 ```
+
+Concrete models expose public domain methods (`find()`, `all()`, `delete_by_id()`, etc.) that call these base methods. No public `get()`/`delete()` on the base — eliminates all signature pressure.
 
 ### Per-table `Migration` classes
 
@@ -118,8 +123,8 @@ class Migration extends Migration_Base {
     const DB_VERSION_OPTION = 'gitwire_installations_db_version';
     const TABLE             = 'gitwire_installations';
 
-    public function migrate(): void        // dbDelta + bump version option
-    public function maybe_migrate(): void  // no-op if version matches
+    public function migrate(): void        // dbDelta + guarded ALTER TABLE steps; bump version option only after all steps succeed
+    public function needs_migrate(): bool  // checks table existence AND version — both conditions, not version alone
     public function drop_tables(): void    // DROP TABLE gitwire_installations
 
     // Version-gated upgrade example:
@@ -139,10 +144,14 @@ class Migration extends Migration_Base {
 
 Orchestrates all four per-table migrations via a single entry point. Lives at `includes/database/class-database-manager.php`.
 
+**Instantiation timing**: must be instantiated from `Plugin::__construct()` (same as the current `register_activation_hook` call in class-plugin.php:68), not from `boot()`/`plugins_loaded`. WordPress silently ignores activation hooks registered after the main plugin file has loaded.
+
+**Uninstall**: `uninstall.php` already exists and takes precedence over `register_uninstall_hook()`. Do not add `register_uninstall_hook()` — update `uninstall.php` to call `Database_Manager::uninstall()` instead of `Schema::uninstall()`.
+
 ```php
 private function __construct() {
     register_activation_hook( GITWIRE_FILE, [ $this, 'migrate' ] );
-    register_uninstall_hook( GITWIRE_FILE, [ __CLASS__, 'uninstall' ] );
+    // no register_uninstall_hook — uninstall.php handles this
     add_action( 'upgrader_process_complete', [ $this, 'maybe_migrate' ], 10, 2 );
 }
 
@@ -151,21 +160,35 @@ public function migrate(): void {
     Installations\Migration::instance()->migrate();
     Repositories\Migration::instance()->migrate();
     Commits\Migration::instance()->migrate();
-    // clean up the single-option from the pre-2.0 schema class
-    delete_option( 'gitwire_db_version' );
+    delete_option( 'gitwire_db_version' ); // clean up pre-2.0 single option — at the end, after all tables succeed
 }
 
 public function maybe_migrate( $upgrader, array $hook_extra ): void {
-    if (
-        'plugin' !== ( $hook_extra['type'] ?? '' ) ||
-        ! in_array( plugin_basename( GITWIRE_FILE ), $hook_extra['plugins'] ?? [], true )
-    ) {
+    // guard: this plugin only, update action only — mirrors current class-plugin.php:136
+    if ( ( $hook_extra['action'] ?? '' ) !== 'update' || ( $hook_extra['type'] ?? '' ) !== 'plugin' ) {
+        return;
+    }
+    // handle both single-plugin ('plugin' key) and bulk ('plugins' key) upgrader paths
+    $plugins = array_filter( [
+        $hook_extra['plugin'] ?? '',
+        ...( (array) ( $hook_extra['plugins'] ?? [] ) ),
+    ] );
+    if ( ! in_array( plugin_basename( GITWIRE_FILE ), $plugins, true ) ) {
         return;
     }
     $this->migrate();
 }
 
-public static function uninstall(): void                        // drop_tables() on each if setting enabled
+public static function uninstall(): void  // called from uninstall.php; drop_tables() on each if setting enabled
+```
+
+**Boot-time fallback**: `Plugin::boot()` must keep its `Schema::needs_install()` → `Schema::install()` equivalent using `Database_Manager`. The upgrader hook runs the old plugin code during updates, so the new migration class may not exist yet — the boot-time check is the reliable path, the upgrader hook is the fast path.
+
+```php
+// in Plugin::boot() — replaces current Schema::needs_install() call
+if ( Database_Manager::instance()->needs_migrate() ) {
+    Database_Manager::instance()->migrate();
+}
 ```
 
 ---
@@ -271,6 +294,7 @@ class Pro_Migration extends Migration_Base {
 
     // All three are Pro-only; free schema omits them entirely.
     // Drop order (deactivate) is the reverse of add order (activate).
+    // Free migrations must never drop these columns while Pro is active — guard by checking Pro plugin status before any DROP.
     const COLUMNS = [ 'email', 'credentials', 'scope' ];
 
     public function activate(): void {
@@ -281,10 +305,12 @@ class Pro_Migration extends Migration_Base {
         if ( ! $this->column_exists( 'gitwire_connections', 'email' ) ) {
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange
             $wpdb->query( "ALTER TABLE {$table} ADD COLUMN email VARCHAR(255) NULL AFTER identifier" );
+            if ( $wpdb->last_error ) { return; }
         }
         if ( ! $this->column_exists( 'gitwire_connections', 'credentials' ) ) {
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange
             $wpdb->query( "ALTER TABLE {$table} ADD COLUMN credentials TEXT NULL AFTER email" );
+            if ( $wpdb->last_error ) { return; }
         }
         if ( ! $this->column_exists( 'gitwire_connections', 'scope' ) ) {
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange
@@ -314,16 +340,18 @@ class Pro_Migration extends Migration_Base {
 
 ## Implementation Sequence
 
-1. **`includes/class-migration-base.php`** — port from fit-assistant, adjust namespace to `Gitwire`
-2. **`includes/class-model-base.php`** — Gitwire-adapted version (array-based `$where` conditions)
-3. **Per-table `class-migration.php`** — one per table dir; move CREATE TABLE SQL from `class-schema.php`; each gets its own `DB_VERSION` option. Remove `email`, `credentials`, and `scope` from the `gitwire_connections` CREATE TABLE — those columns are Pro-only and will be added by `Pro_Migration::activate()`
-4. **`database/class-database-manager.php`** — wire up activation, `upgrader_process_complete`, uninstall hooks; remove old hook registrations from `class-schema.php`
-5. **`database/commits/class-model.php`** — smallest scope; validates the pattern before tackling larger tables
-6. **`database/installations/class-model.php`** — extract from `class-installer.php`
-7. **`database/repositories/class-model.php`** — refactor `class-repositories.php`
-8. **`database/connections/class-model.php`** — consolidate 3 classes into 1; delete originals
-9. **Update consumers** — `class-installer.php`, `class-rest-installer.php`, REST classes, cron
-10. **Delete** — `class-connection-resolver.php`, `class-public-connections.php`, `class-connection-meta.php`, `class-schema.php`
+1. **`includes/class-migration-base.php`** — port from fit-assistant; use `$wpdb->base_prefix` in `get_table_name()`; adjust namespace to `Gitwire`
+2. **`includes/class-model-base.php`** — Gitwire-adapted version; protected base methods (`get_row`, `get_rows`, `delete_rows`, `upsert_row`); abstract `columns()` whitelist
+3. **Per-table `class-migration.php`** — one per table dir; move CREATE TABLE SQL from `class-schema.php`; each gets its own `DB_VERSION` option; bump version only after all steps succeed; `needs_migrate()` checks table existence AND version. Remove `email`, `credentials`, and `scope` from the `gitwire_connections` CREATE TABLE (Pro-only). For existing dev installs that already have these columns: add a one-time `ALTER TABLE DROP COLUMN` guarded by `column_exists()` in `Connections\Migration::migrate()`, only when Pro is not active
+4. **`database/class-database-manager.php`** — activation hook + `upgrader_process_complete` (both single and bulk guard); boot-time `needs_migrate()` fallback in `Plugin::boot()`; no `register_uninstall_hook()`
+5. **`uninstall.php`** — replace `Schema::uninstall()` call with `Database_Manager::uninstall()`
+6. **`autoload.php`** — add every new class (`Database_Manager`, `Migration_Base`, `Model_Base`, all per-table `Migration` and `Model` classes) to the class map before any migration code runs; a missing entry silently causes a fatal on activation/update
+7. **`database/commits/class-model.php`** — smallest scope; validates the pattern before tackling larger tables
+8. **`database/installations/class-model.php`** — extract from `class-installer.php`
+9. **`database/repositories/class-model.php`** — thin DB layer; `class-repositories.php` stays as service
+10. **`database/connections/class-model.php`** — consolidate 3 classes into 1; delete originals
+11. **Update consumers** — `class-installer.php`, `class-rest-installer.php`, REST classes, cron
+12. **Delete** — `class-connection-resolver.php`, `class-public-connections.php`, `class-connection-meta.php`, `class-schema.php`
 
 ---
 
