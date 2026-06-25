@@ -1,10 +1,10 @@
 Table gitwire_connections {
-  id varchar(64) [primary key]
-  provider varchar(20) [not null]
-  identifier varchar(255) [not null, default: '']
-  credentials text [null, note: 'NULL = public connection; encrypted JSON = Pro private connection']
-  scope varchar(20) [not null, default: 'all', note: '"all" = site-wide; WP user ID string = user-scoped']
-  created_at datetime [not null]
+  id          varchar(64)  [primary key, note: 'e.g. pub_a1b2c3d4-e5f6-7890-abcd-ef1234567890 (public) or prv_7f3e9c1a-… (Pro private)']
+  provider    varchar(20)  [not null, note: '"github" | "gitlab" | "bitbucket"']
+  identifier  varchar(255) [not null, default: '', note: 'GitHub/GitLab: username — e.g. "nazmulsabuz". Bitbucket free: workspace slug — e.g. "acme-org". Pro PAT: Bitbucket account nickname']
+  credentials text         [null, note: 'NULL = public connection; encrypted JSON for Pro — e.g. {"api_token":"ghp_…"} (GitHub/GitLab) or {"email":"dev@acme.com","api_token":"ATB…"} (Bitbucket)']
+  scope       varchar(20)  [not null, default: 'all', note: '"all" = site-wide; WP user ID string = user-scoped — e.g. "42"']
+  created_at  datetime     [not null, note: 'e.g. 2025-03-14 09:00:00']
 
   indexes {
     provider
@@ -12,9 +12,9 @@ Table gitwire_connections {
 }
 
 Table gitwire_connection_meta {
-  connection_id varchar(64) [not null]
-  meta_key varchar(100) [not null]
-  meta_value text [not null]
+  connection_id varchar(64)  [not null, note: 'FK → gitwire_connections.id']
+  meta_key      varchar(100) [not null, note: 'Profile keys (free): provider, authenticated, username, workspace, name, avatar_url, rate_limit, rate_remaining, rate_reset, checked_at, error. Pro adds: email. Config key: gitlab_url']
+  meta_value    text         [not null, note: 'Always stored as string. Examples — authenticated: "1", rate_limit: "5000", rate_reset: "1741946400", workspace: "acme-org", email: "dev@acme.com", avatar_url: "https://avatars.githubusercontent.com/u/123456"']
 
   indexes {
     (connection_id, meta_key) [pk]
@@ -23,21 +23,21 @@ Table gitwire_connection_meta {
 }
 
 Table gitwire_installations {
-  id bigint [pk, increment]
-  connection_id varchar(64) [not null, default: '', note: 'Empty for URL-based installs']
-  provider varchar(20) [not null]
-  owner varchar(128) [not null, default: '']
-  name varchar(255) [not null, default: '']
-  full_name varchar(255) [not null, default: '']
-  type varchar(20) [not null, default: 'plugin', note: '"plugin" | "block-theme" | "classic-theme"']
-  branch varchar(255) [not null, default: 'main']
-  head varchar(40) [not null, default: '']
-  remote_head varchar(40) [not null, default: '']
-  install_path varchar(1024) [not null, default: '']
-  plugin_file varchar(512) [null, note: 'NULL for theme installations']
-  auto_update varchar(10) [not null, default: 'disabled', note: '"disabled" | "current" | "any"']
-  installed_at datetime [not null]
-  updated_at datetime [not null]
+  id           bigint       [pk, increment]
+  connection_id varchar(64) [not null, default: '', note: 'FK → gitwire_connections.id. Empty string for URL-based installs']
+  provider     varchar(20)  [not null, note: '"github" | "gitlab" | "bitbucket"']
+  owner        varchar(128) [not null, default: '', note: 'e.g. "nazmulsabuz"']
+  name         varchar(255) [not null, default: '', note: 'e.g. "fit-assistant"']
+  full_name    varchar(255) [not null, default: '', note: 'e.g. "nazmulsabuz/fit-assistant"']
+  type         varchar(20)  [not null, default: 'plugin', note: '"plugin" | "block-theme" | "classic-theme"']
+  branch       varchar(255) [not null, default: 'main', note: 'e.g. "main" or "trunk"']
+  head         varchar(40)  [not null, default: '', note: 'Installed commit SHA — e.g. "a3f8c1d2e4b56789012345678901234567890abc"']
+  remote_head  varchar(40)  [not null, default: '', note: 'Latest remote commit SHA; differs from head when an update is available']
+  install_path varchar(1024) [not null, default: '', note: 'Absolute server path — e.g. "/var/www/html/wp-content/plugins/fit-assistant"']
+  plugin_file  varchar(512) [null, note: 'Relative path to main plugin file — e.g. "fit-assistant/fit-assistant.php". NULL for theme installations']
+  auto_update  varchar(10)  [not null, default: 'disabled', note: '"disabled" = manual only; "current" = branch-locked (same branch); "any" = always update']
+  installed_at datetime     [not null, note: 'e.g. 2025-03-14 09:00:00']
+  updated_at   datetime     [not null, note: 'e.g. 2025-03-20 11:30:00']
 
   indexes {
     (provider, full_name) [unique]
@@ -47,10 +47,10 @@ Table gitwire_installations {
 }
 
 Table gitwire_commits {
-  installation_id bigint [not null]
-  branch varchar(255) [not null, default: 'main']
-  data mediumtext [not null, note: 'JSON-encoded commit array from provider API']
-  updated_at datetime [not null]
+  installation_id bigint       [not null, note: 'FK → gitwire_installations.id']
+  branch          varchar(255) [not null, default: 'main', note: 'e.g. "main"']
+  data            mediumtext   [not null, note: 'JSON array from provider API — e.g. [{"sha":"a3f8c1d…","message":"Fix size chart layout","date":"2025-03-20T11:00:00Z","author":"nazmulsabuz"}]']
+  updated_at      datetime     [not null, note: 'Last time this cache was refreshed — e.g. 2025-03-20 11:30:00']
 
   indexes {
     (installation_id, branch) [pk]
@@ -58,18 +58,18 @@ Table gitwire_commits {
 }
 
 Table gitwire_repositories {
-  connection_id varchar(64) [not null]
-  provider varchar(20) [not null]
-  owner varchar(128) [not null, default: '']
-  name varchar(128) [not null, default: '']
-  full_name varchar(255) [not null, default: '']
-  private tinyint(1) [not null, default: 0]
-  default_branch varchar(255) [not null, default: 'main']
-  html_url varchar(512) [not null, default: '']
-  type varchar(20) [not null, default: '']
-  type_meta text [null, note: 'Detection payload JSON: confidence, name, key_files']
-  last_activity_at datetime [not null, default: '1970-01-01 00:00:00']
-  updated_at datetime [not null]
+  connection_id    varchar(64)  [not null, note: 'FK → gitwire_connections.id']
+  provider         varchar(20)  [not null, note: '"github" | "gitlab" | "bitbucket"']
+  owner            varchar(128) [not null, default: '', note: 'e.g. "nazmulsabuz"']
+  name             varchar(128) [not null, default: '', note: 'e.g. "fit-assistant"']
+  full_name        varchar(255) [not null, default: '', note: 'e.g. "nazmulsabuz/fit-assistant"']
+  private          tinyint(1)   [not null, default: 0, note: '0 = public, 1 = private']
+  default_branch   varchar(255) [not null, default: 'main', note: 'e.g. "main" or "master"']
+  html_url         varchar(512) [not null, default: '', note: 'e.g. "https://github.com/nazmulsabuz/fit-assistant"']
+  type             varchar(20)  [not null, default: '', note: 'Detection result: "plugin" | "block-theme" | "classic-theme" | "unknown" | "" (not yet detected)']
+  type_meta        text         [null, note: 'Detection payload JSON — e.g. {"confidence":"high","name":"Fit Assistant","key_files":["fit-assistant.php"]}']
+  last_activity_at datetime     [not null, default: '1970-01-01 00:00:00', note: 'Last push/activity from provider API — e.g. 2025-03-18 14:22:00']
+  updated_at       datetime     [not null, note: 'Last time this row was refreshed by cron — e.g. 2025-03-20 11:00:00']
 
   indexes {
     (connection_id, full_name) [pk]
@@ -79,7 +79,7 @@ Table gitwire_repositories {
   }
 }
 
-Ref conn_meta: gitwire_connection_meta.connection_id > gitwire_connections.id
-Ref conn_installations: gitwire_installations.connection_id > gitwire_connections.id
-Ref installation_commits: gitwire_commits.installation_id > gitwire_installations.id
-Ref conn_repositories: gitwire_repositories.connection_id > gitwire_connections.id
+Ref conn_meta:          gitwire_connection_meta.connection_id  > gitwire_connections.id
+Ref conn_installations: gitwire_installations.connection_id    > gitwire_connections.id
+Ref installation_commits: gitwire_commits.installation_id      > gitwire_installations.id
+Ref conn_repositories:  gitwire_repositories.connection_id     > gitwire_connections.id
