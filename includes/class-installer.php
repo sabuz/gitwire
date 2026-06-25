@@ -73,7 +73,6 @@ class Installer {
 			[
 				'id'           => (int) ( $row['id'] ?? 0 ),
 				'repo'         => $parts[1] ?? '',
-				'created_at' => $row['created_at'] ?? '',
 				'updated_at'   => $row['updated_at'] ?? '',
 				'auto_update'  => $row['auto_update'] ?? 'disabled',
 			]
@@ -144,8 +143,8 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, created_at, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, updated_at)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
 					connection_id = VALUES(connection_id), name = VALUES(name),
 					type = VALUES(type), branch = VALUES(branch), head = VALUES(head),
@@ -162,7 +161,6 @@ class Installer {
 				$record['remote_head'] ?? '',
 				$record['install_path'] ?? '',
 				$record['plugin_file'] ?? '',
-				$record['created_at'] ?? current_time( 'mysql' ),
 				current_time( 'mysql' )
 			)
 		);
@@ -1108,7 +1106,7 @@ class Installer {
 	}
 
 	/**
-	 * Persists an installed record while preserving metadata such as head and created_at.
+	 * Persists an installed record while preserving metadata such as head.
 	 *
 	 * @since 1.0.0
 	 * @param string               $record_key Installed record key.
@@ -1134,14 +1132,13 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, created_at, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, updated_at)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
 					connection_id = VALUES(connection_id), name = VALUES(name),
 					type = VALUES(type), branch = VALUES(branch),
 					head = IF(VALUES(head) != \'\', VALUES(head), head),
 					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
-					created_at = COALESCE(created_at, VALUES(created_at)),
 					updated_at = VALUES(updated_at)',
 				$record['connection_id'] ?? '',
 				$provider,
@@ -1154,7 +1151,6 @@ class Installer {
 				$record['remote_head'] ?? '',
 				$record['install_path'] ?? '',
 				$record['plugin_file'] ?? '',
-				$record['created_at'] ?? current_time( 'mysql' ),
 				current_time( 'mysql' )
 			)
 		);
@@ -1421,7 +1417,6 @@ class Installer {
 			'connection_id' => $connection_id,
 			'install_path'  => $install_path,
 			'plugin_file'   => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
-			'created_at'  => current_time( 'mysql' ),
 			'updated_at'    => current_time( 'mysql' ),
 			'slug_renamed'  => $slug_renamed,
 		];

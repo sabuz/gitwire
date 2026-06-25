@@ -35,7 +35,6 @@ Table gitwire_installations {
   install_path varchar(1024) [not null, default: '', note: 'Absolute server path — e.g. "/var/www/html/wp-content/plugins/fit-assistant"']
   plugin_file  varchar(512) [null, note: 'Relative path to main plugin file — e.g. "fit-assistant/fit-assistant.php". NULL for theme installations']
   auto_update  varchar(10)  [not null, default: 'disabled', note: '"disabled" = manual only; "current" = branch-locked (same branch); "any" = always update']
-  created_at   datetime     [not null, note: 'e.g. 2025-03-14 09:00:00']
   updated_at   datetime     [not null, note: 'e.g. 2025-03-20 11:30:00']
 
   indexes {
