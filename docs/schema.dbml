@@ -1,0 +1,85 @@
+Table gitwire_connections {
+  id varchar(64) [primary key]
+  provider varchar(20) [not null]
+  identifier varchar(255) [not null, default: '']
+  credentials text [null, note: 'NULL = public connection; encrypted JSON = Pro private connection']
+  scope varchar(20) [not null, default: 'all', note: '"all" = site-wide; WP user ID string = user-scoped']
+  created_at datetime [not null]
+
+  indexes {
+    provider
+  }
+}
+
+Table gitwire_connection_meta {
+  connection_id varchar(64) [not null]
+  meta_key varchar(100) [not null]
+  meta_value text [not null]
+
+  indexes {
+    (connection_id, meta_key) [pk]
+    meta_key
+  }
+}
+
+Table gitwire_installations {
+  id bigint [pk, increment]
+  connection_id varchar(64) [not null, default: '', note: 'Empty for URL-based installs']
+  provider varchar(20) [not null]
+  owner varchar(128) [not null, default: '']
+  name varchar(255) [not null, default: '']
+  full_name varchar(255) [not null, default: '']
+  type varchar(20) [not null, default: 'plugin', note: '"plugin" | "block-theme" | "classic-theme"']
+  branch varchar(255) [not null, default: 'main']
+  head varchar(40) [not null, default: '']
+  remote_head varchar(40) [not null, default: '']
+  install_path varchar(1024) [not null, default: '']
+  plugin_file varchar(512) [null, note: 'NULL for theme installations']
+  auto_update varchar(10) [not null, default: 'disabled', note: '"disabled" | "current" | "any"']
+  installed_at datetime [not null]
+  updated_at datetime [not null]
+
+  indexes {
+    (provider, full_name) [unique]
+    connection_id
+    (connection_id, type)
+  }
+}
+
+Table gitwire_commits {
+  installation_id bigint [not null]
+  branch varchar(255) [not null, default: 'main']
+  data mediumtext [not null, note: 'JSON-encoded commit array from provider API']
+  updated_at datetime [not null]
+
+  indexes {
+    (installation_id, branch) [pk]
+  }
+}
+
+Table gitwire_repositories {
+  connection_id varchar(64) [not null]
+  provider varchar(20) [not null]
+  owner varchar(128) [not null, default: '']
+  name varchar(128) [not null, default: '']
+  full_name varchar(255) [not null, default: '']
+  private tinyint(1) [not null, default: 0]
+  default_branch varchar(255) [not null, default: 'main']
+  html_url varchar(512) [not null, default: '']
+  type varchar(20) [not null, default: '']
+  type_meta text [null, note: 'Detection payload JSON: confidence, name, key_files']
+  last_activity_at datetime [not null, default: '1970-01-01 00:00:00']
+  updated_at datetime [not null]
+
+  indexes {
+    (connection_id, full_name) [pk]
+    (provider, full_name)
+    type
+    (connection_id, last_activity_at)
+  }
+}
+
+Ref conn_meta: gitwire_connection_meta.connection_id > gitwire_connections.id
+Ref conn_installations: gitwire_installations.connection_id > gitwire_connections.id
+Ref installation_commits: gitwire_commits.installation_id > gitwire_installations.id
+Ref conn_repositories: gitwire_repositories.connection_id > gitwire_connections.id

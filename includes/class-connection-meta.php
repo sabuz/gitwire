@@ -1,6 +1,6 @@
 <?php
 /**
- * Connection profile cache — EAV meta table reads/writes and public profile fetching.
+ * Manages the gitwire_connection_meta EAV table — profile reads/writes and public profile fetching.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -13,13 +13,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Manages the gitwire_connection_meta profile-cache rows and fetches public provider profiles.
+ * Manages the gitwire_connection_meta EAV table — profile rows and public provider profile fetching.
  *
- * The same meta table stores both profile-cache keys (listed in PROFILE_KEYS) and config
+ * The same meta table stores both profile keys (listed in PROFILE_KEYS) and config
  * keys like gitlab_url. Only PROFILE_KEYS rows are touched by this class; config keys
  * are owned by their respective writers and are never cleared here.
  */
-class REST_Connection_Cache {
+class Connection_Meta {
 
 	/**
 	 * Core meta keys that belong to the profile cache.
@@ -165,20 +165,26 @@ class REST_Connection_Cache {
 	public static function save_public_connection_metadata( string $id, array $data ): void {
 		global $wpdb;
 
-		$defaults = (array) apply_filters( 'gitwire_profile_defaults', [
-			'provider'       => '',
-			'authenticated'  => 0,
-			'username'       => '',
-			'workspace'      => '',
-			'name'           => '',
-			'avatar_url'     => '',
-			'rate_limit'     => 0,
-			'rate_remaining' => 0,
-			'rate_reset'     => 0,
-			'checked_at'     => 0,
-			'error'          => '',
-		] );
-		$meta     = array_intersect_key( array_merge( $defaults, $data ), $defaults );
+		$allowed = array_flip( self::get_profile_keys() );
+		$meta    = array_intersect_key( $data, $allowed );
+
+		if ( empty( $meta ) ) {
+			return;
+		}
+
+		// Delete stale profile rows not present in the incoming data.
+		$stale = array_diff( array_keys( $allowed ), array_keys( $meta ) );
+		if ( $stale ) {
+			$in_sql = implode( ', ', array_fill( 0, count( $stale ), '%s' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+			$wpdb->query(
+				$wpdb->prepare(
+					'DELETE FROM ' . self::connection_meta_table() . ' WHERE connection_id = %s AND meta_key IN (' . $in_sql . ')',
+					$id,
+					...$stale
+				)
+			);
+		}
 
 		$value_parts = [];
 		$params      = [];

@@ -228,7 +228,7 @@ class Admin {
 				[
 					'nonce'                => wp_create_nonce( 'wp_rest' ),
 					'public_connections'   => Public_Connections::all(),
-					'connections_metadata' => REST_Connection_Cache::get_connection_cache(),
+					'connections_metadata' => Connection_Meta::get_connection_cache(),
 					'icon_url'             => GITWIRE_URL . 'assets/images/icon.svg',
 					'disconnected_url'     => GITWIRE_URL . 'assets/images/cloud-alert.svg',
 					'not_found_url'        => GITWIRE_URL . 'assets/images/folder-x.svg',

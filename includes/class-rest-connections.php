@@ -112,12 +112,12 @@ class REST_Connections {
 		$id   = $conn['id'] ?? '';
 
 		if ( '' !== $id ) {
-			REST_Connection_Cache::write_public_metadata( $id, $provider, $valid['identifier'], $valid['gitlab_url'] );
+			Connection_Meta::write_public_metadata( $id, $provider, $valid['identifier'], $valid['gitlab_url'] );
 		}
 
 		return [
 			'connection' => $conn,
-			'metadata'   => REST_Connection_Cache::get_public_connections_metadata( $id ) ?: null,
+			'metadata'   => Connection_Meta::get_public_connections_metadata( $id ) ?: null,
 		];
 	}
 
@@ -135,7 +135,7 @@ class REST_Connections {
 			return new \WP_Error( 'not_found', __( 'Connection not found.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
-		REST_Connection_Cache::clear_public_connection_metadata( $id );
+		Connection_Meta::clear_public_connection_metadata( $id );
 
 		return [ 'deleted' => true ];
 	}
@@ -162,7 +162,7 @@ class REST_Connections {
 			return new \WP_REST_Response( null, 204 );
 		}
 
-		$payload = REST_Connection_Cache::get_public_github_rate( $id, $conn['identifier'] ?? '', $conn['avatar_url'] ?? '' );
+		$payload = Connection_Meta::get_public_github_rate( $id, $conn['identifier'] ?? '', $conn['avatar_url'] ?? '' );
 
 		if ( null === $payload ) {
 			return new \WP_REST_Response( null, 204 );

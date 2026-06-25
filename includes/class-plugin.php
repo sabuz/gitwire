@@ -59,7 +59,7 @@ final class Plugin {
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
 		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
 		add_action( 'gitwire_refresh_repositories', [ Repositories::class, 'scheduled_refresh' ] );
-		add_action( 'gitwire_refresh_connections', [ REST_Connection_Cache::class, 'refresh_public_connections' ] );
+		add_action( 'gitwire_refresh_connections', [ Connection_Meta::class, 'refresh_public_connections' ] );
 		add_action( 'gitwire_update_check', [ Installer::class, 'run_auto_updates' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
 		add_action( 'upgrader_process_complete', [ $this, 'maybe_migrate' ], 10, 2 );
