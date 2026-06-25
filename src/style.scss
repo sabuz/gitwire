@@ -491,8 +491,19 @@ body.gitwire-admin-page {
 		color: #1d2327;
 		text-decoration: none;
 
+		.components-external-link__icon {
+			visibility: hidden;
+		}
+
 		&:hover {
 			color: var(--gitwire-color-accent);
+		}
+
+		&:hover,
+		&:focus {
+			.components-external-link__icon {
+				visibility: visible;
+			}
 		}
 	}
 }
@@ -525,6 +536,22 @@ body.gitwire-admin-page {
 		font-size: 14px;
 		font-weight: 500;
 		color: #1d2327;
+		text-decoration: none;
+
+		.components-external-link__icon {
+			visibility: hidden;
+		}
+
+		&:hover {
+			color: var(--gitwire-color-accent);
+		}
+
+		&:hover,
+		&:focus {
+			.components-external-link__icon {
+				visibility: visible;
+			}
+		}
 	}
 
 	&-badges {

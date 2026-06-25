@@ -12,6 +12,7 @@ import {
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
+import ExternalLinkIcon from './external-link-icon';
 import { queuePendingToastAndReload } from '../pending-toast';
 import BranchCell from './installed/branch-cell';
 import BranchModal from './installed/branch-modal';
@@ -94,10 +95,20 @@ export default function InstalledPanel( {
 				id: 'name',
 				label: __( 'Repository', 'gitwire' ),
 				getValue: ( { item } ) => item.full_name,
-				render: ( { item } ) => (
-					<span className="gitwire-installed-name">
-						{ item.full_name }
-					</span>
+				render: ( { item } ) => item.full_name && (
+					item.html_url ? (
+						<a
+							className="gitwire-installed-name"
+							href={ item.html_url }
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							{ item.full_name }
+							<ExternalLinkIcon />
+						</a>
+					) : (
+						<span className="gitwire-installed-name">{ item.full_name }</span>
+					)
 				),
 				enableSorting: true,
 				enableGlobalSearch: true,

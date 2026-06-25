@@ -23,6 +23,7 @@ import {
 } from '@wordpress/components';
 
 import * as api from '../api';
+import ExternalLinkIcon from './external-link-icon';
 import { detectionKey, useRepositoryDetection } from '../hooks/use-repository-detection';
 import InstallModal from './install-modal';
 import { ProviderIcon, providerLabel } from './provider';
@@ -650,14 +651,21 @@ const RepoCard = memo( function RepoCard( {
 			<CardBody>
 				<Flex align="flex-start" gap={ 2 } justify="space-between">
 					<FlexBlock>
-						<a
-							className="gitwire-repo-name"
-							href={ repo.html_url }
-							rel="noopener noreferrer"
-							target="_blank"
-						>
-							{ repo.full_name }
-						</a>
+						{ repo.full_name && (
+							repo.html_url ? (
+								<a
+									className="gitwire-repo-name"
+									href={ repo.html_url }
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									{ repo.full_name }
+									<ExternalLinkIcon />
+								</a>
+							) : (
+								<span className="gitwire-repo-name">{ repo.full_name }</span>
+							)
+						) }
 					</FlexBlock>
 					<FlexItem>
 						{ isInstalled ? (
