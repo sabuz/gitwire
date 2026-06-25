@@ -33,6 +33,7 @@ Table gitwire_installations {
   head         varchar(40)  [not null, default: '', note: 'Installed commit SHA — e.g. "a3f8c1d2e4b56789012345678901234567890abc"']
   remote_head  varchar(40)  [not null, default: '', note: 'Latest remote commit SHA; differs from head when an update is available']
   install_path varchar(1024) [not null, default: '', note: 'Absolute server path — e.g. "/var/www/html/wp-content/plugins/fit-assistant"']
+  html_url     varchar(512) [not null, default: '', note: 'Repository URL on the provider — e.g. "https://github.com/nazmulsabuz/fit-assistant". Populated from gitwire_repositories at install time']
   plugin_file  varchar(512) [null, note: 'Relative path to main plugin file — e.g. "fit-assistant/fit-assistant.php". NULL for theme installations']
   auto_update  varchar(10)  [not null, default: 'disabled', note: '"disabled" = manual only; "current" = branch-locked (same branch); "any" = always update']
   updated_at   datetime     [not null, note: 'e.g. 2025-03-20 11:30:00']

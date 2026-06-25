@@ -143,13 +143,13 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, html_url, plugin_file, updated_at)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
 					connection_id = VALUES(connection_id), name = VALUES(name),
 					type = VALUES(type), branch = VALUES(branch), head = VALUES(head),
-					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
-					updated_at = VALUES(updated_at)',
+					install_path = VALUES(install_path), html_url = VALUES(html_url),
+					plugin_file = VALUES(plugin_file), updated_at = VALUES(updated_at)',
 				$record['connection_id'] ?? '',
 				$record['provider'] ?? '',
 				$record['owner'] ?? '',
@@ -160,6 +160,7 @@ class Installer {
 				$record['head'] ?? '',
 				$record['remote_head'] ?? '',
 				$record['install_path'] ?? '',
+				$record['html_url'] ?? '',
 				$record['plugin_file'] ?? '',
 				current_time( 'mysql' )
 			)
@@ -1132,14 +1133,14 @@ class Installer {
 		$wpdb->query(
 			$wpdb->prepare(
 				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, plugin_file, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, html_url, plugin_file, updated_at)
+				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
 					connection_id = VALUES(connection_id), name = VALUES(name),
 					type = VALUES(type), branch = VALUES(branch),
 					head = IF(VALUES(head) != \'\', VALUES(head), head),
-					install_path = VALUES(install_path), plugin_file = VALUES(plugin_file),
-					updated_at = VALUES(updated_at)',
+					install_path = VALUES(install_path), html_url = VALUES(html_url),
+					plugin_file = VALUES(plugin_file), updated_at = VALUES(updated_at)',
 				$record['connection_id'] ?? '',
 				$provider,
 				$record['owner'] ?? '',
@@ -1150,6 +1151,7 @@ class Installer {
 				$record['head'] ?? '',
 				$record['remote_head'] ?? '',
 				$record['install_path'] ?? '',
+				$record['html_url'] ?? '',
 				$record['plugin_file'] ?? '',
 				current_time( 'mysql' )
 			)
@@ -1406,6 +1408,11 @@ class Installer {
 		}
 
 		// Save record.
+		global $wpdb;
+		$repos_table = $wpdb->base_prefix . 'gitwire_repositories';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$html_url = (string) $wpdb->get_var( $wpdb->prepare( "SELECT html_url FROM $repos_table WHERE provider = %s AND full_name = %s LIMIT 1", $provider, $full_name ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
 		$record = [
 			'name'          => $slug,
 			'repo'          => $repo,
@@ -1416,6 +1423,7 @@ class Installer {
 			'provider'      => $provider,
 			'connection_id' => $connection_id,
 			'install_path'  => $install_path,
+			'html_url'      => $html_url,
 			'plugin_file'   => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
 			'updated_at'    => current_time( 'mysql' ),
 			'slug_renamed'  => $slug_renamed,
