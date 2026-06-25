@@ -199,7 +199,7 @@ public function find_by_path( string $install_path ): ?array
 public function upsert( array $data ): bool
 public function update_head( string $provider, string $full_name, string $sha ): bool
 public function update_remote_head( string $provider, string $full_name, string $sha ): bool
-public function update_plugin_file( string $provider, string $full_name, string $file ): bool
+public function update_basename( string $provider, string $full_name, string $basename ): bool
 public function delete_by_repo( string $provider, string $full_name ): bool  // named to avoid base delete(array $where) signature conflict
 ```
 

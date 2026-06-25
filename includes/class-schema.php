@@ -85,7 +85,7 @@ class Schema {
 				html_url VARCHAR(512) NOT NULL DEFAULT '',
 				type VARCHAR(16) NOT NULL DEFAULT 'plugin',
 				install_path VARCHAR(1024) NOT NULL DEFAULT '',
-				plugin_file VARCHAR(512) DEFAULT NULL,
+				basename    VARCHAR(512) DEFAULT NULL,
 				branch VARCHAR(255) NOT NULL DEFAULT 'main',
 				auto_update VARCHAR(16) NOT NULL DEFAULT 'disabled',
 				head VARCHAR(64) NOT NULL DEFAULT '',
