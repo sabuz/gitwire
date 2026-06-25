@@ -22,11 +22,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 class REST_Connection_Cache {
 
 	/**
-	 * Meta keys that belong to the profile cache.
+	 * Core meta keys that belong to the profile cache.
 	 *
 	 * @var string[]
 	 */
-	const PROFILE_KEYS = [ 'provider', 'authenticated', 'username', 'name', 'avatar_url', 'rate_limit', 'rate_remaining', 'rate_reset', 'checked_at', 'error' ];
+	const PROFILE_KEYS = [ 'provider', 'authenticated', 'username', 'workspace', 'name', 'avatar_url', 'rate_limit', 'rate_remaining', 'rate_reset', 'checked_at', 'error' ];
+
+	/**
+	 * Returns the full list of profile cache keys, including any added by extensions.
+	 *
+	 * @since 1.0.0
+	 * @return string[]
+	 */
+	public static function get_profile_keys(): array {
+		return (array) apply_filters( 'gitwire_profile_keys', self::PROFILE_KEYS );
+	}
 
 	/**
 	 * Returns the connection meta table name.
@@ -51,12 +61,13 @@ class REST_Connection_Cache {
 	public static function get_connection_cache(): array {
 		global $wpdb;
 
-		$in_sql = implode( ', ', array_fill( 0, count( self::PROFILE_KEYS ), '%s' ) );
+		$keys   = self::get_profile_keys();
+		$in_sql = implode( ', ', array_fill( 0, count( $keys ), '%s' ) );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT connection_id, meta_key, meta_value FROM ' . self::connection_meta_table() . ' WHERE meta_key IN (' . $in_sql . ')',
-				...self::PROFILE_KEYS
+				...$keys
 			),
 			ARRAY_A
 		);
@@ -91,13 +102,14 @@ class REST_Connection_Cache {
 	public static function get_public_connections_metadata( string $id ): ?array {
 		global $wpdb;
 
-		$in_sql = implode( ', ', array_fill( 0, count( self::PROFILE_KEYS ), '%s' ) );
+		$keys   = self::get_profile_keys();
+		$in_sql = implode( ', ', array_fill( 0, count( $keys ), '%s' ) );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT meta_key, meta_value FROM ' . self::connection_meta_table() . ' WHERE connection_id = %s AND meta_key IN (' . $in_sql . ')',
 				$id,
-				...self::PROFILE_KEYS
+				...$keys
 			),
 			ARRAY_A
 		);
@@ -124,11 +136,12 @@ class REST_Connection_Cache {
 	 * @return array<string, mixed>
 	 */
 	private static function cast_meta( array $meta, string $id ): array {
-		return [
+		$cast = [
 			'connection_id'  => $id,
 			'provider'       => $meta['provider'] ?? '',
 			'authenticated'  => (int) ( $meta['authenticated'] ?? 0 ),
-			'username'       => $meta['username'] ?? '',
+			'username'       => 'bitbucket' === ( $meta['provider'] ?? '' ) ? '' : ( $meta['username'] ?? '' ),
+			'workspace'      => $meta['workspace'] ?? '',
 			'name'           => $meta['name'] ?? '',
 			'avatar_url'     => $meta['avatar_url'] ?? '',
 			'rate_limit'     => (int) ( $meta['rate_limit'] ?? 0 ),
@@ -137,6 +150,8 @@ class REST_Connection_Cache {
 			'checked_at'     => (int) ( $meta['checked_at'] ?? 0 ),
 			'error'          => ( '' !== ( $meta['error'] ?? '' ) ) ? $meta['error'] : null,
 		];
+
+		return (array) apply_filters( 'gitwire_cast_profile_meta', $cast, $meta, $id );
 	}
 
 	/**
@@ -150,10 +165,11 @@ class REST_Connection_Cache {
 	public static function save_public_connection_metadata( string $id, array $data ): void {
 		global $wpdb;
 
-		$defaults = [
+		$defaults = (array) apply_filters( 'gitwire_profile_defaults', [
 			'provider'       => '',
 			'authenticated'  => 0,
 			'username'       => '',
+			'workspace'      => '',
 			'name'           => '',
 			'avatar_url'     => '',
 			'rate_limit'     => 0,
@@ -161,7 +177,7 @@ class REST_Connection_Cache {
 			'rate_reset'     => 0,
 			'checked_at'     => 0,
 			'error'          => '',
-		];
+		] );
 		$meta     = array_intersect_key( array_merge( $defaults, $data ), $defaults );
 
 		$value_parts = [];
@@ -196,13 +212,14 @@ class REST_Connection_Cache {
 	public static function clear_public_connection_metadata( string $id ): void {
 		global $wpdb;
 
-		$in_sql = implode( ', ', array_fill( 0, count( self::PROFILE_KEYS ), '%s' ) );
+		$keys   = self::get_profile_keys();
+		$in_sql = implode( ', ', array_fill( 0, count( $keys ), '%s' ) );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 		$wpdb->query(
 			$wpdb->prepare(
 				'DELETE FROM ' . self::connection_meta_table() . ' WHERE connection_id = %s AND meta_key IN (' . $in_sql . ')',
 				$id,
-				...self::PROFILE_KEYS
+				...$keys
 			)
 		);
 	}
@@ -386,7 +403,7 @@ class REST_Connection_Cache {
 				[
 					'provider'       => 'bitbucket',
 					'authenticated'  => false,
-					'username'       => $identifier,
+					'workspace'      => $identifier,
 					'name'           => '',
 					'avatar_url'     => self::gravatar_url( $identifier ),
 					'rate_limit'     => 0,
