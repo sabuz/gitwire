@@ -366,7 +366,7 @@ export default function BrowsePanel( {
 						value={ search }
 					/>
 				</FlexBlock>
-				<FlexItem>
+				{ repositories.length > 0 && <FlexItem>
 					<Dropdown
 						popoverProps={ {
 							placement: 'bottom-start',
@@ -510,13 +510,13 @@ export default function BrowsePanel( {
 							</div>
 						) }
 					/>
-				</FlexItem>
-				<FlexItem>
+				</FlexItem> }
+				{ repositories.length > 0 && <FlexItem>
 					<div
 						className="gitwire-toolbar-divider"
 						aria-hidden="true"
 					/>
-				</FlexItem>
+				</FlexItem> }
 				<FlexItem>
 					<Button
 						disabled={ loading }
@@ -540,6 +540,12 @@ export default function BrowsePanel( {
 				<div style={ { textAlign: 'center', padding: 48 } }>
 					<Spinner />
 				</div>
+			) }
+
+			{ repositories.length === 0 && ! loading && (
+				<p style={ { color: '#57606a', marginTop: 8 } }>
+					{ __( 'No repositories found.', 'gitwire' ) }
+				</p>
 			) }
 
 			{ repositories.length > 0 && filtered.length === 0 && (

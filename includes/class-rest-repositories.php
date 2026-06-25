@@ -144,7 +144,9 @@ class REST_Repositories {
 		$connections = array_values(
 			array_filter(
 				Connection_Resolver::all(),
-				static fn( $c ) => isset( $c['id'] ) && '' !== $c['id'] && in_array( $c['provider'] ?? '', [ 'github', 'gitlab', 'bitbucket' ], true )
+				static fn( $c ) => isset( $c['id'] ) && '' !== $c['id']
+					&& in_array( $c['provider'] ?? '', [ 'github', 'gitlab', 'bitbucket' ], true )
+					&& null !== Connection_Resolver::get_credentials( $c['id'] )
 			)
 		);
 

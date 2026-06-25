@@ -89,7 +89,7 @@ class Schema {
 				head VARCHAR(40) NOT NULL DEFAULT '',
 				remote_head VARCHAR(40) NOT NULL DEFAULT '',
 				install_path VARCHAR(1024) NOT NULL DEFAULT '',
-				plugin_file VARCHAR(512) NOT NULL DEFAULT '',
+				plugin_file VARCHAR(512) DEFAULT NULL,
 				auto_update VARCHAR(10) NOT NULL DEFAULT 'disabled',
 				installed_at DATETIME NOT NULL,
 				updated_at DATETIME NOT NULL,
