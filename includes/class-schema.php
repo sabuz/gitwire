@@ -92,7 +92,7 @@ class Schema {
 				auto_update VARCHAR(16) NOT NULL DEFAULT 'disabled',
 				updated_at DATETIME NOT NULL,
 				PRIMARY KEY  (id),
-				UNIQUE KEY repo (connection_id, provider, full_name),
+				UNIQUE KEY repo (provider, full_name),
 				KEY connection_id (connection_id),
 				KEY conn_type (connection_id, type),
 				KEY auto_update (auto_update)

@@ -39,7 +39,7 @@ Table gitwire_installations {
   updated_at   datetime     [not null, note: 'e.g. 2025-03-20 11:30:00']
 
   indexes {
-    (connection_id, provider, full_name) [unique]
+    (provider, full_name) [unique]
     connection_id
     (connection_id, type)
     auto_update
