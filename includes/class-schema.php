@@ -79,22 +79,23 @@ class Schema {
 				id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 				connection_id VARCHAR(64) NOT NULL DEFAULT '',
 				provider VARCHAR(32) NOT NULL,
-				owner VARCHAR(128) NOT NULL DEFAULT '',
+				owner VARCHAR(255) NOT NULL DEFAULT '',
 				name VARCHAR(255) NOT NULL DEFAULT '',
 				full_name VARCHAR(255) NOT NULL DEFAULT '',
+				html_url VARCHAR(512) NOT NULL DEFAULT '',
 				type VARCHAR(16) NOT NULL DEFAULT 'plugin',
 				branch VARCHAR(255) NOT NULL DEFAULT 'main',
-				head VARCHAR(40) NOT NULL DEFAULT '',
-				remote_head VARCHAR(40) NOT NULL DEFAULT '',
+				head VARCHAR(64) NOT NULL DEFAULT '',
+				remote_head VARCHAR(64) NOT NULL DEFAULT '',
 				install_path VARCHAR(1024) NOT NULL DEFAULT '',
-				html_url VARCHAR(512) NOT NULL DEFAULT '',
 				plugin_file VARCHAR(512) DEFAULT NULL,
 				auto_update VARCHAR(16) NOT NULL DEFAULT 'disabled',
 				updated_at DATETIME NOT NULL,
 				PRIMARY KEY  (id),
-				UNIQUE KEY repo (provider, full_name),
+				UNIQUE KEY repo (connection_id, provider, full_name),
 				KEY connection_id (connection_id),
-				KEY conn_type (connection_id, type)
+				KEY conn_type (connection_id, type),
+				KEY auto_update (auto_update)
 			) $charset;"
 		);
 
@@ -119,7 +120,7 @@ class Schema {
 			"CREATE TABLE {$prefix}gitwire_repositories (
 				connection_id    VARCHAR(64) NOT NULL,
 				provider         VARCHAR(32) NOT NULL,
-				owner            VARCHAR(128) NOT NULL DEFAULT '',
+				owner            VARCHAR(255) NOT NULL DEFAULT '',
 				name             VARCHAR(255) NOT NULL DEFAULT '',
 				full_name        VARCHAR(255) NOT NULL DEFAULT '',
 				private          TINYINT(1) NOT NULL DEFAULT 0,
