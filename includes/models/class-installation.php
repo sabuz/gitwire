@@ -6,7 +6,7 @@
  * @since 2.0.0
  */
 
-namespace Gitwire\Database\Installations;
+namespace Gitwire\Models;
 
 use Gitwire\Model_Base;
 
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Read/write operations for the gitwire_installations table.
  */
-class Model extends Model_Base {
+class Installation extends Model_Base {
 
 	private static ?self $instance = null;
 
@@ -242,7 +242,7 @@ class Model extends Model_Base {
 	/**
 	 * Deletes the installation row for a repository.
 	 *
-	 * Commits must be deleted separately via Commits\Model::delete_by_installation().
+	 * Commits must be deleted separately via Commit::delete_by_installation().
 	 *
 	 * @since 2.0.0
 	 * @param string $provider  Git provider.
@@ -254,6 +254,4 @@ class Model extends Model_Base {
 		$this->invalidate_cache();
 		return $ok;
 	}
-
-
 }

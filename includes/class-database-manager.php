@@ -8,10 +8,10 @@
 
 namespace Gitwire;
 
-use Gitwire\Database\Connections;
-use Gitwire\Database\Installations;
-use Gitwire\Database\Repositories;
-use Gitwire\Database\Commits;
+use Gitwire\Migrations\Connection as ConnectionMigration;
+use Gitwire\Migrations\Installation as InstallationMigration;
+use Gitwire\Migrations\Repository as RepositoryMigration;
+use Gitwire\Migrations\Commit as CommitMigration;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -53,10 +53,10 @@ class Database_Manager {
 	 * @return void
 	 */
 	public function migrate(): void {
-		Connections\Migration::instance()->migrate();
-		Installations\Migration::instance()->migrate();
-		Repositories\Migration::instance()->migrate();
-		Commits\Migration::instance()->migrate();
+		ConnectionMigration::instance()->migrate();
+		InstallationMigration::instance()->migrate();
+		RepositoryMigration::instance()->migrate();
+		CommitMigration::instance()->migrate();
 		delete_option( 'gitwire_db_version' );
 	}
 
@@ -67,10 +67,10 @@ class Database_Manager {
 	 * @return bool
 	 */
 	public function needs_migrate(): bool {
-		return Connections\Migration::instance()->needs_migrate()
-			|| Installations\Migration::instance()->needs_migrate()
-			|| Repositories\Migration::instance()->needs_migrate()
-			|| Commits\Migration::instance()->needs_migrate();
+		return ConnectionMigration::instance()->needs_migrate()
+			|| InstallationMigration::instance()->needs_migrate()
+			|| RepositoryMigration::instance()->needs_migrate()
+			|| CommitMigration::instance()->needs_migrate();
 	}
 
 	/**
@@ -110,10 +110,10 @@ class Database_Manager {
 	 * @return void
 	 */
 	public static function uninstall(): void {
-		Repositories\Migration::instance()->drop_tables();
-		Commits\Migration::instance()->drop_tables();
-		Installations\Migration::instance()->drop_tables();
-		Connections\Migration::instance()->drop_tables();
+		RepositoryMigration::instance()->drop_tables();
+		CommitMigration::instance()->drop_tables();
+		InstallationMigration::instance()->drop_tables();
+		ConnectionMigration::instance()->drop_tables();
 		delete_option( 'gitwire_db_version' );
 	}
 }

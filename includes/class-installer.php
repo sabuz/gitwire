@@ -8,9 +8,9 @@
 
 namespace Gitwire;
 
-use Gitwire\Database\Installations\Model as Installations_Model;
-use Gitwire\Database\Commits\Model as Commits_Model;
-use Gitwire\Database\Repositories\Model as Repositories_Model;
+use Gitwire\Models\Installation;
+use Gitwire\Models\Commit;
+use Gitwire\Models\Repository;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -37,7 +37,7 @@ class Installer {
 	 */
 	public static function invalidate_installed_cache(): void {
 		self::$installed_cache = null;
-		Installations_Model::instance()->invalidate_cache();
+		Installation::instance()->invalidate_cache();
 	}
 
 	/**
@@ -70,7 +70,7 @@ class Installer {
 	 * @return void
 	 */
 	private static function delete_commits( int $installation_id ): void {
-		Commits_Model::instance()->delete_by_installation( $installation_id );
+		Commit::instance()->delete_by_installation( $installation_id );
 	}
 
 	/**
@@ -84,9 +84,9 @@ class Installer {
 	 * @return void
 	 */
 	public static function delete_record( string $provider, string $full_name ): void {
-		$row             = Installations_Model::instance()->find_by_repo( $provider, $full_name );
+		$row             = Installation::instance()->find_by_repo( $provider, $full_name );
 		$installation_id = $row ? (int) ( $row['id'] ?? 0 ) : 0;
-		Installations_Model::instance()->delete_by_repo( $provider, $full_name );
+		Installation::instance()->delete_by_repo( $provider, $full_name );
 		if ( $installation_id ) {
 			self::delete_commits( $installation_id );
 		}
@@ -103,7 +103,7 @@ class Installer {
 	 * @return void
 	 */
 	public static function upsert_record( array $record ): void {
-		Installations_Model::instance()->upsert(
+		Installation::instance()->upsert(
 			array_merge(
 				$record,
 				[
@@ -125,7 +125,7 @@ class Installer {
 	 * @return void
 	 */
 	public static function set_remote_head( string $provider, string $full_name, string $sha ): void {
-		Installations_Model::instance()->update_remote_head( $provider, $full_name, $sha );
+		Installation::instance()->update_remote_head( $provider, $full_name, $sha );
 		self::invalidate_installed_cache();
 	}
 
@@ -139,7 +139,7 @@ class Installer {
 	 * @return void
 	 */
 	public static function set_plugin_file( string $provider, string $full_name, string $basename ): void {
-		Installations_Model::instance()->update_basename( $provider, $full_name, $basename );
+		Installation::instance()->update_basename( $provider, $full_name, $basename );
 		self::invalidate_installed_cache();
 	}
 
@@ -170,7 +170,7 @@ class Installer {
 		}
 
 		$deleted_dir = untrailingslashit( WP_PLUGIN_DIR ) . '/' . dirname( $plugin_file );
-		$row         = Installations_Model::instance()->find_by_path( $deleted_dir );
+		$row         = Installation::instance()->find_by_path( $deleted_dir );
 
 		if ( ! $row ) {
 			return;
@@ -194,7 +194,7 @@ class Installer {
 		}
 
 		$deleted_dir = untrailingslashit( get_theme_root() ) . '/' . $stylesheet;
-		$row         = Installations_Model::instance()->find_by_path( $deleted_dir );
+		$row         = Installation::instance()->find_by_path( $deleted_dir );
 
 		if ( ! $row ) {
 			return;
@@ -620,7 +620,7 @@ class Installer {
 			return null;
 		}
 
-		Installations_Model::instance()->update_basename( $provider, $full_name, $found );
+		Installation::instance()->update_basename( $provider, $full_name, $found );
 		self::invalidate_installed_cache();
 
 		return $found;
@@ -638,7 +638,7 @@ class Installer {
 		}
 
 		self::$installed_cache = [];
-		foreach ( Installations_Model::instance()->all() as $row ) {
+		foreach ( Installation::instance()->all() as $row ) {
 			$key                           = $row['provider'] . ':' . $row['full_name'];
 			self::$installed_cache[ $key ] = self::hydrate_record( $row );
 		}
@@ -751,7 +751,7 @@ class Installer {
 	 * @return void
 	 */
 	public static function set_head( string $provider, string $full_name, string $sha ): void {
-		Installations_Model::instance()->update_head( $provider, $full_name, $sha );
+		Installation::instance()->update_head( $provider, $full_name, $sha );
 		self::invalidate_installed_cache();
 	}
 
@@ -1009,7 +1009,7 @@ class Installer {
 			$record['head'] = $head_sha;
 		}
 
-		Installations_Model::instance()->upsert(
+		Installation::instance()->upsert(
 			array_merge(
 				$record,
 				[
@@ -1023,7 +1023,7 @@ class Installer {
 		$evicted  = [];
 		$new_path = untrailingslashit( $record['install_path'] ?? '' );
 		if ( $new_path ) {
-			$evicted_rows = Installations_Model::instance()->find_others_by_path( $new_path, $provider, $full_name );
+			$evicted_rows = Installation::instance()->find_others_by_path( $new_path, $provider, $full_name );
 			foreach ( $evicted_rows as $evicted_row ) {
 				self::delete_record( $evicted_row['provider'], $evicted_row['full_name'] );
 				$evicted[] = self::hydrate_record( $evicted_row );
@@ -1261,7 +1261,7 @@ class Installer {
 		}
 
 		// Save record.
-		$html_url = Repositories_Model::instance()->get_html_url( $provider, $full_name );
+		$html_url = Repository::instance()->get_html_url( $provider, $full_name );
 
 		$record = [
 			'name'          => $slug,

@@ -8,7 +8,7 @@
 
 namespace Gitwire;
 
-use Gitwire\Database\Connections\Model as Connections_Model;
+use Gitwire\Models\Connection;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -33,7 +33,7 @@ class Connection_Meta {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function get_connection_cache(): array {
-		$rows = Connections_Model::instance()->all();
+		$rows = Connection::instance()->all();
 
 		$result = [];
 		foreach ( $rows as $row ) {
@@ -51,7 +51,7 @@ class Connection_Meta {
 	 * @return array<string, mixed>|null
 	 */
 	public static function get_public_connections_metadata( string $id ): ?array {
-		$row = Connections_Model::instance()->find( $id );
+		$row = Connection::instance()->find( $id );
 		return $row ? self::format_profile( $row ) : null;
 	}
 
@@ -118,7 +118,7 @@ class Connection_Meta {
 		}
 
 		if ( ! empty( $normalized ) ) {
-			Connections_Model::instance()->save_metadata( $id, $normalized );
+			Connection::instance()->save_metadata( $id, $normalized );
 		}
 	}
 
@@ -133,7 +133,7 @@ class Connection_Meta {
 	 * @return void
 	 */
 	public static function clear_public_connection_metadata( string $id ): void {
-		Connections_Model::instance()->clear_metadata( $id );
+		Connection::instance()->clear_metadata( $id );
 	}
 
 	/**

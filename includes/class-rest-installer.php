@@ -8,8 +8,8 @@
 
 namespace Gitwire;
 
-use Gitwire\Database\Commits\Model as Commits_Model;
-use Gitwire\Database\Installations\Model as Installations_Model;
+use Gitwire\Models\Commit;
+use Gitwire\Models\Installation;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -73,7 +73,7 @@ class REST_Installer {
 	 * @return array<int, array<string, mixed>>|null
 	 */
 	private static function get_cached_commits( int $installation_id, string $branch ): ?array {
-		$row = Commits_Model::instance()->find( $installation_id, $branch );
+		$row = Commit::instance()->find( $installation_id, $branch );
 		if ( ! $row ) {
 			return null;
 		}
@@ -91,7 +91,7 @@ class REST_Installer {
 	 * @return void
 	 */
 	private static function save_cached_commits( int $installation_id, string $branch, array $commits ): void {
-		Commits_Model::instance()->upsert( $installation_id, $branch, $commits );
+		Commit::instance()->upsert( $installation_id, $branch, $commits );
 	}
 
 	/**
@@ -889,7 +889,7 @@ class REST_Installer {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
 
-		Installations_Model::instance()->update_auto_update( $provider, $full_name, $auto_update );
+		Installation::instance()->update_auto_update( $provider, $full_name, $auto_update );
 		Installer::invalidate_installed_cache();
 
 		return [

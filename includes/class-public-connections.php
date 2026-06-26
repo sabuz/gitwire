@@ -8,7 +8,7 @@
 
 namespace Gitwire;
 
-use Gitwire\Database\Connections\Model as Connections_Model;
+use Gitwire\Models\Connection;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -27,7 +27,7 @@ class Public_Connections {
 	 */
 	public static function all(): array {
 		$rows = array_filter(
-			Connections_Model::instance()->all(),
+			Connection::instance()->all(),
 			static fn( $r ) => null === ( $r['credentials'] ?? null )
 		);
 
@@ -79,7 +79,7 @@ class Public_Connections {
 	 * @return array<string, mixed>|null
 	 */
 	public static function find( string $id ): ?array {
-		$row = Connections_Model::instance()->find( $id );
+		$row = Connection::instance()->find( $id );
 		if ( ! $row || null !== ( $row['credentials'] ?? null ) ) {
 			return null;
 		}
@@ -94,7 +94,7 @@ class Public_Connections {
 	 * @return array<string, mixed>|null
 	 */
 	public static function get_first_for_provider( string $provider ): ?array {
-		$row = Connections_Model::instance()->find_by_provider( $provider );
+		$row = Connection::instance()->find_by_provider( $provider );
 		if ( ! $row || null !== ( $row['credentials'] ?? null ) ) {
 			return null;
 		}
@@ -110,7 +110,7 @@ class Public_Connections {
 	 * @return array<string, mixed>|null
 	 */
 	public static function find_by_identifier( string $provider, string $identifier ): ?array {
-		$row = Connections_Model::instance()->find_by_identifier( $provider, $identifier );
+		$row = Connection::instance()->find_by_identifier( $provider, $identifier );
 		if ( ! $row || null !== ( $row['credentials'] ?? null ) ) {
 			return null;
 		}
@@ -193,7 +193,7 @@ class Public_Connections {
 		$id  = 'pub_' . wp_generate_uuid4();
 		$now = current_time( 'mysql' );
 
-		Connections_Model::instance()->insert(
+		Connection::instance()->insert(
 			[
 				'id'         => $id,
 				'provider'   => $provider,
@@ -219,12 +219,12 @@ class Public_Connections {
 	 * @return bool True when the connection was found and removed.
 	 */
 	public static function delete( string $id ): bool {
-		$row = Connections_Model::instance()->find( $id );
+		$row = Connection::instance()->find( $id );
 		if ( ! $row || null !== ( $row['credentials'] ?? null ) ) {
 			return false;
 		}
 
-		$deleted = Connections_Model::instance()->delete_by_id( $id );
+		$deleted = Connection::instance()->delete_by_id( $id );
 		if ( $deleted ) {
 			Repositories::clear_repositories( $id );
 		}

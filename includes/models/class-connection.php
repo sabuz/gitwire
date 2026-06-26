@@ -6,7 +6,7 @@
  * @since 2.0.0
  */
 
-namespace Gitwire\Database\Connections;
+namespace Gitwire\Models;
 
 use Gitwire\Model_Base;
 
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * and class-connection-meta.php. Pro-only columns (email, credentials, scope)
  * are not in the free schema and therefore not in columns().
  */
-class Model extends Model_Base {
+class Connection extends Model_Base {
 
 	private static ?self $instance = null;
 

@@ -9,7 +9,7 @@
 
 namespace Gitwire;
 
-use Gitwire\Database\Connections\Model as Connections_Model;
+use Gitwire\Models\Connection;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -28,7 +28,7 @@ class Connection_Resolver {
 	 * @return void
 	 */
 	public static function invalidate_cache(): void {
-		Connections_Model::instance()->invalidate_cache();
+		Connection::instance()->invalidate_cache();
 	}
 
 	/**
@@ -38,7 +38,7 @@ class Connection_Resolver {
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function all(): array {
-		return (array) apply_filters( 'gitwire_connections_all', Connections_Model::instance()->all() );
+		return (array) apply_filters( 'gitwire_connections_all', Connection::instance()->all() );
 	}
 
 	/**
@@ -54,7 +54,7 @@ class Connection_Resolver {
 		$uid  = (string) get_current_user_id();
 		$rows = array_values(
 			array_filter(
-				Connections_Model::instance()->all(),
+				Connection::instance()->all(),
 				static fn( $r ) => 'all' === ( $r['scope'] ?? 'all' ) || ( $r['scope'] ?? '' ) === $uid
 			)
 		);
@@ -79,7 +79,7 @@ class Connection_Resolver {
 	 * @return array<string, mixed>|null
 	 */
 	public static function find( string $id ): ?array {
-		$conn = apply_filters( 'gitwire_find_connection', Connections_Model::instance()->find( $id ), $id );
+		$conn = apply_filters( 'gitwire_find_connection', Connection::instance()->find( $id ), $id );
 		return is_array( $conn ) ? $conn : null;
 	}
 
@@ -91,7 +91,7 @@ class Connection_Resolver {
 	 * @return array<string, mixed>|null
 	 */
 	public static function get_first_for_provider( string $provider ): ?array {
-		$conn = apply_filters( 'gitwire_connection_for_provider', Connections_Model::instance()->find_by_provider( $provider ), $provider );
+		$conn = apply_filters( 'gitwire_connection_for_provider', Connection::instance()->find_by_provider( $provider ), $provider );
 		return is_array( $conn ) ? $conn : null;
 	}
 

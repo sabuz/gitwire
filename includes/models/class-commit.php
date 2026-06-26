@@ -6,7 +6,7 @@
  * @since 2.0.0
  */
 
-namespace Gitwire\Database\Commits;
+namespace Gitwire\Models;
 
 use Gitwire\Model_Base;
 
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Read/write operations for the gitwire_commits table.
  */
-class Model extends Model_Base {
+class Commit extends Model_Base {
 
 	private static ?self $instance = null;
 

@@ -6,7 +6,7 @@
  * @since 2.0.0
  */
 
-namespace Gitwire\Database\Repositories;
+namespace Gitwire\Models;
 
 use Gitwire\Model_Base;
 
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * whatever is in the table regardless of age. type/type_meta are preserved
  * across cron refreshes via excluded ON DUPLICATE KEY UPDATE columns.
  */
-class Model extends Model_Base {
+class Repository extends Model_Base {
 
 	private static ?self $instance = null;
 

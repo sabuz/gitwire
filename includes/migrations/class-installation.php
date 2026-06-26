@@ -6,7 +6,7 @@
  * @since 2.0.0
  */
 
-namespace Gitwire\Database\Installations;
+namespace Gitwire\Migrations;
 
 use Gitwire\Migration_Base;
 
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Manages schema creation and upgrades for the gitwire_installations table.
  */
-class Migration extends Migration_Base {
+class Installation extends Migration_Base {
 
 	private static ?self $instance = null;
 

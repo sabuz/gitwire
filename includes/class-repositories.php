@@ -8,7 +8,7 @@
 
 namespace Gitwire;
 
-use Gitwire\Database\Repositories\Model as Repositories_Model;
+use Gitwire\Models\Repository;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -43,7 +43,7 @@ class Repositories {
 
 		$settings = Settings::get_public();
 
-		return Repositories_Model::instance()->get_paginated(
+		return Repository::instance()->get_paginated(
 			[
 				'connection_ids' => $connection_ids,
 				'offset'         => $offset,
@@ -67,7 +67,7 @@ class Repositories {
 	 * @return void
 	 */
 	public static function set_repositories( string $connection_id, string $provider, array $payload ): void {
-		Repositories_Model::instance()->upsert_batch( $connection_id, $payload['repositories'] ?? [], $provider );
+		Repository::instance()->upsert_batch( $connection_id, $payload['repositories'] ?? [], $provider );
 	}
 
 	/**
@@ -95,7 +95,7 @@ class Repositories {
 	 * @return array<string, mixed>|null Cached detection or null when missing.
 	 */
 	public static function get_repository_type( string $provider, string $owner, string $repo, string $branch ): ?array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
-		return Repositories_Model::instance()->get_type( $provider, $owner . '/' . $repo );
+		return Repository::instance()->get_type( $provider, $owner . '/' . $repo );
 	}
 
 	/**
@@ -116,7 +116,7 @@ class Repositories {
 	public static function set_repository_type( string $provider, string $owner, string $repo, string $branch, array $result ): void {
 		$type = $result['type'] ?? '';
 		$meta = array_diff_key( $result, [ 'type' => true ] );
-		Repositories_Model::instance()->set_type( $provider, $owner . '/' . $repo, $type, ! empty( $meta ) ? $meta : null );
+		Repository::instance()->set_type( $provider, $owner . '/' . $repo, $type, ! empty( $meta ) ? $meta : null );
 	}
 
 	/**
@@ -127,7 +127,7 @@ class Repositories {
 	 * @return void
 	 */
 	public static function clear_repositories( ?string $connection_id = null ): void {
-		Repositories_Model::instance()->clear( $connection_id ?? '' );
+		Repository::instance()->clear( $connection_id ?? '' );
 	}
 
 	/**
@@ -137,7 +137,7 @@ class Repositories {
 	 * @return void
 	 */
 	public static function clear_repository_types(): void {
-		Repositories_Model::instance()->clear_types();
+		Repository::instance()->clear_types();
 
 		// One-time cleanup of legacy gitwire_repo_type_* options from sites that ran an older build.
 		global $wpdb;
@@ -227,7 +227,7 @@ class Repositories {
 			} while ( $has_more );
 
 			if ( ! $conn_err ) {
-				Repositories_Model::instance()->remove_stale( $id, $fetched_full_names );
+				Repository::instance()->remove_stale( $id, $fetched_full_names );
 			}
 		}
 
@@ -320,7 +320,7 @@ class Repositories {
 		$cursor      = (int) get_option( 'gitwire_detection_cursor', 0 );
 		$batch_start = time();
 
-		$untyped = Repositories_Model::instance()->get_untyped_batch( $batch_size, $cursor );
+		$untyped = Repository::instance()->get_untyped_batch( $batch_size, $cursor );
 
 		if ( empty( $untyped ) ) {
 			delete_option( 'gitwire_detection_cursor' );

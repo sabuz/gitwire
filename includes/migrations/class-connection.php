@@ -1,12 +1,12 @@
 <?php
 /**
- * Migration for gitwire_commits.
+ * Migration for gitwire_connections.
  *
  * @package Gitwire
  * @since 2.0.0
  */
 
-namespace Gitwire\Database\Commits;
+namespace Gitwire\Migrations;
 
 use Gitwire\Migration_Base;
 
@@ -15,9 +15,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Manages schema creation and upgrades for the gitwire_commits table.
+ * Manages schema creation and upgrades for the gitwire_connections table.
  */
-class Migration extends Migration_Base {
+class Connection extends Migration_Base {
 
 	private static ?self $instance = null;
 
@@ -31,29 +31,43 @@ class Migration extends Migration_Base {
 	private function __construct() {}
 
 	const DB_VERSION        = '1.0.0';
-	const DB_VERSION_OPTION = 'gitwire_commits_db_version';
-	const TABLE             = 'gitwire_commits';
+	const DB_VERSION_OPTION = 'gitwire_connections_db_version';
+	const TABLE             = 'gitwire_connections';
 
 	/**
-	 * Creates or upgrades the commits table.
+	 * Creates or upgrades the connections table.
+	 *
+	 * Pro-only columns (credentials, scope, email) are managed entirely by the Pro plugin
+	 * via its activation/deactivation hooks — this migration does not touch them.
 	 *
 	 * @since 2.0.0
 	 * @return void
 	 */
 	public function migrate(): void {
+		global $wpdb;
+
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		global $wpdb;
 		$table   = $this->get_table_name( self::TABLE );
 		$charset = $wpdb->get_charset_collate();
 
 		dbDelta(
 			"CREATE TABLE {$table} (
-			  installation_id BIGINT UNSIGNED NOT NULL,
-			  branch          VARCHAR(255) NOT NULL DEFAULT 'main',
-			  data            MEDIUMTEXT NOT NULL,
-			  updated_at      DATETIME NOT NULL,
-			  PRIMARY KEY  (installation_id, branch)
+			  id             VARCHAR(64) NOT NULL,
+			  provider       VARCHAR(32) NOT NULL,
+			  host_url       VARCHAR(512) NULL,
+			  identifier     VARCHAR(255) NOT NULL DEFAULT '',
+			  authenticated  TINYINT(1) NOT NULL DEFAULT 0,
+			  error          TEXT NULL,
+			  name           VARCHAR(255) NOT NULL DEFAULT '',
+			  avatar_url     VARCHAR(512) NOT NULL DEFAULT '',
+			  rate_limit     INT UNSIGNED NOT NULL DEFAULT 0,
+			  rate_remaining INT UNSIGNED NOT NULL DEFAULT 0,
+			  rate_reset     INT UNSIGNED NOT NULL DEFAULT 0,
+			  created_at     DATETIME NOT NULL,
+			  updated_at     DATETIME NOT NULL,
+			  PRIMARY KEY  (id),
+			  KEY provider (provider)
 			) {$charset};"
 		);
 
@@ -72,7 +86,7 @@ class Migration extends Migration_Base {
 	}
 
 	/**
-	 * Drops the commits table and removes its version option.
+	 * Drops the connections table and removes its version option.
 	 *
 	 * @since 2.0.0
 	 * @return void
