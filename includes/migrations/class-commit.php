@@ -19,17 +19,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Commit extends Migration_Base {
 
-	private static ?self $instance = null;
-
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {}
-
 	const DB_VERSION        = '1.0.0';
 	const DB_VERSION_OPTION = 'gitwire_commits_db_version';
 	const TABLE             = 'gitwire_commits';

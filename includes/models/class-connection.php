@@ -23,8 +23,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Connection extends Model_Base {
 
-	private static ?self $instance = null;
-
 	/**
 	 * Request-scope cache for all().
 	 *
@@ -47,15 +45,6 @@ class Connection extends Model_Base {
 		'error',
 		'updated_at',
 	];
-
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {}
 
 	protected function table(): string {
 		return 'gitwire_connections';

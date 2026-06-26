@@ -19,23 +19,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Installation extends Model_Base {
 
-	private static ?self $instance = null;
-
 	/**
 	 * Request-scope cache for all().
 	 *
 	 * @var array<int, array<string, mixed>>|null
 	 */
 	private static ?array $all_cache = null;
-
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {}
 
 	protected function table(): string {
 		return 'gitwire_installations';

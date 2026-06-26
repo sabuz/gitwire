@@ -18,6 +18,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 abstract class Migration_Base {
 
 	/**
+	 * @var array<string, static>
+	 */
+	private static array $instances = [];
+
+	/**
+	 * @since 2.0.0
+	 * @return static
+	 */
+	public static function instance(): static {
+		$class = static::class;
+		if ( ! isset( self::$instances[ $class ] ) ) {
+			self::$instances[ $class ] = new static();
+		}
+		return self::$instances[ $class ]; // @phpstan-ignore return.type
+	}
+
+	/**
 	 * Returns the full table name with the WordPress base prefix.
 	 *
 	 * @since 2.0.0

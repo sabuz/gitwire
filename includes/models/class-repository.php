@@ -23,17 +23,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Repository extends Model_Base {
 
-	private static ?self $instance = null;
-
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {}
-
 	protected function table(): string {
 		return 'gitwire_repositories';
 	}
