@@ -27,6 +27,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Database_Manager {
 
+	const DB_VERSION_OPTION = 'gitwire_db_version';
+
 	private static ?self $instance = null;
 
 	public static function instance(): self {
@@ -53,24 +55,22 @@ class Database_Manager {
 	 * @return void
 	 */
 	public function migrate(): void {
-		ConnectionMigration::instance()->migrate();
-		InstallationMigration::instance()->migrate();
-		RepositoryMigration::instance()->migrate();
-		CommitMigration::instance()->migrate();
-		delete_option( 'gitwire_db_version' );
+		$from = (string) get_option( self::DB_VERSION_OPTION, '' );
+		ConnectionMigration::instance()->migrate( $from );
+		InstallationMigration::instance()->migrate( $from );
+		RepositoryMigration::instance()->migrate( $from );
+		CommitMigration::instance()->migrate( $from );
+		update_option( self::DB_VERSION_OPTION, GITWIRE_VERSION, false );
 	}
 
 	/**
-	 * Returns true when any table is missing or behind version.
+	 * Returns true when the stored version is behind the current plugin version.
 	 *
 	 * @since 2.0.0
 	 * @return bool
 	 */
 	public function needs_migrate(): bool {
-		return ConnectionMigration::instance()->needs_migrate()
-			|| InstallationMigration::instance()->needs_migrate()
-			|| RepositoryMigration::instance()->needs_migrate()
-			|| CommitMigration::instance()->needs_migrate();
+		return version_compare( (string) get_option( self::DB_VERSION_OPTION, '' ), GITWIRE_VERSION, '<' );
 	}
 
 	/**
@@ -114,6 +114,6 @@ class Database_Manager {
 		CommitMigration::instance()->drop_tables();
 		InstallationMigration::instance()->drop_tables();
 		ConnectionMigration::instance()->drop_tables();
-		delete_option( 'gitwire_db_version' );
+		delete_option( self::DB_VERSION_OPTION );
 	}
 }

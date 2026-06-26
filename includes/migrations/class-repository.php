@@ -19,17 +19,16 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Repository extends Migration_Base {
 
-	const DB_VERSION        = '1.0.0';
-	const DB_VERSION_OPTION = 'gitwire_repositories_db_version';
-	const TABLE             = 'gitwire_repositories';
+	const TABLE = 'gitwire_repositories';
 
 	/**
 	 * Creates or upgrades the repositories table.
 	 *
 	 * @since 2.0.0
+	 * @param string $from Previously stored plugin version; use for version_compare guards on future schema changes.
 	 * @return void
 	 */
-	public function migrate(): void {
+	public function migrate( string $from = '' ): void {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
 		global $wpdb;
@@ -57,22 +56,10 @@ class Repository extends Migration_Base {
 			) {$charset};"
 		);
 
-		update_option( self::DB_VERSION_OPTION, self::DB_VERSION, false );
 	}
 
 	/**
-	 * Returns true when the table is missing or the stored version is behind.
-	 *
-	 * @since 2.0.0
-	 * @return bool
-	 */
-	public function needs_migrate(): bool {
-		return ! $this->table_exists( self::TABLE )
-			|| version_compare( (string) get_option( self::DB_VERSION_OPTION, '' ), self::DB_VERSION, '<' );
-	}
-
-	/**
-	 * Drops the repositories table and removes its version option.
+	 * Drops the repositories table.
 	 *
 	 * @since 2.0.0
 	 * @return void
@@ -82,6 +69,5 @@ class Repository extends Migration_Base {
 		$table = $this->get_table_name( self::TABLE );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
-		delete_option( self::DB_VERSION_OPTION );
 	}
 }
