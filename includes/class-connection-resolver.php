@@ -9,6 +9,8 @@
 
 namespace Gitwire;
 
+use Gitwire\Database\Connections\Model as Connections_Model;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -20,20 +22,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Connection_Resolver {
 
 	/**
-	 * Request-scope cache for all_rows().
-	 *
-	 * @var array<int, array<string, mixed>>|null
-	 */
-	private static ?array $rows_cache = null;
-
-	/**
 	 * Clears the request-scope cache after any write operation.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function invalidate_cache(): void {
-		self::$rows_cache = null;
+		Connections_Model::instance()->invalidate_cache();
 	}
 
 	/**
@@ -43,7 +38,7 @@ class Connection_Resolver {
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function all(): array {
-		return (array) apply_filters( 'gitwire_connections_all', self::all_rows() );
+		return (array) apply_filters( 'gitwire_connections_all', Connections_Model::instance()->all() );
 	}
 
 	/**
@@ -59,7 +54,7 @@ class Connection_Resolver {
 		$uid  = (string) get_current_user_id();
 		$rows = array_values(
 			array_filter(
-				self::all_rows(),
+				Connections_Model::instance()->all(),
 				static fn( $r ) => 'all' === ( $r['scope'] ?? 'all' ) || ( $r['scope'] ?? '' ) === $uid
 			)
 		);
@@ -84,15 +79,7 @@ class Connection_Resolver {
 	 * @return array<string, mixed>|null
 	 */
 	public static function find( string $id ): ?array {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . $wpdb->base_prefix . 'gitwire_connections WHERE id = %s', $id ),
-			ARRAY_A
-		);
-
-		$conn = apply_filters( 'gitwire_find_connection', $row ?: null, $id );
+		$conn = apply_filters( 'gitwire_find_connection', Connections_Model::instance()->find( $id ), $id );
 		return is_array( $conn ) ? $conn : null;
 	}
 
@@ -104,18 +91,7 @@ class Connection_Resolver {
 	 * @return array<string, mixed>|null
 	 */
 	public static function get_first_for_provider( string $provider ): ?array {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare(
-				'SELECT * FROM ' . $wpdb->base_prefix . 'gitwire_connections WHERE provider = %s ORDER BY created_at ASC LIMIT 1',
-				$provider
-			),
-			ARRAY_A
-		);
-
-		$conn = apply_filters( 'gitwire_connection_for_provider', $row ?: null, $provider );
+		$conn = apply_filters( 'gitwire_connection_for_provider', Connections_Model::instance()->find_by_provider( $provider ), $provider );
 		return is_array( $conn ) ? $conn : null;
 	}
 
@@ -154,28 +130,5 @@ class Connection_Resolver {
 
 		$creds = apply_filters( 'gitwire_provider_credentials', null, $provider );
 		return is_array( $creds ) ? $creds : null;
-	}
-
-	/**
-	 * Queries all rows from the unified connections table.
-	 *
-	 * @since 1.0.0
-	 * @return array<int, array<string, mixed>>
-	 */
-	private static function all_rows(): array {
-		if ( null !== self::$rows_cache ) {
-			return self::$rows_cache;
-		}
-
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$rows = $wpdb->get_results(
-			'SELECT * FROM ' . $wpdb->base_prefix . 'gitwire_connections ORDER BY created_at ASC',
-			ARRAY_A
-		);
-
-		self::$rows_cache = $rows ?: [];
-		return self::$rows_cache;
 	}
 }

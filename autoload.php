@@ -17,8 +17,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @var array<string, string> $class_map
  */
 $class_map = [
-	'Gitwire\Admin'                  => 'includes/class-admin.php',
-	'Gitwire\Schema'                 => 'includes/class-schema.php',
+	'Gitwire\Admin'                                         => 'includes/class-admin.php',
+	'Gitwire\Migration_Base'                                => 'includes/class-migration-base.php',
+	'Gitwire\Model_Base'                                    => 'includes/class-model-base.php',
+	'Gitwire\Database_Manager'                              => 'includes/class-database-manager.php',
+	'Gitwire\Database\Connections\Migration'                => 'includes/database/connections/class-migration.php',
+	'Gitwire\Database\Connections\Model'                    => 'includes/database/connections/class-model.php',
+	'Gitwire\Database\Installations\Migration'              => 'includes/database/installations/class-migration.php',
+	'Gitwire\Database\Installations\Model'                  => 'includes/database/installations/class-model.php',
+	'Gitwire\Database\Repositories\Migration'               => 'includes/database/repositories/class-migration.php',
+	'Gitwire\Database\Repositories\Model'                   => 'includes/database/repositories/class-model.php',
+	'Gitwire\Database\Commits\Migration'                    => 'includes/database/commits/class-migration.php',
+	'Gitwire\Database\Commits\Model'                        => 'includes/database/commits/class-model.php',
 	'Gitwire\Connection_Resolver'    => 'includes/class-connection-resolver.php',
 	'Gitwire\GitHub_API'             => 'includes/class-github-api.php',
 	'Gitwire\Bitbucket_API'          => 'includes/class-bitbucket-api.php',

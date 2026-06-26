@@ -38,22 +38,22 @@ Base classes live directly in `includes/` — reachable by the Pro plugin withou
 
 ```
 includes/
-├── class-migration-base.php           ← ported from fit-assistant (column_exists, index_exists, table_exists)
-├── class-model-base.php               ← adapted: get(array $where), upsert(array $data), delete(array $where)
+├── class-migration-base.php     ← Gitwire\Migration_Base
+├── class-model-base.php         ← Gitwire\Model_Base
+├── class-database-manager.php   ← Gitwire\Database_Manager
 └── database/
-    ├── class-database-manager.php     ← activation hook, upgrader_process_complete, uninstall hook
     ├── connections/
-    │   ├── class-migration.php        ← CREATE TABLE gitwire_connections
-    │   └── class-model.php            ← all gitwire_connections operations
+    │   ├── class-migration.php  ← Gitwire\Database\Connections\Migration
+    │   └── class-model.php      ← Gitwire\Database\Connections\Model
     ├── installations/
-    │   ├── class-migration.php        ← CREATE TABLE gitwire_installations
-    │   └── class-model.php            ← all gitwire_installations operations
+    │   ├── class-migration.php  ← Gitwire\Database\Installations\Migration
+    │   └── class-model.php      ← Gitwire\Database\Installations\Model
     ├── repositories/
-    │   ├── class-migration.php        ← CREATE TABLE gitwire_repositories
-    │   └── class-model.php            ← all gitwire_repositories operations
+    │   ├── class-migration.php  ← Gitwire\Database\Repositories\Migration
+    │   └── class-model.php      ← Gitwire\Database\Repositories\Model
     └── commits/
-        ├── class-migration.php        ← CREATE TABLE gitwire_commits
-        └── class-model.php            ← all gitwire_commits operations
+        ├── class-migration.php  ← Gitwire\Database\Commits\Migration
+        └── class-model.php      ← Gitwire\Database\Commits\Model
 ```
 
 Pro plugin mirrors the same structure under its own `includes/`:
@@ -62,7 +62,7 @@ Pro plugin mirrors the same structure under its own `includes/`:
 gitwire-pro/includes/
 └── database/
     └── connections/
-        └── class-pro-migration.php    ← ALTER TABLE ADD/DROP credentials, scope, email
+        └── class-migration.php        ← Gitwire_Pro\Database\Connections\Migration — ALTER TABLE ADD/DROP email, credentials, scope
 ```
 
 ---
@@ -142,7 +142,7 @@ class Migration extends Migration_Base {
 
 ### `Database_Manager`
 
-Orchestrates all four per-table migrations via a single entry point. Lives at `includes/database/class-database-manager.php`.
+Orchestrates all four per-table migrations via a single entry point. Lives at `includes/class-database-manager.php` — same level as `Migration_Base`, `Model_Base`, and the existing `class-schema.php` it replaces. Namespace: `Gitwire\Database_Manager`.
 
 **Instantiation timing**: must be instantiated from `Plugin::__construct()` (same as the current `register_activation_hook` call in class-plugin.php:68), not from `boot()`/`plugins_loaded`. WordPress silently ignores activation hooks registered after the main plugin file has loaded.
 
@@ -278,8 +278,10 @@ gitwire-pro/includes/
 ```
 
 ```php
-// gitwire-pro/includes/database/connections/class-pro-migration.php
-class Pro_Migration extends Migration_Base {
+// gitwire-pro/includes/database/connections/class-migration.php
+namespace Gitwire_Pro\Database\Connections;
+
+class Migration extends \Gitwire\Migration_Base {
 
     private static ?self $instance = null;
 
@@ -343,7 +345,7 @@ class Pro_Migration extends Migration_Base {
 1. **`includes/class-migration-base.php`** — port from fit-assistant; use `$wpdb->base_prefix` in `get_table_name()`; adjust namespace to `Gitwire`
 2. **`includes/class-model-base.php`** — Gitwire-adapted version; protected base methods (`get_row`, `get_rows`, `delete_rows`, `upsert_row`); abstract `columns()` whitelist
 3. **Per-table `class-migration.php`** — one per table dir; move CREATE TABLE SQL from `class-schema.php`; each gets its own `DB_VERSION` option; bump version only after all steps succeed; `needs_migrate()` checks table existence AND version. Remove `email`, `credentials`, and `scope` from the `gitwire_connections` CREATE TABLE (Pro-only). For existing dev installs that already have these columns: add a one-time `ALTER TABLE DROP COLUMN` guarded by `column_exists()` in `Connections\Migration::migrate()`, only when Pro is not active
-4. **`database/class-database-manager.php`** — activation hook + `upgrader_process_complete` (both single and bulk guard); boot-time `needs_migrate()` fallback in `Plugin::boot()`; no `register_uninstall_hook()`
+4. **`includes/class-database-manager.php`** (`Gitwire\Database_Manager`) — activation hook + `upgrader_process_complete` (both single and bulk guard); boot-time `needs_migrate()` fallback in `Plugin::boot()`; no `register_uninstall_hook()`
 5. **`uninstall.php`** — replace `Schema::uninstall()` call with `Database_Manager::uninstall()`
 6. **`autoload.php`** — add every new class (`Database_Manager`, `Migration_Base`, `Model_Base`, all per-table `Migration` and `Model` classes) to the class map before any migration code runs; a missing entry silently causes a fatal on activation/update
 7. **`database/commits/class-model.php`** — smallest scope; validates the pattern before tackling larger tables

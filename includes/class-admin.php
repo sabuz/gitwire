@@ -296,7 +296,7 @@ class Admin {
 		}
 
 		foreach ( Installer::get_installed() as $rec ) {
-			$file = $rec['plugin_file'] ?? '';
+			$file = $rec['basename'] ?? '';
 			if ( '' === $file || ! isset( $all_plugins[ $file ] ) ) {
 				continue;
 			}

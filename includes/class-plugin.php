@@ -54,6 +54,9 @@ final class Plugin {
 
 		Error_Handler::register();
 
+		// must be constructed here so its register_activation_hook() fires before the file finishes loading
+		Database_Manager::instance();
+
 		add_action( 'init', [ $this, 'load_textdomain' ], 0 );
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] );
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
@@ -62,7 +65,6 @@ final class Plugin {
 		add_action( 'gitwire_refresh_connections', [ Connection_Meta::class, 'refresh_public_connections' ] );
 		add_action( 'gitwire_update_check', [ Installer::class, 'run_auto_updates' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
-		add_action( 'upgrader_process_complete', [ $this, 'maybe_migrate' ], 10, 2 );
 
 		if ( $this->file ) {
 			register_activation_hook( $this->file, [ $this, 'activate' ] );
@@ -127,23 +129,6 @@ final class Plugin {
 	}
 
 	/**
-	 * Migrates schema immediately after this plugin is updated via the WP upgrader.
-	 *
-	 * @param \WP_Upgrader         $upgrader Upgrader instance.
-	 * @param array<string, mixed> $hook_extra Upgrade metadata.
-	 * @return void
-	 */
-	public function maybe_migrate( $upgrader, array $hook_extra ): void {
-		if ( ( $hook_extra['action'] ?? '' ) !== 'update' || ( $hook_extra['type'] ?? '' ) !== 'plugin' ) {
-			return;
-		}
-		$plugins = (array) ( $hook_extra['plugins'] ?? [] );
-		if ( $this->file && in_array( plugin_basename( $this->file ), $plugins, true ) ) {
-			Schema::install();
-		}
-	}
-
-	/**
 	 * Boots plugin services on plugins_loaded.
 	 *
 	 * @return void
@@ -153,8 +138,8 @@ final class Plugin {
 			return;
 		}
 
-		if ( Schema::needs_install() ) {
-			Schema::install();
+		if ( Database_Manager::instance()->needs_migrate() ) {
+			Database_Manager::instance()->migrate();
 		}
 
 		Installer::init();
@@ -197,7 +182,6 @@ final class Plugin {
 	 * @return void
 	 */
 	public function activate(): void {
-		Schema::install();
 
 		if ( ! get_option( 'gitwire_settings' ) ) {
 			add_option(

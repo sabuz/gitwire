@@ -8,6 +8,8 @@
 
 namespace Gitwire;
 
+use Gitwire\Database\Repositories\Model as Repositories_Model;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -20,17 +22,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * stale-row cleanup after each refresh.
  */
 class Repositories {
-
-	/**
-	 * Returns the repo cache table name.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	private static function repositories_table(): string {
-		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_repositories';
-	}
 
 	/**
 	 * Returns a combined, sorted repository page from all given connections.
@@ -46,95 +37,21 @@ class Repositories {
 	 * @return array<string, mixed>|null Cached payload or null when cache is empty.
 	 */
 	public static function get_repositories( array $connection_ids, int $offset = 0, string $search = '' ): ?array {
-		global $wpdb;
-
 		if ( empty( $connection_ids ) ) {
 			return null;
 		}
 
 		$settings = Settings::get_public();
-		$per_page = (int) ( $settings['repos_per_page'] ?? 50 );
-		$excluded = (array) ( $settings['excluded_repos'] ?? [] );
 
-		$placeholders = implode( ', ', array_fill( 0, count( $connection_ids ), '%s' ) );
-		$where        = 'WHERE connection_id IN (' . $placeholders . ')';
-		$args         = $connection_ids;
-
-		if ( ! empty( $excluded ) ) {
-			$ex_phs = implode( ', ', array_fill( 0, count( $excluded ), '%s' ) );
-			$where .= ' AND full_name NOT IN (' . $ex_phs . ')'; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-			$args   = array_merge( $args, $excluded );
-		}
-
-		if ( $search ) {
-			$where .= ' AND (name LIKE %s OR owner LIKE %s)';
-			$like   = '%' . $wpdb->esc_like( $search ) . '%';
-			$args[] = $like;
-			$args[] = $like;
-		}
-
-		$limit  = $per_page + 1;
-		$args[] = $limit;
-		$args[] = $offset;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				'SELECT connection_id, provider, full_name, owner, name, private, html_url, default_branch, last_activity_at, type, type_meta FROM ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				' ' . $where . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				' ORDER BY last_activity_at DESC LIMIT %d OFFSET %d',
-				...$args
-			)
+		return Repositories_Model::instance()->get_paginated(
+			[
+				'connection_ids' => $connection_ids,
+				'offset'         => $offset,
+				'search'         => $search,
+				'per_page'       => (int) ( $settings['repos_per_page'] ?? 50 ),
+				'excluded'       => (array) ( $settings['excluded_repos'] ?? [] ),
+			]
 		);
-
-		if ( ! $rows && 0 === $offset ) {
-			// If filters are active, verify the table itself is populated before returning null.
-			if ( $excluded || $search ) {
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-				$has_any = $wpdb->get_var(
-					$wpdb->prepare(
-						'SELECT 1 FROM ' . self::repositories_table() . ' WHERE connection_id IN (' . $placeholders . ') LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-						...$connection_ids
-					)
-				);
-				if ( ! $has_any ) {
-					return null;
-				}
-			} else {
-				return null;
-			}
-		}
-
-		$has_more = count( $rows ) > $per_page;
-		if ( $has_more ) {
-			array_pop( $rows );
-		}
-
-		return [
-			'repositories' => array_map(
-				static function ( $row ) {
-					$repo = [
-						'connection_id'    => $row->connection_id,
-						'provider'         => $row->provider,
-						'full_name'        => $row->full_name,
-						'owner'            => $row->owner,
-						'name'             => $row->name,
-						'private'          => (bool) $row->private,
-						'html_url'         => $row->html_url,
-						'default_branch'   => $row->default_branch,
-						'last_activity_at' => $row->last_activity_at,
-						'type'             => $row->type,
-					];
-					if ( $row->type_meta ) {
-						$repo['type_meta'] = json_decode( $row->type_meta, true );
-					}
-					return $repo;
-				},
-				$rows
-			),
-			'has_more'     => $has_more,
-			'offset'       => $offset,
-		];
 	}
 
 	/**
@@ -150,46 +67,7 @@ class Repositories {
 	 * @return void
 	 */
 	public static function set_repositories( string $connection_id, string $provider, array $payload ): void {
-		global $wpdb;
-		$table = self::repositories_table();
-		$now   = current_time( 'mysql' );
-
-		foreach ( $payload['repositories'] ?? [] as $repo ) {
-			$full_name = $repo['full_name'] ?? '';
-			if ( ! $full_name ) {
-				continue;
-			}
-			$raw_at   = $repo['last_activity_at'] ?? '';
-			$ts       = $raw_at ? (int) strtotime( $raw_at ) : 0;
-			$last_act = $ts > 0 ? gmdate( 'Y-m-d H:i:s', $ts ) : '1970-01-01 00:00:00';
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
-			$wpdb->query(
-				$wpdb->prepare(
-					'INSERT INTO ' . $table . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-					'(connection_id, provider, owner, name, full_name, private, html_url, default_branch, last_activity_at, updated_at)
-					VALUES (%s, %s, %s, %s, %s, %d, %s, %s, %s, %s)
-					ON DUPLICATE KEY UPDATE
-					  provider       = VALUES(provider),
-					  owner          = VALUES(owner),
-					  name           = VALUES(name),
-					  private        = VALUES(private),
-					  html_url       = VALUES(html_url),
-					  default_branch = VALUES(default_branch),
-					  last_activity_at  = VALUES(last_activity_at),
-					  updated_at     = VALUES(updated_at)',
-					$connection_id,
-					$provider,
-					$repo['owner'] ?? '',
-					$repo['name'] ?? '',
-					$full_name,
-					(int) ( $repo['private'] ?? false ),
-					$repo['html_url'] ?? '',
-					$repo['default_branch'] ?? 'main',
-					$last_act,
-					$now
-				)
-			);
-		}
+		Repositories_Model::instance()->upsert_batch( $connection_id, $payload['repositories'] ?? [], $provider );
 	}
 
 	/**
@@ -216,28 +94,8 @@ class Repositories {
 	 * @param string $branch   Branch name.
 	 * @return array<string, mixed>|null Cached detection or null when missing.
 	 */
-	public static function get_repository_type( string $provider, string $owner, string $repo, string $branch ): ?array {
-		global $wpdb;
-		$full_name = $owner . '/' . $repo;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-		$row = $wpdb->get_row(
-			$wpdb->prepare(
-				'SELECT type, type_meta FROM ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				' WHERE provider = %s AND full_name = %s AND type_meta IS NOT NULL LIMIT 1',
-				$provider,
-				$full_name
-			)
-		);
-
-		if ( $row && $row->type_meta ) {
-			$meta = json_decode( $row->type_meta, true );
-			if ( is_array( $meta ) ) {
-				return array_merge( $meta, [ 'type' => $row->type ] );
-			}
-		}
-
-		return null;
+	public static function get_repository_type( string $provider, string $owner, string $repo, string $branch ): ?array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
+		return Repositories_Model::instance()->get_type( $provider, $owner . '/' . $repo );
 	}
 
 	/**
@@ -256,60 +114,9 @@ class Repositories {
 	 * @return void
 	 */
 	public static function set_repository_type( string $provider, string $owner, string $repo, string $branch, array $result ): void {
-		global $wpdb;
-		$full_name = $owner . '/' . $repo;
-		$type      = $result['type'] ?? '';
-		$meta      = array_diff_key( $result, [ 'type' => true ] );
-		$meta_json = wp_json_encode( $meta );
-
-		// Update all browse-cache rows for this repo (may match multiple connection_ids).
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->update(
-			self::repositories_table(),
-			[
-				'type'      => $type,
-				'type_meta' => $meta_json,
-			],
-			[
-				'provider'  => $provider,
-				'full_name' => $full_name,
-			],
-			[ '%s', '%s' ],
-			[ '%s', '%s' ]
-		);
-
-		// Only insert the connection-agnostic fallback row when no real connection row exists yet
-		// (e.g. direct URL import before the repo has appeared in the browse panel).
-		// The UPDATE above already stamped type/type_meta onto any existing real rows.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$has_real_row = (bool) $wpdb->get_var(
-			$wpdb->prepare(
-				'SELECT 1 FROM ' . self::repositories_table() . " WHERE provider = %s AND full_name = %s AND connection_id != '' LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				$provider,
-				$full_name
-			)
-		);
-
-		if ( ! $has_real_row ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->query(
-				$wpdb->prepare(
-					'INSERT INTO ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-					' (connection_id, provider, owner, name, full_name, default_branch, type, type_meta, updated_at)
-					VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-					ON DUPLICATE KEY UPDATE type = VALUES(type), type_meta = VALUES(type_meta)',
-					'',
-					$provider,
-					$owner,
-					$repo,
-					$full_name,
-					'',
-					$type,
-					$meta_json,
-					current_time( 'mysql' )
-				)
-			);
-		}
+		$type = $result['type'] ?? '';
+		$meta = array_diff_key( $result, [ 'type' => true ] );
+		Repositories_Model::instance()->set_type( $provider, $owner . '/' . $repo, $type, ! empty( $meta ) ? $meta : null );
 	}
 
 	/**
@@ -320,14 +127,7 @@ class Repositories {
 	 * @return void
 	 */
 	public static function clear_repositories( ?string $connection_id = null ): void {
-		global $wpdb;
-		if ( null !== $connection_id ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$wpdb->delete( self::repositories_table(), [ 'connection_id' => $connection_id ], [ '%s' ] );
-			return;
-		}
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( 'DELETE FROM ' . self::repositories_table() );
+		Repositories_Model::instance()->clear( $connection_id ?? '' );
 	}
 
 	/**
@@ -337,22 +137,10 @@ class Repositories {
 	 * @return void
 	 */
 	public static function clear_repository_types(): void {
-		global $wpdb;
-
-		// Reset type columns on all connection-specific rows.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query(
-			$wpdb->prepare(
-				'UPDATE ' . self::repositories_table() . " SET type = '', type_meta = NULL WHERE connection_id != %s", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				''
-			)
-		);
-
-		// Remove connection-agnostic fallback rows written by set_repository_type() for URL imports.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->delete( self::repositories_table(), [ 'connection_id' => '' ], [ '%s' ] );
+		Repositories_Model::instance()->clear_types();
 
 		// One-time cleanup of legacy gitwire_repo_type_* options from sites that ran an older build.
+		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			$wpdb->prepare(
@@ -405,12 +193,9 @@ class Repositories {
 	 * @return true|\WP_Error True on success, WP_Error when any source fails.
 	 */
 	private static function refresh_repositories(): true|\WP_Error {
-		global $wpdb;
-
-		$refresh_started = current_time( 'mysql' );
-		$last_err        = null;
-		$max_setting     = Settings::get_public()['max_repos_per_source'] ?? 'unlimited';
-		$max             = 'unlimited' === $max_setting ? PHP_INT_MAX : (int) $max_setting;
+		$last_err    = null;
+		$max_setting = Settings::get_public()['max_repos_per_source'] ?? 'unlimited';
+		$max         = 'unlimited' === $max_setting ? PHP_INT_MAX : (int) $max_setting;
 
 		foreach ( Connection_Resolver::all() as $conn ) {
 			$id       = $conn['id'] ?? '';
@@ -419,9 +204,10 @@ class Repositories {
 				continue;
 			}
 
-			$page          = 1;
-			$conn_err      = null;
-			$total_fetched = 0;
+			$page               = 1;
+			$conn_err           = null;
+			$total_fetched      = 0;
+			$fetched_full_names = [];
 
 			do {
 				$result = self::fetch_repositories( $provider, $page, $id );
@@ -430,21 +216,18 @@ class Repositories {
 					$last_err = $result;
 					break;
 				}
+				foreach ( $result['repositories'] ?? [] as $repo ) {
+					if ( ! empty( $repo['full_name'] ) ) {
+						$fetched_full_names[] = $repo['full_name'];
+					}
+				}
 				$total_fetched += count( $result['repositories'] ?? [] );
 				$has_more       = ( $result['has_more'] ?? false ) && $total_fetched < $max;
 				++$page;
 			} while ( $has_more );
 
 			if ( ! $conn_err ) {
-				// Remove repos no longer in the provider's list.
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
-				$wpdb->query(
-					$wpdb->prepare(
-						'DELETE FROM ' . self::repositories_table() . ' WHERE connection_id = %s AND updated_at < %s', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-						$id,
-						$refresh_started
-					)
-				);
+				Repositories_Model::instance()->remove_stale( $id, $fetched_full_names );
 			}
 		}
 
@@ -473,8 +256,6 @@ class Repositories {
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
 	 */
 	public static function cron_refresh_repository_types(): true|\WP_Error {
-		global $wpdb;
-
 		$keys           = [];
 		$connection_ids = [];
 		$records        = Installer::get_installed();
@@ -539,16 +320,7 @@ class Repositories {
 		$cursor      = (int) get_option( 'gitwire_detection_cursor', 0 );
 		$batch_start = time();
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-		$untyped = $wpdb->get_results(
-			$wpdb->prepare(
-				'SELECT connection_id, provider, owner, name, full_name, default_branch FROM ' . self::repositories_table() . // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-				' WHERE type_meta IS NULL ORDER BY full_name ASC, connection_id ASC LIMIT %d OFFSET %d',
-				$batch_size,
-				$cursor
-			),
-			ARRAY_A
-		);
+		$untyped = Repositories_Model::instance()->get_untyped_batch( $batch_size, $cursor );
 
 		if ( empty( $untyped ) ) {
 			delete_option( 'gitwire_detection_cursor' );

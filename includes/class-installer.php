@@ -8,6 +8,10 @@
 
 namespace Gitwire;
 
+use Gitwire\Database\Installations\Model as Installations_Model;
+use Gitwire\Database\Commits\Model as Commits_Model;
+use Gitwire\Database\Repositories\Model as Repositories_Model;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -19,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Installer {
 
 	/**
-	 * Request-scoped cache for the gitwire_installations table rows.
+	 * Request-scoped keyed cache built from Installations_Model::all().
 	 *
 	 * @var array<string, mixed>|null
 	 */
@@ -33,28 +37,7 @@ class Installer {
 	 */
 	public static function invalidate_installed_cache(): void {
 		self::$installed_cache = null;
-	}
-
-	/**
-	 * Returns the gitwire_installations table name.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	private static function installations_table(): string {
-		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_installations';
-	}
-
-	/**
-	 * Returns the gitwire_commits table name.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	private static function commits_table(): string {
-		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_commits';
+		Installations_Model::instance()->invalidate_cache();
 	}
 
 	/**
@@ -87,13 +70,7 @@ class Installer {
 	 * @return void
 	 */
 	private static function delete_commits( int $installation_id ): void {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->delete(
-			self::commits_table(),
-			[ 'installation_id' => $installation_id ],
-			[ '%d' ]
-		);
+		Commits_Model::instance()->delete_by_installation( $installation_id );
 	}
 
 	/**
@@ -107,20 +84,9 @@ class Installer {
 	 * @return void
 	 */
 	public static function delete_record( string $provider, string $full_name ): void {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$installation_id = (int) $wpdb->get_var(
-			$wpdb->prepare( 'SELECT id FROM ' . self::installations_table() . ' WHERE provider = %s AND full_name = %s', $provider, $full_name )
-		);
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->delete(
-			self::installations_table(),
-			[
-				'provider'  => $provider,
-				'full_name' => $full_name,
-			],
-			[ '%s', '%s' ]
-		);
+		$row             = Installations_Model::instance()->find_by_repo( $provider, $full_name );
+		$installation_id = $row ? (int) ( $row['id'] ?? 0 ) : 0;
+		Installations_Model::instance()->delete_by_repo( $provider, $full_name );
 		if ( $installation_id ) {
 			self::delete_commits( $installation_id );
 		}
@@ -137,35 +103,15 @@ class Installer {
 	 * @return void
 	 */
 	public static function upsert_record( array $record ): void {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->query(
-			$wpdb->prepare(
-				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, html_url, plugin_file, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-				ON DUPLICATE KEY UPDATE
-					connection_id = VALUES(connection_id), name = VALUES(name),
-					type = VALUES(type), branch = VALUES(branch), head = VALUES(head),
-					install_path = VALUES(install_path), html_url = VALUES(html_url),
-					plugin_file = VALUES(plugin_file), updated_at = VALUES(updated_at)',
-				$record['connection_id'] ?? '',
-				$record['provider'] ?? '',
-				$record['owner'] ?? '',
-				$record['name'] ?? '',
-				$record['full_name'] ?? '',
-				$record['type'] ?? 'plugin',
-				$record['branch'] ?? 'main',
-				$record['head'] ?? '',
-				$record['remote_head'] ?? '',
-				$record['install_path'] ?? '',
-				$record['html_url'] ?? '',
-				$record['plugin_file'] ?? '',
-				current_time( 'mysql' )
+		Installations_Model::instance()->upsert(
+			array_merge(
+				$record,
+				[
+					'basename'   => $record['basename'] ?? $record['plugin_file'] ?? '',
+					'updated_at' => current_time( 'mysql' ),
+				]
 			)
 		);
-
 		self::invalidate_installed_cache();
 	}
 
@@ -179,43 +125,21 @@ class Installer {
 	 * @return void
 	 */
 	public static function set_remote_head( string $provider, string $full_name, string $sha ): void {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->update(
-			self::installations_table(),
-			[ 'remote_head' => $sha ],
-			[
-				'provider'  => $provider,
-				'full_name' => $full_name,
-			],
-			[ '%s' ],
-			[ '%s', '%s' ]
-		);
+		Installations_Model::instance()->update_remote_head( $provider, $full_name, $sha );
 		self::invalidate_installed_cache();
 	}
 
 	/**
-	 * Updates the plugin_file column for a single installed record.
+	 * Updates the basename column for a single installed record.
 	 *
-	 * @since 1.0.0
-	 * @param string $provider    Git provider.
-	 * @param string $full_name   Repository full name.
-	 * @param string $plugin_file Relative plugin bootstrap path.
+	 * @since 2.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @param string $basename  plugin_basename() value.
 	 * @return void
 	 */
-	public static function set_plugin_file( string $provider, string $full_name, string $plugin_file ): void {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->update(
-			self::installations_table(),
-			[ 'plugin_file' => $plugin_file ],
-			[
-				'provider'  => $provider,
-				'full_name' => $full_name,
-			],
-			[ '%s' ],
-			[ '%s', '%s' ]
-		);
+	public static function set_plugin_file( string $provider, string $full_name, string $basename ): void {
+		Installations_Model::instance()->update_basename( $provider, $full_name, $basename );
 		self::invalidate_installed_cache();
 	}
 
@@ -245,14 +169,8 @@ class Installer {
 			return;
 		}
 
-		global $wpdb;
 		$deleted_dir = untrailingslashit( WP_PLUGIN_DIR ) . '/' . dirname( $plugin_file );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::installations_table() . ' WHERE install_path = %s LIMIT 1', $deleted_dir ),
-			ARRAY_A
-		);
+		$row         = Installations_Model::instance()->find_by_path( $deleted_dir );
 
 		if ( ! $row ) {
 			return;
@@ -275,14 +193,8 @@ class Installer {
 			return;
 		}
 
-		global $wpdb;
 		$deleted_dir = untrailingslashit( get_theme_root() ) . '/' . $stylesheet;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::installations_table() . ' WHERE install_path = %s LIMIT 1', $deleted_dir ),
-			ARRAY_A
-		);
+		$row         = Installations_Model::instance()->find_by_path( $deleted_dir );
 
 		if ( ! $row ) {
 			return;
@@ -513,7 +425,7 @@ class Installer {
 				$full_name,
 				$rec['install_path'] ?? '',
 				$rec['name'] ?? '',
-				$rec['plugin_file'] ?? null
+				$rec['basename'] ?? null
 			);
 
 			if ( ! $plugin_file ) {
@@ -667,7 +579,7 @@ class Installer {
 			$full_name,
 			$rec['install_path'] ?? '',
 			$rec['name'] ?? '',
-			$rec['plugin_file'] ?? null
+			$rec['basename'] ?? null
 		);
 
 		if ( ! $plugin_file ) {
@@ -708,18 +620,7 @@ class Installer {
 			return null;
 		}
 
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->update(
-			self::installations_table(),
-			[ 'plugin_file' => $found ],
-			[
-				'provider'  => $provider,
-				'full_name' => $full_name,
-			],
-			[ '%s' ],
-			[ '%s', '%s' ]
-		);
+		Installations_Model::instance()->update_basename( $provider, $full_name, $found );
 		self::invalidate_installed_cache();
 
 		return $found;
@@ -736,12 +637,8 @@ class Installer {
 			return self::$installed_cache;
 		}
 
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$rows = $wpdb->get_results( 'SELECT * FROM ' . self::installations_table(), ARRAY_A );
-
 		self::$installed_cache = [];
-		foreach ( (array) $rows as $row ) {
+		foreach ( Installations_Model::instance()->all() as $row ) {
 			$key                           = $row['provider'] . ':' . $row['full_name'];
 			self::$installed_cache[ $key ] = self::hydrate_record( $row );
 		}
@@ -854,18 +751,7 @@ class Installer {
 	 * @return void
 	 */
 	public static function set_head( string $provider, string $full_name, string $sha ): void {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->update(
-			self::installations_table(),
-			[ 'head' => $sha ],
-			[
-				'provider'  => $provider,
-				'full_name' => $full_name,
-			],
-			[ '%s' ],
-			[ '%s', '%s' ]
-		);
+		Installations_Model::instance()->update_head( $provider, $full_name, $sha );
 		self::invalidate_installed_cache();
 	}
 
@@ -1116,8 +1002,6 @@ class Installer {
 	 * @return array<string, mixed> Saved record.
 	 */
 	private static function save_installed_record( string $record_key, array $record, ?string $head_sha = null ): array {
-		global $wpdb;
-
 		$provider  = $record['provider'] ?? '';
 		$full_name = $record['full_name'] ?? '';
 
@@ -1125,35 +1009,13 @@ class Installer {
 			$record['head'] = $head_sha;
 		}
 
-		// Upsert. COALESCE preserves created_at from existing rows (no pre-SELECT needed).
-		// IF() keeps the existing head when the new value is empty.
-		// remote_head is excluded from the UPDATE clause so a reinstall does not wipe a
-		// cached remote SHA written by the maintenance cron.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->query(
-			$wpdb->prepare(
-				'INSERT INTO ' . self::installations_table() . '
-					(connection_id, provider, owner, name, full_name, type, branch, head, remote_head, install_path, html_url, plugin_file, updated_at)
-				VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-				ON DUPLICATE KEY UPDATE
-					connection_id = VALUES(connection_id), name = VALUES(name),
-					type = VALUES(type), branch = VALUES(branch),
-					head = IF(VALUES(head) != \'\', VALUES(head), head),
-					install_path = VALUES(install_path), html_url = VALUES(html_url),
-					plugin_file = VALUES(plugin_file), updated_at = VALUES(updated_at)',
-				$record['connection_id'] ?? '',
-				$provider,
-				$record['owner'] ?? '',
-				$record['name'] ?? '',
-				$full_name,
-				$record['type'] ?? 'plugin',
-				$record['branch'] ?? 'main',
-				$record['head'] ?? '',
-				$record['remote_head'] ?? '',
-				$record['install_path'] ?? '',
-				$record['html_url'] ?? '',
-				$record['plugin_file'] ?? '',
-				current_time( 'mysql' )
+		Installations_Model::instance()->upsert(
+			array_merge(
+				$record,
+				[
+					'basename'   => $record['basename'] ?? $record['plugin_file'] ?? '',
+					'updated_at' => current_time( 'mysql' ),
+				]
 			)
 		);
 
@@ -1161,16 +1023,7 @@ class Installer {
 		$evicted  = [];
 		$new_path = untrailingslashit( $record['install_path'] ?? '' );
 		if ( $new_path ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$evicted_rows = $wpdb->get_results(
-				$wpdb->prepare(
-					'SELECT * FROM ' . self::installations_table() . ' WHERE install_path = %s AND NOT (provider = %s AND full_name = %s)',
-					$new_path,
-					$provider,
-					$full_name
-				),
-				ARRAY_A
-			);
+			$evicted_rows = Installations_Model::instance()->find_others_by_path( $new_path, $provider, $full_name );
 			foreach ( $evicted_rows as $evicted_row ) {
 				self::delete_record( $evicted_row['provider'], $evicted_row['full_name'] );
 				$evicted[] = self::hydrate_record( $evicted_row );
@@ -1319,8 +1172,8 @@ class Installer {
 		if ( 'plugin' === $type ) {
 			$installed   = self::get_installed();
 			$install_key = $provider . ':' . $full_name;
-			if ( isset( $installed[ $install_key ]['plugin_file'] ) ) {
-				$plugin_file = $installed[ $install_key ]['plugin_file'];
+			if ( isset( $installed[ $install_key ]['basename'] ) ) {
+				$plugin_file = $installed[ $install_key ]['basename'];
 			}
 
 			if ( $plugin_file && self::is_active_install( $type, $slug, $plugin_file ) ) {
@@ -1408,10 +1261,7 @@ class Installer {
 		}
 
 		// Save record.
-		global $wpdb;
-		$repos_table = $wpdb->base_prefix . 'gitwire_repositories';
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$html_url = (string) $wpdb->get_var( $wpdb->prepare( "SELECT html_url FROM $repos_table WHERE provider = %s AND full_name = %s LIMIT 1", $provider, $full_name ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$html_url = Repositories_Model::instance()->get_html_url( $provider, $full_name );
 
 		$record = [
 			'name'          => $slug,
@@ -1424,7 +1274,7 @@ class Installer {
 			'connection_id' => $connection_id,
 			'install_path'  => $install_path,
 			'html_url'      => $html_url,
-			'plugin_file'   => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
+			'basename'      => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
 			'updated_at'    => current_time( 'mysql' ),
 			'slug_renamed'  => $slug_renamed,
 		];

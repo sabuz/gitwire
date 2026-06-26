@@ -8,6 +8,8 @@
 
 namespace Gitwire;
 
+use Gitwire\Database\Connections\Model as Connections_Model;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -18,34 +20,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Public_Connections {
 
 	/**
-	 * Returns the unified connections table name.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	private static function connections_table(): string {
-		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_connections';
-	}
-
-	/**
 	 * Returns all public connections with profile data and derived fields.
 	 *
 	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function all(): array {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$rows = $wpdb->get_results(
-			'SELECT * FROM ' . self::connections_table() . ' WHERE credentials IS NULL ORDER BY created_at ASC',
-			ARRAY_A
+		$rows = array_filter(
+			Connections_Model::instance()->all(),
+			static fn( $r ) => null === ( $r['credentials'] ?? null )
 		);
-
-		if ( ! $rows ) {
-			return [];
-		}
 
 		return array_values(
 			array_map(
@@ -95,15 +79,11 @@ class Public_Connections {
 	 * @return array<string, mixed>|null
 	 */
 	public static function find( string $id ): ?array {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::connections_table() . ' WHERE id = %s AND credentials IS NULL', $id ),
-			ARRAY_A
-		);
-
-		return $row ? self::enrich( self::strip_credentials( $row ) ) : null;
+		$row = Connections_Model::instance()->find( $id );
+		if ( ! $row || null !== ( $row['credentials'] ?? null ) ) {
+			return null;
+		}
+		return self::enrich( self::strip_credentials( $row ) );
 	}
 
 	/**
@@ -114,18 +94,11 @@ class Public_Connections {
 	 * @return array<string, mixed>|null
 	 */
 	public static function get_first_for_provider( string $provider ): ?array {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare(
-				'SELECT * FROM ' . self::connections_table() . ' WHERE provider = %s AND credentials IS NULL ORDER BY created_at ASC LIMIT 1',
-				$provider
-			),
-			ARRAY_A
-		);
-
-		return $row ? self::enrich( self::strip_credentials( $row ) ) : null;
+		$row = Connections_Model::instance()->find_by_provider( $provider );
+		if ( ! $row || null !== ( $row['credentials'] ?? null ) ) {
+			return null;
+		}
+		return self::enrich( self::strip_credentials( $row ) );
 	}
 
 	/**
@@ -137,23 +110,11 @@ class Public_Connections {
 	 * @return array<string, mixed>|null
 	 */
 	public static function find_by_identifier( string $provider, string $identifier ): ?array {
-		global $wpdb;
-
-		if ( '' === $identifier ) {
+		$row = Connections_Model::instance()->find_by_identifier( $provider, $identifier );
+		if ( ! $row || null !== ( $row['credentials'] ?? null ) ) {
 			return null;
 		}
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare(
-				'SELECT * FROM ' . self::connections_table() . ' WHERE provider = %s AND identifier = %s AND credentials IS NULL LIMIT 1',
-				$provider,
-				$identifier
-			),
-			ARRAY_A
-		);
-
-		return $row ? self::enrich( self::strip_credentials( $row ) ) : null;
+		return self::enrich( self::strip_credentials( $row ) );
 	}
 
 	/**
@@ -229,23 +190,18 @@ class Public_Connections {
 	 * @return array<string, mixed> The new connection record.
 	 */
 	public static function add( string $provider, string $identifier, string $host_url = '' ): array {
-		global $wpdb;
+		$id  = 'pub_' . wp_generate_uuid4();
+		$now = current_time( 'mysql' );
 
-		$id    = 'pub_' . wp_generate_uuid4();
-		$table = self::connections_table();
-		$now   = current_time( 'mysql' );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query(
-			$wpdb->prepare(
-				"INSERT INTO $table (id, provider, identifier, credentials, host_url, scope, created_at, updated_at) VALUES (%s, %s, %s, NULL, %s, 'all', %s, %s)",
-				$id,
-				$provider,
-				$identifier,
-				( '' !== $host_url ) ? $host_url : null,
-				$now,
-				$now
-			)
+		Connections_Model::instance()->insert(
+			[
+				'id'         => $id,
+				'provider'   => $provider,
+				'identifier' => $identifier,
+				'host_url'   => $host_url,
+				'created_at' => $now,
+				'updated_at' => $now,
+			]
 		);
 
 		return self::find( $id ) ?? [
@@ -263,17 +219,16 @@ class Public_Connections {
 	 * @return bool True when the connection was found and removed.
 	 */
 	public static function delete( string $id ): bool {
-		global $wpdb;
+		$row = Connections_Model::instance()->find( $id );
+		if ( ! $row || null !== ( $row['credentials'] ?? null ) ) {
+			return false;
+		}
 
-		$table = self::connections_table();
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$deleted = $wpdb->query( $wpdb->prepare( "DELETE FROM $table WHERE id = %s AND credentials IS NULL", $id ) );
-
+		$deleted = Connections_Model::instance()->delete_by_id( $id );
 		if ( $deleted ) {
 			Repositories::clear_repositories( $id );
 		}
 
-		return (bool) $deleted;
+		return $deleted;
 	}
 }

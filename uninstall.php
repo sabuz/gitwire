@@ -28,7 +28,7 @@ foreach ( $options as $option ) {
 	delete_option( $option );
 }
 
-\Gitwire\Schema::uninstall();
+\Gitwire\Database_Manager::uninstall();
 
 wp_clear_scheduled_hook( 'gitwire_maintenance' );
 wp_clear_scheduled_hook( 'gitwire_trim_logs' );

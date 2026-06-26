@@ -8,6 +8,8 @@
 
 namespace Gitwire;
 
+use Gitwire\Database\Connections\Model as Connections_Model;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -23,17 +25,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Connection_Meta {
 
 	/**
-	 * Returns the connections table name.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	private static function table(): string {
-		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_connections';
-	}
-
-	/**
 	 * Returns all connection profile data keyed by connection ID.
 	 *
 	 * Used for the boot-data connections_metadata payload consumed by the admin JS.
@@ -42,17 +33,7 @@ class Connection_Meta {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function get_connection_cache(): array {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$rows = $wpdb->get_results(
-			'SELECT * FROM ' . self::table() . ' ORDER BY created_at ASC',
-			ARRAY_A
-		);
-
-		if ( ! $rows ) {
-			return [];
-		}
+		$rows = Connections_Model::instance()->all();
 
 		$result = [];
 		foreach ( $rows as $row ) {
@@ -70,14 +51,7 @@ class Connection_Meta {
 	 * @return array<string, mixed>|null
 	 */
 	public static function get_public_connections_metadata( string $id ): ?array {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE id = %s', $id ),
-			ARRAY_A
-		);
-
+		$row = Connections_Model::instance()->find( $id );
 		return $row ? self::format_profile( $row ) : null;
 	}
 
@@ -123,50 +97,29 @@ class Connection_Meta {
 	 * @return void
 	 */
 	public static function save_public_connection_metadata( string $id, array $data ): void {
-		global $wpdb;
-
-		$set_parts = [];
-		$params    = [];
-
-		$int_cols = [ 'rate_limit', 'rate_remaining', 'rate_reset' ];
-		$str_cols = [ 'name', 'avatar_url' ];
+		$normalized = [];
 
 		if ( array_key_exists( 'authenticated', $data ) ) {
-			$set_parts[] = 'authenticated = %d';
-			$params[]    = (int) (bool) $data['authenticated'];
+			$normalized['authenticated'] = (int) (bool) $data['authenticated'];
 		}
-		foreach ( $str_cols as $col ) {
+		foreach ( [ 'name', 'avatar_url' ] as $col ) {
 			if ( array_key_exists( $col, $data ) ) {
-				$set_parts[] = "$col = %s";
-				$params[]    = (string) ( $data[ $col ] ?? '' );
+				$normalized[ $col ] = (string) ( $data[ $col ] ?? '' );
 			}
 		}
-		foreach ( $int_cols as $col ) {
+		foreach ( [ 'rate_limit', 'rate_remaining', 'rate_reset' ] as $col ) {
 			if ( array_key_exists( $col, $data ) ) {
-				$set_parts[] = "$col = %d";
-				$params[]    = (int) $data[ $col ];
+				$normalized[ $col ] = (int) $data[ $col ];
 			}
 		}
 		if ( array_key_exists( 'error', $data ) ) {
-			$err = ( '' !== ( $data['error'] ?? '' ) && null !== $data['error'] ) ? (string) $data['error'] : null;
-			if ( null === $err ) {
-				$set_parts[] = 'error = NULL';
-			} else {
-				$set_parts[] = 'error = %s';
-				$params[]    = $err;
-			}
+			$err                  = ( '' !== ( $data['error'] ?? '' ) && null !== $data['error'] ) ? (string) $data['error'] : null;
+			$normalized['error']  = $err;
 		}
 
-		if ( empty( $set_parts ) ) {
-			return;
+		if ( ! empty( $normalized ) ) {
+			Connections_Model::instance()->save_metadata( $id, $normalized );
 		}
-
-		$set_parts[] = 'updated_at = %s';
-		$params[]    = current_time( 'mysql' );
-		$params[]    = $id;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( $wpdb->prepare( 'UPDATE ' . self::table() . ' SET ' . implode( ', ', $set_parts ) . ' WHERE id = %s', ...$params ) );
 	}
 
 	/**
@@ -180,16 +133,7 @@ class Connection_Meta {
 	 * @return void
 	 */
 	public static function clear_public_connection_metadata( string $id ): void {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->query(
-			$wpdb->prepare(
-				"UPDATE " . self::table() . " SET authenticated = 0, name = '', avatar_url = '', rate_limit = 0, rate_remaining = 0, rate_reset = 0, error = NULL, updated_at = %s WHERE id = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				current_time( 'mysql' ),
-				$id
-			)
-		);
+		Connections_Model::instance()->clear_metadata( $id );
 	}
 
 	/**

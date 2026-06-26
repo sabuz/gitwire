@@ -8,6 +8,9 @@
 
 namespace Gitwire;
 
+use Gitwire\Database\Commits\Model as Commits_Model;
+use Gitwire\Database\Installations\Model as Installations_Model;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -62,17 +65,6 @@ class REST_Installer {
 	}
 
 	/**
-	 * Returns the gitwire_commits table name.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	private static function commits_table(): string {
-		global $wpdb;
-		return $wpdb->base_prefix . 'gitwire_commits';
-	}
-
-	/**
 	 * Returns a cached commit list from the DB, or null when not cached.
 	 *
 	 * @since 1.0.0
@@ -81,16 +73,7 @@ class REST_Installer {
 	 * @return array<int, array<string, mixed>>|null
 	 */
 	private static function get_cached_commits( int $installation_id, string $branch ): ?array {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			$wpdb->prepare(
-				'SELECT data FROM ' . self::commits_table() . ' WHERE installation_id = %d AND branch = %s',
-				$installation_id,
-				$branch
-			),
-			ARRAY_A
-		);
+		$row = Commits_Model::instance()->find( $installation_id, $branch );
 		if ( ! $row ) {
 			return null;
 		}
@@ -108,19 +91,7 @@ class REST_Installer {
 	 * @return void
 	 */
 	private static function save_cached_commits( int $installation_id, string $branch, array $commits ): void {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->query(
-			$wpdb->prepare(
-				'INSERT INTO ' . self::commits_table() . ' (installation_id, branch, data, updated_at)
-				VALUES (%d, %s, %s, %s)
-				ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)',
-				$installation_id,
-				$branch,
-				wp_json_encode( $commits ),
-				current_time( 'mysql' )
-			)
-		);
+		Commits_Model::instance()->upsert( $installation_id, $branch, $commits );
 	}
 
 	/**
@@ -559,10 +530,10 @@ class REST_Installer {
 				continue;
 			}
 
-			if ( 'plugin' === ( $rec['type'] ?? '' ) && empty( $rec['plugin_file'] ) && ! empty( $rec['install_path'] ) ) {
+			if ( 'plugin' === ( $rec['type'] ?? '' ) && empty( $rec['basename'] ) && ! empty( $rec['install_path'] ) ) {
 				$found = Installer::find_plugin_file( $rec['install_path'], $rec['name'] ?? '' );
 				if ( $found ) {
-					$rec['plugin_file'] = $found;
+					$rec['basename'] = $found;
 					Installer::set_plugin_file( $rec['provider'] ?? 'github', $rec['full_name'] ?? '', $found );
 				}
 			}
@@ -609,7 +580,7 @@ class REST_Installer {
 			}
 
 			if ( 'plugin' === ( $rec['type'] ?? '' ) ) {
-				$rec['active'] = ! empty( $rec['plugin_file'] ) && is_plugin_active( $rec['plugin_file'] );
+				$rec['active'] = ! empty( $rec['basename'] ) && is_plugin_active( $rec['basename'] );
 			} else {
 				$rec['active'] = ( $rec['name'] ?? '' ) === $active_theme;
 			}
@@ -839,7 +810,7 @@ class REST_Installer {
 			if ( ! function_exists( 'is_plugin_active' ) ) {
 				require_once ABSPATH . 'wp-admin/includes/plugin.php';
 			}
-			$plugin_file = $record['plugin_file'] ?? '';
+			$plugin_file = $record['basename'] ?? '';
 			if ( $plugin_file && is_plugin_active( $plugin_file ) ) {
 				return new \WP_Error(
 					'gitwire_active',
@@ -908,8 +879,6 @@ class REST_Installer {
 	 * @return array<string, mixed>|\WP_Error Updated values or WP_Error on failure.
 	 */
 	public static function save_auto_update( \WP_REST_Request $req ): array|\WP_Error {
-		global $wpdb;
-
 		$owner       = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo        = sanitize_text_field( $req->get_param( 'repo' ) );
 		$provider    = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
@@ -920,17 +889,7 @@ class REST_Installer {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->update(
-			$wpdb->base_prefix . 'gitwire_installations',
-			[ 'auto_update' => $auto_update ],
-			[
-				'provider'  => $provider,
-				'full_name' => $full_name,
-			],
-			[ '%s' ],
-			[ '%s', '%s' ]
-		);
+		Installations_Model::instance()->update_auto_update( $provider, $full_name, $auto_update );
 		Installer::invalidate_installed_cache();
 
 		return [
