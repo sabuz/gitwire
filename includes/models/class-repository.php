@@ -212,6 +212,30 @@ class Repository extends Model_Base {
 	}
 
 	/**
+	 * Returns the subset of $connection_ids that have at least one row in the table.
+	 *
+	 * @since 1.0.0
+	 * @param string[] $connection_ids Connection IDs to check.
+	 * @return string[] IDs that have cached rows.
+	 */
+	public function get_cached_ids( array $connection_ids ): array {
+		if ( empty( $connection_ids ) ) {
+			return [];
+		}
+		global $wpdb;
+		$table = $this->table_name();
+		$phs   = implode( ', ', array_fill( 0, count( $connection_ids ), '%s' ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$rows = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT DISTINCT connection_id FROM `{$table}` WHERE connection_id IN ({$phs})",
+				...$connection_ids
+			)
+		);
+		return $rows ? $rows : [];
+	}
+
+	/**
 	 * Returns the type detection result for a provider/repo pair, or null.
 	 *
 	 * @since 1.0.0

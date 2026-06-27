@@ -55,6 +55,17 @@ class Repositories {
 	}
 
 	/**
+	 * Returns the subset of $connection_ids that already have rows in the cache table.
+	 *
+	 * @since 1.0.0
+	 * @param string[] $connection_ids Connection IDs to check.
+	 * @return string[] IDs that have at least one cached row.
+	 */
+	public static function get_cached_connection_ids( array $connection_ids ): array {
+		return Repository::instance()->get_cached_ids( $connection_ids );
+	}
+
+	/**
 	 * Stores a repository page payload using upsert.
 	 *
 	 * Omits type_meta and type from ON DUPLICATE KEY UPDATE intentionally —

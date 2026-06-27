@@ -159,35 +159,37 @@ class REST_Repositories {
 		}
 
 		$connection_ids      = array_column( $connections, 'id' );
-		$cached              = Repositories::get_repositories( $connection_ids, $offset, $search );
+		$cached_ids          = Repositories::get_cached_connection_ids( $connection_ids );
+		$uncached            = array_values(
+			array_filter( $connections, static fn( $c ) => ! in_array( $c['id'], $cached_ids, true ) )
+		);
 		$connection_errors   = [];
 		$connection_warnings = [];
 
-		if ( null === $cached ) {
-			// Seed cache with page 1 from each connection on first browse.
-			foreach ( $connections as $conn ) {
-				$provider = $conn['provider'] ?? '';
-				$result   = Repositories::fetch_repositories( $provider, 1, $conn['id'] );
-				if ( is_wp_error( $result ) ) {
-					$connection_errors[] = [
+		// Fetch any connections not yet represented in the cache table.
+		foreach ( $uncached as $conn ) {
+			$provider = $conn['provider'] ?? '';
+			$result   = Repositories::fetch_repositories( $provider, 1, $conn['id'] );
+			if ( is_wp_error( $result ) ) {
+				$connection_errors[] = [
+					'connection_id' => $conn['id'],
+					'provider'      => $provider,
+					'message'       => $result->get_error_message(),
+				];
+			} elseif ( 'gitlab' === $provider && empty( $result['repositories'] ) ) {
+				$creds = Connection_Resolver::get_credentials( $conn['id'] );
+				// public (no-token) connection returned 0 repos; private/group repos need a PAT.
+				if ( empty( $creds['token'] ) ) {
+					$connection_warnings[] = [
 						'connection_id' => $conn['id'],
 						'provider'      => $provider,
-						'message'       => $result->get_error_message(),
+						'message'       => 'No public GitLab repositories found. Public connections only show your own public projects. Add a Personal Access Token to browse private and group repositories.',
 					];
-				} elseif ( 'gitlab' === $provider && empty( $result['repositories'] ) ) {
-					$creds = Connection_Resolver::get_credentials( $conn['id'] );
-					// public (no-token) connection returned 0 repos; private/group repos need a PAT.
-					if ( empty( $creds['token'] ) ) {
-						$connection_warnings[] = [
-							'connection_id' => $conn['id'],
-							'provider'      => $provider,
-							'message'       => 'No public GitLab repositories found. Public connections only show your own public projects. Add a Personal Access Token to browse private and group repositories.',
-						];
-					}
 				}
 			}
-			$cached = Repositories::get_repositories( $connection_ids, $offset, $search );
 		}
+
+		$cached = Repositories::get_repositories( $connection_ids, $offset, $search );
 
 		if ( null === $cached ) {
 			return [
