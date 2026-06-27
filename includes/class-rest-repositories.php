@@ -158,26 +158,55 @@ class REST_Repositories {
 			];
 		}
 
-		$connection_ids = array_column( $connections, 'id' );
-		$cached         = Repositories::get_repositories( $connection_ids, $offset, $search );
+		$connection_ids      = array_column( $connections, 'id' );
+		$cached              = Repositories::get_repositories( $connection_ids, $offset, $search );
+		$connection_errors   = [];
+		$connection_warnings = [];
 
 		if ( null === $cached ) {
 			// Seed cache with page 1 from each connection on first browse.
 			foreach ( $connections as $conn ) {
-				Repositories::fetch_repositories( $conn['provider'], 1, $conn['id'] );
+				$provider = $conn['provider'] ?? '';
+				$result   = Repositories::fetch_repositories( $provider, 1, $conn['id'] );
+				if ( is_wp_error( $result ) ) {
+					$connection_errors[] = [
+						'connection_id' => $conn['id'],
+						'provider'      => $provider,
+						'message'       => $result->get_error_message(),
+					];
+				} elseif ( 'gitlab' === $provider && empty( $result['repositories'] ) ) {
+					$creds = Connection_Resolver::get_credentials( $conn['id'] );
+					// public (no-token) connection returned 0 repos; private/group repos need a PAT.
+					if ( empty( $creds['token'] ) ) {
+						$connection_warnings[] = [
+							'connection_id' => $conn['id'],
+							'provider'      => $provider,
+							'message'       => 'No public GitLab repositories found. Public connections only show your own public projects. Add a Personal Access Token to browse private and group repositories.',
+						];
+					}
+				}
 			}
 			$cached = Repositories::get_repositories( $connection_ids, $offset, $search );
 		}
 
 		if ( null === $cached ) {
 			return [
-				'repositories' => [],
-				'has_more'     => false,
-				'offset'       => 0,
+				'repositories'        => [],
+				'has_more'            => false,
+				'offset'              => 0,
+				'connection_errors'   => $connection_errors,
+				'connection_warnings' => $connection_warnings,
 			];
 		}
 
-		return self::enrich_with_detections( self::merge_installed( $cached ) );
+		$payload = self::enrich_with_detections( self::merge_installed( $cached ) );
+		if ( ! empty( $connection_errors ) ) {
+			$payload['connection_errors'] = $connection_errors;
+		}
+		if ( ! empty( $connection_warnings ) ) {
+			$payload['connection_warnings'] = $connection_warnings;
+		}
+		return $payload;
 	}
 
 	/**

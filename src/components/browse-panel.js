@@ -24,7 +24,10 @@ import {
 
 import * as api from '../api';
 import ExternalLinkIcon from './external-link-icon';
-import { detectionKey, useRepositoryDetection } from '../hooks/use-repository-detection';
+import {
+	detectionKey,
+	useRepositoryDetection,
+} from '../hooks/use-repository-detection';
 import InstallModal from './install-modal';
 import { ProviderIcon, providerLabel } from './provider';
 import { relativeTimeFromDate } from '../relative-time';
@@ -141,7 +144,8 @@ export default function BrowsePanel( {
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 
-	const { detections, runBatch, seedFromRepos, reset } = useRepositoryDetection();
+	const { detections, runBatch, seedFromRepos, reset } =
+		useRepositoryDetection();
 
 	const [ repositories, setRepositories ] = useState( [] );
 	const [ hasMore, setHasMore ] = useState( false );
@@ -170,6 +174,26 @@ export default function BrowsePanel( {
 				);
 				setHasMore( result.has_more ?? false );
 				seedFromRepos( repos );
+				( result.connection_errors ?? [] ).forEach( ( err ) => {
+					toast.error(
+						sprintf(
+							/* translators: 1: provider name (e.g. GitLab), 2: error message */
+							__( '%1$s: %2$s', 'gitwire' ),
+							providerLabel( err.provider ),
+							err.message
+						)
+					);
+				} );
+				( result.connection_warnings ?? [] ).forEach( ( warn ) => {
+					toast.warning(
+						sprintf(
+							/* translators: 1: provider name (e.g. GitLab), 2: notice message */
+							__( '%1$s: %2$s', 'gitwire' ),
+							providerLabel( warn.provider ),
+							warn.message
+						)
+					);
+				} );
 				if ( autoDetectType ) {
 					runBatch(
 						repos.filter(
@@ -367,157 +391,173 @@ export default function BrowsePanel( {
 						value={ search }
 					/>
 				</FlexBlock>
-				{ repositories.length > 0 && <FlexItem>
-					<Dropdown
-						popoverProps={ {
-							placement: 'bottom-start',
-							className: 'gitwire-filter-dropdown',
-							focusOnMount: 'container',
-						} }
-						renderToggle={ ( { isOpen, onToggle } ) => (
-							<div
-								style={ {
-									position: 'relative',
-									display: 'inline-flex',
-								} }
-							>
-								<Button
-									aria-expanded={ isOpen }
-									className={
-										activeFilterCount > 0
-											? 'gitwire-filter-btn is-active'
-											: 'gitwire-filter-btn'
-									}
-									icon={ ListFilterIcon }
-									label={ __( 'Filter', 'gitwire' ) }
-									variant="secondary"
-									onClick={ onToggle }
-								/>
-								{ activeFilterCount > 0 && (
-									<span
-										aria-hidden="true"
-										className="gitwire-filter-dot"
-									/>
-								) }
-							</div>
-						) }
-						renderContent={ () => (
-							<div className="gitwire-filter-popover">
-								<div className="gitwire-filter-popover__header">
+				{ repositories.length > 0 && (
+					<FlexItem>
+						<Dropdown
+							popoverProps={ {
+								placement: 'bottom-start',
+								className: 'gitwire-filter-dropdown',
+								focusOnMount: 'container',
+							} }
+							renderToggle={ ( { isOpen, onToggle } ) => (
+								<div
+									style={ {
+										position: 'relative',
+										display: 'inline-flex',
+									} }
+								>
 									<Button
-										icon={
+										aria-expanded={ isOpen }
+										className={
 											activeFilterCount > 0
-												? ClearAllIcon
-												: SelectAllIcon
+												? 'gitwire-filter-btn is-active'
+												: 'gitwire-filter-btn'
 										}
-										size="compact"
-										variant="tertiary"
-										onClick={ handleSelectAll }
-									>
-										{ activeFilterCount > 0
-											? __( 'Clear Filters', 'gitwire' )
-											: __( 'Select All', 'gitwire' ) }
-									</Button>
+										icon={ ListFilterIcon }
+										label={ __( 'Filter', 'gitwire' ) }
+										variant="secondary"
+										onClick={ onToggle }
+									/>
+									{ activeFilterCount > 0 && (
+										<span
+											aria-hidden="true"
+											className="gitwire-filter-dot"
+										/>
+									) }
 								</div>
+							) }
+							renderContent={ () => (
+								<div className="gitwire-filter-popover">
+									<div className="gitwire-filter-popover__header">
+										<Button
+											icon={
+												activeFilterCount > 0
+													? ClearAllIcon
+													: SelectAllIcon
+											}
+											size="compact"
+											variant="tertiary"
+											onClick={ handleSelectAll }
+										>
+											{ activeFilterCount > 0
+												? __(
+														'Clear Filters',
+														'gitwire'
+												  )
+												: __(
+														'Select All',
+														'gitwire'
+												  ) }
+										</Button>
+									</div>
 
-								<ul className="gitwire-filter-popover__list">
-									{ [
-										{
-											id: 'plugin',
-											label: __( 'Plugin', 'gitwire' ),
-										},
-										{
-											id: 'block-theme',
-											label: __(
-												'Block Theme',
-												'gitwire'
-											),
-										},
-										{
-											id: 'classic-theme',
-											label: __(
-												'Classic Theme',
-												'gitwire'
-											),
-										},
-										{
-											id: 'unknown',
-											label: __( 'Unknown', 'gitwire' ),
-										},
-									].map( ( { id, label } ) => (
-										<li key={ id }>
-											<FilterOption
-												checked={ activeTypeFilters.includes(
-													id
-												) }
-												label={ label }
-												onChange={ () =>
-													toggleTypeFilter( id )
-												}
-											/>
-										</li>
-									) ) }
-								</ul>
-
-								{ showSourceBadge && (
 									<ul className="gitwire-filter-popover__list">
-										{ hasGitHub && (
-											<li>
+										{ [
+											{
+												id: 'plugin',
+												label: __(
+													'Plugin',
+													'gitwire'
+												),
+											},
+											{
+												id: 'block-theme',
+												label: __(
+													'Block Theme',
+													'gitwire'
+												),
+											},
+											{
+												id: 'classic-theme',
+												label: __(
+													'Classic Theme',
+													'gitwire'
+												),
+											},
+											{
+												id: 'unknown',
+												label: __(
+													'Unknown',
+													'gitwire'
+												),
+											},
+										].map( ( { id, label } ) => (
+											<li key={ id }>
 												<FilterOption
-													checked={ activeSourceFilters.includes(
-														'github'
+													checked={ activeTypeFilters.includes(
+														id
 													) }
-													label="GitHub"
+													label={ label }
 													onChange={ () =>
-														toggleSourceFilter(
-															'github'
-														)
+														toggleTypeFilter( id )
 													}
 												/>
 											</li>
-										) }
-										{ hasGitLab && (
-											<li>
-												<FilterOption
-													checked={ activeSourceFilters.includes(
-														'gitlab'
-													) }
-													label="GitLab"
-													onChange={ () =>
-														toggleSourceFilter(
-															'gitlab'
-														)
-													}
-												/>
-											</li>
-										) }
-										{ hasBitbucket && (
-											<li>
-												<FilterOption
-													checked={ activeSourceFilters.includes(
-														'bitbucket'
-													) }
-													label="Bitbucket"
-													onChange={ () =>
-														toggleSourceFilter(
-															'bitbucket'
-														)
-													}
-												/>
-											</li>
-										) }
+										) ) }
 									</ul>
-								) }
-							</div>
-						) }
-					/>
-				</FlexItem> }
-				{ repositories.length > 0 && <FlexItem>
-					<div
-						className="gitwire-toolbar-divider"
-						aria-hidden="true"
-					/>
-				</FlexItem> }
+
+									{ showSourceBadge && (
+										<ul className="gitwire-filter-popover__list">
+											{ hasGitHub && (
+												<li>
+													<FilterOption
+														checked={ activeSourceFilters.includes(
+															'github'
+														) }
+														label="GitHub"
+														onChange={ () =>
+															toggleSourceFilter(
+																'github'
+															)
+														}
+													/>
+												</li>
+											) }
+											{ hasGitLab && (
+												<li>
+													<FilterOption
+														checked={ activeSourceFilters.includes(
+															'gitlab'
+														) }
+														label="GitLab"
+														onChange={ () =>
+															toggleSourceFilter(
+																'gitlab'
+															)
+														}
+													/>
+												</li>
+											) }
+											{ hasBitbucket && (
+												<li>
+													<FilterOption
+														checked={ activeSourceFilters.includes(
+															'bitbucket'
+														) }
+														label="Bitbucket"
+														onChange={ () =>
+															toggleSourceFilter(
+																'bitbucket'
+															)
+														}
+													/>
+												</li>
+											) }
+										</ul>
+									) }
+								</div>
+							) }
+						/>
+					</FlexItem>
+				) }
+				{ repositories.length > 0 && (
+					<FlexItem>
+						<div
+							className="gitwire-toolbar-divider"
+							aria-hidden="true"
+						/>
+					</FlexItem>
+				) }
 				<FlexItem>
 					<Button
 						disabled={ loading }
@@ -651,8 +691,8 @@ const RepoCard = memo( function RepoCard( {
 			<CardBody>
 				<Flex align="flex-start" gap={ 2 } justify="space-between">
 					<FlexBlock>
-						{ repo.full_name && (
-							repo.html_url ? (
+						{ repo.full_name &&
+							( repo.html_url ? (
 								<a
 									className="gitwire-repo-name"
 									href={ repo.html_url }
@@ -663,9 +703,10 @@ const RepoCard = memo( function RepoCard( {
 									<ExternalLinkIcon />
 								</a>
 							) : (
-								<span className="gitwire-repo-name">{ repo.full_name }</span>
-							)
-						) }
+								<span className="gitwire-repo-name">
+									{ repo.full_name }
+								</span>
+							) ) }
 					</FlexBlock>
 					<FlexItem>
 						{ isInstalled ? (

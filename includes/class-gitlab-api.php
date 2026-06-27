@@ -84,9 +84,15 @@ class GitLab_API implements Git_Provider_Interface {
 			];
 		}
 
-		// /user requires read_user or api scope. If missing, try /projects
-		// to verify the token is at least valid for listing repositories.
-		$projects = $this->get( '/projects?per_page=1&membership=true' );
+		// /user requires read_user or api scope; try project listing to verify the token is valid.
+		$projects = $this->get( '/projects?membership=true&per_page=1' );
+		if ( is_wp_error( $projects ) ) {
+			$projects = $this->get( '/projects?per_page=1' );
+		}
+		if ( is_wp_error( $projects ) ) {
+			// fine-grained tokens: group listing works when global read_api is absent.
+			$projects = $this->get( '/groups?per_page=1' );
+		}
 		if ( is_wp_error( $projects ) ) {
 			return $user;
 		}
@@ -105,6 +111,11 @@ class GitLab_API implements Git_Provider_Interface {
 	 * Returns projects accessible to the authenticated user, or a user's public
 	 * projects when a username is given and no token is set.
 	 *
+	 * Fallback chain for fine-grained tokens that lack the global read_api scope:
+	 * 1. /projects?membership=true  (classic PAT)
+	 * 2. /projects                  (some fine-grained configs)
+	 * 3. list_via_groups()          (group-level endpoints work without read_api)
+	 *
 	 * @since 1.0.0
 	 * @param string $username GitLab username for public-mode listing.
 	 * @param int    $page     Page number for paginated results.
@@ -118,10 +129,83 @@ class GitLab_API implements Git_Provider_Interface {
 			);
 		}
 
-		return $this->get(
-			'/projects?membership=true&per_page=100&page=' . $page
-			. '&order_by=last_activity_at&sort=desc'
+		$qs     = 'per_page=100&page=' . $page . '&order_by=last_activity_at&sort=desc';
+		$result = $this->get( '/projects?membership=true&' . $qs );
+
+		if ( is_wp_error( $result ) ) {
+			$result = $this->get( '/projects?' . $qs );
+		}
+
+		if ( is_wp_error( $result ) ) {
+			$result = $this->list_via_groups( $page );
+		}
+
+		if ( is_wp_error( $result )
+			&& str_contains( $result->get_error_message(), 'insufficient_granular_scope' )
+		) {
+			return new \WP_Error(
+				'gitwire_gitlab_scope',
+				'Use a classic token with read_user, read_api, and read_repository; or add API: Read under Global permissions in your fine-grained token.',
+				[ 'status' => 403 ]
+			);
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Lists projects via group-level endpoints for fine-grained tokens.
+	 *
+	 * Fine-grained tokens can access /groups and /groups/{id}/projects when scoped
+	 * to the user's groups, even without the global read_api scope that /projects
+	 * requires. Results from all groups and the personal namespace are merged,
+	 * deduplicated by project ID, sorted by last_activity_at, and paged.
+	 *
+	 * @since 1.0.0
+	 * @param int $page Page number (1-based), 100 results per page.
+	 * @return array<int, mixed>|\WP_Error Flat project array on success, WP_Error on failure.
+	 */
+	private function list_via_groups( int $page ): array|\WP_Error {
+		$all    = [];
+		$groups = $this->get( '/groups?min_access_level=10&per_page=100' );
+
+		if ( ! is_wp_error( $groups ) ) {
+			foreach ( $groups as $group ) {
+				$gid      = (int) ( $group['id'] ?? 0 );
+				$projects = $this->get(
+					'/groups/' . $gid . '/projects?include_subgroups=true&per_page=100'
+				);
+				if ( ! is_wp_error( $projects ) ) {
+					foreach ( $projects as $proj ) {
+						$all[ (int) $proj['id'] ] = $proj;
+					}
+				}
+			}
+		}
+
+		// Include projects in the user's personal namespace.
+		$user = $this->get( '/user' );
+		if ( ! is_wp_error( $user ) && '' !== ( $user['username'] ?? '' ) ) {
+			$personal = $this->get(
+				'/users/' . rawurlencode( $user['username'] ) . '/projects?per_page=100'
+			);
+			if ( ! is_wp_error( $personal ) ) {
+				foreach ( $personal as $proj ) {
+					$all[ (int) $proj['id'] ] = $proj;
+				}
+			}
+		}
+
+		if ( empty( $all ) ) {
+			return new \WP_Error( 'gitwire_gitlab_empty', 'No accessible GitLab repositories found.' );
+		}
+
+		usort(
+			$all,
+			static fn( $a, $b ) => strcmp( $b['last_activity_at'] ?? '', $a['last_activity_at'] ?? '' )
 		);
+
+		return array_values( array_slice( $all, ( $page - 1 ) * 100, 100 ) );
 	}
 
 	/**
