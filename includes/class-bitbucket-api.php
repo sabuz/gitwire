@@ -77,9 +77,14 @@ class Bitbucket_API implements Git_Provider_Interface {
 		}
 
 		// /user requires the account scope — some API tokens lack it.
-		// Fall back to /workspaces to confirm the token is valid without hitting the deprecated global repos endpoint.
-		$workspaces = $this->get( '/workspaces?pagelen=1' );
-		if ( is_wp_error( $workspaces ) ) {
+		// Prefer a workspace-specific lookup (needs only read:workspace:bitbucket),
+		// then fall back to listing all workspaces (needs account scope).
+		$ws_endpoint = $owner ? '/workspaces/' . rawurlencode( $owner ) : '/workspaces?pagelen=1';
+		$workspace   = $this->get( $ws_endpoint );
+		if ( is_wp_error( $workspace ) && $owner ) {
+			$workspace = $this->get( '/workspaces?pagelen=1' );
+		}
+		if ( is_wp_error( $workspace ) ) {
 			return $user;
 		}
 

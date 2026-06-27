@@ -258,7 +258,8 @@ class Connection_Meta {
 	 */
 	public static function get_public_github_rate( string $id, string $username, string $avatar_url = '' ): ?array {
 		$cached = self::get_public_connections_metadata( $id );
-		if ( null !== $cached && ( time() - ( $cached['checked_at'] ?? 0 ) ) < 900 ) {
+		// rate_limit = 0 means the row was just inserted with no real data; always fetch.
+		if ( null !== $cached && ( $cached['rate_limit'] ?? 0 ) > 0 && ( time() - ( $cached['checked_at'] ?? 0 ) ) < 900 ) {
 			return $cached;
 		}
 
