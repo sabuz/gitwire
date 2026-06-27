@@ -280,12 +280,20 @@ export default function RepositoryBrowser( {
 	const activeFilterCount =
 		activeTypeFilters.length + activeSourceFilters.length;
 
-	const allTypeOptions = [
-		'plugin',
-		'block-theme',
-		'classic-theme',
-		'unknown',
-	];
+	const allTypeOptions = useMemo( () => {
+		const seen = new Set();
+		repositories.forEach( ( r ) => {
+			const installedRec = lookupInstalled( installed, r );
+			const type =
+				installedRec?.type ?? detections[ detectionKey( r ) ]?.type;
+			if ( type ) {
+				seen.add( type );
+			}
+		} );
+		return [ 'plugin', 'block-theme', 'classic-theme', 'unknown' ].filter(
+			( t ) => seen.has( t )
+		);
+	}, [ repositories, installed, detections ] );
 	const allSourceOptions = [
 		hasGitHub && 'github',
 		hasGitLab && 'gitlab',
@@ -388,173 +396,157 @@ export default function RepositoryBrowser( {
 						value={ search }
 					/>
 				</FlexBlock>
-				{ repositories.length > 0 && (
-					<FlexItem>
-						<Dropdown
-							popoverProps={ {
-								placement: 'bottom-start',
-								className: 'gitwire-filter-dropdown',
-								focusOnMount: 'container',
-							} }
-							renderToggle={ ( { isOpen, onToggle } ) => (
-								<div
-									style={ {
-										position: 'relative',
-										display: 'inline-flex',
-									} }
-								>
-									<Button
-										aria-expanded={ isOpen }
-										className={
-											activeFilterCount > 0
-												? 'gitwire-filter-btn is-active'
-												: 'gitwire-filter-btn'
-										}
-										icon={ ListFilterIcon }
-										label={ __( 'Filter', 'gitwire' ) }
-										variant="secondary"
-										onClick={ onToggle }
+				<FlexItem>
+					<Dropdown
+						popoverProps={ {
+							placement: 'bottom-start',
+							className: 'gitwire-filter-dropdown',
+							focusOnMount: 'container',
+						} }
+						renderToggle={ ( { isOpen, onToggle } ) => (
+							<div
+								style={ {
+									position: 'relative',
+									display: 'inline-flex',
+								} }
+							>
+								<Button
+									aria-expanded={ isOpen }
+									className={
+										activeFilterCount > 0
+											? 'gitwire-filter-btn is-active'
+											: 'gitwire-filter-btn'
+									}
+									icon={ ListFilterIcon }
+									label={ __( 'Filter', 'gitwire' ) }
+									variant="secondary"
+									onClick={ onToggle }
+								/>
+								{ activeFilterCount > 0 && (
+									<span
+										aria-hidden="true"
+										className="gitwire-filter-dot"
 									/>
-									{ activeFilterCount > 0 && (
-										<span
-											aria-hidden="true"
-											className="gitwire-filter-dot"
-										/>
-									) }
+								) }
+							</div>
+						) }
+						renderContent={ () => (
+							<div className="gitwire-filter-popover">
+								<div className="gitwire-filter-popover__header">
+									<Button
+										icon={
+											activeFilterCount > 0
+												? ClearAllIcon
+												: SelectAllIcon
+										}
+										size="compact"
+										variant="tertiary"
+										onClick={ handleSelectAll }
+									>
+										{ activeFilterCount > 0
+											? __( 'Clear Filters', 'gitwire' )
+											: __( 'Select All', 'gitwire' ) }
+									</Button>
 								</div>
-							) }
-							renderContent={ () => (
-								<div className="gitwire-filter-popover">
-									<div className="gitwire-filter-popover__header">
-										<Button
-											icon={
-												activeFilterCount > 0
-													? ClearAllIcon
-													: SelectAllIcon
-											}
-											size="compact"
-											variant="tertiary"
-											onClick={ handleSelectAll }
-										>
-											{ activeFilterCount > 0
-												? __(
-														'Clear Filters',
-														'gitwire'
-												  )
-												: __(
-														'Select All',
-														'gitwire'
-												  ) }
-										</Button>
-									</div>
 
+								<ul className="gitwire-filter-popover__list">
+									{ [
+										{
+											id: 'plugin',
+											label: __( 'Plugin', 'gitwire' ),
+										},
+										{
+											id: 'block-theme',
+											label: __(
+												'Block Theme',
+												'gitwire'
+											),
+										},
+										{
+											id: 'classic-theme',
+											label: __(
+												'Classic Theme',
+												'gitwire'
+											),
+										},
+										{
+											id: 'unknown',
+											label: __( 'Unknown', 'gitwire' ),
+										},
+									].map( ( { id, label } ) => (
+										<li key={ id }>
+											<FilterOption
+												checked={ activeTypeFilters.includes(
+													id
+												) }
+												label={ label }
+												onChange={ () =>
+													toggleTypeFilter( id )
+												}
+											/>
+										</li>
+									) ) }
+								</ul>
+
+								{ showSourceBadge && (
 									<ul className="gitwire-filter-popover__list">
-										{ [
-											{
-												id: 'plugin',
-												label: __(
-													'Plugin',
-													'gitwire'
-												),
-											},
-											{
-												id: 'block-theme',
-												label: __(
-													'Block Theme',
-													'gitwire'
-												),
-											},
-											{
-												id: 'classic-theme',
-												label: __(
-													'Classic Theme',
-													'gitwire'
-												),
-											},
-											{
-												id: 'unknown',
-												label: __(
-													'Unknown',
-													'gitwire'
-												),
-											},
-										].map( ( { id, label } ) => (
-											<li key={ id }>
+										{ hasGitHub && (
+											<li>
 												<FilterOption
-													checked={ activeTypeFilters.includes(
-														id
+													checked={ activeSourceFilters.includes(
+														'github'
 													) }
-													label={ label }
+													label="GitHub"
 													onChange={ () =>
-														toggleTypeFilter( id )
+														toggleSourceFilter(
+															'github'
+														)
 													}
 												/>
 											</li>
-										) ) }
-									</ul>
-
-									{ showSourceBadge && (
-										<ul className="gitwire-filter-popover__list">
-											{ hasGitHub && (
-												<li>
-													<FilterOption
-														checked={ activeSourceFilters.includes(
-															'github'
-														) }
-														label="GitHub"
-														onChange={ () =>
-															toggleSourceFilter(
-																'github'
-															)
-														}
-													/>
-												</li>
-											) }
-											{ hasGitLab && (
-												<li>
-													<FilterOption
-														checked={ activeSourceFilters.includes(
+										) }
+										{ hasGitLab && (
+											<li>
+												<FilterOption
+													checked={ activeSourceFilters.includes(
+														'gitlab'
+													) }
+													label="GitLab"
+													onChange={ () =>
+														toggleSourceFilter(
 															'gitlab'
-														) }
-														label="GitLab"
-														onChange={ () =>
-															toggleSourceFilter(
-																'gitlab'
-															)
-														}
-													/>
-												</li>
-											) }
-											{ hasBitbucket && (
-												<li>
-													<FilterOption
-														checked={ activeSourceFilters.includes(
+														)
+													}
+												/>
+											</li>
+										) }
+										{ hasBitbucket && (
+											<li>
+												<FilterOption
+													checked={ activeSourceFilters.includes(
+														'bitbucket'
+													) }
+													label="Bitbucket"
+													onChange={ () =>
+														toggleSourceFilter(
 															'bitbucket'
-														) }
-														label="Bitbucket"
-														onChange={ () =>
-															toggleSourceFilter(
-																'bitbucket'
-															)
-														}
-													/>
-												</li>
-											) }
-										</ul>
-									) }
-								</div>
-							) }
-						/>
-					</FlexItem>
-				) }
-				{ repositories.length > 0 && (
-					<FlexItem>
-						<div
-							className="gitwire-toolbar-divider"
-							aria-hidden="true"
-						/>
-					</FlexItem>
-				) }
+														)
+													}
+												/>
+											</li>
+										) }
+									</ul>
+								) }
+							</div>
+						) }
+					/>
+				</FlexItem>
+				<FlexItem>
+					<div
+						className="gitwire-toolbar-divider"
+						aria-hidden="true"
+					/>
+				</FlexItem>
 				<FlexItem>
 					<Button
 						disabled={ loading }
