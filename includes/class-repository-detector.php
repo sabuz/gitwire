@@ -266,7 +266,7 @@ class Repository_Detector {
 	 * @return bool
 	 */
 	public static function is_theme( string $type ): bool {
-		return str_ends_with( $type, '-theme' );
+		return 'theme' === $type || str_ends_with( $type, '-theme' );
 	}
 
 	/**

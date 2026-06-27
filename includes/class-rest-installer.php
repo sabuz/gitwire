@@ -820,7 +820,7 @@ class REST_Installer {
 			}
 		}
 
-		if ( 'theme' === ( $record['type'] ?? '' ) ) {
+		if ( Repository_Detector::is_theme( $record['type'] ?? '' ) ) {
 			$slug           = $record['name'] ?? '';
 			$active_theme   = get_stylesheet();
 			$template_theme = get_template();

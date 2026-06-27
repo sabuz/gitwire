@@ -10,7 +10,9 @@ export function showFatalNotice( notice ) {
 	let message;
 
 	if ( notice.context === 'update' ) {
-		if ( notice.type === 'theme' ) {
+		if (
+			[ 'theme', 'block-theme', 'classic-theme' ].includes( notice.type )
+		) {
 			message = sprintf(
 				/* translators: %s: theme full name */
 				__(
@@ -30,7 +32,9 @@ export function showFatalNotice( notice ) {
 			);
 		}
 	} else if ( notice.context === 'activation' ) {
-		if ( notice.type === 'theme' ) {
+		if (
+			[ 'theme', 'block-theme', 'classic-theme' ].includes( notice.type )
+		) {
 			message = sprintf(
 				/* translators: %s: theme full name */
 				__(

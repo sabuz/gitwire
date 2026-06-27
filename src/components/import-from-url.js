@@ -81,8 +81,9 @@ export default function ImportFromUrl( {
 		setBranch( defaultBranch );
 		setDetection( info.detection );
 		setType(
-			info.detection?.type === 'plugin' ||
-				info.detection?.type === 'theme'
+			[ 'plugin', 'theme', 'block-theme', 'classic-theme' ].includes(
+				info.detection?.type
+			)
 				? info.detection.type
 				: 'plugin'
 		);

@@ -826,7 +826,7 @@ class Installer {
 	 */
 	public static function known_fatal_head_message( string $type, string $remote_sha ): string {
 		$short = substr( $remote_sha, 0, 7 );
-		$label = 'theme' === $type
+		$label = Repository_Detector::is_theme( $type )
 			? __( 'theme', 'gitwire' )
 			: __( 'plugin', 'gitwire' );
 
@@ -1188,11 +1188,11 @@ class Installer {
 		$is_active_update = is_dir( $install_path )
 			&& self::is_active_install( $type, $slug, $plugin_file );
 
-		$sync_theme_guard = $is_active_update && 'theme' === $type;
+		$sync_theme_guard = $is_active_update && Repository_Detector::is_theme( $type );
 
 		$remote_sha = null;
 		if ( $is_active_update ) {
-			if ( 'theme' === $type ) {
+			if ( Repository_Detector::is_theme( $type ) ) {
 				self::clear_guard_feedback();
 				delete_option( 'gitwire_running_task' );
 			}
@@ -1247,7 +1247,7 @@ class Installer {
 			return $extracted;
 		}
 
-		if ( 'theme' === $type ) {
+		if ( Repository_Detector::is_theme( $type ) ) {
 			self::refresh_theme_runtime( $install_path, $slug );
 		}
 
@@ -1372,7 +1372,7 @@ class Installer {
 			$record,
 			self::fetch_remote_head_sha( $api, $owner, $repo, $branch )
 		);
-		if ( 'theme' === $type ) {
+		if ( Repository_Detector::is_theme( $type ) ) {
 			self::clear_guard_feedback();
 		}
 		self::finalize_successful_update( $backup_path );
@@ -1433,7 +1433,7 @@ class Installer {
 	 * @return bool
 	 */
 	private static function is_active_install( string $type, string $slug, ?string $plugin_file ): bool {
-		if ( 'theme' === $type ) {
+		if ( Repository_Detector::is_theme( $type ) ) {
 			if ( ! function_exists( 'get_stylesheet' ) ) {
 				return false;
 			}

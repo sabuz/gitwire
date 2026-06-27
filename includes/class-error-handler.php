@@ -168,7 +168,7 @@ class Error_Handler {
 			if ( 'plugin' === $type && $plugin_file ) {
 				self::deactivate_plugin( $plugin_file );
 				$restored = true;
-			} elseif ( 'theme' === $type ) {
+			} elseif ( Repository_Detector::is_theme( $type ) ) {
 				$previous_stylesheet = $pending['previous_stylesheet'] ?? null;
 				self::restore_theme(
 					$previous_stylesheet,
@@ -187,7 +187,7 @@ class Error_Handler {
 
 			if ( 'plugin' === $type && $plugin_file ) {
 				self::deactivate_plugin( $plugin_file );
-			} elseif ( 'theme' === $type && $restored ) {
+			} elseif ( Repository_Detector::is_theme( $type ) && $restored ) {
 				self::ensure_active_theme_after_update_rollback( $pending );
 			}
 		}
@@ -233,7 +233,7 @@ class Error_Handler {
 
 		self::clear_running_task();
 
-		if ( 'activation' === $context && 'theme' !== $type ) {
+		if ( 'activation' === $context && ! Repository_Detector::is_theme( $type ) ) {
 			self::redirect_to_gitwire_admin();
 		}
 	}
@@ -355,11 +355,11 @@ class Error_Handler {
 
 		if ( 'update' === $context && $install_path ) {
 			$restored = self::rollback_update_files( $pending );
-			if ( 'theme' === $type && $restored ) {
+			if ( Repository_Detector::is_theme( $type ) && $restored ) {
 				self::ensure_active_theme_after_update_rollback( $pending );
 			}
 		} elseif ( 'activation' === $context ) {
-			if ( 'theme' === $type ) {
+			if ( Repository_Detector::is_theme( $type ) ) {
 				self::revert_failed_theme_activation( $pending );
 			} elseif ( 'plugin' === $type && $plugin_file ) {
 				self::deactivate_plugin( $plugin_file );
@@ -430,7 +430,7 @@ class Error_Handler {
 			self::ensure_active_theme_after_update_rollback( $pending );
 		}
 
-		if ( 'theme' === ( $pending['type'] ?? '' ) ) {
+		if ( Repository_Detector::is_theme( $pending['type'] ?? '' ) ) {
 			Installer::refresh_theme_runtime(
 				$pending['install_path'] ?? '',
 				$pending['name'] ?? ''
@@ -457,7 +457,7 @@ class Error_Handler {
 			return false;
 		}
 
-		if ( ( ! $backup_path || ! is_dir( $backup_path ) ) && 'theme' === $type ) {
+		if ( ( ! $backup_path || ! is_dir( $backup_path ) ) && Repository_Detector::is_theme( $type ) ) {
 			$backup_path = Installer::find_orphaned_backup( $install_path );
 		}
 
@@ -465,7 +465,7 @@ class Error_Handler {
 			return Installer::restore_backup( $install_path, $backup_path );
 		}
 
-		if ( 'update' === $context && 'theme' === $type ) {
+		if ( 'update' === $context && Repository_Detector::is_theme( $type ) ) {
 			return is_dir( $install_path );
 		}
 

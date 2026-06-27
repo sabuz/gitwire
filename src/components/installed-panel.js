@@ -95,8 +95,9 @@ export default function InstalledPanel( {
 				id: 'name',
 				label: __( 'Repository', 'gitwire' ),
 				getValue: ( { item } ) => item.full_name,
-				render: ( { item } ) => item.full_name && (
-					item.html_url ? (
+				render: ( { item } ) =>
+					item.full_name &&
+					( item.html_url ? (
 						<a
 							className="gitwire-installed-name"
 							href={ item.html_url }
@@ -107,9 +108,10 @@ export default function InstalledPanel( {
 							<ExternalLinkIcon />
 						</a>
 					) : (
-						<span className="gitwire-installed-name">{ item.full_name }</span>
-					)
-				),
+						<span className="gitwire-installed-name">
+							{ item.full_name }
+						</span>
+					) ),
 				enableSorting: true,
 				enableGlobalSearch: true,
 			},
@@ -211,16 +213,15 @@ export default function InstalledPanel( {
 				render: ( { item } ) => (
 					<span className="gitwire-installed-date">
 						{ item.updated_at
-							? new Date( item.updated_at?.replace( ' ', 'T' ) ).toLocaleString(
-									undefined,
-									{
-										year: 'numeric',
-										month: 'short',
-										day: 'numeric',
-										hour: 'numeric',
-										minute: '2-digit',
-									}
-							  )
+							? new Date(
+									item.updated_at?.replace( ' ', 'T' )
+							  ).toLocaleString( undefined, {
+									year: 'numeric',
+									month: 'short',
+									day: 'numeric',
+									hour: 'numeric',
+									minute: '2-digit',
+							  } )
 							: '—' }
 					</span>
 				),
@@ -296,7 +297,11 @@ export default function InstalledPanel( {
 				id: 'switch-theme',
 				label: __( 'Switch Theme', 'gitwire' ),
 				icon: <Icon icon="admin-appearance" />,
-				isEligible: ( item ) => item.active && item.type === 'theme',
+				isEligible: ( item ) =>
+					item.active &&
+					[ 'theme', 'block-theme', 'classic-theme' ].includes(
+						item.type
+					),
 				callback: () => {
 					const themesUrl = window.gitwire?.themes_url;
 					if ( themesUrl ) {
@@ -444,7 +449,9 @@ function AutoUpdateModal( {
 	updateCheckInterval,
 } ) {
 	const [ item ] = items;
-	const [ autoUpdate, setAutoUpdate ] = useState( item.auto_update !== 'disabled' ? item.auto_update : 'current' );
+	const [ autoUpdate, setAutoUpdate ] = useState(
+		item.auto_update !== 'disabled' ? item.auto_update : 'current'
+	);
 	const [ busy, setBusy ] = useState( false );
 
 	const handleConfirm = async () => {
@@ -547,7 +554,7 @@ function getActivationErrorMessage( error, type ) {
 		/not a valid JSON response/i.test( message );
 
 	if ( isFatalResponse ) {
-		if ( type === 'theme' ) {
+		if ( [ 'theme', 'block-theme', 'classic-theme' ].includes( type ) ) {
 			return __(
 				'Theme could not be activated. It triggered a fatal error.',
 				'gitwire'
