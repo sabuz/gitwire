@@ -665,7 +665,7 @@ function PublicConnectionsCard( { connections, onChange } ) {
 		connections
 			.filter( ( c ) => 'github' === c.provider )
 			.filter( ( c ) => {
-				const checkedAt = rateCache[ c.id ]?.checked_at;
+				const checkedAt = rateCache[ c.id ]?.updated_at;
 				return ! checkedAt || now - checkedAt > fifteenMin;
 			} )
 			.forEach( ( conn ) => {
@@ -891,7 +891,7 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 	const [ confirming, setConfirming ] = useState( false );
 	const provLabel = PROVIDER_LABELS[ rec.provider ] ?? rec.provider;
 	const displayName = rateData?.name || rec.name || null;
-	const checkedAt = rateData?.checked_at ?? null;
+	const checkedAt = rateData?.updated_at ?? null;
 
 	const hasRateLimit = rateData && rateData.rate_limit > 0;
 	const pct = hasRateLimit
