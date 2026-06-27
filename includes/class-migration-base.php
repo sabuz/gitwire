@@ -35,6 +35,23 @@ abstract class Migration_Base {
 	}
 
 	/**
+	 * Creates or upgrades the table(s) owned by this migration.
+	 *
+	 * @since 2.0.0
+	 * @param string $from Previously stored plugin version.
+	 * @return void
+	 */
+	abstract public function migrate( string $from = '' ): void;
+
+	/**
+	 * Drops the table(s) owned by this migration.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	abstract public function drop_tables(): void;
+
+	/**
 	 * Returns the full table name with the WordPress base prefix.
 	 *
 	 * @since 2.0.0
