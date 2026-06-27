@@ -441,10 +441,17 @@ body.gitwire-admin-page {
 			border-radius: 2px;
 			box-shadow: none;
 			cursor: pointer;
+
+			&:checked::before {
+				margin: -0.125rem 0 0 -0.1875rem;
+				height: 1.125rem;
+				width: 1.125rem;
+			}
 		}
 
 		&__label {
 			font-size: 12px;
+			user-select: none;
 		}
 	}
 }
