@@ -118,7 +118,7 @@ function lookupInstalled( installed, repo ) {
  * @param {Function} [props.onOpenUrlImport]  Opens the Import from URL modal.
  * @return {JSX.Element} The rendered browse panel.
  */
-export default function BrowsePanel( {
+export default function RepositoryBrowser( {
 	connections,
 	settings,
 	installed,

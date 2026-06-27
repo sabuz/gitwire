@@ -4,10 +4,10 @@ import { Modal, Spinner } from '@wordpress/components';
 
 import ImportFromUrl from './import-from-url';
 
-const BrowsePanel = lazy( () => import( './browse-panel' ) );
+const RepositoryBrowser = lazy( () => import( './repository-browser' ) );
 
 /**
- * Add Repository page — Browse panel with an Import from URL modal action.
+ * Add Repository tab — repository browser with an Import from URL modal action.
  *
  * @param {Object}   props                Component props.
  * @param {Array}    props.connections    Browse source records array.
@@ -40,7 +40,7 @@ export default function AddRepositoryPanel( {
 	return (
 		<div className="gitwire-add-repo-page">
 			<Suspense fallback={ panelFallback }>
-				<BrowsePanel
+				<RepositoryBrowser
 					connections={ connections }
 					installed={ installed }
 					settings={ settings }
