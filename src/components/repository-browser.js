@@ -256,8 +256,6 @@ export default function RepositoryBrowser( {
 		}
 		clearTimeout( searchTimerRef.current );
 		searchTimerRef.current = setTimeout( () => {
-			setRepositories( [] );
-			setHasMore( false );
 			reset();
 			loadRepos( 0, false, search );
 		}, 350 );
