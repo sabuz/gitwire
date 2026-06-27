@@ -157,16 +157,31 @@ export default function RepositoryBrowser( {
 	const prevConnIdsRef = useRef( null );
 	const searchTimerRef = useRef( null );
 	const isFirstSearchRef = useRef( true );
+	const isFirstSourceRef = useRef( true );
+	// Ref kept in sync each render so the search debounce closure always reads the latest value.
+	const activeSourceFiltersRef = useRef( activeSourceFilters );
+	activeSourceFiltersRef.current = activeSourceFilters;
 	const smartInstall = settings?.smart_install !== false;
 	const autoDetectType = settings?.auto_detect_type !== false;
 
 	const loadRepos = useCallback(
-		async ( offset, append = false, searchTerm = '' ) => {
+		async (
+			offset,
+			append = false,
+			searchTerm = '',
+			sourceFilters = []
+		) => {
+			const connectionIds = sourceFilters.length
+				? ( connections ?? [] )
+						.filter( ( c ) => sourceFilters.includes( c.provider ) )
+						.map( ( c ) => c.id )
+				: [];
 			setLoading( true );
 			try {
 				const result = await api.getRepos( {
 					offset,
 					search: searchTerm,
+					connectionIds,
 				} );
 				const repos = result.repositories ?? [];
 				setRepositories( ( prev ) =>
@@ -209,7 +224,7 @@ export default function RepositoryBrowser( {
 				setLoading( false );
 			}
 		},
-		[ autoDetectType, installed, runBatch, seedFromRepos ]
+		[ autoDetectType, connections, installed, runBatch, seedFromRepos ]
 	);
 
 	const connIds = ( connections ?? [] ).map( ( c ) => c.id ).join( ',' );
@@ -235,17 +250,17 @@ export default function RepositoryBrowser( {
 		try {
 			await api.clearCache();
 			reset();
-			await loadRepos( 0, false, search );
+			await loadRepos( 0, false, search, activeSourceFilters );
 		} catch ( e ) {
 			toast.error(
 				e.message || __( 'Failed to refresh repositories.', 'gitwire' )
 			);
 			setLoading( false );
 		}
-	}, [ loadRepos, reset, search ] );
+	}, [ loadRepos, reset, search, activeSourceFilters ] );
 
 	const handleLoadMore = () => {
-		loadRepos( repositories.length, true, search );
+		loadRepos( repositories.length, true, search, activeSourceFilters );
 	};
 
 	// Debounced server reload when search term changes (skips initial mount).
@@ -256,10 +271,21 @@ export default function RepositoryBrowser( {
 		}
 		clearTimeout( searchTimerRef.current );
 		searchTimerRef.current = setTimeout( () => {
-			loadRepos( 0, false, search );
+			loadRepos( 0, false, search, activeSourceFiltersRef.current );
 		}, 350 );
 		return () => clearTimeout( searchTimerRef.current );
 	}, [ search ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Reload when source filter changes (skips initial mount).
+	useEffect( () => {
+		if ( isFirstSourceRef.current ) {
+			isFirstSourceRef.current = false;
+			return;
+		}
+		setRepositories( [] );
+		setHasMore( false );
+		loadRepos( 0, false, search, activeSourceFilters );
+	}, [ activeSourceFilters ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const toggleTypeFilter = ( value ) => {
 		setActiveTypeFilters( ( prev ) =>
@@ -621,7 +647,7 @@ export default function RepositoryBrowser( {
 				</div>
 			) }
 
-			{ hasMore && ! search && (
+			{ hasMore && (
 				<div style={ { textAlign: 'center', marginTop: 24 } }>
 					<Button
 						disabled={ loading }

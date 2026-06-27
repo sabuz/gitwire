@@ -41,15 +41,20 @@ class REST_Repositories {
 				'callback'            => [ self::class, 'get_repos' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
 				'args'                => [
-					'offset' => [
+					'offset'         => [
 						'type'    => 'integer',
 						'default' => 0,
 						'minimum' => 0,
 					],
-					'search' => [
+					'search'         => [
 						'type'              => 'string',
 						'default'           => '',
 						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'connection_ids' => [
+						'type'    => 'array',
+						'items'   => [ 'type' => 'string' ],
+						'default' => [],
 					],
 				],
 			]
@@ -138,8 +143,9 @@ class REST_Repositories {
 	 * @return array<string, mixed>|\WP_Error Repository payload on success, WP_Error on failure.
 	 */
 	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
-		$offset = max( 0, (int) ( $req->get_param( 'offset' ) ?? 0 ) );
-		$search = sanitize_text_field( $req->get_param( 'search' ) ?? '' );
+		$offset     = max( 0, (int) ( $req->get_param( 'offset' ) ?? 0 ) );
+		$search     = sanitize_text_field( $req->get_param( 'search' ) ?? '' );
+		$filter_ids = array_values( array_filter( (array) ( $req->get_param( 'connection_ids' ) ?? [] ) ) );
 
 		$connections = array_values(
 			array_filter(
@@ -189,7 +195,22 @@ class REST_Repositories {
 			}
 		}
 
-		$cached = Repositories::get_repositories( $connection_ids, $offset, $search );
+		// Narrow the DB query to the requested connections; uncached fetch above always runs for all.
+		$query_ids = ! empty( $filter_ids )
+			? array_values( array_intersect( $connection_ids, $filter_ids ) )
+			: $connection_ids;
+
+		if ( empty( $query_ids ) ) {
+			return [
+				'repositories'        => [],
+				'has_more'            => false,
+				'offset'              => 0,
+				'connection_errors'   => $connection_errors,
+				'connection_warnings' => $connection_warnings,
+			];
+		}
+
+		$cached = Repositories::get_repositories( $query_ids, $offset, $search );
 
 		if ( null === $cached ) {
 			return [

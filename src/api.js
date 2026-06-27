@@ -21,11 +21,16 @@ export const getPublicConnectionRateLimit = ( id ) =>
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>
 	apiFetch( { path: `${ BASE }/settings`, method: 'POST', data } );
-export const getRepos = ( { offset = 0, search = '' } = {} ) => {
+export const getRepos = ( {
+	offset = 0,
+	search = '',
+	connectionIds = [],
+} = {} ) => {
 	const params = new URLSearchParams( { offset } );
 	if ( search ) {
 		params.set( 'search', search );
 	}
+	connectionIds.forEach( ( id ) => params.append( 'connection_ids[]', id ) );
 	return apiFetch( { path: `${ BASE }/repos?${ params }` } );
 };
 export const clearCache = () =>
