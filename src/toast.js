@@ -57,6 +57,7 @@ export function Toaster( props ) {
 	return (
 		<SonnerToaster
 			closeButton={ false }
+			expand
 			richColors
 			position="top-right"
 			{ ...props }
