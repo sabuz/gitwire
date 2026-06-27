@@ -239,9 +239,8 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const [ maxReposPerSource, setMaxReposPerSource ] = useState(
 		String( settings.max_repos_per_source ?? 'unlimited' )
 	);
-	const [ repositoriesRefreshFrequency, setRepositoriesRefreshFrequency ] = useState(
-		settings.repositories_refresh_frequency ?? 'daily'
-	);
+	const [ repositoriesRefreshFrequency, setRepositoriesRefreshFrequency ] =
+		useState( settings.repositories_refresh_frequency ?? 'daily' );
 	const [ backgroundTypeDetection, setBackgroundTypeDetection ] = useState(
 		!! settings.background_type_detection
 	);
@@ -481,10 +480,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				<ToggleGroupControl
 					__nextHasNoMarginBottom
 					isBlock
-					label={ __(
-						'Repository Refresh Frequency',
-						'gitwire'
-					) }
+					label={ __( 'Repository Refresh Frequency', 'gitwire' ) }
 					help={ __(
 						'How often the repository list is refreshed in the background.',
 						'gitwire'
