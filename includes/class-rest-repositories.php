@@ -552,11 +552,23 @@ class REST_Repositories {
 
 			if ( is_wp_error( $result ) ) {
 				Logger::log( sprintf( 'Detection failed — %s: %s', $key, $result->get_error_message() ), 'error' );
+				$error_code = $result->get_error_code();
+				Repositories::set_repository_type(
+					$provider,
+					$owner,
+					$repo,
+					$branch,
+					[
+						'type'       => 'unknown',
+						'confidence' => 'none',
+						'name'       => '',
+					]
+				);
 				$result          = [
 					'type'       => 'unknown',
 					'confidence' => 'none',
 					'name'       => '',
-					'error_code' => $result->get_error_code(),
+					'error_code' => $error_code,
 				];
 				$results[ $key ] = $result;
 				continue;
