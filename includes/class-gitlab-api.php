@@ -451,6 +451,10 @@ class GitLab_API implements Git_Provider_Interface {
 		$remaining = (int) wp_remote_retrieve_header( $response, 'ratelimit-remaining' );
 		$reset     = (int) wp_remote_retrieve_header( $response, 'ratelimit-reset' );
 		if ( $limit > 0 ) {
+			// Estimate next minute boundary when header is absent or already expired.
+			if ( $reset <= time() ) {
+				$reset = (int) ( ceil( time() / 60 ) * 60 );
+			}
 			$this->last_rate = [
 				'limit'     => $limit,
 				'remaining' => $remaining,
