@@ -14,7 +14,7 @@ Table gitwire_connections {
   rate_remaining int           [not null, default: 0, note: 'Remaining API calls in the current window — e.g. 4982. 0 until first test']
   rate_reset     int           [not null, default: 0, note: 'Unix timestamp when the rate-limit window resets — e.g. 1741946400. 0 until first test']
   created_at    datetime       [not null, note: 'e.g. 2025-03-14 09:00:00']
-  updated_at    datetime       [not null, note: 'Last profile cache write — e.g. 2025-03-20 11:30:00. Returned to JS as checked_at (Unix int via strtotime)']
+  updated_at    datetime       [not null, note: 'Last profile cache write — e.g. 2025-03-20 11:30:00. Returned to JS as updated_at (Unix int via strtotime)']
 
   indexes {
     provider

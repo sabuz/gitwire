@@ -58,8 +58,7 @@ class Connection_Meta {
 	/**
 	 * Formats a raw connections row into the profile shape expected by the admin JS.
 	 *
-	 * Returns checked_at as a Unix timestamp (computed from updated_at) so
-	 * JS helpers like relativeTimeFromUnix() continue to work unchanged.
+	 * Returns updated_at as a Unix timestamp (converted from the DB datetime string).
 	 *
 	 * @since 1.0.0
 	 * @param array<string, mixed> $row Raw row from gitwire_connections.
@@ -79,7 +78,7 @@ class Connection_Meta {
 			'rate_limit'     => (int) ( $row['rate_limit'] ?? 0 ),
 			'rate_remaining' => (int) ( $row['rate_remaining'] ?? 0 ),
 			'rate_reset'     => (int) ( $row['rate_reset'] ?? 0 ),
-			'checked_at'     => '' !== ( $row['updated_at'] ?? '' ) ? (int) strtotime( $row['updated_at'] ) : 0,
+			'updated_at'     => '' !== ( $row['updated_at'] ?? '' ) ? (int) strtotime( $row['updated_at'] ) : 0,
 			'error'          => ( '' !== ( $row['error'] ?? '' ) && null !== $row['error'] ) ? $row['error'] : null,
 		];
 	}
@@ -89,7 +88,7 @@ class Connection_Meta {
 	 *
 	 * Only touches authenticated, name, avatar_url, rate_limit, rate_remaining,
 	 * rate_reset, error, and updated_at. Identity/auth columns are not modified.
-	 * Unrecognised keys in $data (provider, checked_at, workspace, etc.) are ignored.
+	 * Unrecognised keys in $data (provider, updated_at, workspace, etc.) are ignored.
 	 *
 	 * @since 1.0.0
 	 * @param string               $id   Connection ID.
@@ -259,7 +258,7 @@ class Connection_Meta {
 	public static function get_public_github_rate( string $id, string $username, string $avatar_url = '' ): ?array {
 		$cached = self::get_public_connections_metadata( $id );
 		// rate_limit = 0 means the row was just inserted with no real data; always fetch.
-		if ( null !== $cached && ( $cached['rate_limit'] ?? 0 ) > 0 && ( time() - ( $cached['checked_at'] ?? 0 ) ) < 900 ) {
+		if ( null !== $cached && ( $cached['rate_limit'] ?? 0 ) > 0 && ( time() - ( $cached['updated_at'] ?? 0 ) ) < 900 ) {
 			return $cached;
 		}
 
