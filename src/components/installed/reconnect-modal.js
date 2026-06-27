@@ -112,7 +112,11 @@ export default function ReconnectModal( {
 
 			{ providerConns.map( ( conn ) => {
 				const name =
-					conn.username || conn.identifier || conn.email || conn.label || conn.id;
+					conn.username ||
+					conn.identifier ||
+					conn.email ||
+					conn.label ||
+					conn.id;
 				const status = results[ conn.id ];
 				const isTesting = status === undefined;
 				const canPull = status === true;
