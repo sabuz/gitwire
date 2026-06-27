@@ -32,13 +32,38 @@ class Connection_Resolver {
 	}
 
 	/**
-	 * Returns all stored connection records.
+	 * Returns all stored connection records, with public rows suppressed when a Pro
+	 * row exists for the same provider + identifier.
+	 *
+	 * Suppression is resolver-only — the DB is never modified. When Pro is removed its
+	 * rows are deleted and the public rows reappear automatically.
 	 *
 	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function all(): array {
-		return (array) apply_filters( 'gitwire_connections_all', Connection::instance()->all() );
+		$rows = Connection::instance()->all();
+
+		// Build a set of provider:identifier pairs covered by a Pro (credentialed) row.
+		$private_keys = [];
+		foreach ( $rows as $row ) {
+			if ( ! empty( $row['credentials'] ) ) {
+				$private_keys[ $row['provider'] . ':' . $row['identifier'] ] = true;
+			}
+		}
+
+		// Drop public rows shadowed by a Pro row with the same provider + identifier.
+		if ( ! empty( $private_keys ) ) {
+			$rows = array_values(
+				array_filter(
+					$rows,
+					static fn( $r ) => ! empty( $r['credentials'] )
+						|| ! isset( $private_keys[ $r['provider'] . ':' . $r['identifier'] ] )
+				)
+			);
+		}
+
+		return (array) apply_filters( 'gitwire_connections_all', $rows );
 	}
 
 	/**
@@ -54,7 +79,7 @@ class Connection_Resolver {
 		$uid  = (string) get_current_user_id();
 		$rows = array_values(
 			array_filter(
-				Connection::instance()->all(),
+				self::all(),
 				static fn( $r ) => 'all' === ( $r['scope'] ?? 'all' ) || ( $r['scope'] ?? '' ) === $uid
 			)
 		);
