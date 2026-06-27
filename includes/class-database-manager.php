@@ -8,10 +8,10 @@
 
 namespace Gitwire;
 
-use Gitwire\Migrations\Connection as ConnectionMigration;
-use Gitwire\Migrations\Installation as InstallationMigration;
-use Gitwire\Migrations\Repository as RepositoryMigration;
-use Gitwire\Migrations\Commit as CommitMigration;
+use Gitwire\Migrations\Connection as Connection_Migration;
+use Gitwire\Migrations\Installation as Installation_Migration;
+use Gitwire\Migrations\Repository as Repository_Migration;
+use Gitwire\Migrations\Commit as Commit_Migration;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -56,10 +56,10 @@ class Database_Manager {
 	 */
 	public function migrate(): void {
 		$from = (string) get_option( self::DB_VERSION_OPTION, '' );
-		ConnectionMigration::instance()->migrate( $from );
-		InstallationMigration::instance()->migrate( $from );
-		RepositoryMigration::instance()->migrate( $from );
-		CommitMigration::instance()->migrate( $from );
+		Connection_Migration::instance()->migrate( $from );
+		Installation_Migration::instance()->migrate( $from );
+		Repository_Migration::instance()->migrate( $from );
+		Commit_Migration::instance()->migrate( $from );
 		update_option( self::DB_VERSION_OPTION, GITWIRE_VERSION, false );
 	}
 
@@ -110,10 +110,10 @@ class Database_Manager {
 	 * @return void
 	 */
 	public static function uninstall(): void {
-		RepositoryMigration::instance()->drop_tables();
-		CommitMigration::instance()->drop_tables();
-		InstallationMigration::instance()->drop_tables();
-		ConnectionMigration::instance()->drop_tables();
+		Repository_Migration::instance()->drop_tables();
+		Commit_Migration::instance()->drop_tables();
+		Installation_Migration::instance()->drop_tables();
+		Connection_Migration::instance()->drop_tables();
 		delete_option( self::DB_VERSION_OPTION );
 	}
 }
