@@ -3,7 +3,7 @@
  * Base class for database migrations.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -23,7 +23,7 @@ abstract class Migration_Base {
 	private static array $instances = [];
 
 	/**
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return static
 	 */
 	public static function instance(): static {
@@ -37,7 +37,7 @@ abstract class Migration_Base {
 	/**
 	 * Creates or upgrades the table(s) owned by this migration.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $from Previously stored plugin version.
 	 * @return void
 	 */
@@ -46,7 +46,7 @@ abstract class Migration_Base {
 	/**
 	 * Drops the table(s) owned by this migration.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	abstract public function drop_tables(): void;
@@ -54,7 +54,7 @@ abstract class Migration_Base {
 	/**
 	 * Returns the full table name with the WordPress base prefix.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $table_name Table name without prefix.
 	 * @return string
 	 */
@@ -66,7 +66,7 @@ abstract class Migration_Base {
 	/**
 	 * Returns true when the table exists in the database.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $table_name Table name without prefix.
 	 * @return bool
 	 */
@@ -80,7 +80,7 @@ abstract class Migration_Base {
 	/**
 	 * Returns true when the column exists in the given table.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $table_name  Table name without prefix.
 	 * @param string $column_name Column name.
 	 * @return bool
@@ -101,7 +101,7 @@ abstract class Migration_Base {
 	/**
 	 * Returns true when the index exists on the given table.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $table_name Table name without prefix.
 	 * @param string $index_name Index name.
 	 * @return bool

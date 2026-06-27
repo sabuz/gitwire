@@ -3,7 +3,7 @@
  * Model for gitwire_installations.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire\Models;
@@ -52,7 +52,7 @@ class Installation extends Model_Base {
 	/**
 	 * Clears the request-scope read cache after a write.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function invalidate_cache(): void {
@@ -62,7 +62,7 @@ class Installation extends Model_Base {
 	/**
 	 * Returns all installation rows.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>>
 	 */
 	public function all(): array {
@@ -76,7 +76,7 @@ class Installation extends Model_Base {
 	/**
 	 * Returns the installation for a given filesystem path, or null.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $install_path Absolute installation path.
 	 * @return array<string, mixed>|null
 	 */
@@ -93,7 +93,7 @@ class Installation extends Model_Base {
 	/**
 	 * Returns the installation row for a provider/full_name pair, or null.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @return array<string, mixed>|null
@@ -110,7 +110,7 @@ class Installation extends Model_Base {
 	 * - remote_head and auto_update are excluded from the UPDATE clause.
 	 *   remote_head may have been set by the maintenance cron; auto_update is a user preference.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $data Row data. Do not pass `id` — it is AUTO_INCREMENT.
 	 * @return bool
 	 */
@@ -145,7 +145,7 @@ class Installation extends Model_Base {
 	/**
 	 * Updates the installed HEAD commit SHA.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $sha       Full commit SHA.
@@ -160,7 +160,7 @@ class Installation extends Model_Base {
 	/**
 	 * Updates the latest remote HEAD commit SHA.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $sha       Remote commit SHA.
@@ -175,7 +175,7 @@ class Installation extends Model_Base {
 	/**
 	 * Updates the plugin basename column.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $basename  plugin_basename() value.
@@ -190,7 +190,7 @@ class Installation extends Model_Base {
 	/**
 	 * Updates the auto_update setting for an installation.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider    Git provider.
 	 * @param string $full_name   Repository full name.
 	 * @param string $auto_update New auto_update value.
@@ -207,7 +207,7 @@ class Installation extends Model_Base {
 	 *
 	 * Used during replace-installs to evict stale records that claimed the same directory.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $install_path Directory path to match.
 	 * @param string $provider     Provider of the current repo to exclude.
 	 * @param string $full_name    Full name of the current repo to exclude.
@@ -233,7 +233,7 @@ class Installation extends Model_Base {
 	 *
 	 * Commits must be deleted separately via Commit::delete_by_installation().
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @return bool

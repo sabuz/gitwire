@@ -3,7 +3,7 @@
  * Migration for gitwire_connections.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire\Migrations;
@@ -27,7 +27,7 @@ class Connection extends Migration_Base {
 	 * Pro-only columns (credentials, scope, email) are managed entirely by the Pro plugin
 	 * via its activation/deactivation hooks — this migration does not touch them.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $from Previously stored plugin version; use for version_compare guards on future schema changes.
 	 * @return void
 	 */
@@ -64,7 +64,7 @@ class Connection extends Migration_Base {
 	/**
 	 * Drops the connections table.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function drop_tables(): void {

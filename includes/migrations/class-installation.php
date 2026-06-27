@@ -3,7 +3,7 @@
  * Migration for gitwire_installations.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire\Migrations;
@@ -24,7 +24,7 @@ class Installation extends Migration_Base {
 	/**
 	 * Creates or upgrades the installations table.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $from Previously stored plugin version; use for version_compare guards on future schema changes.
 	 * @return void
 	 */
@@ -78,7 +78,7 @@ class Installation extends Migration_Base {
 	/**
 	 * Drops the installations table.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function drop_tables(): void {

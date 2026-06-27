@@ -3,7 +3,7 @@
  * Model for gitwire_connections.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire\Models;
@@ -71,7 +71,7 @@ class Connection extends Model_Base {
 	/**
 	 * Clears the request-scope read cache after a write.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function invalidate_cache(): void {
@@ -81,7 +81,7 @@ class Connection extends Model_Base {
 	/**
 	 * Returns all connection rows ordered by created_at.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>>
 	 */
 	public function all(): array {
@@ -98,7 +98,7 @@ class Connection extends Model_Base {
 	/**
 	 * Returns a single connection by ID, or null.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return array<string, mixed>|null
 	 */
@@ -109,7 +109,7 @@ class Connection extends Model_Base {
 	/**
 	 * Returns the first connection for a provider ordered by created_at, or null.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @return array<string, mixed>|null
 	 */
@@ -126,7 +126,7 @@ class Connection extends Model_Base {
 	/**
 	 * Returns the first connection matching provider and identifier, or null.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider   Provider key.
 	 * @param string $identifier Username or workspace slug.
 	 * @return array<string, mixed>|null
@@ -141,7 +141,7 @@ class Connection extends Model_Base {
 	/**
 	 * Inserts a new connection row.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $data Connection fields.
 	 * @return bool
 	 */
@@ -154,7 +154,7 @@ class Connection extends Model_Base {
 	/**
 	 * Deletes a connection by ID.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return bool True when a row was deleted.
 	 */
@@ -171,7 +171,7 @@ class Connection extends Model_Base {
 	 * rate_reset, error, and updated_at. Identity columns are never modified.
 	 * updated_at defaults to now when not present in $data.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string               $id   Connection ID.
 	 * @param array<string, mixed> $data Profile fields to store.
 	 * @return bool
@@ -192,7 +192,7 @@ class Connection extends Model_Base {
 	/**
 	 * Resets all profile cache columns to their defaults for a connection.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $id Connection ID.
 	 * @return bool
 	 */

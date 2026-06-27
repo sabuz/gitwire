@@ -3,7 +3,7 @@
  * Base class for database models.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -27,7 +27,7 @@ abstract class Model_Base {
 	private static array $instances = [];
 
 	/**
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return static
 	 */
 	public static function instance(): static {
@@ -41,7 +41,7 @@ abstract class Model_Base {
 	/**
 	 * Table name without prefix.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return string
 	 */
 	abstract protected function table(): string;
@@ -52,7 +52,7 @@ abstract class Model_Base {
 	 * All keys in $where and $data arrays are validated against this list
 	 * before any SQL is built.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return string[]
 	 */
 	abstract protected function columns(): array;
@@ -60,7 +60,7 @@ abstract class Model_Base {
 	/**
 	 * Returns the full table name with the WordPress base prefix.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return string
 	 */
 	protected function table_name(): string {
@@ -71,7 +71,7 @@ abstract class Model_Base {
 	/**
 	 * Strips keys not in columns() from an array.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $data Input array.
 	 * @return array<string, mixed>
 	 */
@@ -82,7 +82,7 @@ abstract class Model_Base {
 	/**
 	 * Returns a single matching row, or null.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $where Column => value conditions.
 	 * @return array<string, mixed>|null
 	 */
@@ -104,7 +104,7 @@ abstract class Model_Base {
 	/**
 	 * Returns all rows matching the given conditions.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $where Column => value conditions. Empty returns all rows.
 	 * @return array<int, array<string, mixed>>
 	 */
@@ -127,7 +127,7 @@ abstract class Model_Base {
 	/**
 	 * Inserts a row.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $data Column => value data.
 	 * @return bool
 	 */
@@ -144,7 +144,7 @@ abstract class Model_Base {
 	/**
 	 * Updates rows matching the given conditions.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $data  Column => value data to set.
 	 * @param array<string, mixed> $where Column => value conditions.
 	 * @return bool
@@ -163,7 +163,7 @@ abstract class Model_Base {
 	/**
 	 * Deletes rows matching the given conditions.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $where Column => value conditions.
 	 * @return bool
 	 */
@@ -180,7 +180,7 @@ abstract class Model_Base {
 	/**
 	 * Inserts a row or updates it on duplicate key.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $data Column => value data.
 	 * @return bool
 	 */

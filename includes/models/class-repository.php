@@ -3,7 +3,7 @@
  * Model for gitwire_repositories.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire\Models;
@@ -50,7 +50,7 @@ class Repository extends Model_Base {
 	 * Returns null when the table has no rows for the given connections (cache miss).
 	 * Returns an empty-repositories array when rows exist but filters match nothing.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param array{
 	 *     connection_ids: string[],
 	 *     offset?: int,
@@ -155,7 +155,7 @@ class Repository extends Model_Base {
 	 * type and type_meta are excluded from the ON DUPLICATE KEY UPDATE clause
 	 * so cached detection results survive across cron refreshes.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string               $connection_id Connection ID.
 	 * @param array<int, array<string, mixed>> $repos Array of repo payloads from the provider API.
 	 * @param string               $provider      Provider key; overrides per-repo 'provider' when set.
@@ -214,7 +214,7 @@ class Repository extends Model_Base {
 	/**
 	 * Returns the type detection result for a provider/repo pair, or null.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name (owner/repo).
 	 * @return array<string, mixed>|null Decoded type_meta merged with `type`, or null when not detected.
@@ -244,7 +244,7 @@ class Repository extends Model_Base {
 	 * Updates all connection rows that share the full_name, then upserts a
 	 * connection-agnostic fallback when no real browse-cache row exists yet (URL import path).
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string               $provider  Git provider.
 	 * @param string               $full_name Repository full name (owner/repo).
 	 * @param string               $type      Detection type: 'plugin', 'block-theme', etc.
@@ -300,7 +300,7 @@ class Repository extends Model_Base {
 	/**
 	 * Deletes all repository rows for one connection, or all rows when connection_id is empty.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $connection_id Connection ID. Empty string deletes all rows.
 	 * @return bool
 	 */
@@ -320,7 +320,7 @@ class Repository extends Model_Base {
 	 *
 	 * Clears type/type_meta on connection-owned rows and removes URL-import fallback rows.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return bool
 	 */
 	public function clear_types(): bool {
@@ -346,7 +346,7 @@ class Repository extends Model_Base {
 	/**
 	 * Returns a batch of repository rows that have no type detection result.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int $limit Maximum rows to return.
 	 * @param int $offset Row offset for cursor-based pagination.
 	 * @return array<int, array<string, mixed>>
@@ -372,7 +372,7 @@ class Repository extends Model_Base {
 	 * Intended for post-refresh cleanup: call after a full provider page sweep with
 	 * the complete set of full_names returned by the API.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string   $connection_id      Connection ID.
 	 * @param string[] $current_full_names Full names to preserve.
 	 * @return bool
@@ -398,7 +398,7 @@ class Repository extends Model_Base {
 	/**
 	 * Returns the html_url for a repository, or empty string when not found.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @return string

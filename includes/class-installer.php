@@ -132,7 +132,7 @@ class Installer {
 	/**
 	 * Updates the basename column for a single installed record.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $basename  plugin_basename() value.

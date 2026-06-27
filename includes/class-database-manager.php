@@ -3,7 +3,7 @@
  * Orchestrates all database migrations.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -41,7 +41,7 @@ class Database_Manager {
 	/**
 	 * Registers the activation and update hooks.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 */
 	private function __construct() {
 		register_activation_hook( GITWIRE_FILE, [ $this, 'migrate' ] );
@@ -51,7 +51,7 @@ class Database_Manager {
 	/**
 	 * Runs all pending migrations in dependency order.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function migrate(): void {
@@ -66,7 +66,7 @@ class Database_Manager {
 	/**
 	 * Returns true when the stored version is behind the current plugin version.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return bool
 	 */
 	public function needs_migrate(): bool {
@@ -79,7 +79,7 @@ class Database_Manager {
 	 * Handles both single-plugin ('plugin' key) and bulk ('plugins' key) upgrader
 	 * payloads — the WP core upgrader uses different keys depending on context.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param mixed $upgrader  WP_Upgrader instance (unused).
 	 * @param array $hook_extra Upgrader context data.
 	 * @return void
@@ -106,7 +106,7 @@ class Database_Manager {
 	 *
 	 * Tables are dropped in reverse dependency order to avoid FK-style issues.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function uninstall(): void {

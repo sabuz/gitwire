@@ -3,7 +3,7 @@
  * Model for gitwire_commits.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire\Models;
@@ -30,7 +30,7 @@ class Commit extends Model_Base {
 	/**
 	 * Returns the cached commit row for an installation/branch, or null.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int    $installation_id Primary key of gitwire_installations.
 	 * @param string $branch          Branch name.
 	 * @return array<string, mixed>|null Raw row — caller decodes the `data` JSON field.
@@ -42,7 +42,7 @@ class Commit extends Model_Base {
 	/**
 	 * Stores or replaces the commit cache for an installation/branch.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int                              $installation_id Primary key of gitwire_installations.
 	 * @param string                           $branch          Branch name.
 	 * @param array<int, array<string, mixed>> $commits         Commit list from the provider API.
@@ -68,7 +68,7 @@ class Commit extends Model_Base {
 	/**
 	 * Deletes all commit rows for an installation.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param int $installation_id Primary key of gitwire_installations.
 	 * @return bool
 	 */

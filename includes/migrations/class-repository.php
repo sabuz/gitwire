@@ -3,7 +3,7 @@
  * Migration for gitwire_repositories.
  *
  * @package Gitwire
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 namespace Gitwire\Migrations;
@@ -24,7 +24,7 @@ class Repository extends Migration_Base {
 	/**
 	 * Creates or upgrades the repositories table.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @param string $from Previously stored plugin version; use for version_compare guards on future schema changes.
 	 * @return void
 	 */
@@ -61,7 +61,7 @@ class Repository extends Migration_Base {
 	/**
 	 * Drops the repositories table.
 	 *
-	 * @since 2.0.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function drop_tables(): void {
