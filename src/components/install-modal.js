@@ -48,8 +48,9 @@ export function InstallForm( {
 	const [ branchFilter, setBranchFilter ] = useState( '' );
 	const [ detection, setDetection ] = useState( initialDetection );
 	const [ type, setType ] = useState(
-		initialDetection?.type === 'plugin' ||
-			initialDetection?.type === 'theme'
+		[ 'plugin', 'theme', 'block-theme', 'classic-theme' ].includes(
+			initialDetection?.type
+		)
 			? initialDetection.type
 			: 'plugin'
 	);
@@ -95,7 +96,14 @@ export function InstallForm( {
 			)
 				.then( ( d ) => {
 					setDetection( d );
-					if ( d.type === 'plugin' || d.type === 'theme' ) {
+					if (
+						[
+							'plugin',
+							'theme',
+							'block-theme',
+							'classic-theme',
+						].includes( d.type )
+					) {
 						setType( d.type );
 					}
 				} )
