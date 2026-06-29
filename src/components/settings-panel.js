@@ -824,7 +824,7 @@ function PublicConnectionsSummary( {
 											whiteSpace: 'nowrap',
 										} }
 									>
-										@
+										{ 'bitbucket' !== conn.provider && '@' }
 										{ rateCache[ conn.id ]?.username ||
 											conn.identifier }
 										{ conn.host_url && (
@@ -980,7 +980,8 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 									: { fontWeight: 700, fontSize: 14 }
 							}
 						>
-							@{ rateData?.username || rec.identifier }
+							{ 'bitbucket' !== rec.provider && '@' }
+							{ rateData?.username || rec.identifier }
 						</div>
 						{ rec.host_url && (
 							<div style={ { fontSize: 12, color: '#57606a' } }>
