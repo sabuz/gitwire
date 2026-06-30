@@ -405,7 +405,7 @@ class REST_Installer {
 				);
 			}
 
-			$is_theme      = static fn( string $t ) => in_array( $t, [ 'theme', 'block-theme', 'classic-theme' ], true );
+			$is_theme = static fn( string $t ) => in_array( $t, [ 'theme', 'block-theme', 'classic-theme' ], true );
 			if ( $is_theme( $detected_type ) !== $is_theme( $type ) ) {
 				return new \WP_Error(
 					'type_mismatch',

@@ -29,8 +29,19 @@ class Database_Manager {
 
 	const DB_VERSION_OPTION = 'gitwire_db_version';
 
+	/**
+	 * Singleton instance.
+	 *
+	 * @var self|null
+	 */
 	private static ?self $instance = null;
 
+	/**
+	 * Returns the singleton instance.
+	 *
+	 * @since 1.0.0
+	 * @return self
+	 */
 	public static function instance(): self {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -89,10 +100,12 @@ class Database_Manager {
 			return;
 		}
 
-		$plugins = array_filter( [
-			$hook_extra['plugin'] ?? '',
-			...( (array) ( $hook_extra['plugins'] ?? [] ) ),
-		] );
+		$plugins = array_filter(
+			[
+				$hook_extra['plugin'] ?? '',
+				...( (array) ( $hook_extra['plugins'] ?? [] ) ),
+			]
+		);
 
 		if ( ! in_array( plugin_basename( GITWIRE_FILE ), $plugins, true ) ) {
 			return;

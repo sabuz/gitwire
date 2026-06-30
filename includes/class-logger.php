@@ -182,8 +182,9 @@ class Logger {
 		try {
 			$file = new \SplFileObject( $this->log_file, 'r' );
 		} catch ( \RuntimeException $e ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 			fclose( $out );
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_unlink
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
 			unlink( $tmp );
 			return;
 		}
@@ -199,10 +200,12 @@ class Logger {
 
 		unset( $file );
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		if ( fclose( $out ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
 			rename( $tmp, $this->log_file );
 		} else {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_unlink
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
 			unlink( $tmp );
 		}
 	}
@@ -257,7 +260,7 @@ class Logger {
 		}
 		foreach ( $files as $file ) {
 			if ( is_dir( $file ) ) {
-				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
 				@rmdir( $file );
 			} elseif ( ! in_array( basename( $file ), $keep, true ) ) {
 				wp_delete_file( $file );

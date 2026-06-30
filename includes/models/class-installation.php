@@ -99,7 +99,12 @@ class Installation extends Model_Base {
 	 * @return array<string, mixed>|null
 	 */
 	public function find_by_repo( string $provider, string $full_name ): ?array {
-		return $this->get_row( [ 'provider' => $provider, 'full_name' => $full_name ] );
+		return $this->get_row(
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			]
+		);
 	}
 
 	/**
@@ -116,8 +121,8 @@ class Installation extends Model_Base {
 	 */
 	public function upsert( array $data ): bool {
 		global $wpdb;
-		$table  = $this->table_name();
-		$data   = $this->filter_columns( $data );
+		$table = $this->table_name();
+		$data  = $this->filter_columns( $data );
 		if ( empty( $data ) ) {
 			return false;
 		}
@@ -152,7 +157,13 @@ class Installation extends Model_Base {
 	 * @return bool
 	 */
 	public function update_head( string $provider, string $full_name, string $sha ): bool {
-		$ok = $this->update_rows( [ 'head' => $sha ], [ 'provider' => $provider, 'full_name' => $full_name ] );
+		$ok = $this->update_rows(
+			[ 'head' => $sha ],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			]
+		);
 		$this->invalidate_cache();
 		return $ok;
 	}
@@ -167,7 +178,13 @@ class Installation extends Model_Base {
 	 * @return bool
 	 */
 	public function update_remote_head( string $provider, string $full_name, string $sha ): bool {
-		$ok = $this->update_rows( [ 'remote_head' => $sha ], [ 'provider' => $provider, 'full_name' => $full_name ] );
+		$ok = $this->update_rows(
+			[ 'remote_head' => $sha ],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			]
+		);
 		$this->invalidate_cache();
 		return $ok;
 	}
@@ -182,7 +199,13 @@ class Installation extends Model_Base {
 	 * @return bool
 	 */
 	public function update_basename( string $provider, string $full_name, string $basename ): bool {
-		$ok = $this->update_rows( [ 'basename' => $basename ], [ 'provider' => $provider, 'full_name' => $full_name ] );
+		$ok = $this->update_rows(
+			[ 'basename' => $basename ],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			]
+		);
 		$this->invalidate_cache();
 		return $ok;
 	}
@@ -197,7 +220,13 @@ class Installation extends Model_Base {
 	 * @return bool
 	 */
 	public function update_auto_update( string $provider, string $full_name, string $auto_update ): bool {
-		$ok = $this->update_rows( [ 'auto_update' => $auto_update ], [ 'provider' => $provider, 'full_name' => $full_name ] );
+		$ok = $this->update_rows(
+			[ 'auto_update' => $auto_update ],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			]
+		);
 		$this->invalidate_cache();
 		return $ok;
 	}
@@ -239,7 +268,12 @@ class Installation extends Model_Base {
 	 * @return bool
 	 */
 	public function delete_by_repo( string $provider, string $full_name ): bool {
-		$ok = $this->delete_rows( [ 'provider' => $provider, 'full_name' => $full_name ] );
+		$ok = $this->delete_rows(
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			]
+		);
 		$this->invalidate_cache();
 		return $ok;
 	}

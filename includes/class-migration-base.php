@@ -18,11 +18,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 abstract class Migration_Base {
 
 	/**
+	 * Per-class singleton instances.
+	 *
 	 * @var array<string, static>
 	 */
 	private static array $instances = [];
 
 	/**
+	 * Returns the singleton instance for the concrete migration class.
+	 *
 	 * @since 1.0.0
 	 * @return static
 	 */

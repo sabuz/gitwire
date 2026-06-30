@@ -135,7 +135,12 @@ class Connection extends Model_Base {
 		if ( '' === $identifier ) {
 			return null;
 		}
-		return $this->get_row( [ 'provider' => $provider, 'identifier' => $identifier ] );
+		return $this->get_row(
+			[
+				'provider'   => $provider,
+				'identifier' => $identifier,
+			]
+		);
 	}
 
 	/**

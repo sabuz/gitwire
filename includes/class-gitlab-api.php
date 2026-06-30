@@ -214,9 +214,10 @@ class GitLab_API implements Git_Provider_Interface {
 	 * Uses the same detection heuristics as the GitHub API class.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  GitLab namespace (group or username).
-	 * @param string $repo   Project path.
-	 * @param string $branch Branch, tag, or SHA to inspect.
+	 * @param string     $owner         GitLab namespace (group or username).
+	 * @param string     $repo          Project path.
+	 * @param string     $branch        Branch, tag, or SHA to inspect.
+	 * @param array|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
 	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {

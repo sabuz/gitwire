@@ -36,7 +36,12 @@ class Commit extends Model_Base {
 	 * @return array<string, mixed>|null Raw row — caller decodes the `data` JSON field.
 	 */
 	public function find( int $installation_id, string $branch ): ?array {
-		return $this->get_row( [ 'installation_id' => $installation_id, 'branch' => $branch ] );
+		return $this->get_row(
+			[
+				'installation_id' => $installation_id,
+				'branch'          => $branch,
+			]
+		);
 	}
 
 	/**

@@ -131,9 +131,10 @@ class GitHub_API implements Git_Provider_Interface {
 	 * Returns: { type, subtype, confidence, name }
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  GitHub repository owner.
-	 * @param string $repo   Repository name.
-	 * @param string $branch Branch, tag, or SHA to inspect.
+	 * @param string     $owner         GitHub repository owner.
+	 * @param string     $repo          Repository name.
+	 * @param string     $branch        Branch, tag, or SHA to inspect.
+	 * @param array|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|WP_Error Detection result on success, WP_Error on failure.
 	 */
 	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
@@ -326,7 +327,7 @@ class GitHub_API implements Git_Provider_Interface {
 		if ( '' !== (string) $remaining_raw ) {
 			$reset = (int) wp_remote_retrieve_header( $response, 'x-ratelimit-reset' );
 			$ttl   = $reset > time() ? min( $reset - time(), HOUR_IN_SECONDS ) : HOUR_IN_SECONDS;
-			set_transient( 'gitwire_gh_rl_' . ( $this->connection_id ?: 'anon' ), (int) $remaining_raw, $ttl );
+			set_transient( 'gitwire_gh_rl_' . ( $this->connection_id ? $this->connection_id : 'anon' ), (int) $remaining_raw, $ttl );
 		}
 
 		if ( $code >= 400 ) {

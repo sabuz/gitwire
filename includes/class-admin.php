@@ -237,7 +237,7 @@ class Admin {
 					'settings'             => $settings,
 					'installed'            => $installed ? $installed : (object) [],
 					'orphaned'             => $orphaned,
-					'pending_msg'          => $pending_msg ?: null,
+					'pending_msg'          => $pending_msg ? $pending_msg : null,
 				]
 			) . ';',
 			'before'

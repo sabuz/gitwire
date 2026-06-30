@@ -40,17 +40,17 @@ class REST_Connections {
 					'callback'            => [ self::class, 'add_public_connection' ],
 					'permission_callback' => [ REST::class, 'can_manage' ],
 					'args'                => [
-						'provider'  => [
+						'provider' => [
 							'required' => true,
 							'type'     => 'string',
 							'enum'     => [ 'github', 'gitlab', 'bitbucket' ],
 						],
-						'username'  => [
+						'username' => [
 							'required'          => true,
 							'type'              => 'string',
 							'sanitize_callback' => 'sanitize_text_field',
 						],
-						'host_url'  => [
+						'host_url' => [
 							'type'    => 'string',
 							'default' => '',
 						],
@@ -117,7 +117,7 @@ class REST_Connections {
 
 		return [
 			'connection' => $conn,
-			'metadata'   => Connection_Meta::get_public_connections_metadata( $id ) ?: null,
+			'metadata'   => Connection_Meta::get_public_connections_metadata( $id ) ? Connection_Meta::get_public_connections_metadata( $id ) : null,
 		];
 	}
 

@@ -85,7 +85,7 @@ class REST {
 	public static function assert_connection_scope( string $connection_id ): ?\WP_Error {
 		$conn     = Connection_Resolver::find( $connection_id );
 		$db_scope = $conn['scope'] ?? 'all';
-		if ( $conn && 'all' !== $db_scope && $db_scope !== (string) get_current_user_id() ) {
+		if ( $conn && 'all' !== $db_scope && (string) get_current_user_id() !== $db_scope ) {
 			return new \WP_Error( 'forbidden', 'You do not have permission to use this connection.', [ 'status' => 403 ] );
 		}
 		return null;

@@ -54,10 +54,10 @@ class Installer {
 		return array_merge(
 			$row,
 			[
-				'id'           => (int) ( $row['id'] ?? 0 ),
-				'repo'         => $parts[1] ?? '',
-				'updated_at'   => $row['updated_at'] ?? '',
-				'auto_update'  => $row['auto_update'] ?? 'disabled',
+				'id'          => (int) ( $row['id'] ?? 0 ),
+				'repo'        => $parts[1] ?? '',
+				'updated_at'  => $row['updated_at'] ?? '',
+				'auto_update' => $row['auto_update'] ?? 'disabled',
 			]
 		);
 	}

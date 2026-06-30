@@ -44,7 +44,6 @@ class Commit extends Migration_Base {
 			  PRIMARY KEY  (installation_id, branch)
 			) {$charset};"
 		);
-
 	}
 
 	/**
@@ -56,7 +55,7 @@ class Commit extends Migration_Base {
 	public function drop_tables(): void {
 		global $wpdb;
 		$table = $this->get_table_name( self::TABLE );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
 	}
 }

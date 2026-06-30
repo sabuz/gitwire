@@ -69,7 +69,11 @@ class Repository extends Model_Base {
 		$per_page       = max( 1, (int) ( $filters['per_page'] ?? 50 ) );
 		$excluded       = (array) ( $filters['excluded'] ?? [] );
 
-		$empty = [ 'repositories' => [], 'has_more' => false, 'offset' => $offset ];
+		$empty = [
+			'repositories' => [],
+			'has_more'     => false,
+			'offset'       => $offset,
+		];
 
 		if ( empty( $connection_ids ) ) {
 			return $empty;
@@ -156,9 +160,9 @@ class Repository extends Model_Base {
 	 * so cached detection results survive across cron refreshes.
 	 *
 	 * @since 1.0.0
-	 * @param string               $connection_id Connection ID.
+	 * @param string                           $connection_id Connection ID.
 	 * @param array<int, array<string, mixed>> $repos Array of repo payloads from the provider API.
-	 * @param string               $provider      Provider key; overrides per-repo 'provider' when set.
+	 * @param string                           $provider      Provider key; overrides per-repo 'provider' when set.
 	 * @return bool False only when $repos is empty.
 	 */
 	public function upsert_batch( string $connection_id, array $repos, string $provider = '' ): bool {
@@ -269,9 +273,9 @@ class Repository extends Model_Base {
 	 * connection-agnostic fallback when no real browse-cache row exists yet (URL import path).
 	 *
 	 * @since 1.0.0
-	 * @param string               $provider  Git provider.
-	 * @param string               $full_name Repository full name (owner/repo).
-	 * @param string               $type      Detection type: 'plugin', 'block-theme', etc.
+	 * @param string                    $provider  Git provider.
+	 * @param string                    $full_name Repository full name (owner/repo).
+	 * @param string                    $type      Detection type: 'plugin', 'block-theme', etc.
 	 * @param array<string, mixed>|null $meta  Detection payload (confidence, name, key_files).
 	 * @return bool
 	 */
@@ -284,7 +288,10 @@ class Repository extends Model_Base {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->update(
 			$this->table_name(),
-			[ 'type' => $type, 'type_meta' => $meta_json ],
+			[
+				'type'      => $type,
+				'type_meta' => $meta_json,
+			],
 			[ 'full_name' => $full_name ],
 			[ '%s', '%s' ],
 			[ '%s' ]

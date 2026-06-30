@@ -112,8 +112,8 @@ class Connection_Meta {
 			}
 		}
 		if ( array_key_exists( 'error', $data ) ) {
-			$err                  = ( '' !== ( $data['error'] ?? '' ) && null !== $data['error'] ) ? (string) $data['error'] : null;
-			$normalized['error']  = $err;
+			$err                 = ( '' !== ( $data['error'] ?? '' ) && null !== $data['error'] ) ? (string) $data['error'] : null;
+			$normalized['error'] = $err;
 		}
 
 		if ( ! empty( $normalized ) ) {

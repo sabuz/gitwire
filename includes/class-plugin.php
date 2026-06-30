@@ -54,7 +54,7 @@ final class Plugin {
 
 		Error_Handler::register();
 
-		// must be constructed here so its register_activation_hook() fires before the file finishes loading
+		// must be constructed here so register_activation_hook() fires before the file finishes loading.
 		Database_Manager::instance();
 
 		add_action( 'init', [ $this, 'load_textdomain' ], 0 );
@@ -92,6 +92,7 @@ final class Plugin {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function register_cron_schedules( array $schedules ): array {
+		// phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 		$schedules['everyfiveminutes'] = [
 			'interval' => 5 * MINUTE_IN_SECONDS,
 			'display'  => __( 'Every 5 minutes', 'gitwire' ),
