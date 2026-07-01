@@ -340,6 +340,8 @@ export default function App( { initialData } ) {
 	const tabs = settings?.enable_logging
 		? BASE_TABS
 		: BASE_TABS.filter( ( t ) => t.name !== 'logs' );
+	// Pro registers this filter to add its own header dropdown; its presence means Pro is active.
+	const headerActions = applyFilters( 'gitwire.header.actions', null );
 	const panelFallback = (
 		<div className="gitwire-page-loading">
 			<Spinner />
@@ -361,33 +363,37 @@ export default function App( { initialData } ) {
 							gap: 16,
 						} }
 					>
-						<Button
-							href="https://gitwire.app/docs"
-							rel="noreferrer"
-							target="_blank"
-							variant="link"
-						>
-							{ __( 'Docs', 'gitwire' ) }
-							<Icon
-								icon={ external }
-								size={ 14 }
-								style={ { marginLeft: 4 } }
-							/>
-						</Button>
-						<Button
-							href="https://gitwire.app/support"
-							rel="noreferrer"
-							target="_blank"
-							variant="link"
-						>
-							{ __( 'Support', 'gitwire' ) }
-							<Icon
-								icon={ external }
-								size={ 14 }
-								style={ { marginLeft: 4 } }
-							/>
-						</Button>
-						{ applyFilters( 'gitwire.header.actions', null ) }
+						{ ! headerActions && (
+							<>
+								<Button
+									href="https://gitwire.app/docs"
+									rel="noreferrer"
+									target="_blank"
+									variant="link"
+								>
+									{ __( 'Docs', 'gitwire' ) }
+									<Icon
+										icon={ external }
+										size={ 14 }
+										style={ { marginLeft: 4 } }
+									/>
+								</Button>
+								<Button
+									href="https://gitwire.app/support"
+									rel="noreferrer"
+									target="_blank"
+									variant="link"
+								>
+									{ __( 'Support', 'gitwire' ) }
+									<Icon
+										icon={ external }
+										size={ 14 }
+										style={ { marginLeft: 4 } }
+									/>
+								</Button>
+							</>
+						) }
+						{ headerActions }
 					</div>
 				</div>
 
