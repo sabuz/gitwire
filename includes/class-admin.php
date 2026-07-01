@@ -41,8 +41,8 @@ class Admin {
 		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
 		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'label_managed_themes' ] );
 
-		// Settings link in the plugins list table.
-		add_filter( 'plugin_action_links_' . GITWIRE_BASENAME, [ self::class, 'add_settings_link' ] );
+		// Repositories and Settings links in the plugins list table.
+		add_filter( 'plugin_action_links_' . GITWIRE_BASENAME, [ self::class, 'add_plugin_action_links' ] );
 	}
 
 	/**
@@ -267,22 +267,29 @@ class Admin {
 	}
 
 	/**
-	 * Adds a Settings link to the Gitwire row in the plugins list table.
+	 * Adds Repositories and Settings links to the Gitwire row in the plugins list table.
 	 *
 	 * @since 1.0.0
 	 * @param array<string, string> $actions Existing action links.
 	 * @return array<string, string>
 	 */
-	public static function add_settings_link( array $actions ): array {
-		$url           = add_query_arg(
+	public static function add_plugin_action_links( array $actions ): array {
+		$repositories_url = add_query_arg( 'page', 'gitwire', admin_url( 'admin.php' ) );
+		$settings_url     = add_query_arg(
 			[
 				'page' => 'gitwire',
 				'path' => 'settings',
 			],
 			admin_url( 'admin.php' )
 		);
-		$settings_link = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Settings', 'gitwire' ) . '</a>';
-		return array_merge( [ 'settings' => $settings_link ], $actions );
+
+		return array_merge(
+			[
+				'repositories' => '<a href="' . esc_url( $repositories_url ) . '">' . esc_html__( 'Repositories', 'gitwire' ) . '</a>',
+				'settings'     => '<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'Settings', 'gitwire' ) . '</a>',
+			],
+			$actions
+		);
 	}
 
 	/**
