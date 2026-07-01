@@ -274,9 +274,15 @@ class Admin {
 	 * @return array<string, string>
 	 */
 	public static function add_settings_link( array $actions ): array {
-		$url                 = add_query_arg( 'page', 'gitwire', admin_url( 'admin.php' ) );
-		$actions['settings'] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Settings', 'gitwire' ) . '</a>';
-		return $actions;
+		$url           = add_query_arg(
+			[
+				'page' => 'gitwire',
+				'path' => 'settings',
+			],
+			admin_url( 'admin.php' )
+		);
+		$settings_link = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Settings', 'gitwire' ) . '</a>';
+		return array_merge( [ 'settings' => $settings_link ], $actions );
 	}
 
 	/**
