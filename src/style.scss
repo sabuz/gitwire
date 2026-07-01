@@ -279,6 +279,10 @@ body.gitwire-admin-page {
 		outline: 2px solid var(--wp-admin-theme-color, #3858e9);
 		outline-offset: 1px;
 	}
+
+	&.is-inactive {
+		opacity: 0.6;
+	}
 }
 
 .gitwire-divider {
