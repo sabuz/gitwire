@@ -38,6 +38,8 @@ Free (public) connections store `NULL` for the `email` field. Pro (private) conn
 **Fix:**
 Switched the INSERT branch to `$wpdb->insert()`, giving it the same NULL handling as the UPDATE branch. gitwire-pro `09d3c74`.
 
+**Related:** the same NULL-vs-empty-string split existed for `host_url`, roles reversed — `Public_Connections::add()` (free) stored the raw `''` default for connections with no self-hosted URL (GitHub, Bitbucket, plain GitLab.com), while Pro's `upsert()` already normalized `''` to `null` for the same column. Normalized `add()` to do the same. gitwire `1f392bf`.
+
 ---
 
 ### "Repositories per Page" and "Max per Source" settings not respected
