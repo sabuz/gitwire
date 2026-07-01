@@ -2,9 +2,13 @@
 
 ## Open
 
+_None currently open._
+
+## Fixed
+
 ### Public connection silently hidden when a Pro private connection is added for the same account
 
-**Status:** open
+**Status:** fixed
 **Affects:** both
 **Reported:** 2026-06-28
 
@@ -14,24 +18,14 @@ A user adds a public connection (username only) for e.g. GitHub. Later they add 
 **Root cause:**
 The UI (or the REST response) suppresses the public connection when a private connection exists for the same provider/identifier. The intent was to prevent showing duplicates, but the suppression is silent — no indication to the user that the public connection still exists and will resurface.
 
-**Proposed fix:**
-Show the public connection in the connections list with an "Inactive" badge, greyed out. It is clickable — opening it shows a stripped-down detail panel with only the essentials (provider, username) and a "Remove Connection" button. The user can disconnect from there.
-
-No API usage data is shown for inactive connections: `rate_limit`, `rate_remaining`, `rate_reset`, `name`, `avatar_url`, `authenticated`, and `error` are all omitted from the panel. Those fields are only relevant when the connection is active.
-
-**Implementation notes:**
-- REST response returns the public connection with `"status": "inactive"` (or `"superseded"`) when a private connection exists for the same provider + identifier
-- JS renders the row greyed out with the "Inactive" badge; clicking opens the detail panel
-- Detail panel for inactive connections: shows provider, username, status explanation ("This connection is inactive because a private connection exists for this account"), and a Remove Connection button
-- Detail panel does not render rate limit, avatar, authentication status, or error fields for inactive connections
-- Remove Connection from an inactive panel deletes the row and closes the panel — no confirmation needed, no orphan warning. Public installations already store `provider`, `owner`, `full_name`, and `html_url` directly on `gitwire_installations`; the `connection_id` is a reference, not a hard dependency. The private connection (same provider + identifier) will serve those installations going forward, or the install/update logic can operate without a connection for public repos.
-- Badge label: "Inactive" (Title Case)
+**Fix:**
+`merged_list()` in gitwire-pro already tagged shadowed public rows with `status: inactive` instead of filtering them out, but the JS side never read that field — the connections list showed the same badges as an active connection, and selecting the row crashed on a reference to `InactiveConnectionCard`, which didn't exist anywhere in the codebase. Added the missing component (provider, identifier, host URL, and a no-confirmation "Remove Connection" button — no rate limit, avatar, name, or authenticated state, per spec) and wired the "Inactive" badge into the connections list row. gitwire-pro `69ef87f`; matching `.is-inactive` greyed-out row style in gitwire `87ff2bf`.
 
 ---
 
 ### Email field inconsistency between public and Pro connections
 
-**Status:** open
+**Status:** fixed
 **Affects:** both
 **Reported:** 2026-06-28
 
@@ -39,16 +33,16 @@ No API usage data is shown for inactive connections: `rate_limit`, `rate_remaini
 Free (public) connections store `NULL` for the `email` field. Pro (private) connections store a blank string `""` instead of `NULL` when no email is provided. Inconsistent across the two plugins.
 
 **Root cause:**
-Pro migration adds the `email` column with no default or a blank default; the insert path likely passes `""` explicitly where the free path omits the field and lets DB default to `NULL`.
+`Connections::upsert()` already computed `$email = null` correctly in PHP, but the INSERT branch for new connections built the query with a hand-rolled `$wpdb->prepare( "INSERT ... VALUES (%s, ...)", ...)`. `wpdb::prepare()` has no NULL-passthrough for `%s` — it escapes `null` to an empty string before it ever reaches SQL. The UPDATE branch a few lines up already used `$wpdb->update()`, which special-cases `null` before formatting and writes real SQL `NULL` — so the same connection could get `''` on creation and `NULL` on its next credential update.
 
 **Fix:**
-Standardize to `NULL` for both. Pro insert path should pass `null` (not `""`) when email is not collected. Verify `column_exists` guard and `DEFAULT NULL` on the ALTER TABLE in Pro migration.
+Switched the INSERT branch to `$wpdb->insert()`, giving it the same NULL handling as the UPDATE branch. gitwire-pro `09d3c74`.
 
 ---
 
 ### "Repositories per Page" and "Max per Source" settings not respected
 
-**Status:** open
+**Status:** fixed
 **Affects:** both
 **Reported:** 2026-06-28
 
@@ -56,33 +50,30 @@ Standardize to `NULL` for both. Pro insert path should pass `null` (not `""`) wh
 The "Repositories per Page" and "Max per Source" settings exist in plugin settings but are not applied when fetching or displaying repository lists.
 
 **Root cause:**
-Unknown — settings likely saved correctly but not read by the repository listing/pagination logic.
+"Repositories per Page" was already applied correctly end to end (`Repositories::get_repositories()` → `Repository::get_paginated()` → SQL `LIMIT`/`OFFSET`, JS "Load More" reads the offset from `has_more`). "Max per Source" was the actual bug: `refresh_repositories()` stopped requesting *new* pages once the running total passed the cap, but every page already fetched was stored in full. The provider API's page size is a fixed 100, which doesn't evenly divide 250 (one of the three preset cap values), so a cap of 250 let 300 repos land in the cache before the loop noticed.
 
 **Fix:**
-Audit `class-repositories.php` and the repositories REST endpoint — verify settings are read via `get_option()` and applied to query limits and API request pagination. Cover with a test in the QA plan.
+Slice each page to the remaining budget before adding it to `fetched_full_names`, so the existing `remove_stale()` cleanup (which deletes anything not in that list) prunes the overflow down to the configured cap. gitwire `a7e5309`.
 
 ---
 
 ### Search in "Add Repository" panel breaks with unloaded repositories
 
-**Status:** open
+**Status:** fixed (already resolved prior to this audit)
 **Affects:** both
 **Reported:** 2026-06-28
 
 **Symptoms:**
 Search in the "Add Repository" panel only searches the currently loaded/paginated set of repositories, not the full repository list. Repositories not yet fetched are invisible to search.
 
-**Root cause:**
-Search is likely client-side, filtering only what is in the JS state. Repositories beyond the current page are not loaded and therefore not searchable.
-
-**Fix:**
-Search needs to trigger a server-side request to the Git provider API (or the `gitwire_repositories` table if pre-cached) rather than filtering client-side state. Pagination and search must work together: searching should reset to page 1 of server-filtered results. Test cases: search for a repo on page 3 before scrolling/loading it; search across a connection with 200+ repos.
+**Verification:**
+Traced the full path: `RepositoryBrowser`'s search box already debounces (350ms) into a server request (`loadRepos( 0, false, search, ... )`) that resets to offset 0 and passes `search` to `GET /repos`, which filters server-side over the `gitwire_repositories` cache table (`name LIKE %s OR owner LIKE %s`), not the JS-loaded array. This mechanism predates the bug report (present since commit `b5efc0d`, 2026-06-20); the client-side `matchesSearch` filter is only a same-tick preview of the already-loaded set while the debounced request is in flight, not the only search path. No separate/duplicate search implementation exists in gitwire-pro. No code change made — this entry appears to have been stale in the doc.
 
 ---
 
 ### Bitbucket workspace name displayed with @ prefix
 
-**Status:** open
+**Status:** fixed
 **Affects:** both
 **Reported:** 2026-06-28
 
@@ -90,7 +81,7 @@ Search needs to trigger a server-side request to the Git provider API (or the `g
 Bitbucket workspace names are shown with a leading `@` in the UI (e.g. `@acme-org` instead of `acme-org`). The `@` was already removed from the Bitbucket email field — the same fix was not applied to the workspace name.
 
 **Fix:**
-Find where the workspace name is rendered in the JS (likely `shared.js` or the connections panel component) and strip the `@` prefix, matching the email field treatment.
+Guarded on `'bitbucket' !== provider` everywhere the identifier is rendered with an `@` prefix. Already fixed in gitwire (`a03a11f`) and gitwire-pro's connections list/detail (`3d752d2`) prior to this audit. One remaining unguarded instance found in gitwire-pro's `connection-picker.js` (the "Try to connect with a saved account" dropdown shown from Import from URL) — fixed in `ce2af60`.
 
 ---
 
@@ -98,33 +89,20 @@ Find where the workspace name is rendered in the JS (likely `shared.js` or the c
 
 ### Plugin header — free vs Pro link area
 
-**Status:** open
-**Affects:** both
-**Reported:** 2026-06-28
+**Status:** fixed
 
 **Design:**
 
-**Free plugin** — plain links in the top-right header area:
-- Docs
-- Support
-- Any other relevant URLs
+**Free plugin** — plain links in the top-right header area: Docs, Support.
 
-**Pro plugin** — a single dropdown button in the top-right (structure already exists). Clicking opens a dropdown menu with:
+**Pro plugin** — a single dropdown button in the top-right. Clicking opens a dropdown menu with Connect/Disconnect (label toggles on license state), Docs, and Support.
 
-1. **Connect** / **Disconnect** — label toggles based on license state:
-   - No license active: "Connect" → opens the license key input popup
-   - License active: "Disconnect" → deactivates and removes the license
-2. **Docs** — link to documentation
-3. **Support** — link to Pro support page on the website
-4. Additional URLs as needed (e.g. changelog, account portal)
+**Fix:**
+Free plugin: added a Support link (`https://gitwire.app/support`) next to the existing Docs link, both plain top-right links. gitwire `3d8b3ec`.
 
-**Implementation notes:**
-- The Connect/Disconnect item is the only one that changes label; Docs and Support are always present
-- "Connect" and "Disconnect" are Title Case; they are actions, not labels
-- The license popup triggered by Connect should be self-contained — enter key, validate against the license server, show success/error inline
-- Disconnecting shows a confirmation dialog before proceeding — something like: "Are you sure you want to disconnect your license? This will deactivate GitWire Pro on this site." with "Disconnect" and "Cancel" buttons. This matters because disconnecting may consume a license activation slot depending on the licensing model.
-- On confirmation, clear the stored license key and update the dropdown label back to "Connect" without a page reload
-- Free plugin header links are plain `<a>` tags, no dropdown needed
+Pro plugin: `LicenseButton` was a bare activate/deactivate popover with no Docs or Support entry points, "Deactivate" instead of "Disconnect", and no confirmation before dropping a connected license. Rebuilt as a dropdown menu (Connect/Disconnect, Docs, Support) matching the existing `connection-picker.js` Dropdown pattern. Connect opens an inline license-key form (Enter-to-submit, inline error). Disconnect shows a confirmation dialog first ("Are you sure you want to disconnect your license? This will deactivate GitWire Pro on this site.") since disconnecting can consume a license activation slot; on confirm it clears the key and the menu label flips back to "Connect" in place, no reload. gitwire-pro `061d4b7`.
+
+Changelog/account-portal links were left out — no such pages exist yet to link to.
 
 ---
 
