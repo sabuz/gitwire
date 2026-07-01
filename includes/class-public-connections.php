@@ -193,12 +193,13 @@ class Public_Connections {
 		$id  = 'pub_' . wp_generate_uuid4();
 		$now = current_time( 'mysql' );
 
+		// wpdb::insert() maps null to SQL NULL; an empty string would store '' instead.
 		Connection::instance()->insert(
 			[
 				'id'         => $id,
 				'provider'   => $provider,
 				'identifier' => $identifier,
-				'host_url'   => $host_url,
+				'host_url'   => '' !== $host_url ? $host_url : null,
 				'created_at' => $now,
 				'updated_at' => $now,
 			]
