@@ -217,7 +217,6 @@ class Repositories {
 
 			$page               = 1;
 			$conn_err           = null;
-			$total_fetched      = 0;
 			$fetched_full_names = [];
 
 			do {
@@ -227,13 +226,18 @@ class Repositories {
 					$last_err = $result;
 					break;
 				}
-				foreach ( $result['repositories'] ?? [] as $repo ) {
+				// max rarely divides evenly by the provider's fixed page size, so cap mid-page too.
+				$page_repos = array_slice(
+					$result['repositories'] ?? [],
+					0,
+					max( 0, $max - count( $fetched_full_names ) )
+				);
+				foreach ( $page_repos as $repo ) {
 					if ( ! empty( $repo['full_name'] ) ) {
 						$fetched_full_names[] = $repo['full_name'];
 					}
 				}
-				$total_fetched += count( $result['repositories'] ?? [] );
-				$has_more       = ( $result['has_more'] ?? false ) && $total_fetched < $max;
+				$has_more = ( $result['has_more'] ?? false ) && count( $fetched_full_names ) < $max;
 				++$page;
 			} while ( $has_more );
 
