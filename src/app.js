@@ -374,6 +374,19 @@ export default function App( { initialData } ) {
 								style={ { marginLeft: 4 } }
 							/>
 						</Button>
+						<Button
+							href="https://gitwire.app/support"
+							rel="noreferrer"
+							target="_blank"
+							variant="link"
+						>
+							{ __( 'Support', 'gitwire' ) }
+							<Icon
+								icon={ external }
+								size={ 14 }
+								style={ { marginLeft: 4 } }
+							/>
+						</Button>
 						{ applyFilters( 'gitwire.header.actions', null ) }
 					</div>
 				</div>
