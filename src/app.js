@@ -10,8 +10,7 @@ import {
 	lazy,
 	Suspense,
 } from '@wordpress/element';
-import { Button, Icon, Spinner } from '@wordpress/components';
-import { external } from '@wordpress/icons';
+import { Button, Spinner } from '@wordpress/components';
 import { applyFilters, addAction, removeAction } from '@wordpress/hooks';
 
 import * as api from './api';
@@ -24,6 +23,7 @@ import {
 import SettingsPanel from './components/settings-panel';
 import AddRepositoryPanel from './components/add-repository-panel';
 import InstalledPanel from './components/installed-panel';
+import ExternalLinkIcon from './components/external-link-icon';
 
 const LogsPanel = lazy( () => import( './components/logs-panel' ) );
 const ToolsPanel = lazy( () => import( './components/tools-panel' ) );
@@ -372,11 +372,7 @@ export default function App( { initialData } ) {
 									variant="link"
 								>
 									{ __( 'Docs', 'gitwire' ) }
-									<Icon
-										icon={ external }
-										size={ 14 }
-										style={ { marginLeft: 4 } }
-									/>
+									<ExternalLinkIcon />
 								</Button>
 								<Button
 									href="https://gitwire.app/support"
@@ -385,11 +381,7 @@ export default function App( { initialData } ) {
 									variant="link"
 								>
 									{ __( 'Support', 'gitwire' ) }
-									<Icon
-										icon={ external }
-										size={ 14 }
-										style={ { marginLeft: 4 } }
-									/>
+									<ExternalLinkIcon />
 								</Button>
 							</>
 						) }
