@@ -364,26 +364,15 @@ export default function App( { initialData } ) {
 						} }
 					>
 						{ ! headerActions && (
-							<>
-								<Button
-									href="https://gitwire.app/docs"
-									rel="noreferrer"
-									target="_blank"
-									variant="link"
-								>
-									{ __( 'Docs', 'gitwire' ) }
-									<ExternalLinkIcon />
-								</Button>
-								<Button
-									href="https://gitwire.app/support"
-									rel="noreferrer"
-									target="_blank"
-									variant="link"
-								>
-									{ __( 'Support', 'gitwire' ) }
-									<ExternalLinkIcon />
-								</Button>
-							</>
+							<Button
+								href="https://gitwire.app/docs"
+								rel="noreferrer"
+								target="_blank"
+								variant="link"
+							>
+								{ __( 'Docs', 'gitwire' ) }
+								<ExternalLinkIcon />
+							</Button>
 						) }
 						{ headerActions }
 					</div>
