@@ -367,6 +367,7 @@ export default function App( { initialData } ) {
 							<Button
 								href="https://gitwire.app/docs"
 								rel="noreferrer"
+								style={ { textDecoration: 'none' } }
 								target="_blank"
 								variant="link"
 							>
