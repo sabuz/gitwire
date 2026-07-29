@@ -30,6 +30,7 @@ Thumbs.db export-ignore
 
 # Repository and development files - exclude from distribution
 .github export-ignore
+bin export-ignore
 docs export-ignore
 src export-ignore
 tests export-ignore

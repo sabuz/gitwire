@@ -51,7 +51,7 @@
 		"lint:scss": "wp-scripts lint-style src/style.scss",
 		"lint:scss:fix": "wp-scripts lint-style src/style.scss --fix",
 		"packages-update": "wp-scripts packages-update",
-		"plugin-zip": "npm run build && VERSION=$(node -p \"require('./package.json').version\") && mkdir -p ../../releases && git archive --format=zip --worktree-attributes HEAD -o ../../releases/gitwire-$VERSION.zip && zip -qr ../../releases/gitwire-$VERSION.zip build -x '*.map' '*.log'",
+		"plugin-zip": "bash bin/plugin-zip.sh",
 		"pre-pr-check": "npm run lint && npm run build",
 		"start": "wp-scripts start",
 		"test:e2e": "wp-scripts test-e2e",
