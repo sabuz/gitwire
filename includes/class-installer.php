@@ -232,7 +232,7 @@ class Installer {
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
-	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_plugin(
 		string $owner,
@@ -263,7 +263,7 @@ class Installer {
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
-	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_theme(
 		string $owner,
@@ -291,7 +291,7 @@ class Installer {
 	 * @param string      $full_name             Repository full name (owner/repo).
 	 * @param string      $new_branch            Branch to switch to.
 	 * @param string|null $override_connection_id Bypass stored connection and use this ID instead.
-	 * @return array<string, mixed>|WP_Error Updated record on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Updated record on success, WP_Error on failure.
 	 */
 	public static function switch_branch( string $provider, string $full_name, string $new_branch, ?string $override_connection_id = null ): array|\WP_Error {
 		$installed = self::get_installed();
@@ -358,7 +358,7 @@ class Installer {
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repo).
-	 * @return true|WP_Error True on success, WP_Error on failure.
+	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
 	public static function remove( string $provider, string $full_name ): bool|\WP_Error {
 		$rec = self::get_record( $provider, $full_name );
@@ -1117,7 +1117,7 @@ class Installer {
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
-	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Installed record on success, WP_Error on failure.
 	 */
 	private static function execute_run(
 		string $owner,
@@ -1485,7 +1485,7 @@ class Installer {
 	 * @since 1.0.0
 	 * @param string $zip_path    Local path to the ZIP file.
 	 * @param string $destination Absolute path for the extracted files.
-	 * @return true|WP_Error True on success, WP_Error on failure.
+	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
 	private static function extract_zip( string $zip_path, string $destination ): bool|\WP_Error {
 		global $wp_filesystem;
@@ -1681,10 +1681,6 @@ class Installer {
 			new \RecursiveDirectoryIterator( $install_path, \FilesystemIterator::SKIP_DOTS )
 		);
 
-		if ( ! $iterator ) {
-			return;
-		}
-
 		foreach ( $iterator as $file ) {
 			if ( ! $file->isFile() ) {
 				continue;
@@ -1726,10 +1722,6 @@ class Installer {
 		$iterator = @new \RecursiveIteratorIterator(
 			new \RecursiveDirectoryIterator( $install_path, \FilesystemIterator::SKIP_DOTS )
 		);
-
-		if ( ! $iterator ) {
-			return;
-		}
 
 		foreach ( $iterator as $file ) {
 			if ( ! $file->isFile() ) {

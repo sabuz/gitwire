@@ -48,3 +48,6 @@ jobs:
 
       - name: Run PHPCS
         run: composer phpcs
+
+      - name: Run PHPStan
+        run: composer phpstan

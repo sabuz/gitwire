@@ -1,0 +1,21 @@
+includes:
+	- vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+	level: 6
+	phpVersion: 80200
+	bootstrapFiles:
+		- phpstan-stubs.php
+	paths:
+		- includes
+		- tests
+		- autoload.php
+		- gitwire.php
+		- uninstall.php
+	excludePaths:
+		- vendor/*
+		# test bootstrap declares single-param get_option stub that conflicts with WP stubs
+		- tests/bootstrap.php
+	dynamicConstantNames:
+		- AUTH_COOKIE
+		- LOGGED_IN_COOKIE

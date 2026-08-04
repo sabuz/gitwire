@@ -174,7 +174,7 @@ class REST_Repositories {
 
 		// Fetch any connections not yet represented in the cache table.
 		foreach ( $uncached as $conn ) {
-			$provider = $conn['provider'] ?? '';
+			$provider = $conn['provider'];
 			$result   = Repositories::fetch_repositories( $provider, 1, $conn['id'] );
 			if ( is_wp_error( $result ) ) {
 				$connection_errors[] = [
@@ -295,7 +295,7 @@ class REST_Repositories {
 						'id'               => $r['uuid'] ?? $full_name,
 						'name'             => $r['slug'] ?? '',
 						'full_name'        => $full_name,
-						'owner'            => $parts[0] ?? '',
+						'owner'            => $parts[0],
 						'description'      => $r['description'] ?? '',
 						'private'          => (bool) ( $r['is_private'] ?? false ),
 						'html_url'         => $r['links']['html']['href'] ?? '',
@@ -734,7 +734,7 @@ class REST_Repositories {
 			}
 		}
 
-		foreach ( array_filter( $candidates ) as $candidate ) {
+		foreach ( $candidates as $candidate ) {
 			$candidate   = rtrim( $candidate, '/' );
 			$parsed_cand = wp_parse_url( $candidate );
 			$cand_host   = strtolower( $parsed_cand['host'] ?? '' );

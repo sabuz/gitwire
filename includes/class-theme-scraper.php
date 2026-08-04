@@ -203,7 +203,7 @@ class Theme_Scraper {
 	 * @return array<string, string>
 	 */
 	private static function get_loopback_cookies(): array {
-		$cookies = is_array( $_COOKIE ) ? wp_unslash( $_COOKIE ) : [];
+		$cookies = wp_unslash( $_COOKIE );
 
 		if ( ! is_user_logged_in() ) {
 			return $cookies;
@@ -228,7 +228,7 @@ class Theme_Scraper {
 		}
 
 		if ( defined( 'SECURE_LOGGED_IN_COOKIE' ) ) {
-			$cookies[ SECURE_LOGGED_IN_COOKIE ] = wp_generate_auth_cookie( $user_id, $expiration, 'secure_logged_in' );
+			$cookies[ SECURE_LOGGED_IN_COOKIE ] = wp_generate_auth_cookie( $user_id, $expiration, 'logged_in' );
 		}
 
 		return $cookies;
@@ -315,7 +315,7 @@ class Theme_Scraper {
 	 *
 	 * @since 1.0.0
 	 * @param string $url Original absolute URL.
-	 * @return array<int, string>
+	 * @return array<int, string|array{url: string, headers: array<string, string>}>
 	 */
 	private static function get_loopback_url_candidates( string $url ): array {
 		$candidates = [ $url ];

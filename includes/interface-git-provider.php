@@ -49,7 +49,7 @@ interface Git_Provider_Interface {
 	 * @param string     $owner         Repository owner.
 	 * @param string     $repo          Repository name.
 	 * @param string     $branch        Branch ref.
-	 * @param array|null $cached_result Pre-fetched file listing to skip the API call.
+	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error;

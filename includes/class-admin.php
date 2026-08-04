@@ -53,7 +53,7 @@ class Admin {
 	 */
 	public static function hide_admin_notices(): void {
 		$screen = get_current_screen();
-		if ( ! $screen || ! is_string( $screen->id ) ) {
+		if ( ! $screen ) {
 			return;
 		}
 

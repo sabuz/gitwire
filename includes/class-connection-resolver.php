@@ -93,7 +93,7 @@ class Connection_Resolver {
 			$rows
 		);
 
-		return (array) apply_filters( 'gitwire_connections', array_values( $safe ), get_current_user_id() );
+		return (array) apply_filters( 'gitwire_connections', $safe, get_current_user_id() );
 	}
 
 	/**

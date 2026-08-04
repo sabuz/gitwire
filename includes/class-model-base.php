@@ -18,6 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Concrete models expose public domain methods (find, all, delete_by_id, etc.)
  * that delegate to these protected base methods. NULL values in $where arrays
  * are not supported — use custom SQL in the concrete model for IS NULL conditions.
+ *
+ * @phpstan-consistent-constructor
  */
 abstract class Model_Base {
 
@@ -35,7 +37,7 @@ abstract class Model_Base {
 		if ( ! isset( self::$instances[ $class ] ) ) {
 			self::$instances[ $class ] = new static();
 		}
-		return self::$instances[ $class ]; // @phpstan-ignore return.type
+		return self::$instances[ $class ];
 	}
 
 	/**

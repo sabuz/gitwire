@@ -66,7 +66,8 @@ class Database_Manager {
 	 * @return void
 	 */
 	public function migrate(): void {
-		$from = (string) get_option( self::DB_VERSION_OPTION, '' );
+		$raw  = get_option( self::DB_VERSION_OPTION );
+		$from = is_string( $raw ) ? $raw : '';
 		Connection_Migration::instance()->migrate( $from );
 		Installation_Migration::instance()->migrate( $from );
 		Repository_Migration::instance()->migrate( $from );
@@ -81,7 +82,8 @@ class Database_Manager {
 	 * @return bool
 	 */
 	public function needs_migrate(): bool {
-		return version_compare( (string) get_option( self::DB_VERSION_OPTION, '' ), GITWIRE_VERSION, '<' );
+		$raw = get_option( self::DB_VERSION_OPTION );
+		return version_compare( is_string( $raw ) ? $raw : '', GITWIRE_VERSION, '<' );
 	}
 
 	/**
@@ -91,8 +93,8 @@ class Database_Manager {
 	 * payloads — the WP core upgrader uses different keys depending on context.
 	 *
 	 * @since 1.0.0
-	 * @param mixed $upgrader  WP_Upgrader instance (unused).
-	 * @param array $hook_extra Upgrader context data.
+	 * @param mixed              $upgrader  WP_Upgrader instance (unused).
+	 * @param array<string, mixed> $hook_extra Upgrader context data.
 	 * @return void
 	 */
 	public function maybe_migrate( $upgrader, array $hook_extra ): void {

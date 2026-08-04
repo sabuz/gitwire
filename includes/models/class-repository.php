@@ -63,7 +63,7 @@ class Repository extends Model_Base {
 	public function get_paginated( array $filters ): ?array {
 		global $wpdb;
 
-		$connection_ids = (array) ( $filters['connection_ids'] ?? [] );
+		$connection_ids = $filters['connection_ids'];
 		$offset         = (int) ( $filters['offset'] ?? 0 );
 		$search         = (string) ( $filters['search'] ?? '' );
 		$per_page       = max( 1, (int) ( $filters['per_page'] ?? 50 ) );
@@ -315,7 +315,7 @@ class Repository extends Model_Base {
 					VALUES ('', %s, %s, %s, %s, '', %s, %s, %s)
 					ON DUPLICATE KEY UPDATE type = VALUES(type), type_meta = VALUES(type_meta)",
 					$provider,
-					$parts[0] ?? '',
+					$parts[0],
 					$parts[1] ?? '',
 					$full_name,
 					$type,

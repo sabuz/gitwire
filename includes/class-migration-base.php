@@ -14,6 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Abstract base class providing schema helpers for table migrations.
+ *
+ * @phpstan-consistent-constructor
  */
 abstract class Migration_Base {
 
@@ -35,7 +37,7 @@ abstract class Migration_Base {
 		if ( ! isset( self::$instances[ $class ] ) ) {
 			self::$instances[ $class ] = new static();
 		}
-		return self::$instances[ $class ]; // @phpstan-ignore return.type
+		return self::$instances[ $class ];
 	}
 
 	/**

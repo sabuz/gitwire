@@ -23,7 +23,7 @@ class REST_Installer {
 	/**
 	 * Request-scoped cache for the gitwire_running_task option.
 	 *
-	 * @var array<string, mixed>|false|null null = not yet loaded, false = loaded + absent.
+	 * @var array<string, mixed>|null null = not yet loaded, absent option stored as null.
 	 */
 	private static mixed $pending_cache = null;
 
@@ -38,18 +38,6 @@ class REST_Installer {
 			self::$pending_cache = get_option( 'gitwire_running_task' );
 		}
 		return self::$pending_cache;
-	}
-
-	/**
-	 * Clears the pending update cache and persists the new value.
-	 *
-	 * @since 1.0.0
-	 * @param array<string, mixed> $pending New pending update value.
-	 * @return void
-	 */
-	private static function set_running_task( array $pending ): void {
-		self::$pending_cache = $pending;
-		update_option( 'gitwire_running_task', $pending, false );
 	}
 
 	/**
@@ -111,9 +99,6 @@ class REST_Installer {
 		}
 
 		foreach ( $commits as $i => $commit ) {
-			if ( ! is_array( $commit ) ) {
-				continue;
-			}
 			if ( ( $commit['sha'] ?? '' ) === $known ) {
 				$commits[ $i ]['has_fatal_error'] = true;
 			}
@@ -620,7 +605,7 @@ class REST_Installer {
 					&& $rec['update_available']
 				) {
 					$known = Installer::get_known_fatal_remote_head(
-						$rec['provider'] ?? 'github',
+						$rec['provider'],
 						$rec['full_name'] ?? '',
 						$rec['branch'] ?? ''
 					);
@@ -633,29 +618,6 @@ class REST_Installer {
 		unset( $rec );
 
 		return $records;
-	}
-
-	/**
-	 * Fetches the latest remote commit SHA for an installed record.
-	 *
-	 * @since 1.0.0
-	 * @param array<string, mixed> $rec Installed record.
-	 * @return string|null Remote HEAD SHA or null on failure.
-	 */
-	private static function fetch_remote_head( array $rec ): ?string {
-		if ( empty( $rec['owner'] ) || empty( $rec['repo'] ) || empty( $rec['branch'] ) ) {
-			return null;
-		}
-
-		$provider = $rec['provider'] ?? 'github';
-		$api      = self::make_api( $provider, $rec['connection_id'] ?? null );
-		$commits  = $api->get_commits( $rec['owner'], $rec['repo'], $rec['branch'], 1 );
-
-		if ( is_wp_error( $commits ) || empty( $commits[0]['sha'] ) ) {
-			return null;
-		}
-
-		return $commits[0]['sha'];
 	}
 
 	/**

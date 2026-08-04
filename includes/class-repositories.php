@@ -253,15 +253,15 @@ class Repositories {
 	 * Scheduled cron callback: refreshes repo lists then re-detects types.
 	 *
 	 * @since 1.0.0
-	 * @return true|\WP_Error
+	 * @return void
 	 */
-	public static function scheduled_refresh(): true|\WP_Error {
+	public static function scheduled_refresh(): void {
 		$result = self::refresh_repositories();
 		if ( is_wp_error( $result ) ) {
-			return $result;
+			return;
 		}
 
-		return self::cron_refresh_repository_types();
+		self::cron_refresh_repository_types();
 	}
 
 	/**
