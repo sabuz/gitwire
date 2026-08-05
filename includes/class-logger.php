@@ -46,10 +46,13 @@ class Logger {
 
 	/**
 	 * Resolves the log file path and ensures the directory exists.
+	 *
+	 * Stored in wp-content/gitwire-logs/ (outside uploads) so it is not
+	 * affected by media URL routing. .htaccess protects Apache; Nginx sites
+	 * should add "location ~* /gitwire-logs { deny all; }" — see readme.txt.
 	 */
 	private function __construct() {
-		$upload_dir     = wp_upload_dir();
-		$dir            = $upload_dir['basedir'] . '/gitwire';
+		$dir            = WP_CONTENT_DIR . '/gitwire-logs';
 		$hash           = substr( hash( 'sha256', wp_salt( 'auth' ) . 'gitwire-log' ), 0, 12 );
 		$this->log_file = $dir . '/' . $hash . '.log';
 		$this->ensure_dir( $dir );

@@ -78,6 +78,14 @@ WordPress 6.9 or later. PHP 8.1 or later is also required.
 
 Yes. Enter your self-hosted GitLab instance URL in the Settings tab alongside your token.
 
+= Does Gitwire's activity log need any extra server configuration? =
+
+On Apache the log directory is protected automatically by a generated `.htaccess` file. On Nginx, `.htaccess` has no effect. Add the following block to your Nginx site config to deny direct access:
+
+`location ~* /wp-content/gitwire-logs { deny all; }`
+
+Without this rule, anyone who guesses or discovers the log filename can read it in plain text. The filename is randomised per site, but randomisation alone is not a substitute for server-level access control.
+
 == Screenshots ==
 
 1. Browse panel — repositories listed from your connected accounts.
