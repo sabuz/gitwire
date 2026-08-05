@@ -336,10 +336,10 @@ class REST_Installer {
 	 * @return array<string, mixed>|\WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install( \WP_REST_Request $req ): array|\WP_Error {
-		$owner      = sanitize_text_field( $req->get_param( 'owner' ) ?? '' );
-		$repo       = sanitize_text_field( $req->get_param( 'repo' ) ?? '' );
+		$owner      = (string) $req->get_param( 'owner' );
+		$repo       = (string) $req->get_param( 'repo' );
 		$branch     = sanitize_text_field( $req->get_param( 'branch' ) ?? 'main' );
-		$type       = sanitize_key( $req->get_param( 'type' ) ?? 'plugin' );
+		$type       = (string) $req->get_param( 'type' );
 		$slug       = sanitize_file_name( $req->get_param( 'slug' ) ?? '' );
 		$replace    = (bool) $req->get_param( 'replace' );
 		$force_type = (bool) $req->get_param( 'force_type' );
@@ -365,10 +365,7 @@ class REST_Installer {
 		}
 
 		if ( $smart_install && ! $force_type ) {
-			$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-			if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
-				$provider = 'github';
-			}
+			$provider = (string) $req->get_param( 'provider' );
 
 			$api      = self::make_api( $provider, $connection_id );
 			$detected = $api->detect_type( $owner, $repo, $branch );
@@ -409,10 +406,7 @@ class REST_Installer {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
-		$provider = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
-		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
-			$provider = 'github';
-		}
+		$provider = (string) $req->get_param( 'provider' );
 
 		$method    = in_array( $type, [ 'theme', 'block-theme', 'classic-theme' ], true ) ? 'install_theme' : 'install_plugin';
 		$is_update = null !== Installer::get_record( $provider, $owner . '/' . $repo );
@@ -445,7 +439,7 @@ class REST_Installer {
 	 * @return array<string, bool> Whether the slug conflicts with an existing directory.
 	 */
 	public static function check_slug( \WP_REST_Request $req ): array {
-		$slug = sanitize_file_name( $req->get_param( 'slug' ) );
+		$slug = (string) $req->get_param( 'slug' );
 		$type = $req->get_param( 'type' ) ?? 'plugin';
 
 		$path = in_array( $type, [ 'theme', 'block-theme', 'classic-theme' ], true )
@@ -630,7 +624,7 @@ class REST_Installer {
 	public static function activate_installed( \WP_REST_Request $req ): array|\WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$provider  = (string) $req->get_param( 'provider' );
 		$full_name = $owner . '/' . $repo;
 		$record    = Installer::get_record( $provider, $full_name );
 
@@ -681,7 +675,7 @@ class REST_Installer {
 	public static function deactivate_installed( \WP_REST_Request $req ): array|\WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$provider  = (string) $req->get_param( 'provider' );
 		$full_name = $owner . '/' . $repo;
 		$record    = Installer::get_record( $provider, $full_name );
 		$result    = Installer::deactivate( $provider, $full_name );
@@ -715,7 +709,7 @@ class REST_Installer {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
-		$provider    = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$provider    = (string) $req->get_param( 'provider' );
 		$full_name   = $owner . '/' . $repo;
 		$override_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 		$override_id = '' !== $override_id ? $override_id : null;
@@ -760,7 +754,7 @@ class REST_Installer {
 	public static function remove_installed( \WP_REST_Request $req ): array|\WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$provider  = (string) $req->get_param( 'provider' );
 		$full_name = $owner . '/' . $repo;
 		$record    = Installer::get_record( $provider, $full_name );
 
@@ -821,7 +815,7 @@ class REST_Installer {
 	public static function untrack_installed( \WP_REST_Request $req ): array|\WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$provider  = (string) $req->get_param( 'provider' );
 		$full_name = $owner . '/' . $repo;
 
 		$result = Installer::untrack( $provider, $full_name );
@@ -843,7 +837,7 @@ class REST_Installer {
 	public static function save_auto_update( \WP_REST_Request $req ): array|\WP_Error {
 		$owner       = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo        = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider    = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$provider    = (string) $req->get_param( 'provider' );
 		$auto_update = (string) $req->get_param( 'auto_update' );
 		$full_name   = $owner . '/' . $repo;
 
@@ -871,7 +865,7 @@ class REST_Installer {
 	public static function get_commits( \WP_REST_Request $req ): array|\WP_Error {
 		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
 		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
+		$provider  = (string) $req->get_param( 'provider' );
 		$full_name = $owner . '/' . $repo;
 
 		$record = Installer::get_record( $provider, $full_name );
