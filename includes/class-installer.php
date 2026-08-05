@@ -1939,7 +1939,7 @@ class Installer {
 	/**
 	 * Returns the base directory for temporary backup storage, outside the webroot.
 	 *
-	 * sys_get_temp_dir() is outside the document root on virtually all hosts,
+	 * The sys_get_temp_dir() path is outside the document root on virtually all hosts,
 	 * so PHP files inside backups cannot be executed via HTTP.
 	 *
 	 * @since 1.0.0
@@ -2006,11 +2006,9 @@ class Installer {
 				if ( ! self::copy_recursive( $s, $d ) ) {
 					return false;
 				}
-			} else {
-				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_copy
-				if ( ! @copy( $s, $d ) ) {
-					return false;
-				}
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_copy
+			} elseif ( ! @copy( $s, $d ) ) {
+				return false;
 			}
 		}
 		return true;
