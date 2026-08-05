@@ -24,11 +24,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 abstract class Model_Base {
 
 	/**
+	 * Singleton instances keyed by class name.
+	 *
 	 * @var array<string, static>
 	 */
 	private static array $instances = [];
 
 	/**
+	 * Returns the singleton instance for the concrete class.
+	 *
 	 * @since 1.0.0
 	 * @return static
 	 */
@@ -96,11 +100,8 @@ abstract class Model_Base {
 		}
 		$table      = $this->table_name();
 		$conditions = implode( ' AND ', array_map( fn( $col ) => "`{$col}` = %s", array_keys( $where ) ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsNumber
-		return $wpdb->get_row(
-			$wpdb->prepare( "SELECT * FROM `{$table}` WHERE {$conditions} LIMIT 1", array_values( $where ) ),
-			ARRAY_A
-		) ?? null;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `{$table}` WHERE {$conditions} LIMIT 1", array_values( $where ) ), ARRAY_A ) ?? null;
 	}
 
 	/**
@@ -119,11 +120,8 @@ abstract class Model_Base {
 			return $wpdb->get_results( "SELECT * FROM `{$table}`", ARRAY_A ) ?? [];
 		}
 		$conditions = implode( ' AND ', array_map( fn( $col ) => "`{$col}` = %s", array_keys( $where ) ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsNumber
-		return $wpdb->get_results(
-			$wpdb->prepare( "SELECT * FROM `{$table}` WHERE {$conditions}", array_values( $where ) ),
-			ARRAY_A
-		) ?? [];
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM `{$table}` WHERE {$conditions}", array_values( $where ) ), ARRAY_A ) ?? [];
 	}
 
 	/**
@@ -196,12 +194,7 @@ abstract class Model_Base {
 		$columns      = implode( ', ', array_map( fn( $col ) => "`{$col}`", array_keys( $data ) ) );
 		$placeholders = implode( ', ', array_fill( 0, count( $data ), '%s' ) );
 		$updates      = implode( ', ', array_map( fn( $col ) => "`{$col}` = VALUES(`{$col}`)", array_keys( $data ) ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsNumber
-		return false !== $wpdb->query(
-			$wpdb->prepare(
-				"INSERT INTO `{$table}` ({$columns}) VALUES ({$placeholders}) ON DUPLICATE KEY UPDATE {$updates}",
-				array_values( $data )
-			)
-		);
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		return false !== $wpdb->query( $wpdb->prepare( "INSERT INTO `{$table}` ({$columns}) VALUES ({$placeholders}) ON DUPLICATE KEY UPDATE {$updates}", array_values( $data ) ) );
 	}
 }

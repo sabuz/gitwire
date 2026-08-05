@@ -46,10 +46,22 @@ class Connection extends Model_Base {
 		'updated_at',
 	];
 
+	/**
+	 * Returns the bare table name.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
 	protected function table(): string {
 		return 'gitwire_connections';
 	}
 
+	/**
+	 * Returns the allowed column names.
+	 *
+	 * @since 1.0.0
+	 * @return string[]
+	 */
 	protected function columns(): array {
 		return [
 			'id',
@@ -117,10 +129,7 @@ class Connection extends Model_Base {
 		global $wpdb;
 		$table = $this->table_name();
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_row(
-			$wpdb->prepare( "SELECT * FROM `{$table}` WHERE provider = %s ORDER BY created_at ASC LIMIT 1", $provider ),
-			ARRAY_A
-		) ?? null;
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `{$table}` WHERE provider = %s ORDER BY created_at ASC LIMIT 1", $provider ), ARRAY_A ) ?? null;
 	}
 
 	/**
