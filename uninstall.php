@@ -14,6 +14,14 @@ if ( empty( $settings['remove_data_on_uninstall'] ) ) {
 	return;
 }
 
+// Refuse to drop shared tables if Gitwire Pro is still installed — doing so
+// would destroy all encrypted credentials stored in gitwire_connections.
+if ( is_plugin_active( 'gitwire-pro/gitwire-pro.php' ) || is_dir( WP_PLUGIN_DIR . '/gitwire-pro' ) ) {
+	wp_die(
+		esc_html__( 'Gitwire Pro must be deactivated and deleted before uninstalling Gitwire. Deleting Gitwire first would permanently destroy all stored Pro connection credentials.', 'gitwire' )
+	);
+}
+
 require_once plugin_dir_path( __FILE__ ) . 'autoload.php';
 
 $options = [
