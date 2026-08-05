@@ -46,9 +46,9 @@ interface Git_Provider_Interface {
 	/**
 	 * Detects whether a repository is a plugin or theme.
 	 *
-	 * @param string     $owner         Repository owner.
-	 * @param string     $repo          Repository name.
-	 * @param string     $branch        Branch ref.
+	 * @param string            $owner         Repository owner.
+	 * @param string            $repo          Repository name.
+	 * @param string            $branch        Branch ref.
 	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error
 	 */
