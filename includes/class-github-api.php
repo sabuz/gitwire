@@ -131,9 +131,9 @@ class GitHub_API implements Git_Provider_Interface {
 	 * Returns: { type, subtype, confidence, name }
 	 *
 	 * @since 1.0.0
-	 * @param string     $owner         GitHub repository owner.
-	 * @param string     $repo          Repository name.
-	 * @param string     $branch        Branch, tag, or SHA to inspect.
+	 * @param string            $owner         GitHub repository owner.
+	 * @param string            $repo          Repository name.
+	 * @param string            $branch        Branch, tag, or SHA to inspect.
 	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
