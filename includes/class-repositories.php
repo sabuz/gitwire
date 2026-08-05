@@ -203,7 +203,7 @@ class Repositories {
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when any source fails.
 	 */
-	private static function refresh_repositories(): true|\WP_Error {
+	private static function refresh_repositories(): bool|\WP_Error {
 		$last_err    = null;
 		$max_setting = Settings::get_public()['max_repos_per_source'] ?? 'unlimited';
 		$max         = 'unlimited' === $max_setting ? PHP_INT_MAX : (int) $max_setting;
@@ -270,7 +270,7 @@ class Repositories {
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
 	 */
-	public static function cron_refresh_repository_types(): true|\WP_Error {
+	public static function cron_refresh_repository_types(): bool|\WP_Error {
 		$keys           = [];
 		$connection_ids = [];
 		$records        = Installer::get_installed();
@@ -382,7 +382,7 @@ class Repositories {
 	 * @since 1.0.0
 	 * @return true|\WP_Error
 	 */
-	public static function force_refresh(): true|\WP_Error {
+	public static function force_refresh(): bool|\WP_Error {
 		$result = self::refresh_repositories();
 		if ( is_wp_error( $result ) ) {
 			return $result;
