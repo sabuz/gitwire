@@ -59,7 +59,7 @@ class Installation extends Migration_Base {
 			) {$charset};"
 		);
 
-		// rename plugin_file → basename on pre-1.0 installs (dbDelta cannot rename columns)
+		// rename plugin_file → basename on pre-1.0 installs (dbDelta cannot rename columns).
 		if ( $this->column_exists( self::TABLE, 'plugin_file' ) && ! $this->column_exists( self::TABLE, 'basename' ) ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$wpdb->query( "ALTER TABLE `{$table}` CHANGE `plugin_file` `basename` VARCHAR(512) DEFAULT NULL" );
@@ -67,10 +67,10 @@ class Installation extends Migration_Base {
 
 		// dbDelta cannot reliably manage key renames; handle the unique constraint explicitly.
 		if ( $this->index_exists( self::TABLE, 'repo' ) ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$wpdb->query( "ALTER TABLE `{$table}` DROP KEY `repo`" );
 		}
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "ALTER TABLE `{$table}` ADD UNIQUE KEY `repo` (`provider`, `full_name`)" );
 	}
 
@@ -83,7 +83,7 @@ class Installation extends Migration_Base {
 	public function drop_tables(): void {
 		global $wpdb;
 		$table = $this->get_table_name( self::TABLE );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
 	}
 }

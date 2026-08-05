@@ -93,7 +93,7 @@ class Database_Manager {
 	 * payloads — the WP core upgrader uses different keys depending on context.
 	 *
 	 * @since 1.0.0
-	 * @param mixed              $upgrader  WP_Upgrader instance (unused).
+	 * @param mixed                $upgrader  WP_Upgrader instance (unused).
 	 * @param array<string, mixed> $hook_extra Upgrader context data.
 	 * @return void
 	 */
