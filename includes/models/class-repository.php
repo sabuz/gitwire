@@ -174,7 +174,7 @@ class Repository extends Model_Base {
 
 		global $wpdb;
 		$table = $this->table_name();
-		$now   = current_time( 'mysql' );
+		$now   = current_datetime()->format( 'Y-m-d H:i:s' );
 
 		foreach ( $repos as $repo ) {
 			$full_name     = $repo['full_name'] ?? '';
@@ -306,7 +306,7 @@ class Repository extends Model_Base {
 					$full_name,
 					$type,
 					$meta_json,
-					current_time( 'mysql' )
+					current_datetime()->format( 'Y-m-d H:i:s' )
 				)
 			);
 			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared

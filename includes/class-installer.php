@@ -108,7 +108,7 @@ class Installer {
 				$record,
 				[
 					'basename'   => $record['basename'] ?? $record['plugin_file'] ?? '',
-					'updated_at' => current_time( 'mysql' ),
+					'updated_at' => current_datetime()->format( 'Y-m-d H:i:s' ),
 				]
 			)
 		);
@@ -1014,7 +1014,7 @@ class Installer {
 				$record,
 				[
 					'basename'   => $record['basename'] ?? $record['plugin_file'] ?? '',
-					'updated_at' => current_time( 'mysql' ),
+					'updated_at' => current_datetime()->format( 'Y-m-d H:i:s' ),
 				]
 			)
 		);
@@ -1300,7 +1300,7 @@ class Installer {
 			'install_path'  => $install_path,
 			'html_url'      => $html_url,
 			'basename'      => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
-			'updated_at'    => current_time( 'mysql' ),
+			'updated_at'    => current_datetime()->format( 'Y-m-d H:i:s' ),
 			'slug_renamed'  => $slug_renamed,
 		];
 
