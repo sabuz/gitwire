@@ -19,10 +19,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Commit extends Model_Base {
 
+	/**
+	 * Returns the bare table name.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
 	protected function table(): string {
 		return 'gitwire_commits';
 	}
 
+	/**
+	 * Returns the allowed column names.
+	 *
+	 * @since 1.0.0
+	 * @return string[]
+	 */
 	protected function columns(): array {
 		return [ 'installation_id', 'branch', 'data', 'updated_at' ];
 	}
@@ -56,7 +68,7 @@ class Commit extends Model_Base {
 	public function upsert( int $installation_id, string $branch, array $commits ): bool {
 		global $wpdb;
 		$table = $this->table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return false !== $wpdb->query(
 			$wpdb->prepare(
 				"INSERT INTO `{$table}` (installation_id, branch, data, updated_at)
@@ -68,6 +80,7 @@ class Commit extends Model_Base {
 				current_time( 'mysql' )
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
 	/**

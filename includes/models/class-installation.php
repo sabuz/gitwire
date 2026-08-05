@@ -26,10 +26,22 @@ class Installation extends Model_Base {
 	 */
 	private static ?array $all_cache = null;
 
+	/**
+	 * Returns the bare table name.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
 	protected function table(): string {
 		return 'gitwire_installations';
 	}
 
+	/**
+	 * Returns the allowed column names.
+	 *
+	 * @since 1.0.0
+	 * @return string[]
+	 */
 	protected function columns(): array {
 		return [
 			'connection_id',
@@ -84,10 +96,7 @@ class Installation extends Model_Base {
 		global $wpdb;
 		$table = $this->table_name();
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_row(
-			$wpdb->prepare( "SELECT * FROM `{$table}` WHERE install_path = %s LIMIT 1", $install_path ),
-			ARRAY_A
-		) ?? null;
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `{$table}` WHERE install_path = %s LIMIT 1", $install_path ), ARRAY_A ) ?? null;
 	}
 
 	/**
@@ -128,7 +137,7 @@ class Installation extends Model_Base {
 		}
 		$cols         = implode( ', ', array_map( fn( $c ) => "`{$c}`", array_keys( $data ) ) );
 		$placeholders = implode( ', ', array_fill( 0, count( $data ), '%s' ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsNumber
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		return false !== $wpdb->query(
 			$wpdb->prepare(
 				"INSERT INTO `{$table}` ({$cols}) VALUES ({$placeholders})
@@ -145,6 +154,7 @@ class Installation extends Model_Base {
 				array_values( $data )
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 	}
 
 	/**
@@ -245,16 +255,8 @@ class Installation extends Model_Base {
 	public function find_others_by_path( string $install_path, string $provider, string $full_name ): array {
 		global $wpdb;
 		$table = $this->table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsNumber
-		return $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM `{$table}` WHERE install_path = %s AND NOT (provider = %s AND full_name = %s)",
-				$install_path,
-				$provider,
-				$full_name
-			),
-			ARRAY_A
-		) ?? [];
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM `{$table}` WHERE install_path = %s AND NOT (provider = %s AND full_name = %s)", $install_path, $provider, $full_name ), ARRAY_A ) ?? [];
 	}
 
 	/**
