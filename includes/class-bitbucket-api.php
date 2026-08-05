@@ -323,9 +323,10 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * @return string|\WP_Error File content on success, WP_Error on failure.
 	 */
 	private function get_raw_content( string $owner, string $repo, string $path, string $branch ): string|\WP_Error {
-		$response = wp_remote_get(
+		$encoded_path = implode( '/', array_map( 'rawurlencode', explode( '/', ltrim( $path, '/' ) ) ) );
+		$response     = wp_remote_get(
 			$this->base . '/repositories/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
-			. '/src/' . rawurlencode( $branch ) . '/' . ltrim( $path, '/' ),
+			. '/src/' . rawurlencode( $branch ) . '/' . $encoded_path,
 			[
 				'headers' => $this->headers(),
 				'timeout' => 15,
