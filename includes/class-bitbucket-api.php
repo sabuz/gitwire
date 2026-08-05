@@ -198,9 +198,9 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * Detects whether a repository is a WordPress plugin or theme.
 	 *
 	 * @since 1.0.0
-	 * @param string     $owner         Repository workspace slug.
-	 * @param string     $repo          Repository slug.
-	 * @param string     $branch        Branch ref.
+	 * @param string            $owner         Repository workspace slug.
+	 * @param string            $repo          Repository slug.
+	 * @param string            $branch        Branch ref.
 	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */

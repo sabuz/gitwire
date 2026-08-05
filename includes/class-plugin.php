@@ -58,7 +58,7 @@ final class Plugin {
 		Database_Manager::instance();
 
 		add_action( 'init', [ $this, 'load_textdomain' ], 0 );
-		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] );
+		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] ); // phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
 		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
 		add_action( 'gitwire_refresh_repositories', [ Repositories::class, 'scheduled_refresh' ] );
@@ -92,7 +92,6 @@ final class Plugin {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function register_cron_schedules( array $schedules ): array {
-		// phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 		$schedules['everyfiveminutes'] = [
 			'interval' => 5 * MINUTE_IN_SECONDS,
 			'display'  => __( 'Every 5 minutes', 'gitwire' ),
