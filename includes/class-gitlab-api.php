@@ -400,7 +400,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 * @since 1.0.0
 	 * @return true|\WP_Error
 	 */
-	private function assert_base_url_safe(): true|\WP_Error {
+	private function assert_base_url_safe(): bool|\WP_Error {
 		if ( ! Settings::is_allowed_gitlab_url( $this->base ) ) {
 			return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolved to a disallowed address.' );
 		}
