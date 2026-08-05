@@ -250,7 +250,7 @@ class Theme_Scraper {
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$user = str_replace( [ "\r", "\n", "\0" ], '', wp_unslash( $_SERVER['PHP_AUTH_USER'] ) );
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-			$pass                     = str_replace( [ "\r", "\n", "\0" ], '', wp_unslash( $_SERVER['PHP_AUTH_PW'] ) );
+			$pass = str_replace( [ "\r", "\n", "\0" ], '', wp_unslash( $_SERVER['PHP_AUTH_PW'] ) );
 			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 			$headers['Authorization'] = 'Basic ' . base64_encode( $user . ':' . $pass );
 		}
