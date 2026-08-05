@@ -63,6 +63,13 @@ class Connection_Resolver {
 			);
 		}
 
+		/**
+		 * Filters the complete list of connections, including Pro private rows and public rows.
+		 *
+		 * @since 1.0.0
+		 * @param array<int, array<string, mixed>> $rows All connection records from the database.
+		 * @return array<int, array<string, mixed>>
+		 */
 		return (array) apply_filters( 'gitwire_connections_all', $rows );
 	}
 
@@ -93,6 +100,14 @@ class Connection_Resolver {
 			$rows
 		);
 
+		/**
+		 * Filters the public-safe, scope-filtered connection list for the current user.
+		 *
+		 * @since 1.0.0
+		 * @param array<int, array<string, mixed>> $safe    Connections with credentials stripped, visible to the current user.
+		 * @param int                              $user_id Current WordPress user ID.
+		 * @return array<int, array<string, mixed>>
+		 */
 		return (array) apply_filters( 'gitwire_connections', $safe, get_current_user_id() );
 	}
 
@@ -104,6 +119,14 @@ class Connection_Resolver {
 	 * @return array<string, mixed>|null
 	 */
 	public static function find( string $id ): ?array {
+		/**
+		 * Filters the connection record returned for a specific connection ID.
+		 *
+		 * @since 1.0.0
+		 * @param array<string, mixed>|null $conn Connection record, or null when not found.
+		 * @param string                    $id   Connection ID.
+		 * @return array<string, mixed>|null
+		 */
 		$conn = apply_filters( 'gitwire_find_connection', Connection::instance()->find( $id ), $id );
 		return is_array( $conn ) ? $conn : null;
 	}
@@ -116,6 +139,14 @@ class Connection_Resolver {
 	 * @return array<string, mixed>|null
 	 */
 	public static function get_first_for_provider( string $provider ): ?array {
+		/**
+		 * Filters the first connection record found for a provider.
+		 *
+		 * @since 1.0.0
+		 * @param array<string, mixed>|null $conn     Connection record, or null when none exists.
+		 * @param string                    $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
+		 * @return array<string, mixed>|null
+		 */
 		$conn = apply_filters( 'gitwire_connection_for_provider', Connection::instance()->find_by_provider( $provider ), $provider );
 		return is_array( $conn ) ? $conn : null;
 	}
@@ -136,6 +167,19 @@ class Connection_Resolver {
 			return Public_Connections::to_credentials( $pub );
 		}
 
+		/**
+		 * Filters the credentials for a connection by ID.
+		 *
+		 * The primary extension point for supplying credentials from external
+		 * storage (e.g. Gitwire Pro's encrypted database). Return an array with
+		 * the provider-specific keys (e.g. 'token' for GitHub/GitLab, 'email'
+		 * and 'api_token' for Bitbucket) or null to fall through.
+		 *
+		 * @since 1.0.0
+		 * @param array<string, mixed>|null $creds Credentials, or null when not found.
+		 * @param string                    $id    Connection ID.
+		 * @return array<string, mixed>|null
+		 */
 		$creds = apply_filters( 'gitwire_get_credentials', null, $id );
 		return is_array( $creds ) ? $creds : null;
 	}
@@ -153,6 +197,14 @@ class Connection_Resolver {
 			return Public_Connections::to_credentials( $pub );
 		}
 
+		/**
+		 * Filters the credentials for the default connection of a provider.
+		 *
+		 * @since 1.0.0
+		 * @param array<string, mixed>|null $creds    Credentials, or null when none are configured.
+		 * @param string                    $provider Provider key: 'github', 'gitlab', or 'bitbucket'.
+		 * @return array<string, mixed>|null
+		 */
 		$creds = apply_filters( 'gitwire_provider_credentials', null, $provider );
 		return is_array( $creds ) ? $creds : null;
 	}

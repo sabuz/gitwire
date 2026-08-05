@@ -331,6 +331,16 @@ class Repositories {
 			return $last_err ?? true;
 		}
 
+		/**
+		 * Filters the number of repositories to type-detect per cron cycle.
+		 *
+		 * Lower this on resource-constrained servers; raise it to speed up initial
+		 * detection on large installs (at the cost of longer cron execution).
+		 *
+		 * @since 1.0.0
+		 * @param int $batch_size Repositories per cycle. Default 25.
+		 * @return int
+		 */
 		$batch_size  = (int) apply_filters( 'gitwire_detection_batch_size', 25 );
 		$cursor      = (int) get_option( 'gitwire_detection_cursor', 0 );
 		$batch_start = time();
