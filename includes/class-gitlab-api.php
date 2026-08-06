@@ -214,9 +214,9 @@ class GitLab_API implements Git_Provider_Interface {
 	 * Uses the same detection heuristics as the GitHub API class.
 	 *
 	 * @since 1.0.0
-	 * @param string     $owner         GitLab namespace (group or username).
-	 * @param string     $repo          Project path.
-	 * @param string     $branch        Branch, tag, or SHA to inspect.
+	 * @param string            $owner         GitLab namespace (group or username).
+	 * @param string            $repo          Project path.
+	 * @param string            $branch        Branch, tag, or SHA to inspect.
 	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
@@ -400,7 +400,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 * @since 1.0.0
 	 * @return true|\WP_Error
 	 */
-	private function assert_base_url_safe(): true|\WP_Error {
+	private function assert_base_url_safe(): bool|\WP_Error {
 		if ( ! Settings::is_allowed_gitlab_url( $this->base ) ) {
 			return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolved to a disallowed address.' );
 		}
