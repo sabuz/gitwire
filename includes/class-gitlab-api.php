@@ -392,18 +392,47 @@ class GitLab_API implements Git_Provider_Interface {
 	}
 
 	/**
-	 * Guards against SSRF by re-validating the base URL at call time.
+	 * Guards against SSRF by re-resolving the hostname at request time.
 	 *
-	 * Re-resolving the hostname on each request narrows the DNS-rebinding
-	 * window compared to validating only at settings-save time.
+	 * Save-time validation in is_allowed_gitlab_url() is insufficient on its
+	 * own: a DNS rebinding attack lets an attacker's hostname pass the initial
+	 * IP check and then re-resolve to an internal address (e.g. 169.254.169.254)
+	 * by the time the actual HTTP request fires. Re-resolving here closes that window.
 	 *
 	 * @since 1.0.0
-	 * @return true|\WP_Error
+	 * @return bool|\WP_Error
 	 */
 	private function assert_base_url_safe(): bool|\WP_Error {
-		if ( ! Settings::is_allowed_gitlab_url( $this->base ) ) {
-			return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolved to a disallowed address.' );
+		$host = wp_parse_url( $this->base, PHP_URL_HOST );
+		if ( ! is_string( $host ) || '' === $host ) {
+			return new \WP_Error( 'gitwire_ssrf', 'Invalid GitLab base URL.' );
 		}
+
+		if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+			if ( ! Settings::is_safe_ip( $host ) ) {
+				return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+			}
+			return true;
+		}
+
+		if ( function_exists( 'gethostbyname' ) ) {
+			$ipv4 = gethostbyname( $host );
+			if ( $ipv4 !== $host && ! Settings::is_safe_ip( $ipv4 ) ) {
+				return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+			}
+		}
+
+		if ( function_exists( 'dns_get_record' ) ) {
+			$aaaa = dns_get_record( $host, DNS_AAAA );
+			if ( is_array( $aaaa ) ) {
+				foreach ( $aaaa as $record ) {
+					if ( ! empty( $record['ipv6'] ) && ! Settings::is_safe_ip( $record['ipv6'] ) ) {
+						return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+					}
+				}
+			}
+		}
+
 		return true;
 	}
 

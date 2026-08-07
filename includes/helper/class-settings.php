@@ -337,7 +337,7 @@ class Settings {
 	 * @param string $ip IPv4 or IPv6 address.
 	 * @return bool
 	 */
-	private static function is_safe_ip( string $ip ): bool {
+	public static function is_safe_ip( string $ip ): bool {
 		// IPv6 loopback and unspecified.
 		if ( in_array( $ip, [ '::1', '::' ], true ) ) {
 			return false;
