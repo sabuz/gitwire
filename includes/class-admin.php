@@ -36,6 +36,7 @@ class Admin {
 		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue' ] );
 		add_filter( 'admin_body_class', [ self::class, 'body_class' ] );
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
+		add_action( 'admin_init', [ Logger::class, 'maybe_warn_nginx' ] );
 
 		// Native list repo labels.
 		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );

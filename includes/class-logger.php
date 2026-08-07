@@ -59,6 +59,44 @@ class Logger {
 	}
 
 	/**
+	 * Registers an admin notice when logging is active on an Nginx server.
+	 *
+	 * .htaccess has no effect on Nginx, so the log directory is web-accessible
+	 * unless the operator adds a deny block in their server config. Called from
+	 * Admin::init() so the notice appears on admin pages outside Gitwire (where
+	 * hide_admin_notices() does not run).
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function maybe_warn_nginx(): void {
+		if ( ! Settings::is_logging_enabled() ) {
+			return;
+		}
+		if ( ! function_exists( 'wp_is_nginx' ) || ! wp_is_nginx() ) {
+			return;
+		}
+		add_action(
+			'admin_notices',
+			static function () {
+				echo '<div class="notice notice-warning"><p>'
+					. wp_kses(
+						sprintf(
+							/* translators: %s: server directory path */
+							__( '<strong>Gitwire:</strong> Activity logging is on, but your server runs Nginx. Add a deny rule for <code>%s</code> to block direct web access to the log file. See the plugin readme FAQ for the exact server block to add.', 'gitwire' ),
+							esc_html( content_url( 'gitwire' ) )
+						),
+						[
+							'strong' => [],
+							'code'   => [],
+						]
+					)
+					. '</p></div>';
+			}
+		);
+	}
+
+	/**
 	 * Appends a timestamped entry when logging is enabled and the level meets the minimum.
 	 *
 	 * @since 1.0.0
