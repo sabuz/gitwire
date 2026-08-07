@@ -310,6 +310,14 @@ class Repositories {
 			$owner = substr( $full_name, 0, $slash );
 			$repo  = substr( $full_name, $slash + 1 );
 
+			if ( 'github' === $provider ) {
+				$conn_key  = $connection_ids[ $key ] ?? 'anon';
+				$remaining = get_transient( 'gitwire_gh_rl_' . $conn_key );
+				if ( false !== $remaining && (int) $remaining < 50 ) {
+					break;
+				}
+			}
+
 			$result = REST_Repositories::detect_type_for_repo(
 				$provider,
 				$owner,
@@ -349,6 +357,14 @@ class Repositories {
 
 				$branch        = $row['default_branch'] ? $row['default_branch'] : 'HEAD';
 				$connection_id = $row['connection_id'] ? $row['connection_id'] : null;
+
+				if ( 'github' === $row['provider'] ) {
+					$conn_key  = $connection_id ?? 'anon';
+					$remaining = get_transient( 'gitwire_gh_rl_' . $conn_key );
+					if ( false !== $remaining && (int) $remaining < 50 ) {
+						break;
+					}
+				}
 
 				$result = REST_Repositories::detect_type_for_repo(
 					$row['provider'],
