@@ -81,9 +81,32 @@ class Error_Handler {
 		register_shutdown_function( [ self::class, 'handle_shutdown' ] );
 		add_action( 'admin_init', [ self::class, 'clear_stale_activation_guard' ], 5 );
 		add_action( 'admin_init', [ self::class, 'clear_stale_update_guard' ], 6 );
+		add_action( 'admin_init', [ self::class, 'process_pending_deactivation' ], 7 );
 
 		// late registration puts us above debug plugins (e.g. QM) in the exception-handler chain.
 		add_action( 'plugins_loaded', [ self::class, 'register_exception_handler' ], PHP_INT_MAX );
+	}
+
+	/**
+	 * Deactivates a plugin flagged by the shutdown handler on the previous request.
+	 *
+	 * Using deactivate_plugins() from admin_init is safe and honours multisite.
+	 * The shutdown handler only stores the plugin file path because calling
+	 * deactivate_plugins() from within a shutdown function is unreliable.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function process_pending_deactivation(): void {
+		$plugin_file = get_option( 'gitwire_pending_deactivate' );
+		if ( ! $plugin_file || ! is_string( $plugin_file ) ) {
+			return;
+		}
+		delete_option( 'gitwire_pending_deactivate' );
+
+		if ( function_exists( 'deactivate_plugins' ) ) {
+			deactivate_plugins( $plugin_file );
+		}
 	}
 
 	/**
@@ -166,7 +189,7 @@ class Error_Handler {
 
 		if ( 'activation' === $context ) {
 			if ( 'plugin' === $type && $plugin_file ) {
-				self::deactivate_plugin( $plugin_file );
+				self::schedule_plugin_deactivation( $plugin_file );
 				$restored = true;
 			} elseif ( Repository_Detector::is_theme( $type ) ) {
 				$previous_stylesheet = $pending['previous_stylesheet'] ?? null;
@@ -186,7 +209,7 @@ class Error_Handler {
 			$restored = self::rollback_update_files( $pending );
 
 			if ( 'plugin' === $type && $plugin_file ) {
-				self::deactivate_plugin( $plugin_file );
+				self::schedule_plugin_deactivation( $plugin_file );
 			} elseif ( Repository_Detector::is_theme( $type ) && $restored ) {
 				self::ensure_active_theme_after_update_rollback( $pending );
 			}
@@ -362,7 +385,7 @@ class Error_Handler {
 			if ( Repository_Detector::is_theme( $type ) ) {
 				self::revert_failed_theme_activation( $pending );
 			} elseif ( 'plugin' === $type && $plugin_file ) {
-				self::deactivate_plugin( $plugin_file );
+				self::schedule_plugin_deactivation( $plugin_file );
 			}
 		}
 
@@ -607,37 +630,18 @@ class Error_Handler {
 	}
 
 	/**
-	 * Removes a plugin from the active_plugins option directly in the database.
-	 * Safe to call during a shutdown handler where WordPress may not be loaded.
+	 * Stores a flag so the plugin is deactivated via WP APIs on the next admin_init.
+	 *
+	 * Calling deactivate_plugins() from a shutdown handler is unreliable and
+	 * requires serializing active_plugins by hand, which can corrupt the option
+	 * if encoding or multisite nuances differ. Deferring to admin_init lets WP
+	 * core's deactivate_plugins() handle those details safely.
 	 *
 	 * @since 1.0.0
 	 * @param string $plugin_file Plugin file relative to wp-content/plugins.
 	 * @return void
 	 */
-	private static function deactivate_plugin( string $plugin_file ): void {
-		global $wpdb;
-		if ( ! isset( $wpdb ) ) {
-			return;
-		}
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-		$raw = $wpdb->get_var(
-			"SELECT option_value FROM {$wpdb->options} WHERE option_name = 'active_plugins'"
-		);
-		if ( ! $raw ) {
-			return;
-		}
-		$active = maybe_unserialize( $raw );
-		if ( ! is_array( $active ) ) {
-			return;
-		}
-		$active = array_values( array_diff( $active, [ $plugin_file ] ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->update(
-			$wpdb->options,
-			[ 'option_value' => serialize( $active ) ], // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
-			[ 'option_name' => 'active_plugins' ],
-			[ '%s' ],
-			[ '%s' ]
-		);
+	private static function schedule_plugin_deactivation( string $plugin_file ): void {
+		self::db_update_option( 'gitwire_pending_deactivate', $plugin_file );
 	}
 }
