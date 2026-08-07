@@ -177,22 +177,45 @@ class REST_Installer {
 				'callback'            => [ self::class, 'install' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
 				'args'                => [
-					'owner'    => [
+					'owner'         => [
 						'required'          => true,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
 					],
-					'repo'     => [
+					'repo'          => [
 						'required'          => true,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
 					],
-					'type'     => [
+					'branch'        => [
+						'type'              => 'string',
+						'default'           => 'main',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'slug'          => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_file_name',
+					],
+					'replace'       => [
+						'type'    => 'boolean',
+						'default' => false,
+					],
+					'force_type'    => [
+						'type'    => 'boolean',
+						'default' => false,
+					],
+					'connection_id' => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'type'          => [
 						'type'    => 'string',
 						'default' => 'plugin',
 						'enum'    => [ 'plugin', 'theme', 'block-theme', 'classic-theme' ],
 					],
-					'provider' => [
+					'provider'      => [
 						'type'    => 'string',
 						'default' => 'github',
 						'enum'    => [ 'github', 'gitlab', 'bitbucket' ],
@@ -250,7 +273,19 @@ class REST_Installer {
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'switch_branch' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
-				'args'                => [ 'provider' => $provider_arg ],
+				'args'                => [
+					'provider'      => $provider_arg,
+					'branch'        => [
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'connection_id' => [
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+				],
 			]
 		);
 
