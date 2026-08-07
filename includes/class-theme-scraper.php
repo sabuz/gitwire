@@ -246,8 +246,13 @@ class Theme_Scraper {
 		];
 
 		if ( isset( $_SERVER['PHP_AUTH_USER'] ) && isset( $_SERVER['PHP_AUTH_PW'] ) ) {
-			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
-			$headers['Authorization'] = 'Basic ' . base64_encode( wp_unslash( $_SERVER['PHP_AUTH_USER'] ) . ':' . wp_unslash( $_SERVER['PHP_AUTH_PW'] ) );
+			// Strip CR/LF/null to prevent HTTP header injection before encoding.
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$user = str_replace( [ "\r", "\n", "\0" ], '', wp_unslash( $_SERVER['PHP_AUTH_USER'] ) );
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$pass = str_replace( [ "\r", "\n", "\0" ], '', wp_unslash( $_SERVER['PHP_AUTH_PW'] ) );
+			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+			$headers['Authorization'] = 'Basic ' . base64_encode( $user . ':' . $pass );
 		}
 
 		return $headers;
