@@ -144,7 +144,7 @@ class REST_Repositories {
 	 */
 	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
 		$offset     = max( 0, (int) ( $req->get_param( 'offset' ) ?? 0 ) );
-		$search     = sanitize_text_field( $req->get_param( 'search' ) ?? '' );
+		$search     = (string) $req->get_param( 'search' );
 		$filter_ids = array_values( array_filter( (array) ( $req->get_param( 'connection_ids' ) ?? [] ) ) );
 
 		$connections = array_values(
