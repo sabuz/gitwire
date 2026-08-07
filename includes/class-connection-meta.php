@@ -218,7 +218,13 @@ class Connection_Meta {
 	 * @return array<string, mixed>|null
 	 */
 	private static function fetch_gitlab_profile( string $username, string $host_url = '' ): ?array {
-		$base     = rtrim( $host_url ? $host_url : 'https://gitlab.com', '/' );
+		$base = rtrim( $host_url ? $host_url : 'https://gitlab.com', '/' );
+
+		// Re-validate at request time — DNS can rebind between save and the next cron tick.
+		if ( $host_url && ! Settings::is_allowed_gitlab_url( $base ) ) {
+			return null;
+		}
+
 		$response = wp_remote_get(
 			$base . '/api/v4/users?username=' . rawurlencode( $username ) . '&per_page=1',
 			[ 'timeout' => 5 ]
