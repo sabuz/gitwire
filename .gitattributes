@@ -35,6 +35,8 @@ docs export-ignore
 src export-ignore
 tests export-ignore
 CLAUDE.md export-ignore
+phpstan-stubs.php export-ignore
+*.neon.dist export-ignore
 
 # Build artifacts - exclude from distribution
 *.log export-ignore

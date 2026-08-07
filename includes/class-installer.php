@@ -1079,7 +1079,10 @@ class Installer {
 	}
 
 	/**
-	 * Acquires a transient-based install lock for a repository.
+	 * Acquires a DB-level install lock for a repository.
+	 *
+	 * Uses MySQL INSERT IGNORE so the lock is shared across PHP-FPM workers.
+	 * wp_cache_add() is per-process on sites without a persistent object cache.
 	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider.
@@ -1087,8 +1090,30 @@ class Installer {
 	 * @return bool True when the lock was acquired, false when already held.
 	 */
 	private static function acquire_install_lock( string $provider, string $full_name ): bool {
-		$key = 'gitwire_lock_' . md5( $provider . ':' . $full_name );
-		return wp_cache_add( $key, 1, 'gitwire_locks', 5 * MINUTE_IN_SECONDS );
+		global $wpdb;
+		$key    = 'gitwire_lock_' . md5( $provider . ':' . $full_name );
+		$cutoff = time() - 10 * MINUTE_IN_SECONDS;
+
+		// Remove locks left behind by crashed processes (older than 10 minutes).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name = %s AND CAST(option_value AS UNSIGNED) < %d",
+				$key,
+				$cutoff
+			)
+		);
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$inserted = $wpdb->query(
+			$wpdb->prepare(
+				"INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+				$key,
+				(string) time()
+			)
+		);
+
+		return 1 === (int) $inserted;
 	}
 
 	/**
@@ -1101,7 +1126,7 @@ class Installer {
 	 */
 	private static function release_install_lock( string $provider, string $full_name ): void {
 		$key = 'gitwire_lock_' . md5( $provider . ':' . $full_name );
-		wp_cache_delete( $key, 'gitwire_locks' );
+		delete_option( $key );
 	}
 
 	/**
