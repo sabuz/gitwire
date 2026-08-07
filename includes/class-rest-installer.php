@@ -714,6 +714,13 @@ class REST_Installer {
 		$override_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 		$override_id = '' !== $override_id ? $override_id : null;
 
+		if ( null !== $override_id ) {
+			$scope_error = REST::assert_connection_scope( $override_id );
+			if ( null !== $scope_error ) {
+				return $scope_error;
+			}
+		}
+
 		$existing_record = Installer::get_record( $provider, $full_name );
 		$is_pull         = $existing_record && ( $existing_record['branch'] ?? '' ) === $branch;
 
