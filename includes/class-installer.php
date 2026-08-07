@@ -8,18 +8,22 @@
 
 namespace Gitwire;
 
+use Gitwire\Models\Installation;
+use Gitwire\Models\Commit;
+use Gitwire\Models\Repository;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Handles downloading, extracting, backing up, and removing GitHub repositories
+ * Handles downloading, extracting, backing up, and removing Git repositories
  * installed as WordPress plugins or themes.
  */
 class Installer {
 
 	/**
-	 * Request-scoped cache for the gitwire_installed option.
+	 * Request-scoped keyed cache built from Installations_Model::all().
 	 *
 	 * @var array<string, mixed>|null
 	 */
@@ -28,12 +32,117 @@ class Installer {
 	/**
 	 * Clears the request-scope installed cache after a write.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function invalidate_installed_cache(): void {
 		self::$installed_cache = null;
+		Installation::instance()->invalidate_cache();
 	}
+
+	/**
+	 * Converts a raw DB row into the PHP record shape used throughout the plugin.
+	 *
+	 * Adds owner and repo (derived from full_name) so callers never need to split.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed> $row Raw row from gitwire_installations.
+	 * @return array<string, mixed>
+	 */
+	private static function hydrate_record( array $row ): array {
+		$parts = explode( '/', (string) ( $row['full_name'] ?? '' ), 2 );
+		return array_merge(
+			$row,
+			[
+				'id'          => (int) ( $row['id'] ?? 0 ),
+				'repo'        => $parts[1] ?? '',
+				'updated_at'  => $row['updated_at'] ?? '',
+				'auto_update' => $row['auto_update'] ?? 'disabled',
+			]
+		);
+	}
+
+	/**
+	 * Deletes the commit cache for an installed repository.
+	 *
+	 * @since 1.0.0
+	 * @param int $installation_id Primary key of the gitwire_installations row.
+	 * @return void
+	 */
+	private static function delete_commits( int $installation_id ): void {
+		Commit::instance()->delete_by_installation( $installation_id );
+	}
+
+	/**
+	 * Deletes the installation record from the DB without touching the filesystem.
+	 *
+	 * Used by REST when pruning orphaned records and by uninstall cleanup.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @return void
+	 */
+	public static function delete_record( string $provider, string $full_name ): void {
+		$row             = Installation::instance()->find_by_repo( $provider, $full_name );
+		$installation_id = $row ? (int) ( $row['id'] ?? 0 ) : 0;
+		Installation::instance()->delete_by_repo( $provider, $full_name );
+		if ( $installation_id ) {
+			self::delete_commits( $installation_id );
+		}
+		self::invalidate_installed_cache();
+	}
+
+	/**
+	 * Upserts an installation record without eviction or head merging.
+	 *
+	 * Used by Error_Handler to restore a prev_record after a failed update.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed> $record Record to restore.
+	 * @return void
+	 */
+	public static function upsert_record( array $record ): void {
+		Installation::instance()->upsert(
+			array_merge(
+				$record,
+				[
+					'basename'   => $record['basename'] ?? $record['plugin_file'] ?? '',
+					'updated_at' => current_datetime()->format( 'Y-m-d H:i:s' ),
+				]
+			)
+		);
+		self::invalidate_installed_cache();
+	}
+
+	/**
+	 * Stores the remote HEAD SHA for a repository in the installed table.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @param string $sha       Remote commit SHA.
+	 * @return void
+	 */
+	public static function set_remote_head( string $provider, string $full_name, string $sha ): void {
+		Installation::instance()->update_remote_head( $provider, $full_name, $sha );
+		self::invalidate_installed_cache();
+	}
+
+	/**
+	 * Updates the basename column for a single installed record.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @param string $basename  plugin_basename() value.
+	 * @return void
+	 */
+	public static function set_plugin_file( string $provider, string $full_name, string $basename ): void {
+		Installation::instance()->update_basename( $provider, $full_name, $basename );
+		self::invalidate_installed_cache();
+	}
+
 
 	/**
 	 * Registers hooks that clean up installation records when a plugin or theme
@@ -60,23 +169,15 @@ class Installer {
 			return;
 		}
 
-		// Build the absolute path of the deleted plugin's directory.
 		$deleted_dir = untrailingslashit( WP_PLUGIN_DIR ) . '/' . dirname( $plugin_file );
-		$installed   = (array) get_option( 'gitwire_installed', [] );
-		$dirty       = false;
+		$row         = Installation::instance()->find_by_path( $deleted_dir );
 
-		foreach ( $installed as $key => $rec ) {
-			if ( untrailingslashit( $rec['install_path'] ?? '' ) === $deleted_dir ) {
-				unset( $installed[ $key ] );
-				$dirty = true;
-				break;
-			}
+		if ( ! $row ) {
+			return;
 		}
 
-		if ( $dirty ) {
-			update_option( 'gitwire_installed', $installed, false );
-			self::invalidate_installed_cache();
-		}
+		self::queue_deleted_notice( self::hydrate_record( $row ) );
+		self::delete_record( $row['provider'], $row['full_name'] );
 	}
 
 	/**
@@ -92,23 +193,32 @@ class Installer {
 			return;
 		}
 
-		// Build the absolute path of the deleted theme's directory.
 		$deleted_dir = untrailingslashit( get_theme_root() ) . '/' . $stylesheet;
-		$installed   = (array) get_option( 'gitwire_installed', [] );
-		$dirty       = false;
+		$row         = Installation::instance()->find_by_path( $deleted_dir );
 
-		foreach ( $installed as $key => $rec ) {
-			if ( untrailingslashit( $rec['install_path'] ?? '' ) === $deleted_dir ) {
-				unset( $installed[ $key ] );
-				$dirty = true;
-				break;
-			}
+		if ( ! $row ) {
+			return;
 		}
 
-		if ( $dirty ) {
-			update_option( 'gitwire_installed', $installed, false );
-			self::invalidate_installed_cache();
-		}
+		self::queue_deleted_notice( self::hydrate_record( $row ) );
+		self::delete_record( $row['provider'], $row['full_name'] );
+	}
+
+	/**
+	 * Queues a deleted-record notice to surface on the next Gitwire page load.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed> $rec Installed record being removed.
+	 * @return void
+	 */
+	private static function queue_deleted_notice( array $rec ): void {
+		$existing  = get_option( 'gitwire_orphan_queue' );
+		$pending   = is_array( $existing ) ? $existing : [];
+		$pending[] = [
+			'full_name' => $rec['full_name'] ?? '',
+			'provider'  => $rec['provider'] ?? 'github',
+		];
+		update_option( 'gitwire_orphan_queue', $pending, false );
 	}
 
 	/**
@@ -122,7 +232,7 @@ class Installer {
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
-	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_plugin(
 		string $owner,
@@ -153,7 +263,7 @@ class Installer {
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
-	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Installed record on success, WP_Error on failure.
 	 */
 	public static function install_theme(
 		string $owner,
@@ -181,7 +291,7 @@ class Installer {
 	 * @param string      $full_name             Repository full name (owner/repo).
 	 * @param string      $new_branch            Branch to switch to.
 	 * @param string|null $override_connection_id Bypass stored connection and use this ID instead.
-	 * @return array<string, mixed>|WP_Error Updated record on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Updated record on success, WP_Error on failure.
 	 */
 	public static function switch_branch( string $provider, string $full_name, string $new_branch, ?string $override_connection_id = null ): array|\WP_Error {
 		$installed = self::get_installed();
@@ -194,7 +304,7 @@ class Installer {
 		$rec       = $installed[ $key ];
 		$owner     = $rec['owner'];
 		$repo      = $rec['repo'];
-		$method    = 'theme' === $rec['type'] ? 'install_theme' : 'install_plugin';
+		$method    = Repository_Detector::is_theme( $rec['type'] ) ? 'install_theme' : 'install_plugin';
 		$was_stale = false;
 		if ( null !== $override_connection_id ) {
 			$connection_id = $override_connection_id;
@@ -228,7 +338,7 @@ class Installer {
 			);
 		}
 
-		$result = self::$method( $owner, $repo, $new_branch, $rec['slug'], $provider, false, $connection_id );
+		$result = self::$method( $owner, $repo, $new_branch, $rec['name'], $provider, false, $connection_id );
 
 		if ( $was_stale && is_wp_error( $result ) ) {
 			return new \WP_Error(
@@ -248,28 +358,23 @@ class Installer {
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repo).
-	 * @return true|WP_Error True on success, WP_Error on failure.
+	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
 	public static function remove( string $provider, string $full_name ): bool|\WP_Error {
-		$installed = self::get_installed();
-		$key       = $provider . ':' . $full_name;
+		$rec = self::get_record( $provider, $full_name );
 
-		if ( ! isset( $installed[ $key ] ) ) {
+		if ( ! $rec ) {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
-		$rec  = $installed[ $key ];
 		$path = $rec['install_path'];
-
 		if ( is_dir( $path ) ) {
 			self::init_fs();
 			global $wp_filesystem;
 			$wp_filesystem->delete( $path, true );
 		}
 
-		unset( $installed[ $key ] );
-		update_option( 'gitwire_installed', $installed, false );
-		self::invalidate_installed_cache();
+		self::delete_record( $provider, $full_name );
 
 		return true;
 	}
@@ -283,16 +388,11 @@ class Installer {
 	 * @return true|\WP_Error True on success, WP_Error when not found.
 	 */
 	public static function untrack( string $provider, string $full_name ): bool|\WP_Error {
-		$installed = self::get_installed();
-		$key       = $provider . ':' . $full_name;
-
-		if ( ! isset( $installed[ $key ] ) ) {
+		if ( ! self::get_record( $provider, $full_name ) ) {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
-		unset( $installed[ $key ] );
-		update_option( 'gitwire_installed', $installed, false );
-		self::invalidate_installed_cache();
+		self::delete_record( $provider, $full_name );
 
 		return true;
 	}
@@ -320,19 +420,13 @@ class Installer {
 				require_once ABSPATH . 'wp-admin/includes/plugin.php';
 			}
 
-			$plugin_file = $rec['plugin_file'] ?? null;
-
-			// Self-heal: re-scan when file is missing or path is stale/wrong.
-			if ( ! $plugin_file || ! file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
-				if ( ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
-					$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
-					if ( $plugin_file ) {
-						$installed[ $key ]['plugin_file'] = $plugin_file;
-						update_option( 'gitwire_installed', $installed, false );
-						self::invalidate_installed_cache();
-					}
-				}
-			}
+			$plugin_file = self::heal_plugin_file(
+				$provider,
+				$full_name,
+				$rec['install_path'] ?? '',
+				$rec['name'] ?? '',
+				$rec['basename'] ?? null
+			);
 
 			if ( ! $plugin_file ) {
 				return new \WP_Error(
@@ -358,9 +452,9 @@ class Installer {
 			}
 
 			self::complete_plugin_activation_guard();
-		} elseif ( 'theme' === $rec['type'] ) {
+		} elseif ( Repository_Detector::is_theme( $rec['type'] ) ) {
 			Error_Handler::clear_stale_activation_guard();
-			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
+			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['name'] ?? '' );
 
 			$ready = self::validate_theme_for_activation( $rec );
 			if ( is_wp_error( $ready ) ) {
@@ -369,7 +463,7 @@ class Installer {
 
 			$pending = self::begin_activation_guard( $rec, $full_name );
 
-			$requirements = validate_theme_requirements( $rec['slug'] );
+			$requirements = validate_theme_requirements( $rec['name'] );
 			if ( is_wp_error( $requirements ) ) {
 				self::clear_activation_guard();
 				return new \WP_Error(
@@ -379,10 +473,10 @@ class Installer {
 				);
 			}
 
-			switch_theme( $rec['slug'] );
-			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['slug'] ?? '' );
+			switch_theme( $rec['name'] );
+			self::refresh_theme_runtime( $rec['install_path'] ?? '', $rec['name'] ?? '' );
 
-			delete_option( 'gitwire_pending_update' );
+			delete_option( 'gitwire_running_task' );
 
 			$scrape = Theme_Scraper::scrape_activation();
 			if ( is_wp_error( $scrape ) ) {
@@ -406,7 +500,7 @@ class Installer {
 	/**
 	 * Registers a pending activation record for the fatal-error shutdown handler.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $rec         Installed repository record.
 	 * @param string               $full_name   Repository full name.
 	 * @param string|null          $plugin_file Plugin bootstrap file, if any.
@@ -417,19 +511,19 @@ class Installer {
 			'context'             => 'activation',
 			'full_name'           => $full_name,
 			'type'                => $rec['type'],
-			'slug'                => $rec['slug'] ?? '',
+			'name'                => $rec['name'] ?? '',
 			'install_path'        => $rec['install_path'] ?? '',
 			'plugin_file'         => $plugin_file,
 			'previous_stylesheet' => get_stylesheet(),
 			'previous_template'   => get_template(),
 		];
 
-		if ( 'theme' === $rec['type'] ) {
-			$pending['target_stylesheet'] = $rec['slug'];
+		if ( Repository_Detector::is_theme( $rec['type'] ) ) {
+			$pending['target_stylesheet'] = $rec['name'];
 		}
 
 		self::clear_guard_feedback();
-		update_option( 'gitwire_pending_update', $pending, false );
+		update_option( 'gitwire_running_task', $pending, false );
 
 		return $pending;
 	}
@@ -437,38 +531,21 @@ class Installer {
 	/**
 	 * Clears a pending activation guard when activation fails before bootstrap.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function clear_activation_guard(): void {
-		delete_option( 'gitwire_pending_update' );
-	}
-
-	/**
-	 * Stores the active theme slugs on the pending activation guard record.
-	 *
-	 * @since 1.2.0
-	 * @return void
-	 */
-	private static function sync_theme_activation_target(): void {
-		$pending = get_option( 'gitwire_pending_update' );
-		if ( ! is_array( $pending ) || 'theme' !== ( $pending['type'] ?? '' ) ) {
-			return;
-		}
-
-		$pending['target_stylesheet'] = get_stylesheet();
-		$pending['target_template']   = get_template();
-		update_option( 'gitwire_pending_update', $pending, false );
+		delete_option( 'gitwire_running_task' );
 	}
 
 	/**
 	 * Clears the activation guard after core has sandboxed a plugin activation.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function complete_plugin_activation_guard(): void {
-		delete_option( 'gitwire_pending_update' );
+		delete_option( 'gitwire_running_task' );
 	}
 
 	/**
@@ -497,19 +574,13 @@ class Installer {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		$plugin_file = $rec['plugin_file'] ?? null;
-
-		// Self-heal: re-scan when file is missing or path is stale/wrong.
-		if ( ! $plugin_file || ! file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
-			if ( ! empty( $rec['install_path'] ) && is_dir( $rec['install_path'] ) ) {
-				$plugin_file = self::find_plugin_file( $rec['install_path'], $rec['slug'] );
-				if ( $plugin_file ) {
-					$installed[ $key ]['plugin_file'] = $plugin_file;
-					update_option( 'gitwire_installed', $installed, false );
-					self::invalidate_installed_cache();
-				}
-			}
-		}
+		$plugin_file = self::heal_plugin_file(
+			$provider,
+			$full_name,
+			$rec['install_path'] ?? '',
+			$rec['name'] ?? '',
+			$rec['basename'] ?? null
+		);
 
 		if ( ! $plugin_file ) {
 			return new \WP_Error(
@@ -525,6 +596,37 @@ class Installer {
 	}
 
 	/**
+	 * Re-scans the install directory for the plugin entry file when the stored path is missing.
+	 *
+	 * @since 1.0.0
+	 * @param string      $provider    Git provider.
+	 * @param string      $full_name   Repository full name.
+	 * @param string      $install_path Absolute installation path.
+	 * @param string      $slug        Plugin slug.
+	 * @param string|null $plugin_file Stored plugin file (may be empty or stale).
+	 * @return string|null Healed plugin file path, or null when not found.
+	 */
+	private static function heal_plugin_file( string $provider, string $full_name, string $install_path, string $slug, ?string $plugin_file ): ?string {
+		if ( $plugin_file && file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
+			return $plugin_file;
+		}
+
+		if ( empty( $install_path ) || ! is_dir( $install_path ) ) {
+			return null;
+		}
+
+		$found = self::find_plugin_file( $install_path, $slug );
+		if ( ! $found ) {
+			return null;
+		}
+
+		Installation::instance()->update_basename( $provider, $full_name, $found );
+		self::invalidate_installed_cache();
+
+		return $found;
+	}
+
+	/**
 	 * Returns all currently installed repository records, keyed by provider:full_name.
 	 *
 	 * @since 1.0.0
@@ -535,8 +637,95 @@ class Installer {
 			return self::$installed_cache;
 		}
 
-		self::$installed_cache = (array) get_option( 'gitwire_installed', [] );
+		self::$installed_cache = [];
+		foreach ( Installation::instance()->all() as $row ) {
+			$key                           = $row['provider'] . ':' . $row['full_name'];
+			self::$installed_cache[ $key ] = self::hydrate_record( $row );
+		}
+
 		return self::$installed_cache;
+	}
+
+	/**
+	 * Refreshes remote_head for all installed repos, then auto-updates those with auto_update enabled.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function run_auto_updates(): void {
+		$records = self::get_installed();
+
+		// First pass: refresh remote_head for every installed repo.
+		foreach ( $records as $key => $rec ) {
+			$owner    = $rec['owner'] ?? '';
+			$repo     = $rec['repo'] ?? '';
+			$branch   = (string) ( $rec['branch'] ?? 'main' );
+			$provider = (string) ( $rec['provider'] ?? 'github' );
+
+			if ( ! $owner || ! $repo ) {
+				continue;
+			}
+
+			$connection_id = $rec['connection_id'] ? $rec['connection_id'] : null;
+
+			if ( 'github' === $provider ) {
+				$rl_key   = 'gitwire_gh_rl_' . ( $connection_id ?? 'anon' );
+				$rl_value = get_transient( $rl_key );
+				if ( false !== $rl_value && (int) $rl_value < 5 ) {
+					Logger::log( sprintf( 'Auto-update skipped for %s — GitHub rate limit low (%d remaining)', $rec['full_name'] ?? '', (int) $rl_value ), 'error' );
+					continue;
+				}
+			}
+
+			$api           = Provider_Factory::make( $provider, $connection_id );
+			$remote_sha    = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+			$stored_remote = (string) ( $rec['remote_head'] ?? '' );
+
+			if ( $remote_sha && $remote_sha !== $stored_remote ) {
+				$full_name = (string) ( $rec['full_name'] ?? '' );
+				self::set_remote_head( $provider, $full_name, $remote_sha );
+				$records[ $key ]['remote_head'] = $remote_sha;
+			}
+		}
+
+		// Second pass: auto-update repos that have it enabled and have a pending commit.
+		foreach ( $records as $rec ) {
+			if ( 'disabled' === ( $rec['auto_update'] ?? 'disabled' ) ) {
+				continue;
+			}
+
+			$remote_head = (string) ( $rec['remote_head'] ?? '' );
+			$head        = (string) ( $rec['head'] ?? '' );
+
+			if ( ! $remote_head || $remote_head === $head ) {
+				continue;
+			}
+
+			$owner         = $rec['owner'] ?? '';
+			$repo          = $rec['repo'] ?? '';
+			$branch        = (string) ( $rec['branch'] ?? 'main' );
+			$provider      = (string) ( $rec['provider'] ?? 'github' );
+			$slug          = (string) ( $rec['name'] ?? '' );
+			$connection_id = $rec['connection_id'] ? $rec['connection_id'] : null;
+			$type          = (string) ( $rec['type'] ?? 'plugin' );
+			$full_name     = (string) ( $rec['full_name'] ?? '' );
+
+			if ( ! $owner || ! $repo ) {
+				continue;
+			}
+
+			if ( Repository_Detector::is_theme( $type ) ) {
+				$result = self::install_theme( $owner, $repo, $branch, $slug, $provider, true, $connection_id );
+			} else {
+				$result = self::install_plugin( $owner, $repo, $branch, $slug, $provider, true, $connection_id );
+			}
+
+			if ( is_wp_error( $result ) ) {
+				Logger::log( 'Auto-update failed: ' . $full_name . ' — ' . $result->get_error_message(), 'error' );
+			} else {
+				Logger::log( 'Auto-updated: ' . $full_name . ' to ' . substr( $remote_head, 0, 7 ) );
+			}
+		}
 	}
 
 	/**
@@ -558,28 +747,23 @@ class Installer {
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repo).
-	 * @param string $sha       Short commit SHA (7 characters).
+	 * @param string $sha       Full commit SHA.
 	 * @return void
 	 */
 	public static function set_head( string $provider, string $full_name, string $sha ): void {
-		$installed = (array) get_option( 'gitwire_installed', [] );
-		$key       = $provider . ':' . $full_name;
-		if ( isset( $installed[ $key ] ) ) {
-			$installed[ $key ]['head'] = $sha;
-			update_option( 'gitwire_installed', $installed, false );
-			self::invalidate_installed_cache();
-		}
+		Installation::instance()->update_head( $provider, $full_name, $sha );
+		self::invalidate_installed_cache();
 	}
 
 	/**
 	 * Fetches the latest remote commit SHA for a branch.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param Git_Provider_Interface $api    Provider API client.
 	 * @param string                 $owner  Repository owner.
 	 * @param string                 $repo   Repository name.
 	 * @param string                 $branch Branch name.
-	 * @return string|null Short SHA or null when unavailable.
+	 * @return string|null Full 40-char SHA or null when unavailable.
 	 */
 	public static function fetch_remote_head_sha( Git_Provider_Interface $api, string $owner, string $repo, string $branch ): ?string {
 		$commits = $api->get_commits( $owner, $repo, $branch, 1 );
@@ -593,7 +777,7 @@ class Installer {
 	/**
 	 * Returns a transient key for a known-fatal remote HEAD on an active install.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $branch    Branch name.
@@ -606,7 +790,7 @@ class Installer {
 	/**
 	 * Returns a remote SHA recently rejected by the active fatal guard.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $branch    Branch name.
@@ -620,7 +804,7 @@ class Installer {
 	/**
 	 * Returns whether a remote SHA matches the known-fatal cache entry.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $branch    Branch name.
@@ -635,14 +819,14 @@ class Installer {
 	/**
 	 * User-facing message when the latest remote commit is skipped as known-fatal.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $type       Installation type: plugin or theme.
 	 * @param string $remote_sha Remote commit SHA.
 	 * @return string
 	 */
 	public static function known_fatal_head_message( string $type, string $remote_sha ): string {
 		$short = substr( $remote_sha, 0, 7 );
-		$label = 'theme' === $type
+		$label = Repository_Detector::is_theme( $type )
 			? __( 'theme', 'gitwire' )
 			: __( 'plugin', 'gitwire' );
 
@@ -665,7 +849,7 @@ class Installer {
 	 * attempts and retries read consistently across plugins and themes.
 	 * Infrastructure failures keep the scrape message that explains the revert.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param \WP_Error   $scrape     Scrape failure error.
 	 * @param string      $type       Installation type: plugin or theme.
 	 * @param string|null $remote_sha Remote commit SHA, if known.
@@ -696,7 +880,7 @@ class Installer {
 	/**
 	 * Returns whether a plugin activation error came from core's fatal sandbox scrape.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param \WP_Error $error Activation error.
 	 * @return bool
 	 */
@@ -712,7 +896,7 @@ class Installer {
 	/**
 	 * Remembers a remote SHA that failed active bootstrap validation.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
 	 * @param string $branch    Branch name.
@@ -730,7 +914,7 @@ class Installer {
 	/**
 	 * Stores a known-fatal remote SHA after a failed theme scrape.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string               $provider  Git provider.
 	 * @param string               $full_name Repository full name.
 	 * @param string               $branch    Branch name.
@@ -757,7 +941,7 @@ class Installer {
 	/**
 	 * Stores a known-fatal remote SHA after a failed plugin activation scrape.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string               $provider  Git provider.
 	 * @param string               $full_name Repository full name.
 	 * @param string               $branch    Branch name.
@@ -779,7 +963,7 @@ class Installer {
 	/**
 	 * Resolves the latest remote SHA for a record, falling back to the API.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $rec       Installed record.
 	 * @param string               $provider  Git provider.
 	 * @param string               $full_name Repository full name.
@@ -787,9 +971,8 @@ class Installer {
 	 * @return string|null
 	 */
 	private static function resolve_remote_head_for_record( array $rec, string $provider, string $full_name, string $branch ): ?string {
-		$remote_key = 'gitwire_remote_' . md5( $provider . ':' . $full_name . ':' . $branch );
-		$cached     = get_transient( $remote_key );
-		if ( is_string( $cached ) && $cached ) {
+		$cached = $rec['remote_head'] ?? '';
+		if ( '' !== $cached ) {
 			return $cached;
 		}
 
@@ -800,52 +983,53 @@ class Installer {
 
 		$connection_id = $rec['connection_id'] ?? null;
 		$api           = Provider_Factory::make( $provider, $connection_id );
+		$sha           = self::fetch_remote_head_sha( $api, $parts[0], $parts[1], $branch );
 
-		return self::fetch_remote_head_sha( $api, $parts[0], $parts[1], $branch );
+		if ( $sha ) {
+			self::set_remote_head( $provider, $full_name, $sha );
+		}
+
+		return $sha;
 	}
 
 	/**
-	 * Persists an installed record while preserving metadata such as head and installed_at.
+	 * Persists an installed record while preserving metadata such as head.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string               $record_key Installed record key.
 	 * @param array<string, mixed> $record     New record payload.
 	 * @param string|null          $head_sha   Head SHA to store; null keeps the previous value.
 	 * @return array<string, mixed> Saved record.
 	 */
 	private static function save_installed_record( string $record_key, array $record, ?string $head_sha = null ): array {
-		$installed = self::get_installed();
-		$existing  = $installed[ $record_key ] ?? [];
-
-		if ( ! empty( $existing['installed_at'] ) ) {
-			$record['installed_at'] = $existing['installed_at'];
-		}
+		$provider  = $record['provider'] ?? '';
+		$full_name = $record['full_name'] ?? '';
 
 		if ( $head_sha ) {
 			$record['head'] = $head_sha;
-		} elseif ( ! empty( $existing['head'] ) ) {
-			$record['head'] = $existing['head'];
 		}
 
-		$installed[ $record_key ] = $record;
+		Installation::instance()->upsert(
+			array_merge(
+				$record,
+				[
+					'basename'   => $record['basename'] ?? $record['plugin_file'] ?? '',
+					'updated_at' => current_datetime()->format( 'Y-m-d H:i:s' ),
+				]
+			)
+		);
 
-		// drop any other record that claimed the same directory (replace-install).
-		$new_path = untrailingslashit( $record['install_path'] ?? '' );
+		// Evict any other record that claimed the same directory (replace-install).
 		$evicted  = [];
+		$new_path = untrailingslashit( $record['install_path'] ?? '' );
 		if ( $new_path ) {
-			foreach ( array_keys( $installed ) as $key ) {
-				if ( $key === $record_key ) {
-					continue;
-				}
-				$other_path = untrailingslashit( $installed[ $key ]['install_path'] ?? '' );
-				if ( $other_path && $other_path === $new_path ) {
-					$evicted[] = $installed[ $key ];
-					unset( $installed[ $key ] );
-				}
+			$evicted_rows = Installation::instance()->find_others_by_path( $new_path, $provider, $full_name );
+			foreach ( $evicted_rows as $evicted_row ) {
+				self::delete_record( $evicted_row['provider'], $evicted_row['full_name'] );
+				$evicted[] = self::hydrate_record( $evicted_row );
 			}
 		}
 
-		update_option( 'gitwire_installed', $installed, false );
 		self::invalidate_installed_cache();
 
 		if ( ! empty( $evicted ) ) {
@@ -853,6 +1037,96 @@ class Installer {
 		}
 
 		return $record;
+	}
+
+	/**
+	 * Acquires a per-repository install lock then delegates to execute_run().
+	 *
+	 * @since 1.0.0
+	 * @param string      $owner         Git owner or organisation.
+	 * @param string      $repo          Repository name.
+	 * @param string      $branch        Branch, tag, or SHA.
+	 * @param string      $slug          Directory slug for the installation.
+	 * @param string      $install_path  Absolute filesystem path for the installation.
+	 * @param string      $type          Installation type: "plugin" or "theme".
+	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
+	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
+	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
+	 * @return array<string, mixed>|\WP_Error Installed record on success, WP_Error on failure.
+	 */
+	private static function run(
+		string $owner,
+		string $repo,
+		string $branch,
+		string $slug,
+		string $install_path,
+		string $type,
+		string $provider = 'github',
+		bool $replace = false,
+		?string $connection_id = null
+	): array|\WP_Error {
+		$full_name = $owner . '/' . $repo;
+
+		if ( ! self::acquire_install_lock( $provider, $full_name ) ) {
+			return new \WP_Error( 'gitwire_locked', 'Another install is already in progress for this repository.', [ 'status' => 409 ] );
+		}
+
+		try {
+			return self::execute_run( $owner, $repo, $branch, $slug, $install_path, $type, $provider, $replace, $connection_id );
+		} finally {
+			self::release_install_lock( $provider, $full_name );
+		}
+	}
+
+	/**
+	 * Acquires a DB-level install lock for a repository.
+	 *
+	 * Uses MySQL INSERT IGNORE so the lock is shared across PHP-FPM workers.
+	 * wp_cache_add() is per-process on sites without a persistent object cache.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @return bool True when the lock was acquired, false when already held.
+	 */
+	private static function acquire_install_lock( string $provider, string $full_name ): bool {
+		global $wpdb;
+		$key    = 'gitwire_lock_' . md5( $provider . ':' . $full_name );
+		$cutoff = time() - 10 * MINUTE_IN_SECONDS;
+
+		// Remove locks left behind by crashed processes (older than 10 minutes).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name = %s AND CAST(option_value AS UNSIGNED) < %d",
+				$key,
+				$cutoff
+			)
+		);
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$inserted = $wpdb->query(
+			$wpdb->prepare(
+				"INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+				$key,
+				(string) time()
+			)
+		);
+
+		return 1 === (int) $inserted;
+	}
+
+	/**
+	 * Releases the install lock for a repository.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @return void
+	 */
+	private static function release_install_lock( string $provider, string $full_name ): void {
+		$key = 'gitwire_lock_' . md5( $provider . ':' . $full_name );
+		delete_option( $key );
 	}
 
 	/**
@@ -868,9 +1142,9 @@ class Installer {
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
-	 * @return array<string, mixed>|WP_Error Installed record on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Installed record on success, WP_Error on failure.
 	 */
-	private static function run(
+	private static function execute_run(
 		string $owner,
 		string $repo,
 		string $branch,
@@ -923,8 +1197,8 @@ class Installer {
 		if ( 'plugin' === $type ) {
 			$installed   = self::get_installed();
 			$install_key = $provider . ':' . $full_name;
-			if ( isset( $installed[ $install_key ]['plugin_file'] ) ) {
-				$plugin_file = $installed[ $install_key ]['plugin_file'];
+			if ( isset( $installed[ $install_key ]['basename'] ) ) {
+				$plugin_file = $installed[ $install_key ]['basename'];
 			}
 
 			if ( $plugin_file && self::is_active_install( $type, $slug, $plugin_file ) ) {
@@ -939,13 +1213,13 @@ class Installer {
 		$is_active_update = is_dir( $install_path )
 			&& self::is_active_install( $type, $slug, $plugin_file );
 
-		$sync_theme_guard = $is_active_update && 'theme' === $type;
+		$sync_theme_guard = $is_active_update && Repository_Detector::is_theme( $type );
 
 		$remote_sha = null;
 		if ( $is_active_update ) {
-			if ( 'theme' === $type ) {
+			if ( Repository_Detector::is_theme( $type ) ) {
 				self::clear_guard_feedback();
-				delete_option( 'gitwire_pending_update' );
+				delete_option( 'gitwire_running_task' );
 			}
 
 			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
@@ -962,9 +1236,8 @@ class Installer {
 		// Backup existing installation (for fatal-error rollback).
 		$backup_path = null;
 		if ( is_dir( $install_path ) ) {
-			$backup_path = $install_path . '--gitwire-bak-' . time();
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
-			if ( ! rename( $install_path, $backup_path ) ) {
+			$backup_path = self::get_backup_base_dir() . DIRECTORY_SEPARATOR . basename( $install_path ) . '--gitwire-bak-' . time();
+			if ( ! self::move_dir_safe( $install_path, $backup_path ) ) {
 				wp_delete_file( $zip_file );
 				return new \WP_Error( 'gitwire_backup_failed', 'Could not create backup of existing installation.' );
 			}
@@ -974,7 +1247,7 @@ class Installer {
 		$pending = [
 			'full_name'         => $full_name,
 			'type'              => $type,
-			'slug'              => $slug,
+			'name'              => $slug,
 			'install_path'      => $install_path,
 			'backup_path'       => $backup_path,
 			'plugin_file'       => $plugin_file,
@@ -982,7 +1255,7 @@ class Installer {
 		];
 
 		if ( ! $sync_theme_guard ) {
-			update_option( 'gitwire_pending_update', $pending, false );
+			update_option( 'gitwire_running_task', $pending, false );
 		}
 
 		// Extract.
@@ -993,12 +1266,12 @@ class Installer {
 			// Restore backup immediately (no fatal error needed).
 			self::restore_backup( $install_path, $backup_path );
 			if ( ! $sync_theme_guard ) {
-				delete_option( 'gitwire_pending_update' );
+				delete_option( 'gitwire_running_task' );
 			}
 			return $extracted;
 		}
 
-		if ( 'theme' === $type ) {
+		if ( Repository_Detector::is_theme( $type ) ) {
 			self::refresh_theme_runtime( $install_path, $slug );
 		}
 
@@ -1007,25 +1280,26 @@ class Installer {
 			$plugin_file            = self::find_plugin_file( $install_path, $slug );
 			$pending['plugin_file'] = $plugin_file;
 			if ( ! $sync_theme_guard ) {
-				update_option( 'gitwire_pending_update', $pending, false );
+				update_option( 'gitwire_running_task', $pending, false );
 			}
 		}
 
 		// Save record.
+		$html_url = Repository::instance()->get_html_url( $provider, $full_name );
+
 		$record = [
-			'slug'          => $slug,
+			'name'          => $slug,
 			'repo'          => $repo,
 			'owner'         => $owner,
 			'full_name'     => $full_name,
 			'branch'        => $branch,
-			'type'          => $type,
-			'subtype'       => 'plugin' === $type ? 'plugin' : ( file_exists( $install_path . '/theme.json' ) ? 'block' : 'classic' ),
+			'type'          => 'plugin' === $type ? 'plugin' : ( file_exists( $install_path . '/theme.json' ) ? 'block-theme' : 'classic-theme' ),
 			'provider'      => $provider,
 			'connection_id' => $connection_id,
 			'install_path'  => $install_path,
-			'plugin_file'   => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
-			'installed_at'  => time(),
-			'updated_at'    => time(),
+			'html_url'      => $html_url,
+			'basename'      => 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null,
+			'updated_at'    => current_datetime()->format( 'Y-m-d H:i:s' ),
 			'slug_renamed'  => $slug_renamed,
 		];
 
@@ -1034,7 +1308,7 @@ class Installer {
 		$pending['prev_record'] = $installed[ $record_key ] ?? null;
 		$pending['provider']    = $provider;
 		if ( ! $sync_theme_guard ) {
-			update_option( 'gitwire_pending_update', $pending, false );
+			update_option( 'gitwire_running_task', $pending, false );
 		}
 
 		$plugin_file  = 'plugin' === $type ? ( $pending['plugin_file'] ?? null ) : null;
@@ -1049,14 +1323,14 @@ class Installer {
 
 			$pending['context'] = 'update';
 			self::clear_guard_feedback();
-			update_option( 'gitwire_pending_update', $pending, false );
+			update_option( 'gitwire_running_task', $pending, false );
 
 			self::refresh_plugin_runtime( $install_path, $slug );
 
 			$activated = self::reactivate_plugin_after_update( $plugin_file );
 			if ( is_wp_error( $activated ) ) {
 				self::restore_backup( $install_path, $backup_path );
-				delete_option( 'gitwire_pending_update' );
+				delete_option( 'gitwire_running_task' );
 				if ( ! $remote_sha ) {
 					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
 				}
@@ -1073,7 +1347,7 @@ class Installer {
 				self::restore_backup( $install_path, $backup_path );
 				self::refresh_plugin_runtime( $install_path, $slug );
 				Error_Handler::restore_pending_installed_record( $pending );
-				delete_option( 'gitwire_pending_update' );
+				delete_option( 'gitwire_running_task' );
 
 				if ( ! $remote_sha ) {
 					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
@@ -1094,7 +1368,7 @@ class Installer {
 
 			$validated = self::validate_theme_for_active_pull(
 				[
-					'slug'         => $slug,
+					'name'         => $slug,
 					'install_path' => $install_path,
 					'full_name'    => $full_name,
 				]
@@ -1122,7 +1396,7 @@ class Installer {
 			$record,
 			self::fetch_remote_head_sha( $api, $owner, $repo, $branch )
 		);
-		if ( 'theme' === $type ) {
+		if ( Repository_Detector::is_theme( $type ) ) {
 			self::clear_guard_feedback();
 		}
 		self::finalize_successful_update( $backup_path );
@@ -1133,7 +1407,7 @@ class Installer {
 	/**
 	 * Reactivates a plugin using WordPress core's sandbox scrape.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $plugin_file Plugin bootstrap file relative to wp-content/plugins.
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
@@ -1154,37 +1428,36 @@ class Installer {
 	/**
 	 * Clears a successful update guard and its backup copy.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string|null $backup_path Absolute backup path.
 	 * @return void
 	 */
 	private static function finalize_successful_update( ?string $backup_path ): void {
 		self::delete_backup_path( $backup_path );
-		delete_option( 'gitwire_pending_update' );
+		delete_option( 'gitwire_running_task' );
 	}
 
 	/**
 	 * Clears stale guard feedback before arming a new verify cycle.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function clear_guard_feedback(): void {
-		delete_option( 'gitwire_fatal_notice' );
-		Error_Handler::clear_bootstrap_verified();
+		delete_option( 'gitwire_pending_message' );
 	}
 
 	/**
 	 * Returns whether the installed plugin or theme is currently active.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string      $type        Installation type: "plugin" or "theme".
 	 * @param string      $slug        Directory slug.
 	 * @param string|null $plugin_file Plugin bootstrap file relative to wp-content/plugins.
 	 * @return bool
 	 */
 	private static function is_active_install( string $type, string $slug, ?string $plugin_file ): bool {
-		if ( 'theme' === $type ) {
+		if ( Repository_Detector::is_theme( $type ) ) {
 			if ( ! function_exists( 'get_stylesheet' ) ) {
 				return false;
 			}
@@ -1216,7 +1489,7 @@ class Installer {
 	/**
 	 * Deletes a temporary backup directory created during install or update.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string|null $backup_path Absolute backup path.
 	 * @return void
 	 */
@@ -1236,7 +1509,7 @@ class Installer {
 	 * @since 1.0.0
 	 * @param string $zip_path    Local path to the ZIP file.
 	 * @param string $destination Absolute path for the extracted files.
-	 * @return true|WP_Error True on success, WP_Error on failure.
+	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
 	private static function extract_zip( string $zip_path, string $destination ): bool|\WP_Error {
 		global $wp_filesystem;
@@ -1324,25 +1597,27 @@ class Installer {
 			return false;
 		}
 
-		$failed_path = $install_path . '--gitwire-failed-' . time();
-
+		// Move broken install aside on same filesystem as install_path (fast rename).
+		$failed_path = null;
 		if ( is_dir( $install_path ) ) {
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
-			if ( ! @rename( $install_path, $failed_path ) ) {
+			$failed_path = $install_path . '--gitwire-failed-' . time();
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+			if ( ! rename( $install_path, $failed_path ) ) {
 				self::rmdir_recursive( $install_path );
+				$failed_path = null;
 			}
 		}
 
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
-		if ( ! @rename( $backup_path, $install_path ) ) {
-			if ( is_dir( $failed_path ) && ! is_dir( $install_path ) ) {
-				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
-				@rename( $failed_path, $install_path );
+		// Restore backup (backup may be in temp dir — use move_dir_safe for cross-filesystem support).
+		if ( ! self::move_dir_safe( $backup_path, $install_path ) ) {
+			if ( $failed_path && is_dir( $failed_path ) && ! is_dir( $install_path ) ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+				rename( $failed_path, $install_path );
 			}
 			return false;
 		}
 
-		if ( is_dir( $failed_path ) ) {
+		if ( $failed_path && is_dir( $failed_path ) ) {
 			self::rmdir_recursive( $failed_path );
 		}
 
@@ -1356,17 +1631,22 @@ class Installer {
 	/**
 	 * Finds the newest orphaned backup directory for an install path.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $install_path Absolute install path.
 	 * @return string|null Backup path or null when none exist.
 	 */
 	public static function find_orphaned_backup( string $install_path ): ?string {
-		$parent = dirname( $install_path );
-		$slug   = basename( $install_path );
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		$matches = glob( $parent . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
+		$slug = basename( $install_path );
+
+		// Check the temp-dir backup location first (current storage).
+		$matches = glob( self::get_backup_base_dir() . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
 		if ( ! is_array( $matches ) || empty( $matches ) ) {
-			return null;
+			// Legacy fallback: pre-fix backups stored alongside the install.
+			$parent  = dirname( $install_path );
+			$matches = glob( $parent . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
+			if ( ! is_array( $matches ) || empty( $matches ) ) {
+				return null;
+			}
 		}
 
 		rsort( $matches );
@@ -1377,7 +1657,7 @@ class Installer {
 	/**
 	 * Returns whether a path is inside the WordPress themes directory.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $install_path Absolute install path.
 	 * @return bool
 	 */
@@ -1394,7 +1674,7 @@ class Installer {
 	/**
 	 * Clears stale theme runtime state after files on disk change.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $install_path Theme directory path.
 	 * @param string $slug         Theme stylesheet slug.
 	 * @return void
@@ -1432,10 +1712,6 @@ class Installer {
 			new \RecursiveDirectoryIterator( $install_path, \FilesystemIterator::SKIP_DOTS )
 		);
 
-		if ( ! $iterator ) {
-			return;
-		}
-
 		foreach ( $iterator as $file ) {
 			if ( ! $file->isFile() ) {
 				continue;
@@ -1456,7 +1732,7 @@ class Installer {
 	 * paused-plugins list must be cleared for the loopback scrape to execute the
 	 * replaced files instead of the cached, still-working version.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $install_path Plugin directory path.
 	 * @param string $slug         Plugin directory slug.
 	 * @return void
@@ -1478,10 +1754,6 @@ class Installer {
 			new \RecursiveDirectoryIterator( $install_path, \FilesystemIterator::SKIP_DOTS )
 		);
 
-		if ( ! $iterator ) {
-			return;
-		}
-
 		foreach ( $iterator as $file ) {
 			if ( ! $file->isFile() ) {
 				continue;
@@ -1498,12 +1770,12 @@ class Installer {
 	/**
 	 * Checks whether theme files on disk are readable and error-free.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $rec Installed theme record.
 	 * @return true|\WP_Error True when the theme can be activated.
 	 */
 	private static function validate_theme_for_activation( array $rec ): bool|\WP_Error {
-		$slug         = $rec['slug'] ?? '';
+		$slug         = $rec['name'] ?? '';
 		$install_path = $rec['install_path'] ?? '';
 		$full_name    = $rec['full_name'] ?? $slug;
 
@@ -1565,7 +1837,7 @@ class Installer {
 	/**
 	 * Validates an active theme pull using the same checks as theme activation.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $rec Installed theme record.
 	 * @return true|\WP_Error True when the updated theme can stay active.
 	 */
@@ -1575,7 +1847,7 @@ class Installer {
 			return $ready;
 		}
 
-		$slug = $rec['slug'] ?? '';
+		$slug = $rec['name'] ?? '';
 		if ( ! $slug ) {
 			return new \WP_Error(
 				'gitwire_theme_missing',
@@ -1604,10 +1876,20 @@ class Installer {
 	 * @return void
 	 */
 	public static function purge_orphaned_backups(): void {
+		// Temp-dir backups (current location).
+		$backup_base = self::get_backup_base_dir();
+		foreach ( [ '--gitwire-bak-', '--gitwire-failed-' ] as $marker ) {
+			$matches = glob( $backup_base . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
+			if ( is_array( $matches ) ) {
+				foreach ( $matches as $dir ) {
+					self::rmdir_recursive( $dir );
+				}
+			}
+		}
+		// Legacy webroot backups left behind before this fix was applied.
 		foreach ( [ WP_PLUGIN_DIR, get_theme_root() ] as $parent ) {
 			foreach ( [ '--gitwire-bak-', '--gitwire-failed-' ] as $marker ) {
-				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-				$matches = @glob( $parent . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
+				$matches = glob( $parent . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
 				if ( is_array( $matches ) ) {
 					foreach ( $matches as $dir ) {
 						self::rmdir_recursive( $dir );
@@ -1629,8 +1911,7 @@ class Installer {
 		if ( ! is_dir( $dir ) ) {
 			return;
 		}
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		$items = @scandir( $dir );
+		$items = scandir( $dir );
 		if ( ! $items ) {
 			return;
 		}
@@ -1648,6 +1929,83 @@ class Installer {
 		}
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
 		@rmdir( $dir );
+	}
+
+	/**
+	 * Returns the base directory for temporary backup storage, outside the webroot.
+	 *
+	 * The sys_get_temp_dir() path is outside the document root on virtually all hosts,
+	 * so PHP files inside backups cannot be executed via HTTP.
+	 *
+	 * @since 1.0.0
+	 * @return string Absolute path to the backup directory.
+	 */
+	private static function get_backup_base_dir(): string {
+		$dir = trailingslashit( sys_get_temp_dir() ) . 'gitwire-backups';
+		if ( ! is_dir( $dir ) ) {
+			wp_mkdir_p( $dir );
+		}
+		return $dir;
+	}
+
+	/**
+	 * Moves a directory, falling back to copy+delete for cross-filesystem moves.
+	 *
+	 * Safe to call from the shutdown handler (uses only native PHP).
+	 *
+	 * @since 1.0.0
+	 * @param string $src Source path.
+	 * @param string $dst Destination path.
+	 * @return bool True when dst exists after the move.
+	 */
+	private static function move_dir_safe( string $src, string $dst ): bool {
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+		if ( rename( $src, $dst ) ) {
+			return true;
+		}
+		// Cross-filesystem fallback: copy every file then remove the source.
+		if ( ! self::copy_recursive( $src, $dst ) ) {
+			return false;
+		}
+		self::rmdir_recursive( $src );
+		return is_dir( $dst );
+	}
+
+	/**
+	 * Recursively copies a directory tree using native PHP.
+	 *
+	 * @since 1.0.0
+	 * @param string $src Source directory.
+	 * @param string $dst Destination directory.
+	 * @return bool False if any step fails.
+	 */
+	private static function copy_recursive( string $src, string $dst ): bool {
+		if ( ! is_dir( $dst ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
+			if ( ! mkdir( $dst, 0755, true ) ) {
+				return false;
+			}
+		}
+		$items = scandir( $src );
+		if ( ! $items ) {
+			return false;
+		}
+		foreach ( $items as $item ) {
+			if ( '.' === $item || '..' === $item ) {
+				continue;
+			}
+			$s = $src . DIRECTORY_SEPARATOR . $item;
+			$d = $dst . DIRECTORY_SEPARATOR . $item;
+			if ( is_dir( $s ) ) {
+				if ( ! self::copy_recursive( $s, $d ) ) {
+					return false;
+				}
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_copy
+			} elseif ( ! copy( $s, $d ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**

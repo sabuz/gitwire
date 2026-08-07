@@ -13,6 +13,9 @@ build/
 # PHPUnit
 .phpunit.result.cache
 
+# PHPStan local override (use phpstan.neon.dist for CI)
+phpstan.neon
+
 # macOS
 .DS_Store
 

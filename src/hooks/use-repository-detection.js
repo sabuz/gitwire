@@ -2,7 +2,7 @@ import { useReducer, useRef, useCallback } from '@wordpress/element';
 
 import * as api from '../api';
 
-const BATCH_SIZE = 25;
+const BATCH_SIZE = 10;
 
 /**
  * @param {string} repo Repository object with provider and full_name.
@@ -28,14 +28,14 @@ function detectionsReducer( state, action ) {
  *
  * @return {Object} Detection state and helpers.
  */
-export function useRepoDetection() {
+export function useRepositoryDetection() {
 	const [ detections, dispatch ] = useReducer( detectionsReducer, {} );
 	const pendingRef = useRef( new Set() );
 	const detectionsRef = useRef( detections );
 	detectionsRef.current = detections;
 
-	const runBatch = useCallback( async ( repos ) => {
-		const toDetect = repos.filter( ( repo ) => {
+	const runBatch = useCallback( async ( repositories ) => {
+		const toDetect = repositories.filter( ( repo ) => {
 			const key = detectionKey( repo );
 			return (
 				! repo.installed &&
@@ -61,7 +61,7 @@ export function useRepoDetection() {
 						repo: repo.name,
 						branch: repo.default_branch,
 						provider: repo.provider,
-						connection_id: repo.connectionId || '',
+						connection_id: repo.connection_id || '',
 					} ) )
 				);
 				dispatch( { type: 'set_batch', payload: batch } );
@@ -82,9 +82,9 @@ export function useRepoDetection() {
 		}
 	}, [] );
 
-	const seedFromRepos = useCallback( ( repos ) => {
+	const seedFromRepos = useCallback( ( repositories ) => {
 		const seeded = {};
-		repos.forEach( ( repo ) => {
+		repositories.forEach( ( repo ) => {
 			if ( repo.detection ) {
 				seeded[ detectionKey( repo ) ] = repo.detection;
 			}

@@ -111,7 +111,7 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 							color: '#cf222e',
 						} }
 					>
-						{ __( 'Delete files', 'gitwire' ) }
+						{ __( 'Delete Files', 'gitwire' ) }
 					</p>
 					<p style={ { margin: 0, fontSize: 13, color: '#57606a' } }>
 						{ __(
@@ -144,7 +144,7 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 					variant="primary"
 					onClick={ handleDelete }
 				>
-					{ __( 'Delete files', 'gitwire' ) }
+					{ __( 'Delete Files', 'gitwire' ) }
 				</Button>
 			</Flex>
 		</>

@@ -3,7 +3,7 @@
  * Activity logger — appends timestamped entries to a protected file in uploads.
  *
  * @package Gitwire
- * @since 1.3.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -34,7 +34,7 @@ class Logger {
 	/**
 	 * Returns the singleton, bootstrapping the log directory on first call.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return self
 	 */
 	public static function get_instance(): self {
@@ -46,18 +46,22 @@ class Logger {
 
 	/**
 	 * Resolves the log file path and ensures the directory exists.
+	 *
+	 * Stored in wp-content/gitwire/ (outside uploads) so it is not
+	 * affected by media URL routing. .htaccess protects Apache; Nginx sites
+	 * should add "location ~* /gitwire { deny all; }" -- see readme.txt.
 	 */
 	private function __construct() {
-		$upload_dir     = wp_upload_dir();
-		$dir            = $upload_dir['basedir'] . '/gitwire-logs';
-		$this->log_file = $dir . '/activity.log';
+		$dir            = WP_CONTENT_DIR . '/gitwire';
+		$hash           = substr( hash( 'sha256', wp_salt( 'auth' ) . 'gitwire-log' ), 0, 12 );
+		$this->log_file = $dir . '/' . $hash . '.log';
 		$this->ensure_dir( $dir );
 	}
 
 	/**
 	 * Appends a timestamped entry when logging is enabled and the level meets the minimum.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $message Human-readable description of the activity.
 	 * @param string $level   'activity' or 'error'.
 	 * @return void
@@ -76,7 +80,7 @@ class Logger {
 	/**
 	 * Returns log entries as structured arrays, newest first, with optional filters.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string   $from   ISO date string 'YYYY-MM-DD' or empty for no lower bound.
 	 * @param string   $to     ISO date string 'YYYY-MM-DD' or empty for no upper bound.
 	 * @param string   $level  Level to keep ('activity', 'error'), or empty for all.
@@ -87,15 +91,17 @@ class Logger {
 		if ( ! file_exists( $this->log_file ) ) {
 			return [];
 		}
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$contents = file_get_contents( $this->log_file );
-		if ( ! is_string( $contents ) || '' === trim( $contents ) ) {
+
+		try {
+			$file = new \SplFileObject( $this->log_file, 'r' );
+		} catch ( \RuntimeException $e ) {
 			return [];
 		}
+		$file->setFlags( \SplFileObject::READ_AHEAD | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE );
 
 		$entries = [];
-		foreach ( array_filter( explode( PHP_EOL, trim( $contents ) ) ) as $line ) {
-			$entry = self::parse_line( $line );
+		foreach ( $file as $line ) {
+			$entry = self::parse_line( (string) $line );
 			if ( null === $entry ) {
 				continue;
 			}
@@ -115,13 +121,15 @@ class Logger {
 			$entries[] = $entry;
 		}
 
+		unset( $file );
+
 		return array_reverse( $entries );
 	}
 
 	/**
 	 * Empties the log file.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return bool True on success.
 	 */
 	public function clear(): bool {
@@ -135,7 +143,7 @@ class Logger {
 	/**
 	 * Appends a formatted line to the log file, then trims old entries if retention is set.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $message Log message.
 	 * @param string $level   Log level.
 	 * @return void
@@ -149,44 +157,66 @@ class Logger {
 	}
 
 	/**
-	 * Removes entries older than the configured retention window, at most once per day.
+	 * Removes entries older than the configured retention window.
 	 * Called from the maintenance cron — not triggered on every write.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function trim_old_entries(): void {
-		$days = Settings::get_log_retention_days();
-		if ( 0 === $days || get_transient( 'gitwire_log_trim' ) ) {
+		if ( ! Settings::is_logging_enabled() ) {
 			return;
 		}
-		set_transient( 'gitwire_log_trim', 1, DAY_IN_SECONDS );
+		$days = Settings::get_log_retention_days();
 
 		if ( ! file_exists( $this->log_file ) ) {
 			return;
 		}
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$contents = file_get_contents( $this->log_file );
-		if ( ! is_string( $contents ) ) {
+
+		$cutoff = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
+		$tmp    = $this->log_file . '.tmp';
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+		$out = fopen( $tmp, 'w' );
+		if ( ! $out ) {
 			return;
 		}
 
-		$cutoff = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
-		$kept   = [];
-		foreach ( array_filter( explode( PHP_EOL, trim( $contents ) ) ) as $line ) {
-			$entry = self::parse_line( $line );
+		try {
+			$file = new \SplFileObject( $this->log_file, 'r' );
+		} catch ( \RuntimeException $e ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+			fclose( $out );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+			unlink( $tmp );
+			return;
+		}
+		$file->setFlags( \SplFileObject::READ_AHEAD | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE );
+
+		foreach ( $file as $line ) {
+			$entry = self::parse_line( (string) $line );
 			if ( null === $entry || substr( $entry['timestamp'], 0, 10 ) >= $cutoff ) {
-				$kept[] = $line;
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+				fwrite( $out, $line . PHP_EOL );
 			}
 		}
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		file_put_contents( $this->log_file, $kept ? implode( PHP_EOL, $kept ) . PHP_EOL : '', LOCK_EX );
+
+		unset( $file );
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		if ( fclose( $out ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+			rename( $tmp, $this->log_file );
+		} else {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+			unlink( $tmp );
+		}
 	}
 
 	/**
 	 * Parses a single log line into a structured entry, or null if unrecognized.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $line Raw log line.
 	 * @return array{timestamp: string, level: string, actor: string, message: string}|null
 	 */
@@ -203,9 +233,48 @@ class Logger {
 	}
 
 	/**
+	 * Called from the maintenance cron to clean up the log directory.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function purge_log_dir(): void {
+		$instance = self::get_instance();
+		$instance->purge_stale_log_files( dirname( $instance->log_file ) );
+	}
+
+	/**
+	 * Removes anything from the log directory that should not be there.
+	 *
+	 * Keeps only index.html and the current log file. Everything else — stale log
+	 * files from a salt rotation, leftover .tmp files from interrupted trims, any
+	 * unexpected files — is deleted. Empty subdirectories are removed; non-empty
+	 * ones are left alone.
+	 *
+	 * @since 1.0.0
+	 * @param string $dir Absolute path to the log directory.
+	 * @return void
+	 */
+	private function purge_stale_log_files( string $dir ): void {
+		$keep  = [ 'index.html', basename( $this->log_file ) ];
+		$files = glob( $dir . '/*' );
+		if ( ! $files ) {
+			return;
+		}
+		foreach ( $files as $file ) {
+			if ( is_dir( $file ) ) {
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
+				@rmdir( $file );
+			} elseif ( ! in_array( basename( $file ), $keep, true ) ) {
+				wp_delete_file( $file );
+			}
+		}
+	}
+
+	/**
 	 * Creates the log directory and blocks direct web access via .htaccess.
 	 *
-	 * @since 1.3.0
+	 * @since 1.0.0
 	 * @param string $dir Absolute path to the log directory.
 	 * @return void
 	 */
@@ -220,10 +289,10 @@ class Logger {
 			file_put_contents( $htaccess, 'Deny from all' );
 		}
 
-		$index = $dir . '/index.php';
+		$index = $dir . '/index.html';
 		if ( ! file_exists( $index ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			file_put_contents( $index, '<?php // Silence is golden.' );
+			file_put_contents( $index, '' );
 		}
 	}
 }

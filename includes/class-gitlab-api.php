@@ -3,7 +3,7 @@
  * GitLab API client — wraps the GitLab REST API v4.
  *
  * @package Gitwire
- * @since 1.1.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -46,7 +46,7 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Constructor.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $token    Personal access token.
 	 * @param string $base_url GitLab instance base URL (defaults to gitlab.com).
 	 */
@@ -62,7 +62,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 * scope (common with read_api-only tokens), falls back to /projects to
 	 * confirm the token is valid, returning authenticated state without profile.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner Unused; kept for interface compatibility.
 	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
 	 */
@@ -84,9 +84,15 @@ class GitLab_API implements Git_Provider_Interface {
 			];
 		}
 
-		// /user requires read_user or api scope. If missing, try /projects
-		// to verify the token is at least valid for listing repositories.
-		$projects = $this->get( '/projects?per_page=1&membership=true' );
+		// /user requires read_user or api scope; try project listing to verify the token is valid.
+		$projects = $this->get( '/projects?membership=true&per_page=1' );
+		if ( is_wp_error( $projects ) ) {
+			$projects = $this->get( '/projects?per_page=1' );
+		}
+		if ( is_wp_error( $projects ) ) {
+			// fine-grained tokens: group listing works when global read_api is absent.
+			$projects = $this->get( '/groups?per_page=1' );
+		}
 		if ( is_wp_error( $projects ) ) {
 			return $user;
 		}
@@ -105,7 +111,12 @@ class GitLab_API implements Git_Provider_Interface {
 	 * Returns projects accessible to the authenticated user, or a user's public
 	 * projects when a username is given and no token is set.
 	 *
-	 * @since 1.1.0
+	 * Fallback chain for fine-grained tokens that lack the global read_api scope:
+	 * 1. /projects?membership=true  (classic PAT)
+	 * 2. /projects                  (some fine-grained configs)
+	 * 3. list_via_groups()          (group-level endpoints work without read_api)
+	 *
+	 * @since 1.0.0
 	 * @param string $username GitLab username for public-mode listing.
 	 * @param int    $page     Page number for paginated results.
 	 * @return array<int, mixed>|\WP_Error Project list on success, WP_Error on failure.
@@ -118,10 +129,83 @@ class GitLab_API implements Git_Provider_Interface {
 			);
 		}
 
-		return $this->get(
-			'/projects?membership=true&per_page=100&page=' . $page
-			. '&order_by=last_activity_at&sort=desc'
+		$qs     = 'per_page=100&page=' . $page . '&order_by=last_activity_at&sort=desc';
+		$result = $this->get( '/projects?membership=true&' . $qs );
+
+		if ( is_wp_error( $result ) ) {
+			$result = $this->get( '/projects?' . $qs );
+		}
+
+		if ( is_wp_error( $result ) ) {
+			$result = $this->list_via_groups( $page );
+		}
+
+		if ( is_wp_error( $result )
+			&& str_contains( $result->get_error_message(), 'insufficient_granular_scope' )
+		) {
+			return new \WP_Error(
+				'gitwire_gitlab_scope',
+				'Use a classic token with read_user, read_api, and read_repository; or add API: Read under Global permissions in your fine-grained token.',
+				[ 'status' => 403 ]
+			);
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Lists projects via group-level endpoints for fine-grained tokens.
+	 *
+	 * Fine-grained tokens can access /groups and /groups/{id}/projects when scoped
+	 * to the user's groups, even without the global read_api scope that /projects
+	 * requires. Results from all groups and the personal namespace are merged,
+	 * deduplicated by project ID, sorted by last_activity_at, and paged.
+	 *
+	 * @since 1.0.0
+	 * @param int $page Page number (1-based), 100 results per page.
+	 * @return array<int, mixed>|\WP_Error Flat project array on success, WP_Error on failure.
+	 */
+	private function list_via_groups( int $page ): array|\WP_Error {
+		$all    = [];
+		$groups = $this->get( '/groups?min_access_level=10&per_page=100' );
+
+		if ( ! is_wp_error( $groups ) ) {
+			foreach ( $groups as $group ) {
+				$gid      = (int) ( $group['id'] ?? 0 );
+				$projects = $this->get(
+					'/groups/' . $gid . '/projects?include_subgroups=true&per_page=100'
+				);
+				if ( ! is_wp_error( $projects ) ) {
+					foreach ( $projects as $proj ) {
+						$all[ (int) $proj['id'] ] = $proj;
+					}
+				}
+			}
+		}
+
+		// Include projects in the user's personal namespace.
+		$user = $this->get( '/user' );
+		if ( ! is_wp_error( $user ) && '' !== ( $user['username'] ?? '' ) ) {
+			$personal = $this->get(
+				'/users/' . rawurlencode( $user['username'] ) . '/projects?per_page=100'
+			);
+			if ( ! is_wp_error( $personal ) ) {
+				foreach ( $personal as $proj ) {
+					$all[ (int) $proj['id'] ] = $proj;
+				}
+			}
+		}
+
+		if ( empty( $all ) ) {
+			return new \WP_Error( 'gitwire_gitlab_empty', 'No accessible GitLab repositories found.' );
+		}
+
+		usort(
+			$all,
+			static fn( $a, $b ) => strcmp( $b['last_activity_at'] ?? '', $a['last_activity_at'] ?? '' )
 		);
+
+		return array_slice( $all, ( $page - 1 ) * 100, 100 );
 	}
 
 	/**
@@ -129,16 +213,17 @@ class GitLab_API implements Git_Provider_Interface {
 	 *
 	 * Uses the same detection heuristics as the GitHub API class.
 	 *
-	 * @since 1.1.0
-	 * @param string $owner  GitLab namespace (group or username).
-	 * @param string $repo   Project path.
-	 * @param string $branch Branch, tag, or SHA to inspect.
+	 * @since 1.0.0
+	 * @param string            $owner         GitLab namespace (group or username).
+	 * @param string            $repo          Project path.
+	 * @param string            $branch        Branch, tag, or SHA to inspect.
+	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD' ): array|\WP_Error {
+	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
 		$project_id = rawurlencode( $owner . '/' . $repo );
 
-		return Repo_Detector::detect(
+		return Repository_Detector::detect(
 			$repo,
 			$branch,
 			function ( $ref ) use ( $project_id ) {
@@ -159,14 +244,15 @@ class GitLab_API implements Git_Provider_Interface {
 					$contents
 				);
 			},
-			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref )
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref ),
+			$cached_result
 		);
 	}
 
 	/**
 	 * Returns all branches for a project.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner GitLab namespace.
 	 * @param string $repo  Project path.
 	 * @return array<int, mixed>|\WP_Error Branch list on success, WP_Error on failure.
@@ -179,7 +265,7 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Returns the last N commits for a branch, normalised to a flat array.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner    GitLab namespace.
 	 * @param string $repo     Project path.
 	 * @param string $branch   Branch, tag, or SHA.
@@ -200,7 +286,7 @@ class GitLab_API implements Git_Provider_Interface {
 		return array_map(
 			static function ( $c ) {
 				return [
-					'sha'     => $c['short_id'] ?? substr( $c['id'], 0, 7 ),
+					'sha'     => $c['id'],
 					'message' => $c['title'] ?? '',
 					'author'  => $c['author_name'] ?? '',
 					'date'    => $c['created_at'] ?? '',
@@ -217,13 +303,18 @@ class GitLab_API implements Git_Provider_Interface {
 	 * directly. We use wp_remote_get() with stream=true to avoid buffering
 	 * large repos in memory, and pass the auth header manually.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner  GitLab namespace.
 	 * @param string $repo   Project path.
 	 * @param string $branch Branch, tag, or SHA to download.
 	 * @return string|\WP_Error Local temp file path on success, WP_Error on failure.
 	 */
 	public function download_zip( string $owner, string $repo, string $branch ): string|\WP_Error {
+		$safe = $this->assert_base_url_safe();
+		if ( is_wp_error( $safe ) ) {
+			return $safe;
+		}
+
 		$project_id = rawurlencode( $owner . '/' . $repo );
 		$url        = $this->base . '/projects/' . $project_id
 			. '/repository/archive.zip?sha=' . rawurlencode( $branch );
@@ -264,7 +355,7 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Fetches the raw content of a single file from a project.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $owner  Project namespace.
 	 * @param string $repo   Project path.
 	 * @param string $path   File path within the project.
@@ -272,6 +363,11 @@ class GitLab_API implements Git_Provider_Interface {
 	 * @return string|\WP_Error File content on success, WP_Error on failure.
 	 */
 	private function get_raw_content( string $owner, string $repo, string $path, string $branch ): string|\WP_Error {
+		$safe = $this->assert_base_url_safe();
+		if ( is_wp_error( $safe ) ) {
+			return $safe;
+		}
+
 		$project_id = rawurlencode( $owner . '/' . $repo );
 		$file_path  = rawurlencode( $path );
 
@@ -296,14 +392,59 @@ class GitLab_API implements Git_Provider_Interface {
 	}
 
 	/**
+	 * Guards against SSRF by re-resolving the hostname at request time.
+	 *
+	 * Save-time validation in is_allowed_gitlab_url() is insufficient on its
+	 * own: a DNS rebinding attack lets an attacker's hostname pass the initial
+	 * IP check and then re-resolve to an internal address (e.g. 169.254.169.254)
+	 * by the time the actual HTTP request fires. Re-resolving here closes that window.
+	 *
+	 * @since 1.0.0
+	 * @return bool|\WP_Error
+	 */
+	private function assert_base_url_safe(): bool|\WP_Error {
+		$host = wp_parse_url( $this->base, PHP_URL_HOST );
+		if ( ! is_string( $host ) || '' === $host ) {
+			return new \WP_Error( 'gitwire_ssrf', 'Invalid GitLab base URL.' );
+		}
+
+		if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+			if ( ! Settings::is_safe_ip( $host ) ) {
+				return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+			}
+			return true;
+		}
+
+		if ( function_exists( 'gethostbyname' ) ) {
+			$ipv4 = gethostbyname( $host );
+			if ( $ipv4 !== $host && ! Settings::is_safe_ip( $ipv4 ) ) {
+				return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+			}
+		}
+
+		if ( function_exists( 'dns_get_record' ) ) {
+			$aaaa = dns_get_record( $host, DNS_AAAA );
+			if ( is_array( $aaaa ) ) {
+				foreach ( $aaaa as $record ) {
+					if ( ! empty( $record['ipv6'] ) && ! Settings::is_safe_ip( $record['ipv6'] ) ) {
+						return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+					}
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Builds the HTTP headers array for GitLab API requests.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @return array<string, string> HTTP headers.
 	 */
 	private function headers(): array {
 		$h = [
-			'User-Agent' => 'GitHub-for-WordPress/' . GITWIRE_VERSION,
+			'User-Agent' => 'Gitwire/' . GITWIRE_VERSION,
 		];
 		if ( $this->token ) {
 			$h['Authorization'] = 'Bearer ' . $this->token;
@@ -314,11 +455,16 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Makes a GET request to the GitLab API and returns the decoded response body.
 	 *
-	 * @since 1.1.0
+	 * @since 1.0.0
 	 * @param string $endpoint API endpoint path (e.g. "/user").
 	 * @return array<mixed>|\WP_Error Decoded JSON array on success, WP_Error on failure.
 	 */
 	private function get( string $endpoint ): array|\WP_Error {
+		$safe = $this->assert_base_url_safe();
+		if ( is_wp_error( $safe ) ) {
+			return $safe;
+		}
+
 		$response = wp_remote_get(
 			$this->base . $endpoint,
 			[
@@ -335,6 +481,10 @@ class GitLab_API implements Git_Provider_Interface {
 		$remaining = (int) wp_remote_retrieve_header( $response, 'ratelimit-remaining' );
 		$reset     = (int) wp_remote_retrieve_header( $response, 'ratelimit-reset' );
 		if ( $limit > 0 ) {
+			// Estimate next minute boundary when header is absent or already expired.
+			if ( $reset <= time() ) {
+				$reset = (int) ( ceil( time() / 60 ) * 60 );
+			}
 			$this->last_rate = [
 				'limit'     => $limit,
 				'remaining' => $remaining,

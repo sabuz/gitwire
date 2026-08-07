@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Thin wrapper around the GitHub REST API v3.
  * Handles authentication, rate limiting, and response normalisation.
  */
-class API implements Git_Provider_Interface {
+class GitHub_API implements Git_Provider_Interface {
 
 	/**
 	 * Personal access token for authenticated requests.
@@ -24,6 +24,13 @@ class API implements Git_Provider_Interface {
 	 * @var string
 	 */
 	private string $token;
+
+	/**
+	 * Connection ID used as the rate-limit cache key.
+	 *
+	 * @var string
+	 */
+	private string $connection_id;
 
 	/**
 	 * GitHub API base URL.
@@ -36,10 +43,12 @@ class API implements Git_Provider_Interface {
 	 * Constructor.
 	 *
 	 * @since 1.0.0
-	 * @param string $token Optional personal access token.
+	 * @param string $token         Optional personal access token.
+	 * @param string $connection_id Connection ID used for the rate-limit cache key.
 	 */
-	public function __construct( string $token = '' ) {
-		$this->token = $token;
+	public function __construct( string $token = '', string $connection_id = '' ) {
+		$this->token         = $token;
+		$this->connection_id = $connection_id;
 	}
 
 	/**
@@ -47,7 +56,7 @@ class API implements Git_Provider_Interface {
 	 *
 	 * @since 1.0.0
 	 * @param string $username Optional GitHub username for public profile lookup when no token is set.
-	 * @return array<string, mixed>|WP_Error Connection data on success, WP_Error on failure.
+	 * @return array<string, mixed>|\WP_Error Connection data on success, WP_Error on failure.
 	 */
 	public function test_connection( string $username = '' ): array|\WP_Error {
 		$result = [];
@@ -93,7 +102,7 @@ class API implements Git_Provider_Interface {
 	 * @since 1.0.0
 	 * @param string $username GitHub username.
 	 * @param int    $page     Page number for paginated results.
-	 * @return array<int, mixed>|WP_Error Repository list on success, WP_Error on failure.
+	 * @return array<int, mixed>|\WP_Error Repository list on success, WP_Error on failure.
 	 */
 	public function get_repos( string $username, int $page = 1 ): array|\WP_Error {
 		if ( $this->token ) {
@@ -122,20 +131,22 @@ class API implements Git_Provider_Interface {
 	 * Returns: { type, subtype, confidence, name }
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  GitHub repository owner.
-	 * @param string $repo   Repository name.
-	 * @param string $branch Branch, tag, or SHA to inspect.
-	 * @return array<string, mixed>|WP_Error Detection result on success, WP_Error on failure.
+	 * @param string            $owner         GitHub repository owner.
+	 * @param string            $repo          Repository name.
+	 * @param string            $branch        Branch, tag, or SHA to inspect.
+	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
+	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD' ): array|\WP_Error {
-		return Repo_Detector::detect(
+	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
+		return Repository_Detector::detect(
 			$repo,
 			$branch,
 			fn( $ref ) => $this->get(
 				'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
 				. '/contents?ref=' . rawurlencode( $ref )
 			),
-			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref )
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref ),
+			$cached_result
 		);
 	}
 
@@ -145,7 +156,7 @@ class API implements Git_Provider_Interface {
 	 * @since 1.0.0
 	 * @param string $owner GitHub repository owner.
 	 * @param string $repo  Repository name.
-	 * @return array<int, mixed>|WP_Error Branch list on success, WP_Error on failure.
+	 * @return array<int, mixed>|\WP_Error Branch list on success, WP_Error on failure.
 	 */
 	public function get_branches( string $owner, string $repo ): array|\WP_Error {
 		return $this->get(
@@ -176,7 +187,7 @@ class API implements Git_Provider_Interface {
 		return array_map(
 			static function ( $c ) {
 				return [
-					'sha'     => substr( $c['sha'], 0, 7 ),
+					'sha'     => $c['sha'],
 					'message' => explode( "\n", trim( $c['commit']['message'] ) )[0],
 					'author'  => $c['commit']['author']['name'] ?? '',
 					'date'    => $c['commit']['author']['date'] ?? '',
@@ -198,7 +209,7 @@ class API implements Git_Provider_Interface {
 	 * @param string $owner  GitHub repository owner.
 	 * @param string $repo   Repository name.
 	 * @param string $branch Branch, tag, or SHA to download.
-	 * @return string|WP_Error Local temp file path on success, WP_Error on failure.
+	 * @return string|\WP_Error Local temp file path on success, WP_Error on failure.
 	 */
 	public function download_zip( string $owner, string $repo, string $branch ): string|\WP_Error {
 		$api_url = self::BASE . '/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
@@ -255,7 +266,7 @@ class API implements Git_Provider_Interface {
 	 * @param string $repo   Repository name.
 	 * @param string $path   File path within the repository.
 	 * @param string $branch Branch, tag, or SHA reference.
-	 * @return string|WP_Error Decoded file content on success, WP_Error on failure.
+	 * @return string|\WP_Error Decoded file content on success, WP_Error on failure.
 	 */
 	private function get_raw_content( string $owner, string $repo, string $path, string $branch ): string|\WP_Error {
 		$result = $this->get(
@@ -281,7 +292,7 @@ class API implements Git_Provider_Interface {
 	private function headers(): array {
 		$h = [
 			'Accept'     => 'application/vnd.github.v3+json',
-			'User-Agent' => 'GitHub-for-WordPress/' . GITWIRE_VERSION,
+			'User-Agent' => 'Gitwire/' . GITWIRE_VERSION,
 		];
 		if ( $this->token ) {
 			$h['Authorization'] = 'Bearer ' . $this->token;
@@ -294,7 +305,7 @@ class API implements Git_Provider_Interface {
 	 *
 	 * @since 1.0.0
 	 * @param string $endpoint API endpoint path (e.g. "/user/repos").
-	 * @return array<mixed>|WP_Error Decoded JSON array on success, WP_Error on failure.
+	 * @return array<mixed>|\WP_Error Decoded JSON array on success, WP_Error on failure.
 	 */
 	private function get( string $endpoint ): array|\WP_Error {
 		$response = wp_remote_get(
@@ -311,6 +322,13 @@ class API implements Git_Provider_Interface {
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		$remaining_raw = wp_remote_retrieve_header( $response, 'x-ratelimit-remaining' );
+		if ( '' !== (string) $remaining_raw ) {
+			$reset = (int) wp_remote_retrieve_header( $response, 'x-ratelimit-reset' );
+			$ttl   = $reset > time() ? min( $reset - time(), HOUR_IN_SECONDS ) : HOUR_IN_SECONDS;
+			set_transient( 'gitwire_gh_rl_' . ( $this->connection_id ? $this->connection_id : 'anon' ), (int) $remaining_raw, $ttl );
+		}
 
 		if ( $code >= 400 ) {
 			return new \WP_Error(

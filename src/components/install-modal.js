@@ -1,6 +1,6 @@
 import { toast } from '../toast';
 
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 import { useState, useEffect, useRef, useMemo } from '@wordpress/element';
 import {
 	Button,
@@ -9,24 +9,12 @@ import {
 	Flex,
 	Modal,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 
 import * as api from '../api';
-
-function normalizeSlug( value ) {
-	return value
-		.toLowerCase()
-		.replace( /[^a-z0-9_-]+/g, '-' )
-		.replace( /[-_]*-[-_]*/g, '-' )
-		.replace( /__+/g, '_' );
-	// No leading/trailing trim here — trimming while typing blocks adding separators at the end.
-}
-
-function finalizeSlug( value ) {
-	return normalizeSlug( value ).replace( /^[-_]+|[-_]+$/g, '' );
-}
+import { normalizeSlug, finalizeSlug } from '../slug';
+import DetectionBadge from './detection-badge';
 
 /**
  * Inline install form — branch picker, slug, detection badge, Install button.
@@ -60,8 +48,9 @@ export function InstallForm( {
 	const [ branchFilter, setBranchFilter ] = useState( '' );
 	const [ detection, setDetection ] = useState( initialDetection );
 	const [ type, setType ] = useState(
-		initialDetection?.type === 'plugin' ||
-			initialDetection?.type === 'theme'
+		[ 'plugin', 'theme', 'block-theme', 'classic-theme' ].includes(
+			initialDetection?.type
+		)
 			? initialDetection.type
 			: 'plugin'
 	);
@@ -107,7 +96,14 @@ export function InstallForm( {
 			)
 				.then( ( d ) => {
 					setDetection( d );
-					if ( d.type === 'plugin' || d.type === 'theme' ) {
+					if (
+						[
+							'plugin',
+							'theme',
+							'block-theme',
+							'classic-theme',
+						].includes( d.type )
+					) {
 						setType( d.type );
 					}
 				} )
@@ -129,13 +125,7 @@ export function InstallForm( {
 		}
 		let cancelled = false;
 		debounceRef.current = setTimeout( () => {
-			api.checkSlug(
-				finalizeSlug( slug ),
-				type,
-				repo.owner,
-				repo.name,
-				provider
-			)
+			api.checkSlug( finalizeSlug( slug ), type )
 				.then( ( r ) => {
 					if ( cancelled ) {
 						return;
@@ -154,7 +144,7 @@ export function InstallForm( {
 			cancelled = true;
 			clearTimeout( debounceRef.current );
 		};
-	}, [ slug, type ] ); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [ slug, type ] );
 
 	const canInstall =
 		!! slug &&
@@ -170,13 +160,7 @@ export function InstallForm( {
 				detection?.type !== 'unknown' ? detection.type : type;
 			const finalSlug = finalizeSlug( slug );
 
-			const check = await api.checkSlug(
-				finalSlug,
-				installType,
-				repo.owner,
-				repo.name,
-				provider
-			);
+			const check = await api.checkSlug( finalSlug, installType );
 			if ( check.conflict && ! replace ) {
 				setSlugConflict( true );
 				setInstallingState( false );
@@ -213,7 +197,7 @@ export function InstallForm( {
 						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 						disabled={ installing }
-						label={ __( 'Install as', 'gitwire' ) }
+						label={ __( 'Install As', 'gitwire' ) }
 						options={ [
 							{
 								label: __( 'Plugin', 'gitwire' ),
@@ -247,7 +231,7 @@ export function InstallForm( {
 				<TextControl
 					__nextHasNoMarginBottom
 					disabled={ installing }
-					label={ __( 'Directory name', 'gitwire' ) }
+					label={ __( 'Directory Name', 'gitwire' ) }
 					value={ slug }
 					onChange={ ( val ) => setSlug( normalizeSlug( val ) ) }
 				/>
@@ -365,87 +349,4 @@ function InstallButtonLabel( { installing, slugChecking } ) {
 		return __( 'Checking…', 'gitwire' );
 	}
 	return __( 'Install', 'gitwire' );
-}
-
-/**
- * @param {Object}      props              Component props.
- * @param {Object|null} props.detection    Type detection result.
- * @param {boolean}     props.smartInstall Whether smart install is enabled.
- * @return {JSX.Element} The rendered detection badge.
- */
-function DetectionBadge( { detection, smartInstall } ) {
-	if ( ! detection ) {
-		return (
-			<Flex
-				gap={ 2 }
-				align="center"
-				className="gitwire-detect-row gitwire-detect-loading"
-			>
-				<Spinner />
-				{ __( 'Detecting project type…', 'gitwire' ) }
-			</Flex>
-		);
-	}
-
-	const { type, subtype, confidence, name } = detection;
-	let badgeClass, label;
-
-	if ( type === 'plugin' ) {
-		badgeClass = 'gitwire-detect-plugin';
-		label =
-			confidence === 'high'
-				? sprintf(
-						/* translators: %s: plugin name */
-						__( 'WordPress Plugin%s', 'gitwire' ),
-						name ? `: ${ name }` : ''
-				  )
-				: __( 'Likely a WordPress Plugin', 'gitwire' );
-	} else if ( type === 'theme' && subtype === 'block' ) {
-		badgeClass = 'gitwire-detect-theme';
-		label =
-			confidence === 'high'
-				? sprintf(
-						/* translators: %s: theme name */
-						__( 'Block Theme%s', 'gitwire' ),
-						name ? `: ${ name }` : ''
-				  )
-				: __( 'Likely a Block Theme', 'gitwire' );
-	} else if ( type === 'theme' ) {
-		badgeClass = 'gitwire-detect-theme';
-		label =
-			confidence === 'high'
-				? sprintf(
-						/* translators: %s: theme name */
-						__( 'Classic Theme%s', 'gitwire' ),
-						name ? `: ${ name }` : ''
-				  )
-				: __( 'Likely a Classic Theme', 'gitwire' );
-	} else {
-		badgeClass = 'gitwire-detect-unknown';
-		label = __( 'Not recognised as a WordPress project', 'gitwire' );
-	}
-
-	return (
-		<div className="gitwire-detect-row">
-			<span className={ `gitwire-detect-badge ${ badgeClass }` }>
-				{ label }
-			</span>
-			{ type === 'unknown' && smartInstall && (
-				<p className="gitwire-detect-note gitwire-detect-blocked">
-					{ __(
-						'Smart Install is enabled. Only verified plugins and themes can be installed. Disable it in Settings to override.',
-						'gitwire'
-					) }
-				</p>
-			) }
-			{ type === 'unknown' && ! smartInstall && (
-				<p className="gitwire-detect-note gitwire-detect-warn">
-					{ __(
-						'This repository was not recognised as a WordPress plugin or theme. You can still install it. Choose a type below.',
-						'gitwire'
-					) }
-				</p>
-			) }
-		</div>
-	);
 }

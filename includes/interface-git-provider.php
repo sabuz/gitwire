@@ -3,7 +3,7 @@
  * Git provider contract shared by GitHub and GitLab clients.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -46,12 +46,13 @@ interface Git_Provider_Interface {
 	/**
 	 * Detects whether a repository is a plugin or theme.
 	 *
-	 * @param string $owner  Repository owner.
-	 * @param string $repo   Repository name.
-	 * @param string $branch Branch ref.
+	 * @param string            $owner         Repository owner.
+	 * @param string            $repo          Repository name.
+	 * @param string            $branch        Branch ref.
+	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD' ): array|\WP_Error;
+	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error;
 
 	/**
 	 * Returns recent commits for a branch.
@@ -67,7 +68,7 @@ interface Git_Provider_Interface {
 	/**
 	 * Downloads a repository ZIP archive to a local temp file.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $owner  Repository owner.
 	 * @param string $repo   Repository name.
 	 * @param string $branch Branch ref.

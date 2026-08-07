@@ -37,8 +37,8 @@ const LEVEL_OPTIONS = [
 
 const DATE_OPTIONS = [
 	{ label: __( 'Today', 'gitwire' ), value: 'today' },
-	{ label: __( 'Last 7 days', 'gitwire' ), value: '7d' },
-	{ label: __( 'Last 30 days', 'gitwire' ), value: '30d' },
+	{ label: __( 'Last 7 Days', 'gitwire' ), value: '7d' },
+	{ label: __( 'Last 30 Days', 'gitwire' ), value: '30d' },
 ];
 
 function fromDateForRange( range ) {
@@ -84,8 +84,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 	const [ userFilter, setUserFilter ] = useState( [] );
 	const [ actorSuggestions, setActorSuggestions ] = useState( [] );
 
-	const loggingEnabled =
-		settings?.enable_logging !== false && !! settings?.enable_logging;
+	const loggingEnabled = !! settings?.enable_logging;
 
 	const fetchLogs = useCallback( async ( level, range, actors ) => {
 		setLoading( true );
@@ -156,13 +155,13 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 					style={ {
 						display: 'flex',
 						justifyContent: 'flex-end',
-						marginBottom: 8,
+						marginBottom: 16,
 						position: 'relative',
 					} }
 				>
 					<Button
 						icon={ cog }
-						label={ __( 'View options', 'gitwire' ) }
+						label={ __( 'View Options', 'gitwire' ) }
 						showTooltip
 						size="compact"
 						onMouseDown={ () => {
@@ -216,7 +215,7 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 								<ToggleGroupControl
 									__nextHasNoMarginBottom
 									isBlock
-									label={ __( 'Date range', 'gitwire' ) }
+									label={ __( 'Date Range', 'gitwire' ) }
 									value={ dateRange }
 									onChange={ setDateRange }
 								>

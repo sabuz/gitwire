@@ -3,7 +3,7 @@
  * Plugin orchestrator.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -54,11 +54,16 @@ final class Plugin {
 
 		Error_Handler::register();
 
+		// must be constructed here so register_activation_hook() fires before the file finishes loading.
+		Database_Manager::instance();
+
 		add_action( 'init', [ $this, 'load_textdomain' ], 0 );
-		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] );
+		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] ); // phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
-		add_action( 'gitwire_refresh_repos_cache', [ Repo_Cache::class, 'cron_refresh_repos' ] );
-		add_action( 'gitwire_refresh_repo_types', [ Repo_Cache::class, 'cron_refresh_types' ] );
+		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
+		add_action( 'gitwire_refresh_repositories', [ Repositories::class, 'scheduled_refresh' ] );
+		add_action( 'gitwire_refresh_connections', [ Connection_Meta::class, 'refresh_public_connections' ] );
+		add_action( 'gitwire_update_check', [ Installer::class, 'run_auto_updates' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
 
 		if ( $this->file ) {
@@ -87,11 +92,15 @@ final class Plugin {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function register_cron_schedules( array $schedules ): array {
-		$schedules['gitwire_half_hourly'] = [
+		$schedules['everyfiveminutes'] = [
+			'interval' => 5 * MINUTE_IN_SECONDS,
+			'display'  => __( 'Every 5 minutes', 'gitwire' ),
+		];
+		$schedules['halfhourly']       = [
 			'interval' => 1800,
 			'display'  => __( 'Every 30 minutes', 'gitwire' ),
 		];
-		$schedules['gitwire_daily']       = [
+		$schedules['gitwire_daily']    = [
 			'interval' => DAY_IN_SECONDS,
 			'display'  => __( 'Once daily', 'gitwire' ),
 		];
@@ -104,11 +113,19 @@ final class Plugin {
 	 * @return void
 	 */
 	public function run_maintenance(): void {
-		REST::sync_installed();
+		REST_Installer::sync_installed();
 		Installer::purge_orphaned_backups();
-		if ( Settings::is_logging_enabled() ) {
-			Logger::get_instance()->trim_old_entries();
-		}
+		Logger::purge_log_dir();
+	}
+
+	/**
+	 * Cron handler that trims old log entries.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function trim_logs(): void {
+		Logger::get_instance()->trim_old_entries();
 	}
 
 	/**
@@ -117,6 +134,14 @@ final class Plugin {
 	 * @return void
 	 */
 	public function boot(): void {
+		if ( is_multisite() && ! is_main_site() ) {
+			return;
+		}
+
+		if ( Database_Manager::instance()->needs_migrate() ) {
+			Database_Manager::instance()->migrate();
+		}
+
 		Installer::init();
 		REST::init();
 
@@ -125,16 +150,20 @@ final class Plugin {
 		}
 
 		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_maintenance' );
+			wp_schedule_event( time(), 'hourly', 'gitwire_maintenance' );
 		}
 
-		if ( ! wp_next_scheduled( 'gitwire_refresh_repos_cache' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_repos_cache' );
+		$this->schedule_repos_cron();
+
+		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
+			wp_schedule_event( time(), 'halfhourly', 'gitwire_refresh_connections' );
 		}
 
-		if ( ! wp_next_scheduled( 'gitwire_refresh_repo_types' ) ) {
-			wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
+		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
+			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
 		}
+
+		$this->schedule_update_check_cron();
 
 		/**
 		 * Fires after the free plugin finishes bootstrapping.
@@ -142,7 +171,7 @@ final class Plugin {
 		 * Gitwire Pro registers its connection filters here, guaranteed
 		 * before any apply_filters call in the free plugin runs.
 		 *
-		 * @since 1.4.0
+		 * @since 1.0.0
 		 */
 		do_action( 'gitwire_loaded' );
 	}
@@ -153,30 +182,86 @@ final class Plugin {
 	 * @return void
 	 */
 	public function activate(): void {
+
 		if ( ! get_option( 'gitwire_settings' ) ) {
 			add_option(
 				'gitwire_settings',
 				[
-					'smart_install'      => true,
-					'show_repo_label'    => true,
-					'enable_logging'     => false,
-					'log_retention_days' => 30,
-					'log_level'          => 'activity',
+					'smart_install'                  => true,
+					'show_repo_label'                => true,
+					'enable_logging'                 => true,
+					'log_retention_days'             => 7,
+					'log_level'                      => 'activity',
+					'remove_data_on_uninstall'       => false,
+					'repositories_refresh_frequency' => 'daily',
 				],
 				'',
 				false
 			);
 		}
-		set_transient( 'gitwire_first_activation', true, 60 );
 		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_maintenance' );
+			wp_schedule_event( time(), 'hourly', 'gitwire_maintenance' );
 		}
-		if ( ! wp_next_scheduled( 'gitwire_refresh_repos_cache' ) ) {
-			wp_schedule_event( time(), 'gitwire_half_hourly', 'gitwire_refresh_repos_cache' );
+		$this->schedule_repos_cron();
+		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
+			wp_schedule_event( time(), 'halfhourly', 'gitwire_refresh_connections' );
 		}
-		if ( ! wp_next_scheduled( 'gitwire_refresh_repo_types' ) ) {
-			wp_schedule_event( time(), 'gitwire_daily', 'gitwire_refresh_repo_types' );
+		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
+			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
 		}
+		$this->schedule_update_check_cron();
+	}
+
+	/**
+	 * Schedules or reschedules the repository list cache cron to match the current frequency setting.
+	 *
+	 * Safe to call on every boot — only reschedules when the stored interval differs.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function schedule_repos_cron(): void {
+		$freq    = Settings::get_repositories_refresh_frequency();
+		$current = wp_get_schedule( 'gitwire_refresh_repositories' );
+		if ( $current === $freq ) {
+			return;
+		}
+		wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
+		wp_schedule_event( time(), $freq, 'gitwire_refresh_repositories' );
+	}
+
+	/**
+	 * Schedules or reschedules the auto-update cron to match the update_check_interval setting.
+	 *
+	 * When update_check_interval is 'never', the event is removed entirely.
+	 * Safe to call on every boot — only reschedules when the stored interval differs.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function schedule_update_check_cron(): void {
+		$interval = Settings::get_public()['update_check_interval'] ?? 'halfhourly';
+
+		if ( 'never' === $interval ) {
+			wp_clear_scheduled_hook( 'gitwire_update_check' );
+			return;
+		}
+
+		$recurrence_map = [
+			'everyfiveminutes' => 'everyfiveminutes',
+			'halfhourly'       => 'halfhourly',
+			'hourly'           => 'hourly',
+			'twicedaily'       => 'twicedaily',
+			'daily'            => 'daily',
+		];
+		$recurrence     = $recurrence_map[ $interval ] ?? 'halfhourly';
+		$current        = wp_get_schedule( 'gitwire_update_check' );
+
+		if ( $current === $recurrence ) {
+			return;
+		}
+		wp_clear_scheduled_hook( 'gitwire_update_check' );
+		wp_schedule_event( time(), $recurrence, 'gitwire_update_check' );
 	}
 
 	/**
@@ -185,9 +270,11 @@ final class Plugin {
 	 * @return void
 	 */
 	public function deactivate(): void {
-		Repo_Cache::clear_all();
+		Repositories::clear_all();
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
-		wp_clear_scheduled_hook( 'gitwire_refresh_repos_cache' );
-		wp_clear_scheduled_hook( 'gitwire_refresh_repo_types' );
+		wp_clear_scheduled_hook( 'gitwire_trim_logs' );
+		wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
+		wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
+		wp_clear_scheduled_hook( 'gitwire_update_check' );
 	}
 }

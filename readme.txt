@@ -2,13 +2,13 @@
 Contributors: nazsabuz
 Tags: github, gitlab, bitbucket, git, plugins, themes, deploy
 Requires at least: 6.9
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 8.1
 Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Install and manage plugins and themes from any Git repository. Switch branches and auto-recover from fatal errors.
+Install and update WordPress plugins and themes from Git repositories. Switch branches when needed, and recover safely if an update causes a fatal error.
 
 == Description ==
 
@@ -52,11 +52,13 @@ Repository lists are cached for 30 minutes and type-detection results for 24 hou
 
 = Do I need a personal access token? =
 
-Yes. GitHub requires a classic or fine-grained personal access token with at least `repo` (read) scope. GitLab requires a personal access token with `read_api` scope. Bitbucket requires an App Password (or Atlassian API token) with `Repositories: Read` permission. Tokens are stored in the WordPress database and are only used server-side.
+No. Gitwire connects to public GitHub, GitLab, and Bitbucket repositories without any token. Add your username in Settings to browse your public repositories.
+
+For private repositories, Gitwire Pro stores an encrypted token to authenticate with the provider API.
 
 = Can I install private repositories? =
 
-Yes, as long as your token has access to the repository.
+Private repositories require Gitwire Pro and a personal access token with read access to the repository.
 
 = Can I install a theme? =
 
@@ -77,6 +79,14 @@ WordPress 6.9 or later. PHP 8.1 or later is also required.
 = Is GitLab self-hosted supported? =
 
 Yes. Enter your self-hosted GitLab instance URL in the Settings tab alongside your token.
+
+= Does Gitwire's activity log need any extra server configuration? =
+
+On Apache the log directory is protected automatically by a generated `.htaccess` file. On Nginx, `.htaccess` has no effect. Add the following block to your Nginx site config to deny direct access:
+
+`location ~* /wp-content/gitwire { deny all; }`
+
+Without this rule, anyone who guesses or discovers the log filename can read it in plain text. The filename is randomised per site, but randomisation alone is not a substitute for server-level access control.
 
 == Screenshots ==
 

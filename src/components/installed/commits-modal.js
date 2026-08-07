@@ -109,12 +109,12 @@ export default function CommitsModal( { item, onClose } ) {
 										) }
 									>
 										<code className="gitwire-commit-sha is-fatal">
-											{ commit.sha }
+											{ commit.sha.slice( 0, 7 ) }
 										</code>
 									</Tooltip>
 								) : (
 									<code className="gitwire-commit-sha">
-										{ commit.sha }
+										{ commit.sha.slice( 0, 7 ) }
 									</code>
 								) }
 								<div className="gitwire-commit-body">

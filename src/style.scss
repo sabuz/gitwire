@@ -60,22 +60,20 @@ body.gitwire-admin-page {
 		padding: 16px 32px 0;
 		background-color: #fff;
 		box-shadow: inset 0 -1px 0 0 #ddd;
+
+		&__top {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 16px;
+		}
 	}
 
 	&-title {
-		display: flex;
-		gap: 8px;
-		align-items: center;
-		margin-bottom: 16px;
+		margin: 0;
 		font-size: 15px;
 		font-weight: 600;
 		color: #1d2327;
-
-		&__icon {
-			flex-shrink: 0;
-			width: 20px;
-			height: 20px;
-		}
 	}
 
 	&-nav {
@@ -213,7 +211,7 @@ body.gitwire-admin-page {
 
 	&--draft {
 		background: #f0f0f0;
-		color: #8c959f;
+		color: #57606a;
 	}
 
 	&--github {
@@ -280,6 +278,10 @@ body.gitwire-admin-page {
 	&:focus-visible {
 		outline: 2px solid var(--wp-admin-theme-color, #3858e9);
 		outline-offset: 1px;
+	}
+
+	&.is-inactive {
+		opacity: 0.6;
 	}
 }
 
@@ -443,10 +445,17 @@ body.gitwire-admin-page {
 			border-radius: 2px;
 			box-shadow: none;
 			cursor: pointer;
+
+			&:checked::before {
+				width: 1.125rem;
+				height: 1.125rem;
+				margin: -0.125rem 0 0 -0.1875rem;
+			}
 		}
 
 		&__label {
 			font-size: 12px;
+			user-select: none;
 		}
 	}
 }
@@ -493,8 +502,20 @@ body.gitwire-admin-page {
 		color: #1d2327;
 		text-decoration: none;
 
+		.components-external-link__icon {
+			visibility: hidden;
+		}
+
 		&:hover {
 			color: var(--gitwire-color-accent);
+		}
+
+		&:hover,
+		&:focus {
+
+			.components-external-link__icon {
+				visibility: visible;
+			}
 		}
 	}
 }
@@ -527,6 +548,24 @@ body.gitwire-admin-page {
 		font-size: 14px;
 		font-weight: 500;
 		color: #1d2327;
+		text-decoration: none;
+
+		/* stylelint-disable-next-line no-descending-specificity */
+		.components-external-link__icon {
+			visibility: hidden;
+		}
+
+		&:hover {
+			color: var(--gitwire-color-accent);
+		}
+
+		&:hover,
+		&:focus {
+
+			.components-external-link__icon {
+				visibility: visible;
+			}
+		}
 	}
 
 	&-badges {
@@ -540,7 +579,6 @@ body.gitwire-admin-page {
 		flex-wrap: wrap;
 	}
 
-	&-source,
 	&-date {
 		font-size: 12px;
 		color: #57606a;

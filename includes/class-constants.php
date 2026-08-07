@@ -3,7 +3,7 @@
  * Plugin constants holder.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -69,7 +69,9 @@ final class Constants {
 		$this->dir      = plugin_dir_path( $file );
 		$this->url      = plugin_dir_url( $file );
 		$this->basename = plugin_basename( $file );
-		$this->version  = '1.2.0';
+
+		$header        = get_file_data( $file, [ 'version' => 'Version' ] );
+		$this->version = '' !== $header['version'] ? $header['version'] : '0.0.0';
 	}
 
 	/**

@@ -30,10 +30,13 @@ Thumbs.db export-ignore
 
 # Repository and development files - exclude from distribution
 .github export-ignore
+bin export-ignore
 docs export-ignore
 src export-ignore
 tests export-ignore
 CLAUDE.md export-ignore
+phpstan-stubs.php export-ignore
+*.neon.dist export-ignore
 
 # Build artifacts - exclude from distribution
 *.log export-ignore

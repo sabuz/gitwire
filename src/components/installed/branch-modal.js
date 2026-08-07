@@ -35,7 +35,12 @@ export default function BranchModal( {
 		setSelectedBranch( item.branch || '' );
 		setBranchFilter( '' );
 		setAllBranches( [] );
-		api.getBranches( owner, repo, item.provider ?? 'github' )
+		api.getBranches(
+			owner,
+			repo,
+			item.provider ?? 'github',
+			item.connection_id ?? ''
+		)
 			.then( setAllBranches )
 			.catch( () => setAllBranches( [] ) );
 	}, [ item, owner, repo ] );
@@ -91,7 +96,7 @@ export default function BranchModal( {
 			style={ { width: 480 } }
 			title={
 				<span className="gitwire-modal__title">
-					{ __( 'Switch branch', 'gitwire' ) }{ ' ' }
+					{ __( 'Switch Branch', 'gitwire' ) }{ ' ' }
 					<span style={ { color: 'var(--gitwire-color-accent)' } }>
 						{ item.repo }
 					</span>

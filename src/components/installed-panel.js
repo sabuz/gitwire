@@ -2,10 +2,17 @@ import { toast } from '../toast';
 
 import { __, sprintf } from '@wordpress/i18n';
 import { useState, useMemo, useCallback } from '@wordpress/element';
-import { Button, Flex, Icon, Tooltip } from '@wordpress/components';
+import {
+	Button,
+	Flex,
+	Icon,
+	RadioControl,
+	Tooltip,
+} from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews';
 
 import * as api from '../api';
+import ExternalLinkIcon from './external-link-icon';
 import { queuePendingToastAndReload } from '../pending-toast';
 import BranchCell from './installed/branch-cell';
 import BranchModal from './installed/branch-modal';
@@ -88,11 +95,23 @@ export default function InstalledPanel( {
 				id: 'name',
 				label: __( 'Repository', 'gitwire' ),
 				getValue: ( { item } ) => item.full_name,
-				render: ( { item } ) => (
-					<span className="gitwire-installed-name">
-						{ item.full_name }
-					</span>
-				),
+				render: ( { item } ) =>
+					item.full_name &&
+					( item.html_url ? (
+						<a
+							className="gitwire-installed-name"
+							href={ item.html_url }
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							{ item.full_name }
+							<ExternalLinkIcon />
+						</a>
+					) : (
+						<span className="gitwire-installed-name">
+							{ item.full_name }
+						</span>
+					) ),
 				enableSorting: true,
 				enableGlobalSearch: true,
 			},
@@ -138,7 +157,7 @@ export default function InstalledPanel( {
 						) }
 						{ item.needs_reconnect && (
 							<span className="gitwire-badge gitwire-badge--warning is-needs-reconnect">
-								{ __( 'Connection Needed', 'gitwire' ) }
+								{ __( 'Connection Required', 'gitwire' ) }
 							</span>
 						) }
 						{ item.update_available &&
@@ -153,6 +172,11 @@ export default function InstalledPanel( {
 									{ __( 'Update Available', 'gitwire' ) }
 								</span>
 							) ) }
+						{ item.auto_update !== 'disabled' && (
+							<span className="gitwire-badge gitwire-badge--info is-auto-update">
+								{ __( 'Auto-Update Enabled', 'gitwire' ) }
+							</span>
+						) }
 					</Flex>
 				),
 				enableSorting: true,
@@ -185,20 +209,19 @@ export default function InstalledPanel( {
 			{
 				id: 'last_updated',
 				label: __( 'Last Updated', 'gitwire' ),
-				getValue: ( { item } ) => item.updated_at ?? 0,
+				getValue: ( { item } ) => item.updated_at ?? '',
 				render: ( { item } ) => (
 					<span className="gitwire-installed-date">
 						{ item.updated_at
-							? new Date( item.updated_at * 1000 ).toLocaleString(
-									undefined,
-									{
-										year: 'numeric',
-										month: 'short',
-										day: 'numeric',
-										hour: 'numeric',
-										minute: '2-digit',
-									}
-							  )
+							? new Date(
+									item.updated_at?.replace( ' ', 'T' )
+							  ).toLocaleString( undefined, {
+									year: 'numeric',
+									month: 'short',
+									day: 'numeric',
+									hour: 'numeric',
+									minute: '2-digit',
+							  } )
 							: '—' }
 					</span>
 				),
@@ -230,16 +253,6 @@ export default function InstalledPanel( {
 							item.repo,
 							item.provider ?? 'github'
 						);
-						if ( item.type === 'theme' ) {
-							queuePendingToastAndReload(
-								sprintf(
-									/* translators: %s: repository full name */
-									__( '%s activated.', 'gitwire' ),
-									item.full_name
-								)
-							);
-							return;
-						}
 						queuePendingToastAndReload(
 							sprintf(
 								/* translators: %s: repository full name */
@@ -282,11 +295,15 @@ export default function InstalledPanel( {
 			},
 			{
 				id: 'switch-theme',
-				label: __( 'Switch theme', 'gitwire' ),
+				label: __( 'Switch Theme', 'gitwire' ),
 				icon: <Icon icon="admin-appearance" />,
-				isEligible: ( item ) => item.active && item.type === 'theme',
+				isEligible: ( item ) =>
+					item.active &&
+					[ 'theme', 'block-theme', 'classic-theme' ].includes(
+						item.type
+					),
 				callback: () => {
-					const themesUrl = window.Gitwire?.themes_url;
+					const themesUrl = window.gitwire?.themes_url;
 					if ( themesUrl ) {
 						window.location.href = themesUrl;
 					}
@@ -302,8 +319,53 @@ export default function InstalledPanel( {
 					<DeleteModal { ...props } onRefresh={ onRefresh } />
 				),
 			},
+			{
+				id: 'enable-auto-update',
+				label: __( 'Enable Auto-Update', 'gitwire' ),
+				icon: <Icon icon="update" />,
+				isEligible: ( item ) => item.auto_update === 'disabled',
+				RenderModal: ( props ) => (
+					<AutoUpdateModal
+						{ ...props }
+						onRefresh={ onRefresh }
+						updateCheckInterval={ settings?.update_check_interval }
+					/>
+				),
+			},
+			{
+				id: 'disable-auto-update',
+				label: __( 'Disable Auto-Update', 'gitwire' ),
+				icon: <Icon icon="update" />,
+				isEligible: ( item ) => item.auto_update !== 'disabled',
+				callback: async ( [ item ] ) => {
+					try {
+						await api.saveAutoUpdate(
+							item.owner,
+							item.repo,
+							item.provider ?? 'github',
+							'disabled'
+						);
+						toast.success(
+							sprintf(
+								/* translators: %s: repository full name */
+								__( 'Auto-update disabled for %s.', 'gitwire' ),
+								item.full_name
+							)
+						);
+						onRefresh();
+					} catch ( e ) {
+						toast.error(
+							e.message ||
+								__(
+									'Failed to update auto-update setting.',
+									'gitwire'
+								)
+						);
+					}
+				},
+			},
 		],
-		[ onRefresh, setReconnectItem ]
+		[ onRefresh, setReconnectItem, settings ]
 	);
 
 	const { data: shownData, paginationInfo } = useMemo(
@@ -317,9 +379,9 @@ export default function InstalledPanel( {
 				<img
 					alt=""
 					aria-hidden="true"
-					src={ window.Gitwire?.not_found_url }
+					src={ window.gitwire?.not_found_url }
 				/>
-				<h2>{ __( 'No repositories yet.', 'gitwire' ) }</h2>
+				<h2>{ __( 'No Repositories Yet.', 'gitwire' ) }</h2>
 				<p className="gitwire-installed-empty__hint">
 					{ __(
 						'Install plugins and themes directly from GitHub, GitLab, or Bitbucket.',
@@ -371,6 +433,116 @@ export default function InstalledPanel( {
 }
 
 /**
+ * Modal body for enabling auto-update on an installed repository.
+ *
+ * @param {Object}   props                     Props supplied by DataViews.
+ * @param {Array}    props.items               Selected items.
+ * @param {Function} props.closeModal          Callback to close the modal.
+ * @param {Function} props.onRefresh           Callback to refresh the installed list.
+ * @param {string}   props.updateCheckInterval Current update_check_interval setting value.
+ * @return {JSX.Element} The modal body.
+ */
+function AutoUpdateModal( {
+	items,
+	closeModal,
+	onRefresh,
+	updateCheckInterval,
+} ) {
+	const [ item ] = items;
+	const [ autoUpdate, setAutoUpdate ] = useState(
+		item.auto_update !== 'disabled' ? item.auto_update : 'current'
+	);
+	const [ busy, setBusy ] = useState( false );
+
+	const handleConfirm = async () => {
+		setBusy( true );
+		try {
+			await api.saveAutoUpdate(
+				item.owner,
+				item.repo,
+				item.provider ?? 'github',
+				autoUpdate
+			);
+			toast.success(
+				sprintf(
+					/* translators: %s: repository full name */
+					__( 'Auto-update enabled for %s.', 'gitwire' ),
+					item.full_name
+				)
+			);
+			onRefresh();
+			closeModal();
+		} catch ( e ) {
+			toast.error(
+				e.message ||
+					__( 'Failed to update auto-update setting.', 'gitwire' )
+			);
+			setBusy( false );
+		}
+	};
+
+	return (
+		<>
+			{ updateCheckInterval === 'never' && (
+				<p
+					style={ {
+						margin: '0 0 16px',
+						padding: '8px 12px',
+						background: '#fff3cd',
+						color: '#664d03',
+						borderRadius: 4,
+						fontSize: 13,
+					} }
+				>
+					{ __(
+						'Update checks are disabled (Never). Auto-updates cannot trigger until you change the Update Check Frequency in Settings.',
+						'gitwire'
+					) }
+				</p>
+			) }
+			<p style={ { margin: '0 0 16px', fontSize: 13, color: '#57606a' } }>
+				{ sprintf(
+					/* translators: %s: repository full name */
+					__( 'Choose when auto-update applies to %s.', 'gitwire' ),
+					item.full_name
+				) }
+			</p>
+			<RadioControl
+				selected={ autoUpdate }
+				options={ [
+					{
+						label: __( 'Current Branch Only', 'gitwire' ),
+						value: 'current',
+					},
+					{
+						label: __( 'Any Branch', 'gitwire' ),
+						value: 'any',
+					},
+				] }
+				onChange={ setAutoUpdate }
+			/>
+			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 16 } }>
+				<Button
+					disabled={ busy }
+					variant="tertiary"
+					onClick={ closeModal }
+				>
+					{ __( 'Cancel', 'gitwire' ) }
+				</Button>
+				<Button
+					disabled={ busy }
+					isBusy={ busy }
+					variant="primary"
+					onClick={ handleConfirm }
+				>
+					{ __( 'Enable Auto-Update', 'gitwire' ) }
+				</Button>
+			</Flex>
+		</>
+	);
+}
+
+/**
  * @param {Error}  error Activation request error.
  * @param {string} type  Installed item type: 'plugin' or 'theme'.
  * @return {string} User-facing activation error message.
@@ -382,7 +554,7 @@ function getActivationErrorMessage( error, type ) {
 		/not a valid JSON response/i.test( message );
 
 	if ( isFatalResponse ) {
-		if ( type === 'theme' ) {
+		if ( [ 'theme', 'block-theme', 'classic-theme' ].includes( type ) ) {
 			return __(
 				'Theme could not be activated. It triggered a fatal error.',
 				'gitwire'

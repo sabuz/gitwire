@@ -79,21 +79,40 @@ class Error_Handler {
 		}
 		self::$registered = true;
 		register_shutdown_function( [ self::class, 'handle_shutdown' ] );
-		register_shutdown_function( [ self::class, 'mark_guard_verified_on_verify_request' ] );
-		add_action( 'admin_init', [ self::class, 'finish_verify_bootstrap_request' ], 1 );
 		add_action( 'admin_init', [ self::class, 'clear_stale_activation_guard' ], 5 );
 		add_action( 'admin_init', [ self::class, 'clear_stale_update_guard' ], 6 );
-		add_action( 'admin_init', [ self::class, 'finalize_verified_guard_on_git_page' ], 99999 );
-		add_action( 'template_redirect', [ self::class, 'finish_verify_bootstrap_request' ], PHP_INT_MAX );
+		add_action( 'admin_init', [ self::class, 'process_pending_deactivation' ], 7 );
 
 		// late registration puts us above debug plugins (e.g. QM) in the exception-handler chain.
 		add_action( 'plugins_loaded', [ self::class, 'register_exception_handler' ], PHP_INT_MAX );
 	}
 
 	/**
+	 * Deactivates a plugin flagged by the shutdown handler on the previous request.
+	 *
+	 * Using deactivate_plugins() from admin_init is safe and honours multisite.
+	 * The shutdown handler only stores the plugin file path because calling
+	 * deactivate_plugins() from within a shutdown function is unreliable.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function process_pending_deactivation(): void {
+		$plugin_file = get_option( 'gitwire_pending_deactivate' );
+		if ( ! $plugin_file || ! is_string( $plugin_file ) ) {
+			return;
+		}
+		delete_option( 'gitwire_pending_deactivate' );
+
+		if ( function_exists( 'deactivate_plugins' ) ) {
+			deactivate_plugins( $plugin_file );
+		}
+	}
+
+	/**
 	 * Registers Gitwire's exception handler after all plugins have set theirs.
 	 *
-	 * @since 1.2.1
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function register_exception_handler(): void {
@@ -103,7 +122,7 @@ class Error_Handler {
 	/**
 	 * Flags an uncaught exception before delegating to the next handler in the chain.
 	 *
-	 * @since 1.2.1
+	 * @since 1.0.0
 	 * @param \Throwable $e The uncaught exception or error.
 	 * @throws \Throwable When WordPress core scraping flow expects native fatal markers.
 	 * @return void
@@ -155,7 +174,7 @@ class Error_Handler {
 		}
 
 		// Read the pending-update record directly from the DB.
-		$pending = self::db_get_option( 'gitwire_pending_update' );
+		$pending = self::db_get_option( 'gitwire_running_task' );
 		if ( ! $pending ) {
 			return;
 		}
@@ -170,9 +189,9 @@ class Error_Handler {
 
 		if ( 'activation' === $context ) {
 			if ( 'plugin' === $type && $plugin_file ) {
-				self::deactivate_plugin( $plugin_file );
+				self::schedule_plugin_deactivation( $plugin_file );
 				$restored = true;
-			} elseif ( 'theme' === $type ) {
+			} elseif ( Repository_Detector::is_theme( $type ) ) {
 				$previous_stylesheet = $pending['previous_stylesheet'] ?? null;
 				self::restore_theme(
 					$previous_stylesheet,
@@ -190,8 +209,8 @@ class Error_Handler {
 			$restored = self::rollback_update_files( $pending );
 
 			if ( 'plugin' === $type && $plugin_file ) {
-				self::deactivate_plugin( $plugin_file );
-			} elseif ( 'theme' === $type && $restored ) {
+				self::schedule_plugin_deactivation( $plugin_file );
+			} elseif ( Repository_Detector::is_theme( $type ) && $restored ) {
 				self::ensure_active_theme_after_update_rollback( $pending );
 			}
 		}
@@ -214,11 +233,30 @@ class Error_Handler {
 			'restored'  => 'activation' === $context ? true : $restored,
 		];
 
-		self::db_update_option( 'gitwire_fatal_notice', $notice );
-		self::clear_pending_update();
-		self::clear_bootstrap_verified();
+		self::db_update_option(
+			'gitwire_pending_message',
+			[
+				'type' => 'fatal',
+				'data' => $notice,
+			]
+		);
 
-		if ( 'activation' === $context && 'theme' !== $type ) {
+		Logger::log(
+			sprintf(
+				/* translators: 1: install or activation, 2: repository full name, 3: plugin or theme, 4: full error with file and line, 5: rollback outcome */
+				__( 'Fatal error during %1$s of "%2$s" (%3$s): %4$s. %5$s', 'gitwire' ),
+				$context,
+				$full_name,
+				$type,
+				$error_string,
+				$notice['restored'] ? __( 'Changes were rolled back.', 'gitwire' ) : __( 'Rollback failed.', 'gitwire' )
+			),
+			'error'
+		);
+
+		self::clear_running_task();
+
+		if ( 'activation' === $context && ! Repository_Detector::is_theme( $type ) ) {
 			self::redirect_to_gitwire_admin();
 		}
 	}
@@ -226,7 +264,7 @@ class Error_Handler {
 	/**
 	 * Sends the admin back to Gitwire after an activation fatal was recovered.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function redirect_to_gitwire_admin(): void {
@@ -249,211 +287,9 @@ class Error_Handler {
 	}
 
 	/**
-	 * Marks bootstrap verification after a verify bootstrap request finishes cleanly.
-	 *
-	 * @since 1.2.0
-	 * @return void
-	 */
-	public static function mark_guard_verified_on_verify_request(): void {
-		if ( ! self::is_verify_bootstrap_request() ) {
-			return;
-		}
-
-		if ( self::has_fatal_shutdown_error() ) {
-			return;
-		}
-
-		$pending = get_option( 'gitwire_pending_update' );
-		if ( ! is_array( $pending ) ) {
-			return;
-		}
-
-		$fingerprint = self::pending_fingerprint( $pending );
-
-		if ( is_admin() ) {
-			$frontend_ok = get_transient( 'gitwire_frontend_bootstrap_ok' );
-			if ( ! is_string( $frontend_ok ) || $frontend_ok !== $fingerprint ) {
-				return;
-			}
-
-			delete_transient( 'gitwire_frontend_bootstrap_ok' );
-			self::try_mark_bootstrap_verified();
-			return;
-		}
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-
-		set_transient( 'gitwire_frontend_bootstrap_ok', $fingerprint, MINUTE_IN_SECONDS );
-	}
-
-	/**
-	 * Backward-compatible alias for mark_guard_verified_on_verify_request().
-	 *
-	 * @deprecated 1.2.0 Use mark_guard_verified_on_verify_request().
-	 * @return void
-	 */
-	public static function mark_guard_verified_on_frontend_verify(): void {
-		self::mark_guard_verified_on_verify_request();
-	}
-
-	/**
-	 * Ends a frontend verify request after WordPress has bootstrapped the theme.
-	 *
-	 * @since 1.2.0
-	 * @return void
-	 */
-	public static function finish_verify_bootstrap_request(): void {
-		if ( ! self::is_verify_bootstrap_request() ) {
-			return;
-		}
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			status_header( 403 );
-			exit;
-		}
-
-		status_header( 204 );
-		exit;
-	}
-
-	/**
-	 * Returns whether this request is the frontend theme bootstrap check.
-	 *
-	 * @since 1.2.0
-	 * @return bool
-	 */
-	private static function is_verify_bootstrap_request(): bool {
-		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
-			return false;
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		return ! empty( $_GET['gitwire_verify_activation'] );
-	}
-
-	/**
-	 * Finalizes a verified guard when the Gitwire admin page loads after bootstrap checks.
-	 *
-	 * @since 1.2.0
-	 * @return void
-	 */
-	public static function finalize_verified_guard_on_git_page(): void {
-		if ( ! is_admin() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
-			return;
-		}
-
-		if ( self::is_verify_bootstrap_request() || ! self::is_gitwire_admin_page() ) {
-			return;
-		}
-
-		self::finalize_verified_guard_if_ready();
-	}
-
-	/**
-	 * Backward-compatible alias for finalize_verified_guard_on_git_page().
-	 *
-	 * @deprecated 1.2.0 Use finalize_verified_guard_on_git_page().
-	 * @return void
-	 */
-	public static function release_verified_guard_on_git_page(): void {
-		self::finalize_verified_guard_on_git_page();
-	}
-
-	/**
-	 * Finalizes a verified guard when bootstrap checks have already passed.
-	 *
-	 * @since 1.2.0
-	 * @return array<string, string>|null Finalized record metadata, or null when not ready.
-	 */
-	public static function finalize_verified_guard_if_ready(): ?array {
-		$pending = get_option( 'gitwire_pending_update' );
-		if ( ! is_array( $pending ) ) {
-			return null;
-		}
-
-		$context = $pending['context'] ?? '';
-		if ( ! in_array( $context, [ 'activation', 'update' ], true ) ) {
-			return null;
-		}
-
-		if ( ! self::is_bootstrap_verified( $pending ) || ! self::is_pending_target_active( $pending ) ) {
-			return null;
-		}
-
-		$result = [
-			'full_name' => $pending['full_name'] ?? '',
-			'type'      => $pending['type'] ?? '',
-			'context'   => $context,
-		];
-
-		self::finalize_guard_success( $pending );
-
-		return $result;
-	}
-
-	/**
-	 * Clears the guard after both iframe and Gitwire admin bootstraps succeed.
-	 *
-	 * @since 1.2.0
-	 * @param array<string, mixed> $pending Pending guard record.
-	 * @return void
-	 */
-	private static function finalize_guard_success( array $pending ): void {
-		self::apply_pending_installed_record( $pending );
-		Installer::delete_backup_path( $pending['backup_path'] ?? null );
-		self::clear_bootstrap_verified();
-
-		if ( 'activation' === ( $pending['context'] ?? '' ) ) {
-			set_transient(
-				'gitwire_activation_success',
-				[
-					'full_name' => $pending['full_name'] ?? '',
-					'type'      => $pending['type'] ?? '',
-				],
-				MINUTE_IN_SECONDS
-			);
-		} else {
-			set_transient(
-				'gitwire_update_success',
-				[
-					'full_name' => $pending['full_name'] ?? '',
-					'type'      => $pending['type'] ?? '',
-				],
-				MINUTE_IN_SECONDS
-			);
-		}
-
-		delete_option( 'gitwire_pending_update' );
-	}
-
-	/**
-	 * Commits a staged installed record after verification succeeds.
-	 *
-	 * @since 1.2.0
-	 * @param array<string, mixed> $pending Pending guard record.
-	 * @return void
-	 */
-	public static function apply_pending_installed_record( array $pending ): void {
-		$provider       = $pending['provider'] ?? '';
-		$full_name      = $pending['full_name'] ?? '';
-		$pending_record = $pending['pending_record'] ?? null;
-
-		if ( ! $provider || ! $full_name || ! is_array( $pending_record ) ) {
-			return;
-		}
-
-		$record_key               = $provider . ':' . $full_name;
-		$installed                = Installer::get_installed();
-		$installed[ $record_key ] = $pending_record;
-		update_option( 'gitwire_installed', $installed, false );
-	}
-
-	/**
 	 * Restores the installed record snapshot stored on the pending guard.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending guard record.
 	 * @return void
 	 */
@@ -466,103 +302,17 @@ class Error_Handler {
 			return;
 		}
 
-		$record_key               = $provider . ':' . $full_name;
-		$installed                = Installer::get_installed();
-		$installed[ $record_key ] = $prev_record;
-		update_option( 'gitwire_installed', $installed, false );
-	}
-
-	/**
-	 * Marks bootstrap verification when the guarded target is already active.
-	 *
-	 * @since 1.2.0
-	 * @return bool True when the pending guard was marked verified.
-	 */
-	public static function try_mark_bootstrap_verified(): bool {
-		$pending = get_option( 'gitwire_pending_update' );
-		if ( ! is_array( $pending ) ) {
-			return false;
-		}
-
-		if ( ! in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true ) ) {
-			return false;
-		}
-
-		if ( ! self::is_pending_target_active( $pending ) ) {
-			return false;
-		}
-
-		self::mark_bootstrap_verified( $pending );
-
-		return true;
-	}
-
-	/**
-	 * Records that the hidden iframe bootstrap completed without error.
-	 *
-	 * @since 1.2.0
-	 * @param array<string, mixed> $pending Pending guard record.
-	 * @return void
-	 */
-	private static function mark_bootstrap_verified( array $pending ): void {
-		set_transient(
-			'gitwire_bootstrap_verified',
-			self::pending_fingerprint( $pending ),
-			MINUTE_IN_SECONDS
-		);
-	}
-
-	/**
-	 * Returns whether the iframe bootstrap transient matches the pending guard.
-	 *
-	 * @since 1.2.0
-	 * @param array<string, mixed> $pending Pending guard record.
-	 * @return bool
-	 */
-	public static function is_bootstrap_verified( array $pending ): bool {
-		$stored = get_transient( 'gitwire_bootstrap_verified' );
-		return is_string( $stored ) && self::pending_fingerprint( $pending ) === $stored;
-	}
-
-	/**
-	 * Builds a stable fingerprint for a pending guard record.
-	 *
-	 * @since 1.2.0
-	 * @param array<string, mixed> $pending Pending guard record.
-	 * @return string
-	 */
-	private static function pending_fingerprint( array $pending ): string {
-		return md5(
-			wp_json_encode(
-				[
-					'full_name'    => $pending['full_name'] ?? '',
-					'context'      => $pending['context'] ?? '',
-					'install_path' => $pending['install_path'] ?? '',
-					'slug'         => $pending['slug'] ?? '',
-				]
-			)
-		);
-	}
-
-	/**
-	 * Clears the iframe bootstrap verified transient.
-	 *
-	 * @since 1.2.0
-	 * @return void
-	 */
-	public static function clear_bootstrap_verified(): void {
-		delete_transient( 'gitwire_bootstrap_verified' );
-		delete_transient( 'gitwire_frontend_bootstrap_ok' );
+		Installer::upsert_record( $prev_record );
 	}
 
 	/**
 	 * Drops orphaned activation guards left when a switch was reverted.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function clear_stale_update_guard(): void {
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = get_option( 'gitwire_running_task' );
 		if ( ! is_array( $pending ) || 'update' !== ( $pending['context'] ?? '' ) ) {
 			return;
 		}
@@ -572,53 +322,52 @@ class Error_Handler {
 			return;
 		}
 
-		delete_option( 'gitwire_pending_update' );
-		self::clear_bootstrap_verified();
+		delete_option( 'gitwire_running_task' );
 	}
 
 	/**
 	 * Drops orphaned activation guards left when a switch was reverted.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function clear_stale_activation_guard(): void {
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = get_option( 'gitwire_running_task' );
 		if ( ! is_array( $pending ) || 'activation' !== ( $pending['context'] ?? '' ) ) {
 			return;
 		}
 
-		$slug = $pending['slug'] ?? '';
+		$slug = $pending['name'] ?? '';
 		if ( ! $slug || ! function_exists( 'get_stylesheet' ) ) {
-			delete_option( 'gitwire_pending_update' );
-			self::clear_bootstrap_verified();
+			delete_option( 'gitwire_running_task' );
+
 			return;
 		}
 
 		$is_active = get_stylesheet() === $slug || get_template() === $slug;
 		if ( ! $is_active ) {
-			delete_option( 'gitwire_pending_update' );
-			self::clear_bootstrap_verified();
+			delete_option( 'gitwire_running_task' );
+
 		}
 	}
 
 	/**
 	 * Rolls back and clears a pending guard when client verification times out.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return bool True when a pending guard was cleared.
 	 */
 	public static function abort_pending_guard(): bool {
-		$pending = get_option( 'gitwire_pending_update' );
+		$pending = get_option( 'gitwire_running_task' );
 		if ( ! is_array( $pending ) ) {
-			self::clear_bootstrap_verified();
+
 			return false;
 		}
 
 		$context = $pending['context'] ?? '';
 		if ( ! in_array( $context, [ 'activation', 'update' ], true ) ) {
-			delete_option( 'gitwire_pending_update' );
-			self::clear_bootstrap_verified();
+			delete_option( 'gitwire_running_task' );
+
 			return true;
 		}
 
@@ -629,22 +378,21 @@ class Error_Handler {
 
 		if ( 'update' === $context && $install_path ) {
 			$restored = self::rollback_update_files( $pending );
-			if ( 'theme' === $type && $restored ) {
+			if ( Repository_Detector::is_theme( $type ) && $restored ) {
 				self::ensure_active_theme_after_update_rollback( $pending );
 			}
 		} elseif ( 'activation' === $context ) {
-			if ( 'theme' === $type ) {
+			if ( Repository_Detector::is_theme( $type ) ) {
 				self::revert_failed_theme_activation( $pending );
 			} elseif ( 'plugin' === $type && $plugin_file ) {
-				self::deactivate_plugin( $plugin_file );
+				self::schedule_plugin_deactivation( $plugin_file );
 			}
 		}
 
 		// Restore the installed record that was overwritten before the guard was armed.
 		self::restore_pending_installed_record( $pending );
 
-		delete_option( 'gitwire_pending_update' );
-		self::clear_bootstrap_verified();
+		delete_option( 'gitwire_running_task' );
 
 		return true;
 	}
@@ -652,7 +400,7 @@ class Error_Handler {
 	/**
 	 * Restores the previous theme after a guarded activation scrape fails.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending activation guard record.
 	 * @return void
 	 */
@@ -669,75 +417,7 @@ class Error_Handler {
 			);
 		}
 
-		delete_option( 'gitwire_pending_update' );
-		self::clear_bootstrap_verified();
-	}
-
-	/**
-	 * Returns whether the current request ended with a fatal PHP error or uncaught exception.
-	 *
-	 * @since 1.2.0
-	 * @return bool
-	 */
-	private static function has_fatal_shutdown_error(): bool {
-		if ( self::$had_uncaught_exception ) {
-			return true;
-		}
-
-		$error = error_get_last();
-		if ( ! $error ) {
-			return false;
-		}
-
-		$fatal_types = [ E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR ];
-		return in_array( $error['type'], $fatal_types, true );
-	}
-
-	/**
-	 * Returns whether the current request is the Gitwire admin screen.
-	 *
-	 * @since 1.2.0
-	 * @return bool
-	 */
-	private static function is_gitwire_admin_page(): bool {
-		if ( ! is_admin() ) {
-			return false;
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		return isset( $_GET['page'] ) && 'gitwire' === $_GET['page'];
-	}
-
-	/**
-	 * Returns whether the guarded plugin or theme is the one currently active.
-	 *
-	 * @since 1.2.0
-	 * @param array<string, mixed> $pending Pending guard record.
-	 * @return bool
-	 */
-	private static function is_pending_target_active( array $pending ): bool {
-		$type = $pending['type'] ?? '';
-
-		if ( 'theme' === $type ) {
-			$target = $pending['target_stylesheet'] ?? $pending['slug'] ?? '';
-			if ( ! $target || ! function_exists( 'get_stylesheet' ) ) {
-				return false;
-			}
-
-			$stylesheet = get_stylesheet();
-			$template   = get_template();
-
-			return $target === $stylesheet || $target === $template;
-		}
-
-		if ( 'plugin' === $type ) {
-			$plugin_file = $pending['plugin_file'] ?? '';
-			return $plugin_file
-				&& function_exists( 'is_plugin_active' )
-				&& is_plugin_active( $plugin_file );
-		}
-
-		return false;
+		delete_option( 'gitwire_running_task' );
 	}
 
 	/**
@@ -763,7 +443,7 @@ class Error_Handler {
 	/**
 	 * Restores a failed theme update and re-applies the active theme when needed.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending guard record.
 	 * @return bool True when install files were restored or already valid.
 	 */
@@ -773,10 +453,10 @@ class Error_Handler {
 			self::ensure_active_theme_after_update_rollback( $pending );
 		}
 
-		if ( 'theme' === ( $pending['type'] ?? '' ) ) {
+		if ( Repository_Detector::is_theme( $pending['type'] ?? '' ) ) {
 			Installer::refresh_theme_runtime(
 				$pending['install_path'] ?? '',
-				$pending['slug'] ?? ''
+				$pending['name'] ?? ''
 			);
 		}
 
@@ -786,7 +466,7 @@ class Error_Handler {
 	/**
 	 * Restores files from a pending update backup, including orphaned backups.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending guard record.
 	 * @return bool True when install files were restored or already valid.
 	 */
@@ -800,7 +480,7 @@ class Error_Handler {
 			return false;
 		}
 
-		if ( ( ! $backup_path || ! is_dir( $backup_path ) ) && 'theme' === $type ) {
+		if ( ( ! $backup_path || ! is_dir( $backup_path ) ) && Repository_Detector::is_theme( $type ) ) {
 			$backup_path = Installer::find_orphaned_backup( $install_path );
 		}
 
@@ -808,7 +488,7 @@ class Error_Handler {
 			return Installer::restore_backup( $install_path, $backup_path );
 		}
 
-		if ( 'update' === $context && 'theme' === $type ) {
+		if ( 'update' === $context && Repository_Detector::is_theme( $type ) ) {
 			return is_dir( $install_path );
 		}
 
@@ -822,7 +502,7 @@ class Error_Handler {
 	/**
 	 * Re-applies the active theme after a guarded update rollback.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param array<string, mixed> $pending Pending guard record.
 	 * @return void
 	 */
@@ -831,7 +511,7 @@ class Error_Handler {
 			return;
 		}
 
-		$stylesheet = $pending['target_stylesheet'] ?? $pending['slug'] ?? '';
+		$stylesheet = $pending['target_stylesheet'] ?? $pending['name'] ?? '';
 		$template   = $pending['target_template'] ?? $stylesheet;
 		if ( ! $stylesheet ) {
 			return;
@@ -843,16 +523,16 @@ class Error_Handler {
 	/**
 	 * Clears the pending update flag and any cached copy.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @return void
 	 */
-	private static function clear_pending_update(): void {
+	private static function clear_running_task(): void {
 		if ( function_exists( 'delete_option' ) ) {
-			delete_option( 'gitwire_pending_update' );
+			delete_option( 'gitwire_running_task' );
 			return;
 		}
 
-		self::db_delete_option( 'gitwire_pending_update' );
+		self::db_delete_option( 'gitwire_running_task' );
 	}
 
 	/**
@@ -917,7 +597,7 @@ class Error_Handler {
 	/**
 	 * Restores the previous active theme directly in the database.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string|null $stylesheet Previous stylesheet slug.
 	 * @param string|null $template   Previous template slug.
 	 * @return void
@@ -950,37 +630,18 @@ class Error_Handler {
 	}
 
 	/**
-	 * Removes a plugin from the active_plugins option directly in the database.
-	 * Safe to call during a shutdown handler where WordPress may not be loaded.
+	 * Stores a flag so the plugin is deactivated via WP APIs on the next admin_init.
+	 *
+	 * Calling deactivate_plugins() from a shutdown handler is unreliable and
+	 * requires serializing active_plugins by hand, which can corrupt the option
+	 * if encoding or multisite nuances differ. Deferring to admin_init lets WP
+	 * core's deactivate_plugins() handle those details safely.
 	 *
 	 * @since 1.0.0
 	 * @param string $plugin_file Plugin file relative to wp-content/plugins.
 	 * @return void
 	 */
-	private static function deactivate_plugin( string $plugin_file ): void {
-		global $wpdb;
-		if ( ! isset( $wpdb ) ) {
-			return;
-		}
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-		$raw = $wpdb->get_var(
-			"SELECT option_value FROM {$wpdb->options} WHERE option_name = 'active_plugins'"
-		);
-		if ( ! $raw ) {
-			return;
-		}
-		$active = maybe_unserialize( $raw );
-		if ( ! is_array( $active ) ) {
-			return;
-		}
-		$active = array_values( array_diff( $active, [ $plugin_file ] ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->update(
-			$wpdb->options,
-			[ 'option_value' => serialize( $active ) ], // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
-			[ 'option_name' => 'active_plugins' ],
-			[ '%s' ],
-			[ '%s' ]
-		);
+	private static function schedule_plugin_deactivation( string $plugin_file ): void {
+		self::db_update_option( 'gitwire_pending_deactivate', $plugin_file );
 	}
 }

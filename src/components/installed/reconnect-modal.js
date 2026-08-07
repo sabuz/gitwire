@@ -112,7 +112,11 @@ export default function ReconnectModal( {
 
 			{ providerConns.map( ( conn ) => {
 				const name =
-					conn.username || conn.email || conn.label || conn.id;
+					conn.username ||
+					conn.identifier ||
+					conn.email ||
+					conn.label ||
+					conn.id;
 				const status = results[ conn.id ];
 				const isTesting = status === undefined;
 				const canPull = status === true;
@@ -150,7 +154,7 @@ export default function ReconnectModal( {
 								variant="primary"
 								onClick={ () => handlePull( conn.id ) }
 							>
-								{ __( 'Pull with this account', 'gitwire' ) }
+								{ __( 'Pull with This Account', 'gitwire' ) }
 							</Button>
 						) }
 					</Flex>

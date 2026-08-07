@@ -23,6 +23,7 @@ import {
 import SettingsPanel from './components/settings-panel';
 import AddRepositoryPanel from './components/add-repository-panel';
 import InstalledPanel from './components/installed-panel';
+import ExternalLinkIcon from './components/external-link-icon';
 
 const LogsPanel = lazy( () => import( './components/logs-panel' ) );
 const ToolsPanel = lazy( () => import( './components/tools-panel' ) );
@@ -161,31 +162,7 @@ export default function App( { initialData } ) {
 		if ( activeTab !== 'repositories' ) {
 			return;
 		}
-		if ( initialData.fatal_notice ) {
-			return;
-		}
-
-		if ( initialData.update_success?.full_name ) {
-			clearPendingToast();
-			toast.success(
-				sprintf(
-					/* translators: %s: repository full name */
-					__( '%s updated to latest.', 'gitwire' ),
-					initialData.update_success.full_name
-				)
-			);
-			return;
-		}
-
-		if ( initialData.activation_success?.full_name ) {
-			clearPendingToast();
-			toast.success(
-				sprintf(
-					/* translators: %s: repository full name */
-					__( '%s activated.', 'gitwire' ),
-					initialData.activation_success.full_name
-				)
-			);
+		if ( initialData.pending_msg?.type === 'fatal' ) {
 			return;
 		}
 
@@ -193,9 +170,9 @@ export default function App( { initialData } ) {
 	}, [ activeTab ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect( () => {
-		if ( initialData.fatal_notice ) {
+		if ( initialData.pending_msg?.type === 'fatal' ) {
 			clearPendingToast();
-			showFatalNotice( initialData.fatal_notice );
+			showFatalNotice( initialData.pending_msg.data );
 		}
 		( initialData.orphaned || [] ).forEach( showOrphanedNotice );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
@@ -319,7 +296,7 @@ export default function App( { initialData } ) {
 							'Installed as "%s" to avoid a directory conflict with an existing installation.',
 							'gitwire'
 						),
-						result.slug
+						result.name
 					),
 					variant: 'warning',
 				} );
@@ -363,6 +340,8 @@ export default function App( { initialData } ) {
 	const tabs = settings?.enable_logging
 		? BASE_TABS
 		: BASE_TABS.filter( ( t ) => t.name !== 'logs' );
+	// Pro registers this filter to add its own header dropdown; its presence means Pro is active.
+	const headerActions = applyFilters( 'gitwire.header.actions', null );
 	const panelFallback = (
 		<div className="gitwire-page-loading">
 			<Spinner />
@@ -373,17 +352,32 @@ export default function App( { initialData } ) {
 		<div className="gitwire-page">
 			<Toaster />
 			<div className="gitwire-page-header">
-				<h1 className="gitwire-page-title">
-					{ initialData.icon_url && (
-						<img
-							alt=""
-							aria-hidden="true"
-							className="gitwire-page-title__icon"
-							src={ initialData.icon_url }
-						/>
-					) }
-					{ __( 'Gitwire', 'gitwire' ) }
-				</h1>
+				<div className="gitwire-page-header__top">
+					<h1 className="gitwire-page-title">
+						{ __( 'Gitwire', 'gitwire' ) }
+					</h1>
+					<div
+						style={ {
+							display: 'flex',
+							alignItems: 'center',
+							gap: 16,
+						} }
+					>
+						{ ! headerActions && (
+							<Button
+								href="https://gitwire.app/docs"
+								rel="noreferrer"
+								style={ { textDecoration: 'none' } }
+								target="_blank"
+								variant="link"
+							>
+								{ __( 'Docs', 'gitwire' ) }
+								<ExternalLinkIcon />
+							</Button>
+						) }
+						{ headerActions }
+					</div>
+				</div>
 
 				<nav
 					aria-label={ __( 'Plugin navigation', 'gitwire' ) }

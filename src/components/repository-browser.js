@@ -23,9 +23,14 @@ import {
 } from '@wordpress/components';
 
 import * as api from '../api';
-import { detectionKey, useRepoDetection } from '../hooks/use-repo-detection';
+import ExternalLinkIcon from './external-link-icon';
+import {
+	detectionKey,
+	useRepositoryDetection,
+} from '../hooks/use-repository-detection';
 import InstallModal from './install-modal';
-import { GitHubIcon, GitLabIcon, BitbucketIcon } from './provider-icons';
+import { ProviderIcon, providerLabel } from './provider';
+import { relativeTimeFromDate } from '../relative-time';
 
 const ListFilterIcon = () => (
 	<svg
@@ -113,7 +118,7 @@ function lookupInstalled( installed, repo ) {
  * @param {Function} [props.onOpenUrlImport]  Opens the Import from URL modal.
  * @return {JSX.Element} The rendered browse panel.
  */
-export default function BrowsePanel( {
+export default function RepositoryBrowser( {
 	connections,
 	settings,
 	installed,
@@ -139,103 +144,78 @@ export default function BrowsePanel( {
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 
-	const connectionsRef = useRef( connections );
-	connectionsRef.current = connections;
+	const { detections, runBatch, seedFromRepos, reset } =
+		useRepositoryDetection();
 
-	const { detections, runBatch, seedFromRepos, reset } = useRepoDetection();
-
-	const [ repos, setRepos ] = useState( [] );
-	const [ pagesLoaded, setPagesLoaded ] = useState( {} );
-	const [ hasMore, setHasMore ] = useState( {} );
+	const [ repositories, setRepositories ] = useState( [] );
+	const [ hasMore, setHasMore ] = useState( false );
 	const [ loading, setLoading ] = useState( false );
 	const [ modal, setModal ] = useState( null );
 	const [ search, setSearch ] = useState( '' );
 	const [ activeTypeFilters, setActiveTypeFilters ] = useState( [] );
 	const [ activeSourceFilters, setActiveSourceFilters ] = useState( [] );
 	const prevConnIdsRef = useRef( null );
+	const searchTimerRef = useRef( null );
+	const isFirstSearchRef = useRef( true );
+	const isFirstSourceRef = useRef( true );
+	// Ref kept in sync each render so the search debounce closure always reads the latest value.
+	const activeSourceFiltersRef = useRef( activeSourceFilters );
+	activeSourceFiltersRef.current = activeSourceFilters;
+	const smartInstall = settings?.smart_install !== false;
+	const autoDetectType = settings?.auto_detect_type !== false;
 
 	const loadRepos = useCallback(
-		async ( connectionPages, append = false ) => {
+		async (
+			offset,
+			append = false,
+			searchTerm = '',
+			sourceFilters = []
+		) => {
+			const connectionIds = sourceFilters.length
+				? ( connections ?? [] )
+						.filter( ( c ) => sourceFilters.includes( c.provider ) )
+						.map( ( c ) => c.id )
+				: [];
 			setLoading( true );
-			const allConns = connectionsRef.current ?? [];
-			const connMap = {};
-			allConns.forEach( ( c ) => {
-				connMap[ c.id ] = c;
-			} );
 			try {
-				const fetches = Object.entries( connectionPages )
-					.filter( ( [ , page ] ) => page > 0 )
-					.map( ( [ connId, page ] ) => {
-						const conn = connMap[ connId ];
-						const provider = conn?.provider ?? 'github';
-						return api
-							.getRepos( page, provider, connId )
-							.then( ( d ) => ( {
-								...d,
-								provider,
-								page,
-								connectionId: connId,
-							} ) )
-							.catch( ( e ) => ( {
-								error: e.message,
-								provider,
-								connectionId: connId,
-							} ) );
-					} );
-
-				const results = await Promise.all( fetches );
-
-				let newRepos = [];
-				const errors = [];
-
-				for ( const result of results ) {
-					if ( result.error ) {
-						errors.push( result.error );
-						continue;
-					}
-					const tagged = result.repos.map( ( r ) => ( {
-						...r,
-						provider: result.provider,
-						connectionId: result.connectionId,
-					} ) );
-					newRepos = [ ...newRepos, ...tagged ];
-					setHasMore( ( prev ) => ( {
-						...prev,
-						[ result.connectionId ]: result.has_more,
-					} ) );
-					setPagesLoaded( ( prev ) => ( {
-						...prev,
-						[ result.connectionId ]: result.page,
-					} ) );
-				}
-
-				newRepos.sort(
-					( a, b ) =>
-						new Date( b.updated_at ) - new Date( a.updated_at )
-				);
-
-				setRepos( ( prev ) => {
-					if ( ! append ) {
-						return newRepos;
-					}
-					const merged = [ ...prev, ...newRepos ];
-					merged.sort(
-						( a, b ) =>
-							new Date( b.updated_at ) - new Date( a.updated_at )
-					);
-					return merged;
+				const result = await api.getRepos( {
+					offset,
+					search: searchTerm,
+					connectionIds,
 				} );
-
-				if ( errors.length ) {
-					toast.error( errors.join( ' · ' ) );
-				}
-
-				seedFromRepos( newRepos );
-				runBatch(
-					newRepos.filter(
-						( repo ) => ! lookupInstalled( installed, repo )
-					)
+				const repos = result.repositories ?? [];
+				setRepositories( ( prev ) =>
+					append ? [ ...prev, ...repos ] : repos
 				);
+				setHasMore( result.has_more ?? false );
+				seedFromRepos( repos );
+				( result.connection_errors ?? [] ).forEach( ( err ) => {
+					toast.error(
+						sprintf(
+							/* translators: 1: provider name (e.g. GitLab), 2: error message */
+							__( '%1$s: %2$s', 'gitwire' ),
+							providerLabel( err.provider ),
+							err.message
+						)
+					);
+				} );
+				( result.connection_warnings ?? [] ).forEach( ( warn ) => {
+					toast.warning(
+						sprintf(
+							/* translators: 1: provider name (e.g. GitLab), 2: notice message */
+							__( '%1$s: %2$s', 'gitwire' ),
+							providerLabel( warn.provider ),
+							warn.message
+						)
+					);
+				} );
+				if ( autoDetectType ) {
+					runBatch(
+						repos.filter(
+							( repo ) => ! lookupInstalled( installed, repo )
+						)
+					);
+				}
 			} catch ( e ) {
 				toast.error(
 					e.message || __( 'Failed to load repositories.', 'gitwire' )
@@ -244,7 +224,7 @@ export default function BrowsePanel( {
 				setLoading( false );
 			}
 		},
-		[ installed, runBatch, seedFromRepos ]
+		[ autoDetectType, connections, installed, runBatch, seedFromRepos ]
 	);
 
 	const connIds = ( connections ?? [] ).map( ( c ) => c.id ).join( ',' );
@@ -257,49 +237,55 @@ export default function BrowsePanel( {
 			return;
 		}
 		prevConnIdsRef.current = connIds;
-		const pages = {};
-		( connections ?? [] ).forEach( ( c ) => {
-			pages[ c.id ] = 1;
-		} );
-		setRepos( [] );
-		setHasMore( {} );
-		setPagesLoaded( {} );
+		setRepositories( [] );
+		setHasMore( false );
 		reset();
-		loadRepos( pages );
+		loadRepos( 0, false, '' );
 	}, [ connIds ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleRefresh = useCallback( async () => {
 		setLoading( true );
-		setRepos( [] );
-		setHasMore( {} );
-		setPagesLoaded( {} );
+		setRepositories( [] );
+		setHasMore( false );
 		try {
 			await api.clearCache();
 			reset();
-			const pages = {};
-			( connectionsRef.current ?? [] ).forEach( ( c ) => {
-				pages[ c.id ] = 1;
-			} );
-			await loadRepos( pages );
+			await loadRepos( 0, false, search, activeSourceFilters );
 		} catch ( e ) {
 			toast.error(
 				e.message || __( 'Failed to refresh repositories.', 'gitwire' )
 			);
 			setLoading( false );
 		}
-	}, [ loadRepos, reset ] );
+	}, [ loadRepos, reset, search, activeSourceFilters ] );
 
 	const handleLoadMore = () => {
-		const pages = {};
-		Object.entries( hasMore ).forEach( ( [ connId, more ] ) => {
-			if ( more ) {
-				pages[ connId ] = ( pagesLoaded[ connId ] ?? 0 ) + 1;
-			}
-		} );
-		loadRepos( pages, true );
+		loadRepos( repositories.length, true, search, activeSourceFilters );
 	};
 
-	const smartInstall = settings?.smart_install !== false;
+	// Debounced server reload when search term changes (skips initial mount).
+	useEffect( () => {
+		if ( isFirstSearchRef.current ) {
+			isFirstSearchRef.current = false;
+			return;
+		}
+		clearTimeout( searchTimerRef.current );
+		searchTimerRef.current = setTimeout( () => {
+			loadRepos( 0, false, search, activeSourceFiltersRef.current );
+		}, 350 );
+		return () => clearTimeout( searchTimerRef.current );
+	}, [ search ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Reload when source filter changes (skips initial mount).
+	useEffect( () => {
+		if ( isFirstSourceRef.current ) {
+			isFirstSourceRef.current = false;
+			return;
+		}
+		setRepositories( [] );
+		setHasMore( false );
+		loadRepos( 0, false, search, activeSourceFilters );
+	}, [ activeSourceFilters ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const toggleTypeFilter = ( value ) => {
 		setActiveTypeFilters( ( prev ) =>
@@ -320,7 +306,20 @@ export default function BrowsePanel( {
 	const activeFilterCount =
 		activeTypeFilters.length + activeSourceFilters.length;
 
-	const allTypeOptions = [ 'plugin', 'theme', 'unknown' ];
+	const allTypeOptions = useMemo( () => {
+		const seen = new Set();
+		repositories.forEach( ( r ) => {
+			const installedRec = lookupInstalled( installed, r );
+			const type =
+				installedRec?.type ?? detections[ detectionKey( r ) ]?.type;
+			if ( type ) {
+				seen.add( type );
+			}
+		} );
+		return [ 'plugin', 'block-theme', 'classic-theme', 'unknown' ].filter(
+			( t ) => seen.has( t )
+		);
+	}, [ repositories, installed, detections ] );
 	const allSourceOptions = [
 		hasGitHub && 'github',
 		hasGitLab && 'gitlab',
@@ -370,7 +369,7 @@ export default function BrowsePanel( {
 		return activeSourceFilters.includes( r.provider ?? 'github' );
 	};
 
-	const filtered = repos.filter(
+	const filtered = repositories.filter(
 		( r ) => matchesSearch( r ) && matchesType( r ) && matchesSource( r )
 	);
 
@@ -380,7 +379,7 @@ export default function BrowsePanel( {
 				<img
 					alt=""
 					aria-hidden="true"
-					src={ window.Gitwire?.disconnected_url }
+					src={ window.gitwire?.disconnected_url }
 				/>
 				<h2>{ __( 'No Account Added', 'gitwire' ) }</h2>
 				<p>
@@ -483,8 +482,18 @@ export default function BrowsePanel( {
 											label: __( 'Plugin', 'gitwire' ),
 										},
 										{
-											id: 'theme',
-											label: __( 'Theme', 'gitwire' ),
+											id: 'block-theme',
+											label: __(
+												'Block Theme',
+												'gitwire'
+											),
+										},
+										{
+											id: 'classic-theme',
+											label: __(
+												'Classic Theme',
+												'gitwire'
+											),
 										},
 										{
 											id: 'unknown',
@@ -583,13 +592,19 @@ export default function BrowsePanel( {
 				) }
 			</Flex>
 
-			{ repos.length === 0 && loading && (
+			{ repositories.length === 0 && loading && (
 				<div style={ { textAlign: 'center', padding: 48 } }>
 					<Spinner />
 				</div>
 			) }
 
-			{ repos.length > 0 && filtered.length === 0 && (
+			{ repositories.length === 0 && ! loading && (
+				<p style={ { color: '#57606a', marginTop: 8 } }>
+					{ __( 'No repositories found.', 'gitwire' ) }
+				</p>
+			) }
+
+			{ repositories.length > 0 && filtered.length === 0 && (
 				<p style={ { color: '#57606a', marginTop: 8 } }>
 					{ search.trim() ? (
 						<>
@@ -609,7 +624,8 @@ export default function BrowsePanel( {
 				<div className="gitwire-repo-grid">
 					{ filtered.map( ( repo ) => (
 						<RepoCard
-							key={ `${ repo.provider }:${ repo.id }` }
+							key={ `${ repo.provider }:${ repo.full_name }` }
+							autoDetectType={ autoDetectType }
 							detection={ detections[ detectionKey( repo ) ] }
 							installed={ lookupInstalled( installed, repo ) }
 							repo={ repo }
@@ -631,7 +647,7 @@ export default function BrowsePanel( {
 				</div>
 			) }
 
-			{ Object.values( hasMore ).some( Boolean ) && ! search && (
+			{ hasMore && (
 				<div style={ { textAlign: 'center', marginTop: 24 } }>
 					<Button
 						disabled={ loading }
@@ -646,7 +662,7 @@ export default function BrowsePanel( {
 
 			{ ! onInstallRequest && modal && (
 				<InstallModal
-					connectionId={ modal.connectionId }
+					connectionId={ modal.connection_id }
 					detection={ detections[ detectionKey( modal ) ] }
 					provider={ modal.provider }
 					repo={ modal }
@@ -669,16 +685,18 @@ const RepoCard = memo( function RepoCard( {
 	installed,
 	smartInstall,
 	showSourceBadge,
+	autoDetectType,
 	onInstall,
 } ) {
 	const isInstalled = !! installed;
-	const detecting = ! detection && ! isInstalled;
+	const detecting = autoDetectType && ! detection && ! isInstalled;
 
 	const canInstall =
 		! isInstalled &&
-		( detection
-			? detection.type !== 'unknown' || ! smartInstall
-			: ! smartInstall );
+		( ! autoDetectType ||
+			( detection
+				? detection.type !== 'unknown' || ! smartInstall
+				: ! smartInstall ) );
 
 	const blockedBySmartInstall =
 		! isInstalled && detection?.type === 'unknown' && smartInstall;
@@ -688,14 +706,22 @@ const RepoCard = memo( function RepoCard( {
 			<CardBody>
 				<Flex align="flex-start" gap={ 2 } justify="space-between">
 					<FlexBlock>
-						<a
-							className="gitwire-repo-name"
-							href={ repo.html_url }
-							rel="noopener noreferrer"
-							target="_blank"
-						>
-							{ repo.full_name }
-						</a>
+						{ repo.full_name &&
+							( repo.html_url ? (
+								<a
+									className="gitwire-repo-name"
+									href={ repo.html_url }
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									{ repo.full_name }
+									<ExternalLinkIcon />
+								</a>
+							) : (
+								<span className="gitwire-repo-name">
+									{ repo.full_name }
+								</span>
+							) ) }
 					</FlexBlock>
 					<FlexItem>
 						{ isInstalled ? (
@@ -723,22 +749,14 @@ const RepoCard = memo( function RepoCard( {
 					</FlexItem>
 				</Flex>
 				<div className="gitwire-repo-badges">
-					{ showSourceBadge && 'gitlab' === repo.provider && (
-						<span className="gitwire-badge gitwire-badge--gitlab">
-							<GitLabIcon />
-							{ __( 'GitLab', 'gitwire' ) }
-						</span>
-					) }
-					{ showSourceBadge && 'bitbucket' === repo.provider && (
-						<span className="gitwire-badge gitwire-badge--bitbucket">
-							<BitbucketIcon />
-							{ __( 'Bitbucket', 'gitwire' ) }
-						</span>
-					) }
-					{ showSourceBadge && 'github' === repo.provider && (
-						<span className="gitwire-badge gitwire-badge--github">
-							<GitHubIcon />
-							{ __( 'GitHub', 'gitwire' ) }
+					{ showSourceBadge && (
+						<span
+							className={ `gitwire-badge gitwire-badge--${
+								repo.provider ?? 'github'
+							}` }
+						>
+							<ProviderIcon provider={ repo.provider } />
+							{ providerLabel( repo.provider ?? 'github' ) }
 						</span>
 					) }
 					<span
@@ -754,18 +772,17 @@ const RepoCard = memo( function RepoCard( {
 						detection={ detection }
 						installed={ installed }
 					/>
-					{ repo.updated_at && (
+					{ repo.last_activity_at && (
 						<Tooltip
 							text={ `${ __(
 								'Last Updated',
 								'gitwire'
-							) }: ${ new Date( repo.updated_at ).toLocaleString(
-								undefined,
-								{
-									dateStyle: 'medium',
-									timeStyle: 'short',
-								}
-							) }` }
+							) }: ${ new Date(
+								repo.last_activity_at
+							).toLocaleString( undefined, {
+								dateStyle: 'medium',
+								timeStyle: 'short',
+							} ) }` }
 						>
 							<span className="gitwire-repo-updated">
 								<svg
@@ -782,7 +799,9 @@ const RepoCard = memo( function RepoCard( {
 									<circle cx="8" cy="8" r="6.25" />
 									<polyline points="8,4.5 8,8 10.5,10" />
 								</svg>
-								{ timeAgo( repo.updated_at ) }
+								{ relativeTimeFromDate(
+									repo.last_activity_at
+								) }
 							</span>
 						</Tooltip>
 					) }
@@ -792,62 +811,16 @@ const RepoCard = memo( function RepoCard( {
 	);
 } );
 
-function timeAgo( dateStr ) {
-	const s = Math.floor( ( Date.now() - new Date( dateStr ) ) / 1000 );
-	if ( s < 60 ) {
-		return __( 'just now', 'gitwire' );
-	}
-	const m = Math.floor( s / 60 );
-	if ( m < 60 ) {
-		return sprintf(
-			/* translators: %d: number of minutes */
-			__( '%dm ago', 'gitwire' ),
-			m
-		);
-	}
-	const h = Math.floor( m / 60 );
-	if ( h < 24 ) {
-		return sprintf(
-			/* translators: %d: number of hours */
-			__( '%dh ago', 'gitwire' ),
-			h
-		);
-	}
-	const d = Math.floor( h / 24 );
-	if ( d < 30 ) {
-		return sprintf(
-			/* translators: %d: number of days */
-			__( '%dd ago', 'gitwire' ),
-			d
-		);
-	}
-	const mo = Math.floor( d / 30 );
-	if ( mo < 12 ) {
-		return sprintf(
-			/* translators: %d: number of months */
-			__( '%dmo ago', 'gitwire' ),
-			mo
-		);
-	}
-	return sprintf(
-		/* translators: %d: number of years */
-		__( '%dy ago', 'gitwire' ),
-		Math.floor( mo / 12 )
-	);
-}
-
 function TypeBadge( { detection, installed } ) {
 	if ( installed ) {
-		const isBlockTheme =
-			installed.type === 'theme' && installed.subtype === 'block';
-		if ( isBlockTheme ) {
+		if ( installed.type === 'block-theme' ) {
 			return (
 				<span className="gitwire-badge gitwire-badge--block-theme">
 					{ __( 'Block Theme', 'gitwire' ) }
 				</span>
 			);
 		}
-		if ( installed.type === 'theme' ) {
+		if ( installed.type === 'classic-theme' ) {
 			return (
 				<span className="gitwire-badge gitwire-badge--theme">
 					{ __( 'Theme', 'gitwire' ) }
@@ -867,7 +840,7 @@ function TypeBadge( { detection, installed } ) {
 			</span>
 		);
 	}
-	const { type, subtype } = detection;
+	const { type } = detection;
 	if ( type === 'plugin' ) {
 		return (
 			<span className="gitwire-badge gitwire-badge--info">
@@ -875,14 +848,14 @@ function TypeBadge( { detection, installed } ) {
 			</span>
 		);
 	}
-	if ( type === 'theme' && subtype === 'block' ) {
+	if ( type === 'block-theme' ) {
 		return (
 			<span className="gitwire-badge gitwire-badge--block-theme">
 				{ __( 'Block Theme', 'gitwire' ) }
 			</span>
 		);
 	}
-	if ( type === 'theme' ) {
+	if ( type === 'classic-theme' ) {
 		return (
 			<span className="gitwire-badge gitwire-badge--theme">
 				{ __( 'Theme', 'gitwire' ) }

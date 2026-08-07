@@ -3,7 +3,7 @@
  * Shared repository type detection logic.
  *
  * @package Gitwire
- * @since 1.2.0
+ * @since 1.0.0
  */
 
 namespace Gitwire;
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Detects whether a repository root is a WordPress plugin, theme, or unknown.
  */
-class Repo_Detector {
+class Repository_Detector {
 
 	/**
 	 * Directories that are never relevant to WP type detection.
@@ -79,23 +79,41 @@ class Repo_Detector {
 	/**
 	 * Detects repository type from root file listing callbacks.
 	 *
-	 * @since 1.2.0
-	 * @param string   $repo_name         Repository slug used for main-file priority.
-	 * @param string   $branch            Branch ref to inspect.
-	 * @param callable $get_root_contents Callable returning root file list.
-	 * @param callable $get_file_content  Callable returning raw file contents.
+	 * Returns an array with:
+	 *   'type'       — flat value: 'plugin', 'block-theme', 'classic-theme', 'unknown'
+	 *   'confidence' — 'high', 'medium', 'low', or 'none'
+	 *   'name'       — extracted Theme Name or Plugin Name header value, or ''
+	 *   'key_files'  — files that drove the decision; empty for low/unknown (skip shallow re-detect)
+	 *
+	 * @since 1.0.0
+	 * @param string                    $repo_name         Repository slug used for main-file priority.
+	 * @param string                    $branch            Branch ref to inspect.
+	 * @param callable                  $get_root_contents Callable returning root file list.
+	 * @param callable                  $get_file_content  Callable returning raw file contents.
+	 * @param array<string, mixed>|null $cached_result Prior detection result for shallow re-check.
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function detect(
 		string $repo_name,
 		string $branch,
 		callable $get_root_contents,
-		callable $get_file_content
+		callable $get_file_content,
+		?array $cached_result = null
 	): array|\WP_Error {
 		$contents = $get_root_contents( $branch );
 
 		if ( is_wp_error( $contents ) ) {
 			return $contents;
+		}
+
+		// Shallow re-check: if the cached key_files are all still present, skip file fetches.
+		if (
+			$cached_result &&
+			! empty( $cached_result['key_files'] ) &&
+			( Settings::get_public()['shallow_detection'] ?? false ) &&
+			self::all_key_files_present( $cached_result['key_files'], $contents )
+		) {
+			return $cached_result;
 		}
 
 		$files = [];
@@ -122,27 +140,31 @@ class Repo_Detector {
 
 				if ( isset( $files['theme.json'] ) ) {
 					return [
-						'type'       => 'theme',
-						'subtype'    => 'block',
+						'type'       => 'block-theme',
 						'confidence' => 'high',
 						'name'       => $name,
+						'key_files'  => [ 'style.css', 'theme.json' ],
 					];
 				}
 
 				if ( isset( $files['templates'] ) && ( $files['templates']['type'] ?? '' ) === 'dir' ) {
 					return [
-						'type'       => 'theme',
-						'subtype'    => 'block',
+						'type'       => 'block-theme',
 						'confidence' => 'high',
 						'name'       => $name,
+						'key_files'  => [ 'style.css', 'templates/' ],
 					];
 				}
 
+				$key_files = isset( $files['functions.php'] )
+					? [ 'style.css', 'functions.php' ]
+					: [ 'style.css' ];
+
 				return [
-					'type'       => 'theme',
-					'subtype'    => 'classic',
+					'type'       => 'classic-theme',
 					'confidence' => isset( $files['functions.php'] ) ? 'high' : 'medium',
 					'name'       => $name,
+					'key_files'  => $key_files,
 				];
 			}
 		}
@@ -176,43 +198,43 @@ class Repo_Detector {
 			if ( ! is_wp_error( $content ) && self::has_header( $content, 'Plugin Name' ) ) {
 				return [
 					'type'       => 'plugin',
-					'subtype'    => null,
 					'confidence' => 'high',
 					'name'       => self::extract_header( $content, 'Plugin Name' ),
+					'key_files'  => [ $real_name ],
 				];
 			}
 		}
 
 		if ( isset( $files['functions.php'] ) ) {
 			return [
-				'type'       => 'theme',
-				'subtype'    => 'classic',
+				'type'       => 'classic-theme',
 				'confidence' => 'medium',
 				'name'       => '',
+				'key_files'  => [ 'functions.php' ],
 			];
 		}
 
 		if ( ! empty( $php_files ) ) {
 			return [
 				'type'       => 'plugin',
-				'subtype'    => null,
 				'confidence' => 'low',
 				'name'       => '',
+				'key_files'  => [],
 			];
 		}
 
 		return [
 			'type'       => 'unknown',
-			'subtype'    => null,
 			'confidence' => 'none',
 			'name'       => '',
+			'key_files'  => [],
 		];
 	}
 
 	/**
 	 * Checks whether file content contains a WordPress-style header.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $content File contents.
 	 * @param string $header  Header name.
 	 * @return bool
@@ -224,7 +246,7 @@ class Repo_Detector {
 	/**
 	 * Extracts a WordPress-style header value from file content.
 	 *
-	 * @since 1.2.0
+	 * @since 1.0.0
 	 * @param string $content File contents.
 	 * @param string $header  Header name.
 	 * @return string
@@ -234,5 +256,43 @@ class Repo_Detector {
 			return trim( $m[1] );
 		}
 		return '';
+	}
+
+	/**
+	 * Returns true when the flat type value represents a theme.
+	 *
+	 * @since 1.0.0
+	 * @param string $type Flat type value.
+	 * @return bool
+	 */
+	public static function is_theme( string $type ): bool {
+		return 'theme' === $type || str_ends_with( $type, '-theme' );
+	}
+
+	/**
+	 * Returns true when all cached key_files are still present in the root listing.
+	 *
+	 * @since 1.0.0
+	 * @param string[]          $key_files Key files from a prior detection result.
+	 * @param array<int, mixed> $contents  Root listing items from the provider.
+	 * @return bool
+	 */
+	private static function all_key_files_present( array $key_files, array $contents ): bool {
+		$names = [];
+		foreach ( $contents as $item ) {
+			if ( isset( $item['name'] ) ) {
+				$names[ strtolower( $item['name'] ) ] = $item['type'] ?? 'file';
+			}
+		}
+
+		foreach ( $key_files as $key_file ) {
+			$is_dir = str_ends_with( $key_file, '/' );
+			$name   = strtolower( rtrim( $key_file, '/' ) );
+			$type   = $names[ $name ] ?? null;
+			if ( null === $type || ( $is_dir && 'dir' !== $type ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

@@ -21,25 +21,29 @@ export const getPublicConnectionRateLimit = ( id ) =>
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>
 	apiFetch( { path: `${ BASE }/settings`, method: 'POST', data } );
-export const getRepos = ( page = 1, provider = 'github', connectionId = '' ) =>
-	apiFetch( {
-		path:
-			`${ BASE }/repos?page=${ page }&provider=${ provider }` +
-			( connectionId
-				? `&connection_id=${ encodeURIComponent( connectionId ) }`
-				: '' ),
-	} );
+export const getRepos = ( {
+	offset = 0,
+	search = '',
+	connectionIds = [],
+} = {} ) => {
+	const params = new URLSearchParams( { offset } );
+	if ( search ) {
+		params.set( 'search', search );
+	}
+	connectionIds.forEach( ( id ) => params.append( 'connection_ids[]', id ) );
+	return apiFetch( { path: `${ BASE }/repos?${ params }` } );
+};
 export const clearCache = () =>
 	apiFetch( { path: `${ BASE }/repos/cache`, method: 'DELETE' } );
 export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );
 export const syncInstalled = () =>
 	apiFetch( { path: `${ BASE }/installed/sync`, method: 'POST' } );
 
-export const detectBatch = ( repos ) =>
+export const detectBatch = ( repositories ) =>
 	apiFetch( {
 		path: `${ BASE }/repos/detect-batch`,
 		method: 'POST',
-		data: { repos },
+		data: { repositories },
 	} );
 
 export const getBranches = (
@@ -135,15 +139,6 @@ export const deactivateInstalled = ( owner, repo, provider = 'github' ) =>
 		data: { provider },
 	} );
 
-export const getActivationStatus = () =>
-	apiFetch( { path: `${ BASE }/activation-status` } );
-
-export const abortActivationGuard = () =>
-	apiFetch( { path: `${ BASE }/activation-status`, method: 'DELETE' } );
-
-export const verifyBootstrap = () =>
-	apiFetch( { path: `${ BASE }/verify-bootstrap`, method: 'POST' } );
-
 export const removeInstalled = ( owner, repo, provider = 'github' ) =>
 	apiFetch( {
 		path: `${ BASE }/installed/${ encodeURIComponent(
@@ -162,6 +157,20 @@ export const untrackInstalled = ( owner, repo, provider = 'github' ) =>
 			repo
 		) }/untrack?provider=${ encodeURIComponent( provider ) }`,
 		method: 'DELETE',
+	} );
+
+export const saveAutoUpdate = (
+	owner,
+	repo,
+	provider = 'github',
+	autoUpdate
+) =>
+	apiFetch( {
+		path: `${ BASE }/installed/${ encodeURIComponent(
+			owner
+		) }/${ encodeURIComponent( repo ) }/auto-update`,
+		method: 'POST',
+		data: { provider, auto_update: autoUpdate },
 	} );
 
 export const resolveRepo = ( url ) =>

@@ -41,10 +41,8 @@ class Admin {
 		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
 		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'label_managed_themes' ] );
 
-		// Native screen delete guard.
-		add_filter( 'pre_delete_plugin', [ self::class, 'guard_plugin_delete' ], 10, 2 );
-		add_action( 'load-themes.php', [ self::class, 'guard_theme_delete' ], 1 );
-		add_action( 'admin_notices', [ self::class, 'show_theme_delete_notice' ] );
+		// Repositories and Settings links in the plugins list table.
+		add_filter( 'plugin_action_links_' . GITWIRE_BASENAME, [ self::class, 'add_plugin_action_links' ] );
 	}
 
 	/**
@@ -55,7 +53,7 @@ class Admin {
 	 */
 	public static function hide_admin_notices(): void {
 		$screen = get_current_screen();
-		if ( ! $screen || ! is_string( $screen->id ) ) {
+		if ( ! $screen ) {
 			return;
 		}
 
@@ -204,34 +202,17 @@ class Admin {
 
 		$settings = Settings::get_public();
 		Error_Handler::clear_stale_activation_guard();
-		$installed_result = REST::get_installed();
-		$installed        = $installed_result['installed'];
-		$orphaned         = [];
-		$fatal_notice     = get_option( 'gitwire_fatal_notice' );
-		if ( $fatal_notice ) {
-			delete_option( 'gitwire_fatal_notice' );
+		$pending_msg = get_option( 'gitwire_pending_message' );
+		if ( $pending_msg ) {
+			delete_option( 'gitwire_pending_message' );
 		}
-		$first_activation = (bool) get_transient( 'gitwire_first_activation' );
+		// Boot data uses only DB records — orphan detection runs via REST on app init.
+		$installed = REST_Installer::annotate_installed( Installer::get_installed() );
+		$orphaned  = [];
 
-		if ( $first_activation ) {
-			delete_transient( 'gitwire_first_activation' );
-		}
-
-		$update_success = get_transient( 'gitwire_update_success' );
-		if ( $update_success ) {
-			delete_transient( 'gitwire_update_success' );
-		}
-
-		$activation_success = get_transient( 'gitwire_activation_success' );
-		if ( $activation_success ) {
-			delete_transient( 'gitwire_activation_success' );
-		}
-
-		// Derive initial tab from path param, activation state, or setup status.
+		// Derive initial tab from path param or setup status.
 		$path = sanitize_key( $_GET['path'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( $first_activation ) {
-			$initial_tab = 'settings';
-		} elseif ( 'settings' === $path ) {
+		if ( 'settings' === $path ) {
 			$initial_tab = 'settings';
 		} elseif ( 'logs' === $path ) {
 			$initial_tab = 'logs';
@@ -243,23 +224,20 @@ class Admin {
 
 		wp_add_inline_script(
 			'gitwire-app',
-			'window.Gitwire = ' . wp_json_encode(
+			'window.gitwire = ' . wp_json_encode(
 				[
-					'nonce'                 => wp_create_nonce( 'wp_rest' ),
-					'public_connections'    => Public_Connections::all(),
-					'icon_url'              => GITWIRE_URL . 'assets/images/icon.svg',
-					'disconnected_url'      => GITWIRE_URL . 'assets/images/cloud-alert.svg',
-					'not_found_url'         => GITWIRE_URL . 'assets/images/folder-x.svg',
-					'themes_url'            => admin_url( 'themes.php' ),
-					'verify_activation_url' => home_url( '/?gitwire_verify_activation=1' ),
-					'verify_admin_url'      => admin_url( 'admin.php?page=gitwire&gitwire_verify_activation=1' ),
-					'initial_tab'           => $initial_tab,
-					'settings'              => $settings,
-					'installed'             => $installed ? $installed : (object) [],
-					'orphaned'              => $orphaned,
-					'fatal_notice'          => $fatal_notice ? $fatal_notice : null,
-					'update_success'        => $update_success ? $update_success : null,
-					'activation_success'    => $activation_success ? $activation_success : null,
+					'nonce'                => wp_create_nonce( 'wp_rest' ),
+					'public_connections'   => Public_Connections::all(),
+					'connections_metadata' => Connection_Meta::get_connection_cache(),
+					'icon_url'             => GITWIRE_URL . 'assets/images/icon.svg',
+					'disconnected_url'     => GITWIRE_URL . 'assets/images/cloud-alert.svg',
+					'not_found_url'        => GITWIRE_URL . 'assets/images/folder-x.svg',
+					'themes_url'           => admin_url( 'themes.php' ),
+					'initial_tab'          => $initial_tab,
+					'settings'             => $settings,
+					'installed'            => $installed ? $installed : (object) [],
+					'orphaned'             => $orphaned,
+					'pending_msg'          => $pending_msg ? $pending_msg : null,
 				]
 			) . ';',
 			'before'
@@ -270,7 +248,7 @@ class Admin {
 		 *
 		 * Gitwire Pro enqueues its bundle here with 'gitwire-app' as a dependency.
 		 *
-		 * @since 1.4.0
+		 * @since 1.0.0
 		 */
 		do_action( 'gitwire_enqueue_assets' );
 	}
@@ -289,6 +267,32 @@ class Admin {
 	}
 
 	/**
+	 * Adds Repositories and Settings links to the Gitwire row in the plugins list table.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, string> $actions Existing action links.
+	 * @return array<string, string>
+	 */
+	public static function add_plugin_action_links( array $actions ): array {
+		$repositories_url = add_query_arg( 'page', 'gitwire', admin_url( 'admin.php' ) );
+		$settings_url     = add_query_arg(
+			[
+				'page' => 'gitwire',
+				'path' => 'settings',
+			],
+			admin_url( 'admin.php' )
+		);
+
+		return array_merge(
+			[
+				'repositories' => '<a href="' . esc_url( $repositories_url ) . '">' . esc_html__( 'Repositories', 'gitwire' ) . '</a>',
+				'settings'     => '<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'Settings', 'gitwire' ) . '</a>',
+			],
+			$actions
+		);
+	}
+
+	/**
 	 * Appends a [Gitwire] label to managed plugin names in the plugins list table.
 	 *
 	 * @since 1.0.0
@@ -296,12 +300,16 @@ class Admin {
 	 * @return array<string, array<string, string>>
 	 */
 	public static function label_managed_plugins( array $all_plugins ): array {
+		global $pagenow;
+		if ( 'plugins.php' !== $pagenow ) {
+			return $all_plugins;
+		}
 		if ( ! ( Settings::get_raw()['show_repo_label'] ?? true ) ) {
 			return $all_plugins;
 		}
 
 		foreach ( Installer::get_installed() as $rec ) {
-			$file = $rec['plugin_file'] ?? '';
+			$file = $rec['basename'] ?? '';
 			if ( '' === $file || ! isset( $all_plugins[ $file ] ) ) {
 				continue;
 			}
@@ -325,8 +333,8 @@ class Admin {
 
 		$slugs = [];
 		foreach ( Installer::get_installed() as $rec ) {
-			if ( 'theme' === ( $rec['type'] ?? '' ) && '' !== ( $rec['slug'] ?? '' ) ) {
-				$slugs[ $rec['slug'] ] = true;
+			if ( in_array( $rec['type'] ?? '', [ 'theme', 'block-theme', 'classic-theme' ], true ) && '' !== ( $rec['name'] ?? '' ) ) {
+				$slugs[ $rec['name'] ] = true;
 			}
 		}
 
@@ -338,98 +346,5 @@ class Admin {
 		unset( $data );
 
 		return $prepared;
-	}
-
-	/**
-	 * Blocks deletion of a Gitwire-managed plugin via the native Plugins screen,
-	 * showing a clear notice rather than silently deleting.
-	 *
-	 * @since 1.0.0
-	 * @param bool|null $pre        Short-circuit value (null to proceed normally).
-	 * @param string    $plugin_file Plugin file path relative to plugins dir.
-	 * @return bool|null|\WP_Error WP_Error to cancel deletion with a message, null to allow.
-	 */
-	public static function guard_plugin_delete( $pre, string $plugin_file ) {
-		$installed = Installer::get_installed();
-
-		foreach ( $installed as $rec ) {
-			if ( ( $rec['plugin_file'] ?? '' ) !== $plugin_file ) {
-				continue;
-			}
-
-			$full_name = $rec['full_name'] ?? '';
-
-			return new \WP_Error(
-				'gitwire_managed',
-				sprintf(
-					/* translators: 1: repository full name, 2: Gitwire admin URL */
-					__( '"%1$s" is managed by Gitwire. To delete it, go to <a href="%2$s">Gitwire &rsaquo; Repositories</a> and use the Delete action there.', 'gitwire' ),
-					esc_html( $full_name ),
-					esc_url( admin_url( 'admin.php?page=gitwire' ) )
-				)
-			);
-		}
-
-		return $pre;
-	}
-
-	/**
-	 * Displays the blocked-theme-delete error as an admin notice on the Themes screen.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function show_theme_delete_notice(): void {
-		$key     = 'gitwire_theme_delete_blocked_' . get_current_user_id();
-		$message = get_transient( $key );
-		if ( false === $message ) {
-			return;
-		}
-
-		delete_transient( $key );
-
-		printf(
-			'<div class="notice notice-error"><p>%s</p></div>',
-			wp_kses( $message, [ 'a' => [ 'href' => [] ] ] )
-		);
-	}
-
-	/**
-	 * Blocks deletion of a Gitwire-managed theme via the native Themes screen.
-	 * Intercepts before themes.php processes the delete action and redirects
-	 * with a clear admin notice.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function guard_theme_delete(): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-		if ( 'delete' !== sanitize_key( wp_unslash( $_GET['action'] ?? '' ) ) || ! isset( $_GET['stylesheet'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			return;
-		}
-
-		$stylesheet = sanitize_key( wp_unslash( $_GET['stylesheet'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$installed  = Installer::get_installed();
-
-		foreach ( $installed as $rec ) {
-			if ( ( $rec['type'] ?? '' ) !== 'theme' ) {
-				continue;
-			}
-			if ( ( $rec['slug'] ?? '' ) !== $stylesheet ) {
-				continue;
-			}
-
-			$full_name = $rec['full_name'] ?? $stylesheet;
-			$message   = sprintf(
-				/* translators: 1: repository full name, 2: Gitwire admin URL */
-				__( '"%1$s" is managed by Gitwire. To delete it, go to <a href="%2$s">Gitwire &rsaquo; Repositories</a> and use the Delete action there.', 'gitwire' ),
-				esc_html( $full_name ),
-				esc_url( admin_url( 'admin.php?page=gitwire' ) )
-			);
-
-			set_transient( 'gitwire_theme_delete_blocked_' . get_current_user_id(), $message, 60 );
-			wp_safe_redirect( admin_url( 'themes.php' ) );
-			exit;
-		}
 	}
 }
