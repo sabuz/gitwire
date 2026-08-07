@@ -77,7 +77,7 @@ class Commit extends Model_Base {
 				$installation_id,
 				$branch,
 				wp_json_encode( $commits ),
-				current_time( 'mysql' )
+				current_datetime()->format( 'Y-m-d H:i:s' )
 			)
 		);
 		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared

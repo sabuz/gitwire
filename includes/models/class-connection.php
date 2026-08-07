@@ -196,7 +196,7 @@ class Connection extends Model_Base {
 			return false;
 		}
 		if ( ! array_key_exists( 'updated_at', $data ) ) {
-			$data['updated_at'] = current_time( 'mysql' );
+			$data['updated_at'] = current_datetime()->format( 'Y-m-d H:i:s' );
 		}
 		$ok = $this->update_rows( $data, [ 'id' => $id ] );
 		$this->invalidate_cache();
@@ -220,7 +220,7 @@ class Connection extends Model_Base {
 				'rate_remaining' => 0,
 				'rate_reset'     => 0,
 				'error'          => null,
-				'updated_at'     => current_time( 'mysql' ),
+				'updated_at'     => current_datetime()->format( 'Y-m-d H:i:s' ),
 			],
 			[ 'id' => $id ]
 		);
