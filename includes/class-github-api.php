@@ -255,6 +255,11 @@ class GitHub_API implements Git_Provider_Interface {
 			return $tmp;
 		}
 
+		if ( filesize( $tmp ) > 256 * MB_IN_BYTES ) {
+			wp_delete_file( $tmp );
+			return new \WP_Error( 'gitwire_archive_too_large', 'Repository ZIP exceeds the 256 MB size limit.' );
+		}
+
 		return $tmp;
 	}
 

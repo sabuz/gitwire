@@ -309,6 +309,12 @@ class Bitbucket_API implements Git_Provider_Interface {
 			);
 		}
 
+		if ( filesize( $tmp_file ) > 256 * MB_IN_BYTES ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
+			@unlink( $tmp_file );
+			return new \WP_Error( 'gitwire_archive_too_large', 'Repository ZIP exceeds the 256 MB size limit.' );
+		}
+
 		return $tmp_file;
 	}
 
