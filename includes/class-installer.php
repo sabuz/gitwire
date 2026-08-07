@@ -1601,8 +1601,8 @@ class Installer {
 		$failed_path = null;
 		if ( is_dir( $install_path ) ) {
 			$failed_path = $install_path . '--gitwire-failed-' . time();
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
-			if ( ! @rename( $install_path, $failed_path ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+			if ( ! rename( $install_path, $failed_path ) ) {
 				self::rmdir_recursive( $install_path );
 				$failed_path = null;
 			}
@@ -1611,8 +1611,8 @@ class Installer {
 		// Restore backup (backup may be in temp dir — use move_dir_safe for cross-filesystem support).
 		if ( ! self::move_dir_safe( $backup_path, $install_path ) ) {
 			if ( $failed_path && is_dir( $failed_path ) && ! is_dir( $install_path ) ) {
-				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
-				@rename( $failed_path, $install_path );
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+				rename( $failed_path, $install_path );
 			}
 			return false;
 		}
@@ -1639,13 +1639,11 @@ class Installer {
 		$slug = basename( $install_path );
 
 		// Check the temp-dir backup location first (current storage).
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		$matches = @glob( self::get_backup_base_dir() . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
+		$matches = glob( self::get_backup_base_dir() . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
 		if ( ! is_array( $matches ) || empty( $matches ) ) {
 			// Legacy fallback: pre-fix backups stored alongside the install.
-			$parent = dirname( $install_path );
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			$matches = @glob( $parent . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
+			$parent  = dirname( $install_path );
+			$matches = glob( $parent . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
 			if ( ! is_array( $matches ) || empty( $matches ) ) {
 				return null;
 			}
@@ -1881,8 +1879,7 @@ class Installer {
 		// Temp-dir backups (current location).
 		$backup_base = self::get_backup_base_dir();
 		foreach ( [ '--gitwire-bak-', '--gitwire-failed-' ] as $marker ) {
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			$matches = @glob( $backup_base . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
+			$matches = glob( $backup_base . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
 			if ( is_array( $matches ) ) {
 				foreach ( $matches as $dir ) {
 					self::rmdir_recursive( $dir );
@@ -1892,8 +1889,7 @@ class Installer {
 		// Legacy webroot backups left behind before this fix was applied.
 		foreach ( [ WP_PLUGIN_DIR, get_theme_root() ] as $parent ) {
 			foreach ( [ '--gitwire-bak-', '--gitwire-failed-' ] as $marker ) {
-				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-				$matches = @glob( $parent . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
+				$matches = glob( $parent . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
 				if ( is_array( $matches ) ) {
 					foreach ( $matches as $dir ) {
 						self::rmdir_recursive( $dir );
@@ -1915,8 +1911,7 @@ class Installer {
 		if ( ! is_dir( $dir ) ) {
 			return;
 		}
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		$items = @scandir( $dir );
+		$items = scandir( $dir );
 		if ( ! $items ) {
 			return;
 		}
@@ -1964,8 +1959,8 @@ class Installer {
 	 * @return bool True when dst exists after the move.
 	 */
 	private static function move_dir_safe( string $src, string $dst ): bool {
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
-		if ( @rename( $src, $dst ) ) {
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
+		if ( rename( $src, $dst ) ) {
 			return true;
 		}
 		// Cross-filesystem fallback: copy every file then remove the source.
@@ -1986,13 +1981,12 @@ class Installer {
 	 */
 	private static function copy_recursive( string $src, string $dst ): bool {
 		if ( ! is_dir( $dst ) ) {
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
-			if ( ! @mkdir( $dst, 0755, true ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
+			if ( ! mkdir( $dst, 0755, true ) ) {
 				return false;
 			}
 		}
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		$items = @scandir( $src );
+		$items = scandir( $src );
 		if ( ! $items ) {
 			return false;
 		}
@@ -2006,8 +2000,8 @@ class Installer {
 				if ( ! self::copy_recursive( $s, $d ) ) {
 					return false;
 				}
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_copy
-			} elseif ( ! @copy( $s, $d ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_copy
+			} elseif ( ! copy( $s, $d ) ) {
 				return false;
 			}
 		}
