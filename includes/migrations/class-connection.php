@@ -29,9 +29,9 @@ class Connection extends Migration_Base {
 	 *
 	 * @since 1.0.0
 	 * @param string $from Previously stored plugin version; use for version_compare guards on future schema changes.
-	 * @return void
+	 * @return bool True when the schema is in the expected state after the call.
 	 */
-	public function migrate( string $from = '' ): void {
+	public function migrate( string $from = '' ): bool {
 		global $wpdb;
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -58,6 +58,8 @@ class Connection extends Migration_Base {
 			  KEY provider (provider)
 			) {$charset};"
 		);
+
+		return true;
 	}
 
 	/**

@@ -62,16 +62,35 @@ class Database_Manager {
 	/**
 	 * Runs all pending migrations in dependency order.
 	 *
+	 * Only bumps the stored DB version when all migrations succeed, so a failed schema
+	 * change (e.g. insufficient DB privileges) is retried on the next activation.
+	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public function migrate(): void {
 		$raw  = get_option( self::DB_VERSION_OPTION );
 		$from = is_string( $raw ) ? $raw : '';
-		Connection_Migration::instance()->migrate( $from );
-		Installation_Migration::instance()->migrate( $from );
-		Repository_Migration::instance()->migrate( $from );
-		Commit_Migration::instance()->migrate( $from );
+
+		$results = [
+			Connection_Migration::instance()->migrate( $from ),
+			Installation_Migration::instance()->migrate( $from ),
+			Repository_Migration::instance()->migrate( $from ),
+			Commit_Migration::instance()->migrate( $from ),
+		];
+
+		if ( in_array( false, $results, true ) ) {
+			add_action(
+				'admin_notices',
+				static function () {
+					echo '<div class="notice notice-error"><p>'
+						. esc_html__( 'Gitwire: database migration failed. Check that MySQL has ALTER TABLE privileges on this database.', 'gitwire' )
+						. '</p></div>';
+				}
+			);
+			return;
+		}
+
 		update_option( self::DB_VERSION_OPTION, GITWIRE_VERSION, false );
 	}
 

@@ -26,9 +26,9 @@ class Repository extends Migration_Base {
 	 *
 	 * @since 1.0.0
 	 * @param string $from Previously stored plugin version; use for version_compare guards on future schema changes.
-	 * @return void
+	 * @return bool True when the schema is in the expected state after the call.
 	 */
-	public function migrate( string $from = '' ): void {
+	public function migrate( string $from = '' ): bool {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
 		global $wpdb;
@@ -55,6 +55,8 @@ class Repository extends Migration_Base {
 			  KEY conn_last_activity (connection_id, last_activity_at)
 			) {$charset};"
 		);
+
+		return true;
 	}
 
 	/**

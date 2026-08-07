@@ -45,9 +45,9 @@ abstract class Migration_Base {
 	 *
 	 * @since 1.0.0
 	 * @param string $from Previously stored plugin version.
-	 * @return void
+	 * @return bool True when all schema changes were applied successfully.
 	 */
-	abstract public function migrate( string $from = '' ): void;
+	abstract public function migrate( string $from = '' ): bool;
 
 	/**
 	 * Drops the table(s) owned by this migration.
