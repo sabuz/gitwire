@@ -218,9 +218,19 @@ class Error_Handler {
 		self::restore_pending_installed_record( $pending );
 
 		if ( $is_fatal ) {
-			$error_string = sprintf( '%s in %s on line %d', $error['message'], $error['file'], $error['line'] );
+			$error_string = sprintf(
+				'%s in %s on line %d',
+				$error['message'],
+				str_replace( ABSPATH, '', $error['file'] ),
+				$error['line']
+			);
 		} else {
-			$error_string = sprintf( '%s in %s on line %d', self::$exception_message, self::$exception_file, self::$exception_line );
+			$error_string = sprintf(
+				'%s in %s on line %d',
+				self::$exception_message,
+				str_replace( ABSPATH, '', self::$exception_file ),
+				self::$exception_line
+			);
 		}
 
 		// Store fatal notice for the Gitwire admin UI.
