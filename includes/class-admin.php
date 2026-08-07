@@ -238,7 +238,8 @@ class Admin {
 					'installed'            => $installed ? $installed : (object) [],
 					'orphaned'             => $orphaned,
 					'pending_msg'          => $pending_msg ? $pending_msg : null,
-				]
+				],
+				JSON_HEX_TAG | JSON_HEX_AMP
 			) . ';',
 			'before'
 		);
