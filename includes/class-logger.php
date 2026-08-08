@@ -47,53 +47,15 @@ class Logger {
 	/**
 	 * Resolves the log file path and ensures the directory exists.
 	 *
-	 * Stored in wp-content/gitwire/ (outside uploads) so it is not
-	 * affected by media URL routing. .htaccess protects Apache; Nginx sites
-	 * should add "location ~* /gitwire { deny all; }" -- see readme.txt.
+	 * Stored outside the webroot (like install backups, see
+	 * Installer::get_backup_base_dir()) so it is never reachable by a direct
+	 * request regardless of server config -- .htaccess only protects Apache.
 	 */
 	private function __construct() {
-		$dir            = WP_CONTENT_DIR . '/gitwire';
+		$dir            = trailingslashit( sys_get_temp_dir() ) . 'gitwire-logs';
 		$hash           = substr( hash( 'sha256', wp_salt( 'auth' ) . 'gitwire-log' ), 0, 12 );
 		$this->log_file = $dir . '/' . $hash . '.log';
 		$this->ensure_dir( $dir );
-	}
-
-	/**
-	 * Registers an admin notice when logging is active on an Nginx server.
-	 *
-	 * .htaccess has no effect on Nginx, so the log directory is web-accessible
-	 * unless the operator adds a deny block in their server config. Called from
-	 * Admin::init() so the notice appears on admin pages outside Gitwire (where
-	 * hide_admin_notices() does not run).
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function maybe_warn_nginx(): void {
-		if ( ! Settings::is_logging_enabled() ) {
-			return;
-		}
-		if ( ! function_exists( 'wp_is_nginx' ) || ! wp_is_nginx() ) {
-			return;
-		}
-		add_action(
-			'admin_notices',
-			static function () {
-				echo '<div class="notice notice-warning"><p>'
-					. wp_kses(
-						sprintf(
-							/* translators: %s: server directory path */
-							__( '<strong>Gitwire:</strong> Activity logging is on, but your server runs Nginx. Add a deny rule for <code>%s</code> to block direct web access to the log file. See the plugin readme FAQ for the exact server block to add.', 'gitwire' ),
-							esc_html( content_url( 'gitwire' ) )
-						),
-						[
-							'strong' => [],
-							'code'   => [],
-						]
-					)
-					. '</p></div>';
-			}
-		);
 	}
 
 	/**
