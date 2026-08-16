@@ -177,14 +177,15 @@ class GitHub_API implements Git_Provider_Interface {
 
 		return array_map(
 			static function ( $c ) {
+				$message = (string) ( $c['commit']['message'] ?? '' );
 				return [
-					'sha'     => $c['sha'],
-					'message' => explode( "\n", trim( $c['commit']['message'] ) )[0],
+					'sha'     => (string) ( $c['sha'] ?? '' ),
+					'message' => explode( "\n", trim( $message ) )[0],
 					'author'  => $c['commit']['author']['name'] ?? '',
 					'date'    => $c['commit']['author']['date'] ?? '',
 				];
 			},
-			$data
+			is_array( $data ) ? $data : []
 		);
 	}
 
@@ -239,6 +240,16 @@ class GitHub_API implements Git_Provider_Interface {
 			return new \WP_Error( 'gitwire_no_location', 'GitHub did not return a download URL.' );
 		}
 
+		/*
+		 * Check the advertised size first. download_url() has no cap of its own, so
+		 * without this a multi-gigabyte archive is fully written to disk before the
+		 * check below can reject it.
+		 */
+		$declared = self::declared_size( $download_url );
+		if ( $declared > 256 * MB_IN_BYTES ) {
+			return new \WP_Error( 'gitwire_archive_too_large', 'Repository ZIP exceeds the 256 MB size limit.' );
+		}
+
 		// Stream to disk via WordPress (handles large repos safely).
 		$tmp = download_url( $download_url, 300 );
 
@@ -252,6 +263,23 @@ class GitHub_API implements Git_Provider_Interface {
 		}
 
 		return $tmp;
+	}
+
+	/**
+	 * Returns the Content-Length a URL advertises, or 0 when it does not say.
+	 *
+	 * @since 1.0.0
+	 * @param string $url Absolute URL.
+	 * @return int
+	 */
+	private static function declared_size( string $url ): int {
+		$head = wp_remote_head( $url, [ 'timeout' => 15 ] );
+
+		if ( is_wp_error( $head ) ) {
+			return 0;
+		}
+
+		return (int) wp_remote_retrieve_header( $head, 'content-length' );
 	}
 
 	/**

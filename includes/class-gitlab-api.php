@@ -293,7 +293,7 @@ class GitLab_API implements Git_Provider_Interface {
 		return array_map(
 			static function ( $c ) {
 				return [
-					'sha'     => $c['id'],
+					'sha'     => (string) ( $c['id'] ?? '' ),
 					'message' => $c['title'] ?? '',
 					'author'  => $c['author_name'] ?? '',
 					'date'    => $c['created_at'] ?? '',
