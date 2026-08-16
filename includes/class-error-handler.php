@@ -26,11 +26,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Error_Handler {
 
 	/**
+	 * Option holding the in-flight install/activation guard.
+	 *
+	 * @var string
+	 */
+	const GUARD_OPTION = 'gitwire_running_task';
+
+	/**
 	 * Whether the shutdown function has already been registered.
 	 *
 	 * @var bool
 	 */
 	private static bool $registered = false;
+
+	/**
+	 * Whether our exception handler is currently installed.
+	 *
+	 * @var bool
+	 */
+	private static bool $handler_armed = false;
 
 	/**
 	 * Set when our exception handler fires, so handle_shutdown can treat it as fatal.
@@ -83,8 +97,76 @@ class Error_Handler {
 		add_action( 'admin_init', [ self::class, 'clear_stale_update_guard' ], 6 );
 		add_action( 'admin_init', [ self::class, 'process_pending_deactivation' ], 7 );
 
-		// late registration puts us above debug plugins (e.g. QM) in the exception-handler chain.
-		add_action( 'plugins_loaded', [ self::class, 'register_exception_handler' ], PHP_INT_MAX );
+		/*
+		 * Arm the moment a guard is written. The install runs inside a REST request
+		 * that is already past plugins_loaded, so hooking the option write is the
+		 * only way to get on top of the chain before the new code is executed.
+		 */
+		add_action( 'add_option_' . self::GUARD_OPTION, [ self::class, 'arm_exception_handler' ] );
+		add_action( 'update_option_' . self::GUARD_OPTION, [ self::class, 'arm_exception_handler' ] );
+		add_action( 'delete_option_' . self::GUARD_OPTION, [ self::class, 'disarm_exception_handler' ] );
+
+		add_action( 'plugins_loaded', [ self::class, 'maybe_arm_exception_handler' ], PHP_INT_MAX );
+	}
+
+	/**
+	 * Installs the exception handler when a guard is already in flight.
+	 *
+	 * Runs late on plugins_loaded so we sit above debug plugins that set their own
+	 * handler (Query Monitor swallows the exception otherwise, see #6). Skipped
+	 * entirely on the front end, which has no install to roll back and should not
+	 * pay for the guard lookup.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function maybe_arm_exception_handler(): void {
+		if ( ! Plugin::is_management_request() ) {
+			return;
+		}
+
+		if ( ! get_option( self::GUARD_OPTION ) ) {
+			return;
+		}
+
+		self::arm_exception_handler();
+	}
+
+	/**
+	 * Takes over exception handling for the rest of this request.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function arm_exception_handler(): void {
+		if ( self::$handler_armed ) {
+			return;
+		}
+
+		self::$handler_armed              = true;
+		self::$previous_exception_handler = set_exception_handler( [ self::class, 'handle_uncaught_exception' ] );
+	}
+
+	/**
+	 * Hands exception handling back once the guard clears.
+	 *
+	 * Reinstates the saved handler rather than calling restore_exception_handler(),
+	 * which pops PHP's stack and would hand back the wrong one if anything else
+	 * registered after we armed.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function disarm_exception_handler(): void {
+		if ( ! self::$handler_armed ) {
+			return;
+		}
+
+		$previous                         = self::$previous_exception_handler;
+		self::$handler_armed              = false;
+		self::$previous_exception_handler = null;
+
+		set_exception_handler( $previous );
 	}
 
 	/**
@@ -110,17 +192,12 @@ class Error_Handler {
 	}
 
 	/**
-	 * Registers Gitwire's exception handler after all plugins have set theirs.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public static function register_exception_handler(): void {
-		self::$previous_exception_handler = set_exception_handler( [ self::class, 'handle_uncaught_exception' ] );
-	}
-
-	/**
 	 * Flags an uncaught exception before delegating to the next handler in the chain.
+	 *
+	 * Only reachable while a guard is armed. The re-throw below is what lets PHP
+	 * terminate the way it normally would; it reports the fatal at this line rather
+	 * than the origin, so the notice and the log both use the recorded location
+	 * instead of whatever PHP prints.
 	 *
 	 * @since 1.0.0
 	 * @param \Throwable $e The uncaught exception or error.
