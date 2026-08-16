@@ -173,6 +173,33 @@ class SettingsTest extends TestCase {
 		$this->assertTrue( Settings::is_allowed_gitlab_url( '' ) );
 	}
 
+	/**
+	 * @dataProvider mapped_ipv6_addresses
+	 * @param string $ip IPv4-mapped or IPv4-compatible IPv6 address.
+	 */
+	public function test_is_safe_ip_sees_through_ipv4_mapped_ipv6( string $ip ): void {
+		// PHP's range flags only handle the wrapper from 8.5. The floor is 8.1, where
+		// filter_var() called ::ffff:127.0.0.1 a public address.
+		$this->assertFalse( Settings::is_safe_ip( $ip ) );
+	}
+
+	/**
+	 * @return array<string, array<int, string>>
+	 */
+	public static function mapped_ipv6_addresses(): array {
+		return [
+			'mapped loopback'    => [ '::ffff:127.0.0.1' ],
+			'mapped private 10'  => [ '::ffff:10.0.0.1' ],
+			'mapped private 192' => [ '::ffff:192.168.1.1' ],
+			'mapped metadata'    => [ '::ffff:169.254.169.254' ],
+			'compat loopback'    => [ '::127.0.0.1' ],
+		];
+	}
+
+	public function test_is_safe_ip_still_allows_a_mapped_public_address(): void {
+		$this->assertTrue( Settings::is_safe_ip( '::ffff:140.82.121.4' ) );
+	}
+
 	public function test_is_safe_ip_rejects_reserved_ranges(): void {
 		$this->assertFalse( Settings::is_safe_ip( '127.0.0.1' ) );
 		$this->assertFalse( Settings::is_safe_ip( '::1' ) );

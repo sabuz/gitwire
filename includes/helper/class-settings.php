@@ -390,12 +390,23 @@ class Settings {
 	 * @return bool
 	 */
 	public static function is_safe_ip( string $ip ): bool {
+		$ip = strtolower( trim( $ip ) );
+
+		/*
+		 * Unwrap IPv4-mapped and IPv4-compatible IPv6 before anything else. PHP's
+		 * range flags only learned to see through the wrapper in 8.5, so on 8.1, the
+		 * supported floor, ::ffff:127.0.0.1 validated as a public address.
+		 */
+		if ( preg_match( '/^::(?:ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/', $ip, $m ) ) {
+			return self::is_safe_ip( $m[1] );
+		}
+
 		// IPv6 loopback and unspecified.
 		if ( in_array( $ip, [ '::1', '::' ], true ) ) {
 			return false;
 		}
 
-		// 127.0.0.0/8 loopback range — not covered by FILTER_FLAG_NO_RES_RANGE.
+		// 127.0.0.0/8 loopback range, not covered by FILTER_FLAG_NO_RES_RANGE.
 		if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) && str_starts_with( $ip, '127.' ) ) {
 			return false;
 		}
