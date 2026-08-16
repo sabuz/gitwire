@@ -18,6 +18,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Constants {
 
 	/**
+	 * Option caching the parsed plugin version against the file's mtime.
+	 *
+	 * @var string
+	 */
+	const VERSION_CACHE = 'gitwire_version_cache';
+
+	/**
 	 * Singleton instance.
 	 *
 	 * @var self|null
@@ -70,8 +77,30 @@ final class Constants {
 		$this->url      = plugin_dir_url( $file );
 		$this->basename = plugin_basename( $file );
 
+		/*
+		 * get_file_data() reads and regex-scans the plugin file, and this runs on every
+		 * request. One autoloaded option keyed on mtime, replaced rather than added to,
+		 * so a new build still picks the version up.
+		 */
+		$mtime  = (int) filemtime( $file );
+		$cached = get_option( self::VERSION_CACHE );
+
+		if ( is_array( $cached ) && (int) ( $cached['mtime'] ?? 0 ) === $mtime && ! empty( $cached['version'] ) ) {
+			$this->version = (string) $cached['version'];
+			return;
+		}
+
 		$header        = get_file_data( $file, [ 'version' => 'Version' ] );
 		$this->version = '' !== $header['version'] ? $header['version'] : '0.0.0';
+
+		update_option(
+			self::VERSION_CACHE,
+			[
+				'mtime'   => $mtime,
+				'version' => $this->version,
+			],
+			true
+		);
 	}
 
 	/**

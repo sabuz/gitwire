@@ -24,6 +24,7 @@ $options = [
 	'gitwire_orphan_queue',
 	'gitwire_detection_cursor',
 	'gitwire_refresh_state',
+	'gitwire_version_cache',
 ];
 
 foreach ( $options as $option ) {
