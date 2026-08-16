@@ -252,8 +252,23 @@ class RepositoryDetectorTest extends TestCase {
 		$this->assertSame( 'rate limited', $result->get_error_message() );
 	}
 
-	public function test_shallow_recheck_reuses_the_cached_result_when_key_files_survive(): void {
+	public function test_shallow_recheck_reuses_the_cached_result_when_the_listing_is_unchanged(): void {
 		gitwire_test_set_option( 'gitwire_settings', [ 'shallow_detection' => true ] );
+
+		$listing = $this->listing(
+			[
+				'style.css'  => 'file',
+				'theme.json' => 'file',
+			]
+		);
+
+		// Detect once to obtain a cache entry carrying the listing fingerprint.
+		$cached = Repository_Detector::detect(
+			'my-theme',
+			'main',
+			$listing,
+			$this->contents( [ 'style.css' => "/*\nTheme Name: Cached\n*/" ] )
+		);
 
 		$fetches = 0;
 		$counter = function () use ( &$fetches ) {
@@ -261,15 +276,17 @@ class RepositoryDetectorTest extends TestCase {
 			return "/*\nTheme Name: Cached\n*/";
 		};
 
-		$cached = [
-			'type'       => 'block-theme',
-			'confidence' => 'high',
-			'name'       => 'Cached',
-			'key_files'  => [ 'style.css', 'theme.json' ],
-		];
+		$result = Repository_Detector::detect( 'my-theme', 'main', $listing, $counter, $cached );
 
-		$result = Repository_Detector::detect(
-			'my-theme',
+		$this->assertSame( $cached, $result );
+		$this->assertSame( 0, $fetches, 'shallow re-check should not fetch file contents' );
+	}
+
+	public function test_shallow_recheck_re_detects_when_the_listing_changed(): void {
+		gitwire_test_set_option( 'gitwire_settings', [ 'shallow_detection' => true ] );
+
+		$cached = Repository_Detector::detect(
+			'my-repo',
 			'main',
 			$this->listing(
 				[
@@ -277,12 +294,35 @@ class RepositoryDetectorTest extends TestCase {
 					'theme.json' => 'file',
 				]
 			),
-			$counter,
+			$this->contents( [ 'style.css' => "/*\nTheme Name: Was A Theme\n*/" ] )
+		);
+		$this->assertSame( 'block-theme', $cached['type'] );
+
+		/*
+		 * Same key files still present, but the repo gained a plugin bootstrap. The
+		 * old check passed on key_files alone and kept returning block-theme.
+		 */
+		$result = Repository_Detector::detect(
+			'my-repo',
+			'main',
+			$this->listing(
+				[
+					'style.css'   => 'file',
+					'theme.json'  => 'file',
+					'my-repo.php' => 'file',
+				]
+			),
+			$this->contents(
+				[
+					'style.css'   => 'body { color: red; }',
+					'my-repo.php' => "<?php\n/**\n * Plugin Name: Now A Plugin\n */",
+				]
+			),
 			$cached
 		);
 
-		$this->assertSame( $cached, $result );
-		$this->assertSame( 0, $fetches, 'shallow re-check should not fetch file contents' );
+		$this->assertSame( 'plugin', $result['type'] );
+		$this->assertSame( 'Now A Plugin', $result['name'] );
 	}
 
 	public function test_shallow_recheck_re_detects_when_a_key_file_disappears(): void {

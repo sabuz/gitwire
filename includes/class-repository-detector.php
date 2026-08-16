@@ -116,11 +116,18 @@ class Repository_Detector {
 			return $contents;
 		}
 
-		// Shallow re-check: if the cached key_files are all still present, skip file fetches.
+		/*
+		 * Shallow re-check: reuse the cached result only when the root listing is
+		 * byte-for-byte what produced it. Checking key_files alone let a repo that
+		 * converted from plugin to theme keep the old type forever, as long as the
+		 * files the old decision rested on happened to survive.
+		 */
 		if (
 			$cached_result &&
 			! empty( $cached_result['key_files'] ) &&
 			( Settings::get_public()['shallow_detection'] ?? false ) &&
+			isset( $cached_result['listing_hash'] ) &&
+			hash_equals( (string) $cached_result['listing_hash'], self::listing_hash( $contents ) ) &&
 			self::all_key_files_present( $cached_result['key_files'], $contents )
 		) {
 			return $cached_result;
@@ -152,33 +159,42 @@ class Repository_Detector {
 				$name = self::extract_header( $css, 'Theme Name' );
 
 				if ( isset( $files['theme.json'] ) ) {
-					return [
-						'type'       => 'block-theme',
-						'confidence' => 'high',
-						'name'       => $name,
-						'key_files'  => [ 'style.css', 'theme.json' ],
-					];
+					return self::stamp(
+						[
+							'type'       => 'block-theme',
+							'confidence' => 'high',
+							'name'       => $name,
+							'key_files'  => [ 'style.css', 'theme.json' ],
+						],
+						$contents
+					);
 				}
 
 				if ( isset( $files['templates'] ) && ( $files['templates']['type'] ?? '' ) === 'dir' ) {
-					return [
-						'type'       => 'block-theme',
-						'confidence' => 'high',
-						'name'       => $name,
-						'key_files'  => [ 'style.css', 'templates/' ],
-					];
+					return self::stamp(
+						[
+							'type'       => 'block-theme',
+							'confidence' => 'high',
+							'name'       => $name,
+							'key_files'  => [ 'style.css', 'templates/' ],
+						],
+						$contents
+					);
 				}
 
 				$key_files = isset( $files['functions.php'] )
 					? [ 'style.css', 'functions.php' ]
 					: [ 'style.css' ];
 
-				return [
-					'type'       => 'classic-theme',
-					'confidence' => isset( $files['functions.php'] ) ? 'high' : 'medium',
-					'name'       => $name,
-					'key_files'  => $key_files,
-				];
+				return self::stamp(
+					[
+						'type'       => 'classic-theme',
+						'confidence' => isset( $files['functions.php'] ) ? 'high' : 'medium',
+						'name'       => $name,
+						'key_files'  => $key_files,
+					],
+					$contents
+				);
 			}
 		}
 
@@ -209,39 +225,83 @@ class Repository_Detector {
 			$real_name = $files[ $lc_name ]['name'];
 			$content   = $get_file_content( $real_name, $branch );
 			if ( ! is_wp_error( $content ) && self::has_header( $content, 'Plugin Name' ) ) {
-				return [
-					'type'       => 'plugin',
-					'confidence' => 'high',
-					'name'       => self::extract_header( $content, 'Plugin Name' ),
-					'key_files'  => [ $real_name ],
-				];
+				return self::stamp(
+					[
+						'type'       => 'plugin',
+						'confidence' => 'high',
+						'name'       => self::extract_header( $content, 'Plugin Name' ),
+						'key_files'  => [ $real_name ],
+					],
+					$contents
+				);
 			}
 		}
 
 		if ( isset( $files['functions.php'] ) ) {
-			return [
-				'type'       => 'classic-theme',
-				'confidence' => 'medium',
-				'name'       => '',
-				'key_files'  => [ 'functions.php' ],
-			];
+			return self::stamp(
+				[
+					'type'       => 'classic-theme',
+					'confidence' => 'medium',
+					'name'       => '',
+					'key_files'  => [ 'functions.php' ],
+				],
+				$contents
+			);
 		}
 
 		if ( ! empty( $php_files ) ) {
-			return [
-				'type'       => 'plugin',
-				'confidence' => 'low',
-				'name'       => '',
-				'key_files'  => [],
-			];
+			return self::stamp(
+				[
+					'type'       => 'plugin',
+					'confidence' => 'low',
+					'name'       => '',
+					'key_files'  => [],
+				],
+				$contents
+			);
 		}
 
-		return [
-			'type'       => 'unknown',
-			'confidence' => 'none',
-			'name'       => '',
-			'key_files'  => [],
-		];
+		return self::stamp(
+			[
+				'type'       => 'unknown',
+				'confidence' => 'none',
+				'name'       => '',
+				'key_files'  => [],
+			],
+			$contents
+		);
+	}
+
+	/**
+	 * Attaches the root-listing fingerprint a later shallow re-check compares against.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed> $result   Detection result.
+	 * @param array<int, mixed>    $contents Root listing the result was derived from.
+	 * @return array<string, mixed>
+	 */
+	private static function stamp( array $result, array $contents ): array {
+		$result['listing_hash'] = self::listing_hash( $contents );
+		return $result;
+	}
+
+	/**
+	 * Fingerprints a root listing by name and entry type.
+	 *
+	 * @since 1.0.0
+	 * @param array<int, mixed> $contents Root listing items from the provider.
+	 * @return string
+	 */
+	private static function listing_hash( array $contents ): string {
+		$names = [];
+		foreach ( $contents as $item ) {
+			if ( isset( $item['name'] ) ) {
+				$names[] = strtolower( $item['name'] ) . ':' . ( $item['type'] ?? 'file' );
+			}
+		}
+		sort( $names );
+
+		return hash( 'sha256', implode( '|', $names ) );
 	}
 
 	/**
