@@ -14,8 +14,14 @@ parameters:
 		- uninstall.php
 	excludePaths:
 		- vendor/*
-		# test bootstrap declares single-param get_option stub that conflicts with WP stubs
+		# both redeclare WP functions that the WordPress stub package already defines
 		- tests/bootstrap.php
+		- tests/stubs.php
+		- tests/class-wp-error.php
+	# read for symbols (test helpers, sandbox constants) without analysing the bodies
+	scanFiles:
+		- tests/bootstrap.php
+		- tests/stubs.php
 	dynamicConstantNames:
 		- AUTH_COOKIE
 		- LOGGED_IN_COOKIE

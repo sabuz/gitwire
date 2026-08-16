@@ -22,6 +22,36 @@
 	</rule>
 	<rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
 
+	<!--
+		Tests document themselves through their method names, and fixtures need real
+		file operations rather than WP_Filesystem.
+	-->
+	<rule ref="Squiz.Commenting.FunctionComment">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Squiz.Commenting.VariableComment">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Commenting.DocComment">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.PHP.NoSilencedErrors">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.PHP.DevelopmentFunctions">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.CodeAnalysis.UnusedFunctionParameter">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<!-- stubs.php holds WP function stubs, not a class. -->
+	<rule ref="WordPress.Files.FileName">
+		<exclude-pattern>tests/stubs.php</exclude-pattern>
+	</rule>
+
 	<!-- Minimum supported versions. -->
 	<config name="minimum_supported_wp_version" value="6.9"/>
 	<config name="testVersion" value="8.1-"/>
