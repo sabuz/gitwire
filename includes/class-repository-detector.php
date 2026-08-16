@@ -89,11 +89,8 @@ class Repository_Detector {
 	/**
 	 * Detects repository type from root file listing callbacks.
 	 *
-	 * Returns an array with:
-	 *   'type'       — flat value: 'plugin', 'block-theme', 'classic-theme', 'unknown'
-	 *   'confidence' — 'high', 'medium', 'low', or 'none'
-	 *   'name'       — extracted Theme Name or Plugin Name header value, or ''
-	 *   'key_files'  — files that drove the decision; empty for low/unknown (skip shallow re-detect)
+	 * Low-confidence and unknown results carry no key_files, which is what stops a
+	 * shallow re-check from reusing a guess.
 	 *
 	 * @since 1.0.0
 	 * @param string                    $repo_name         Repository slug used for main-file priority.

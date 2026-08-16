@@ -14,14 +14,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Registers all plugin REST routes and provides shared helpers used by sub-classes.
- *
- * Route handlers live in focused classes:
- *   REST_Settings      — /settings
- *   REST_Repositories  — /repos, /repos/detect-batch, /repos/resolve
- *   REST_Installer     — /install, /installed
- *   REST_Connections   — /public-connections
- *   REST_Logs          — /logs, /log-actors
- *   Connection_Meta — profile cache on gitwire_connections (no routes; used by Pro)
  */
 class REST {
 

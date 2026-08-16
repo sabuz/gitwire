@@ -17,9 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Read/write operations for the gitwire_repositories table.
  *
- * One row per repo per connection. Freshness is owned by cron; reads return
- * whatever is in the table regardless of age. type/type_meta are preserved
- * across cron refreshes via excluded ON DUPLICATE KEY UPDATE columns.
+ * See Gitwire\Repositories for the freshness contract this table sits under.
  */
 class Repository extends Model_Base {
 

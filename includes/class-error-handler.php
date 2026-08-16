@@ -2,14 +2,6 @@
 /**
  * Shutdown-based fatal-error handler for safe plugin installation.
  *
- * Registers a PHP shutdown function that detects fatal errors introduced
- * by a plugin/theme we just installed or updated. On fatal: restores the
- * backup directory, deactivates the plugin (if it was active), and stores
- * a fatal notice for the Gitwire admin UI.
- *
- * Uses only plain PHP and raw MySQL so it works even when WordPress has
- * not finished bootstrapping.
- *
  * @package Gitwire
  * @since 1.0.0
  */
@@ -21,7 +13,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Registers a shutdown handler that rolls back broken plugin/theme installs.
+ * Rolls back a broken install when the request it ran in dies.
+ *
+ * Sticks to plain PHP and raw SQL in the shutdown path, which may run before
+ * WordPress has finished bootstrapping.
  */
 class Error_Handler {
 
