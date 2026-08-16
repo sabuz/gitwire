@@ -299,9 +299,9 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Downloads a project archive ZIP and returns the local temp-file path.
 	 *
-	 * Unlike GitHub's zipball (which redirects), GitLab streams the archive
-	 * directly. We use wp_remote_get() with stream=true to avoid buffering
-	 * large repos in memory, and pass the auth header manually.
+	 * Streamed to disk so large repos never sit in memory. Redirects are resolved by
+	 * hand rather than followed: instances backed by object storage 302 to a signed
+	 * URL on another host, and WP_Http would replay the auth header there.
 	 *
 	 * @since 1.0.0
 	 * @param string $owner  GitLab namespace.
@@ -321,15 +321,19 @@ class GitLab_API implements Git_Provider_Interface {
 
 		$tmp_file = wp_tempnam( 'gitwire-gitlab-' );
 
-		$response = wp_remote_get(
-			$url,
-			[
-				'headers'  => $this->headers(),
-				'timeout'  => 300,
-				'stream'   => true,
-				'filename' => $tmp_file,
-			]
-		);
+		$response = $this->stream_to( $url, $this->headers(), $tmp_file );
+
+		if ( ! is_wp_error( $response )
+			&& in_array( (int) wp_remote_retrieve_response_code( $response ), [ 301, 302, 307, 308 ], true )
+		) {
+			$location = (string) wp_remote_retrieve_header( $response, 'location' );
+			if ( '' === $location ) {
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
+				@unlink( $tmp_file );
+				return new \WP_Error( 'gitwire_no_location', 'GitLab did not return a download URL.' );
+			}
+			$response = $this->stream_to( $location, [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ], $tmp_file );
+		}
 
 		if ( is_wp_error( $response ) ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
@@ -356,6 +360,28 @@ class GitLab_API implements Git_Provider_Interface {
 		}
 
 		return $tmp_file;
+	}
+
+	/**
+	 * Streams one URL to a local file without following redirects.
+	 *
+	 * @since 1.0.0
+	 * @param string                $url      Absolute URL to fetch.
+	 * @param array<string, string> $headers  Request headers.
+	 * @param string                $tmp_file Destination path.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	private function stream_to( string $url, array $headers, string $tmp_file ): array|\WP_Error {
+		return wp_remote_get(
+			$url,
+			[
+				'headers'     => $headers,
+				'timeout'     => 300,
+				'stream'      => true,
+				'filename'    => $tmp_file,
+				'redirection' => 0,
+			]
+		);
 	}
 
 	/**

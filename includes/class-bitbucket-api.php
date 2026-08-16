@@ -268,7 +268,9 @@ class Bitbucket_API implements Git_Provider_Interface {
 	/**
 	 * Downloads a repository ZIP archive to a local temp file.
 	 *
-	 * Uses the Bitbucket web archive URL with Basic auth for private repositories.
+	 * The archive URL 302s to an S3-backed CDN on a different host. WP_Http replays
+	 * the full header set on a redirect, so following it would hand the Basic auth
+	 * credentials to Amazon — resolve the Location ourselves and fetch it unauthenticated.
 	 *
 	 * @since 1.0.0
 	 * @param string $owner  Repository workspace slug.
@@ -277,19 +279,48 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * @return string|\WP_Error Absolute path to the temp ZIP file, or WP_Error on failure.
 	 */
 	public function download_zip( string $owner, string $repo, string $branch ): string|\WP_Error {
-		$url      = 'https://bitbucket.org/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+		$url = 'https://bitbucket.org/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
 			. '/get/' . rawurlencode( $branch ) . '.zip';
-		$tmp_file = wp_tempnam( 'gitwire-bitbucket-' );
 
-		$response = wp_remote_get(
+		$headers = $this->headers();
+
+		// HEAD so a direct-serve response never costs us the whole archive twice.
+		$probe = wp_remote_head(
 			$url,
 			[
-				'headers'  => $this->headers(),
-				'timeout'  => 300,
-				'stream'   => true,
-				'filename' => $tmp_file,
+				'headers'     => $headers,
+				'redirection' => 0,
+				'timeout'     => 15,
 			]
 		);
+
+		if ( ! is_wp_error( $probe )
+			&& in_array( (int) wp_remote_retrieve_response_code( $probe ), [ 301, 302, 307, 308 ], true )
+		) {
+			$location = (string) wp_remote_retrieve_header( $probe, 'location' );
+			if ( '' === $location ) {
+				return new \WP_Error( 'gitwire_no_location', 'Bitbucket did not return a download URL.' );
+			}
+			$url     = $location;
+			$headers = [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ];
+		}
+
+		$tmp_file = wp_tempnam( 'gitwire-bitbucket-' );
+
+		$response = $this->stream_to( $url, $headers, $tmp_file );
+
+		// HEAD and GET can disagree; catch a redirect the probe did not see.
+		if ( ! is_wp_error( $response )
+			&& in_array( (int) wp_remote_retrieve_response_code( $response ), [ 301, 302, 307, 308 ], true )
+		) {
+			$location = (string) wp_remote_retrieve_header( $response, 'location' );
+			if ( '' === $location ) {
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
+				@unlink( $tmp_file );
+				return new \WP_Error( 'gitwire_no_location', 'Bitbucket did not return a download URL.' );
+			}
+			$response = $this->stream_to( $location, [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ], $tmp_file );
+		}
 
 		if ( is_wp_error( $response ) ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
@@ -316,6 +347,28 @@ class Bitbucket_API implements Git_Provider_Interface {
 		}
 
 		return $tmp_file;
+	}
+
+	/**
+	 * Streams one URL to a local file without following redirects.
+	 *
+	 * @since 1.0.0
+	 * @param string                $url      Absolute URL to fetch.
+	 * @param array<string, string> $headers  Request headers.
+	 * @param string                $tmp_file Destination path.
+	 * @return array<string, mixed>|\WP_Error
+	 */
+	private function stream_to( string $url, array $headers, string $tmp_file ): array|\WP_Error {
+		return wp_remote_get(
+			$url,
+			[
+				'headers'     => $headers,
+				'timeout'     => 300,
+				'stream'      => true,
+				'filename'    => $tmp_file,
+				'redirection' => 0,
+			]
+		);
 	}
 
 	/**
