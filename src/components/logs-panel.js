@@ -76,6 +76,8 @@ function LevelBadge( { level } ) {
  */
 export default function LogsPanel( { settings, onGoToSettings } ) {
 	const [ entries, setEntries ] = useState( null );
+	const [ hasMore, setHasMore ] = useState( false );
+	const [ loadingMore, setLoadingMore ] = useState( false );
 	const [ loading, setLoading ] = useState( true );
 	const [ levelFilter, setLevelFilter ] = useState( '' );
 	const [ dateRange, setDateRange ] = useState( 'today' );
@@ -95,12 +97,34 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 				actors,
 			} );
 			setEntries( result.entries ?? [] );
+			setHasMore( !! result.has_more );
 		} catch ( e ) {
 			toast.error( e.message || __( 'Could not load logs.', 'gitwire' ) );
 		} finally {
 			setLoading( false );
 		}
 	}, [] );
+
+	const loadMore = useCallback( async () => {
+		setLoadingMore( true );
+		try {
+			const result = await api.getLogs( {
+				from: fromDateForRange( dateRange ),
+				level: levelFilter,
+				actors: userFilter,
+				offset: entries?.length ?? 0,
+			} );
+			setEntries( ( prev ) => [
+				...( prev ?? [] ),
+				...( result.entries ?? [] ),
+			] );
+			setHasMore( !! result.has_more );
+		} catch ( e ) {
+			toast.error( e.message || __( 'Could not load logs.', 'gitwire' ) );
+		} finally {
+			setLoadingMore( false );
+		}
+	}, [ dateRange, levelFilter, userFilter, entries ] );
 
 	useEffect( () => {
 		fetchLogs( levelFilter, dateRange, userFilter );
@@ -326,6 +350,24 @@ export default function LogsPanel( { settings, onGoToSettings } ) {
 							</span>
 						</div>
 					) ) }
+					{ hasMore && (
+						<div
+							style={ {
+								display: 'flex',
+								justifyContent: 'center',
+								padding: 12,
+							} }
+						>
+							<Button
+								variant="secondary"
+								onClick={ loadMore }
+								isBusy={ loadingMore }
+								disabled={ loadingMore }
+							>
+								{ __( 'Load older entries', 'gitwire' ) }
+							</Button>
+						</div>
+					) }
 				</div>
 			) }
 		</div>

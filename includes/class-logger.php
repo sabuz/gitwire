@@ -87,17 +87,24 @@ class Logger {
 	 * @param string   $to     ISO date string 'YYYY-MM-DD' or empty for no upper bound.
 	 * @param string   $level  Level to keep ('activity', 'error'), or empty for all.
 	 * @param string[] $actors User logins to include; empty means all actors.
-	 * @return array<int, array{timestamp: string, level: string, actor: string, message: string}>
+	 * @param int      $limit  Maximum entries to return; 0 for no cap.
+	 * @param int      $offset Entries to skip, counting from the newest.
+	 * @return array{entries: array<int, array{timestamp: string, level: string, actor: string, message: string}>, total: int}
 	 */
-	public function get_entries( string $from = '', string $to = '', string $level = '', array $actors = [] ): array {
+	public function get_entries( string $from = '', string $to = '', string $level = '', array $actors = [], int $limit = 0, int $offset = 0 ): array {
+		$empty = [
+			'entries' => [],
+			'total'   => 0,
+		];
+
 		if ( ! file_exists( $this->log_file ) ) {
-			return [];
+			return $empty;
 		}
 
 		try {
 			$file = new \SplFileObject( $this->log_file, 'r' );
 		} catch ( \RuntimeException $e ) {
-			return [];
+			return $empty;
 		}
 		$file->setFlags( \SplFileObject::READ_AHEAD | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE );
 
@@ -125,7 +132,17 @@ class Logger {
 
 		unset( $file );
 
-		return array_reverse( $entries );
+		$entries = array_reverse( $entries );
+		$total   = count( $entries );
+
+		if ( $limit > 0 || $offset > 0 ) {
+			$entries = array_slice( $entries, max( 0, $offset ), $limit > 0 ? $limit : null );
+		}
+
+		return [
+			'entries' => $entries,
+			'total'   => $total,
+		];
 	}
 
 	/**

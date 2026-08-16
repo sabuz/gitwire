@@ -185,8 +185,10 @@ export const getLogs = ( {
 	to = '',
 	level = '',
 	actors = [],
+	perPage = 200,
+	offset = 0,
 } = {} ) => {
-	const params = new URLSearchParams();
+	const params = new URLSearchParams( { per_page: perPage, offset } );
 	if ( from ) {
 		params.set( 'from', from );
 	}

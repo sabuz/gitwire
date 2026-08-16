@@ -35,28 +35,39 @@ class REST_Logs {
 					'callback'            => [ self::class, 'get_logs' ],
 					'permission_callback' => [ REST::class, 'can_manage' ],
 					'args'                => [
-						'from'   => [
+						'from'     => [
 							'type'              => 'string',
 							'default'           => '',
 							'sanitize_callback' => 'sanitize_text_field',
 						],
-						'to'     => [
+						'to'       => [
 							'type'              => 'string',
 							'default'           => '',
 							'sanitize_callback' => 'sanitize_text_field',
 						],
-						'level'  => [
+						'level'    => [
 							'type'    => 'string',
 							'default' => '',
 							'enum'    => [ '', 'activity', 'error' ],
 						],
-						'actors' => [
+						'actors'   => [
 							'type'    => 'array',
 							'default' => [],
 							'items'   => [
 								'type'              => 'string',
 								'sanitize_callback' => 'sanitize_text_field',
 							],
+						],
+						'per_page' => [
+							'type'    => 'integer',
+							'default' => 200,
+							'minimum' => 1,
+							'maximum' => 500,
+						],
+						'offset'   => [
+							'type'    => 'integer',
+							'default' => 0,
+							'minimum' => 0,
 						],
 					],
 				],
@@ -98,9 +109,16 @@ class REST_Logs {
 		$to     = sanitize_text_field( $req->get_param( 'to' ) ?? '' );
 		$level  = sanitize_key( $req->get_param( 'level' ) ?? '' );
 		$actors = array_values( array_filter( array_map( 'sanitize_text_field', (array) ( $req->get_param( 'actors' ) ?? [] ) ) ) );
+		$limit  = (int) $req->get_param( 'per_page' );
+		$offset = (int) $req->get_param( 'offset' );
+
+		$page = Logger::get_instance()->get_entries( $from, $to, $level, $actors, $limit, $offset );
 
 		return [
-			'entries'        => Logger::get_instance()->get_entries( $from, $to, $level, $actors ),
+			'entries'        => $page['entries'],
+			'total'          => $page['total'],
+			'offset'         => $offset,
+			'has_more'       => ( $offset + count( $page['entries'] ) ) < $page['total'],
 			'enable_logging' => Settings::is_logging_enabled(),
 		];
 	}

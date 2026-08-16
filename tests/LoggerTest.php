@@ -53,7 +53,7 @@ class LoggerTest extends TestCase {
 	public function test_log_writes_an_entry_that_reads_back(): void {
 		Logger::log( 'Installed acme/widgets as plugin on branch main' );
 
-		$entries = Logger::get_instance()->get_entries();
+		$entries = $this->entries();
 
 		$this->assertCount( 1, $entries );
 		$this->assertSame( 'activity', $entries[0]['level'] );
@@ -63,7 +63,7 @@ class LoggerTest extends TestCase {
 	public function test_log_records_the_acting_user(): void {
 		Logger::log( 'Did a thing' );
 
-		$entries = Logger::get_instance()->get_entries();
+		$entries = $this->entries();
 
 		$this->assertSame( '@testadmin', $entries[0]['actor'] );
 	}
@@ -73,7 +73,7 @@ class LoggerTest extends TestCase {
 		Logger::log( 'second' );
 		Logger::log( 'third' );
 
-		$entries = Logger::get_instance()->get_entries();
+		$entries = $this->entries();
 
 		$this->assertSame( [ 'third', 'second', 'first' ], array_column( $entries, 'message' ) );
 	}
@@ -83,7 +83,7 @@ class LoggerTest extends TestCase {
 
 		Logger::log( 'should not appear' );
 
-		$this->assertSame( [], Logger::get_instance()->get_entries() );
+		$this->assertSame( [], $this->entries() );
 	}
 
 	public function test_error_level_silences_activity_entries(): void {
@@ -98,7 +98,7 @@ class LoggerTest extends TestCase {
 		Logger::log( 'routine activity' );
 		Logger::log( 'something broke', 'error' );
 
-		$entries = Logger::get_instance()->get_entries();
+		$entries = $this->entries();
 
 		$this->assertCount( 1, $entries );
 		$this->assertSame( 'something broke', $entries[0]['message'] );
@@ -108,7 +108,7 @@ class LoggerTest extends TestCase {
 		Logger::log( 'routine' );
 		Logger::log( 'broke', 'error' );
 
-		$errors = Logger::get_instance()->get_entries( '', '', 'error' );
+		$errors = $this->entries( '', '', 'error' );
 
 		$this->assertCount( 1, $errors );
 		$this->assertSame( 'broke', $errors[0]['message'] );
@@ -117,23 +117,23 @@ class LoggerTest extends TestCase {
 	public function test_entries_can_be_filtered_by_actor(): void {
 		Logger::log( 'by testadmin' );
 
-		$this->assertCount( 1, Logger::get_instance()->get_entries( '', '', '', [ 'testadmin' ] ) );
-		$this->assertCount( 0, Logger::get_instance()->get_entries( '', '', '', [ 'someone-else' ] ) );
+		$this->assertCount( 1, $this->entries( '', '', '', [ 'testadmin' ] ) );
+		$this->assertCount( 0, $this->entries( '', '', '', [ 'someone-else' ] ) );
 	}
 
 	public function test_entries_can_be_filtered_by_date_range(): void {
 		Logger::log( 'today' );
 		$today = gmdate( 'Y-m-d' );
 
-		$this->assertCount( 1, Logger::get_instance()->get_entries( $today, $today ) );
-		$this->assertCount( 0, Logger::get_instance()->get_entries( '2000-01-01', '2000-01-02' ) );
+		$this->assertCount( 1, $this->entries( $today, $today ) );
+		$this->assertCount( 0, $this->entries( '2000-01-01', '2000-01-02' ) );
 	}
 
 	public function test_a_multi_line_message_does_not_corrupt_the_next_entry(): void {
 		Logger::log( "line one\nline two injected" );
 		Logger::log( 'clean entry' );
 
-		$entries = Logger::get_instance()->get_entries();
+		$entries = $this->entries();
 
 		// The injected line has no timestamp prefix, so the parser drops it rather
 		// than turning it into a fake entry.
@@ -146,7 +146,7 @@ class LoggerTest extends TestCase {
 		Logger::log( 'something' );
 
 		$this->assertTrue( Logger::get_instance()->clear() );
-		$this->assertSame( [], Logger::get_instance()->get_entries() );
+		$this->assertSame( [], $this->entries() );
 	}
 
 	public function test_trim_drops_entries_past_the_retention_window(): void {
@@ -161,7 +161,7 @@ class LoggerTest extends TestCase {
 
 		Logger::get_instance()->trim_old_entries();
 
-		$messages = array_column( Logger::get_instance()->get_entries(), 'message' );
+		$messages = array_column( $this->entries(), 'message' );
 
 		$this->assertContains( 'recent entry', $messages );
 		$this->assertNotContains( 'ancient entry', $messages );
@@ -221,5 +221,60 @@ class LoggerTest extends TestCase {
 	 */
 	private function log_basename(): string {
 		return substr( hash( 'sha256', wp_salt( 'auth' ) . 'gitwire-log' ), 0, 32 ) . '.log';
+	}
+
+	/**
+	 * Unwraps the paginated payload down to the entry list.
+	 *
+	 * @param string   $from   Lower date bound.
+	 * @param string   $to     Upper date bound.
+	 * @param string   $level  Level filter.
+	 * @param string[] $actors Actor filter.
+	 * @return array<int, array<string, string>>
+	 */
+	private function entries( string $from = '', string $to = '', string $level = '', array $actors = [] ): array {
+		return Logger::get_instance()->get_entries( $from, $to, $level, $actors )['entries'];
+	}
+
+	public function test_entries_are_capped_by_per_page(): void {
+		foreach ( range( 1, 10 ) as $n ) {
+			Logger::log( "entry {$n}" );
+		}
+
+		$page = Logger::get_instance()->get_entries( '', '', '', [], 4 );
+
+		$this->assertCount( 4, $page['entries'] );
+		$this->assertSame( 10, $page['total'], 'total counts matches, not the page' );
+		$this->assertSame( 'entry 10', $page['entries'][0]['message'], 'newest first' );
+	}
+
+	public function test_offset_walks_back_through_the_log(): void {
+		foreach ( range( 1, 10 ) as $n ) {
+			Logger::log( "entry {$n}" );
+		}
+
+		$page = Logger::get_instance()->get_entries( '', '', '', [], 4, 4 );
+
+		$this->assertSame( 'entry 6', $page['entries'][0]['message'] );
+		$this->assertCount( 4, $page['entries'] );
+	}
+
+	public function test_total_reflects_the_filter_not_the_whole_file(): void {
+		Logger::log( 'routine' );
+		Logger::log( 'broke', 'error' );
+
+		$page = Logger::get_instance()->get_entries( '', '', 'error', [], 50 );
+
+		$this->assertSame( 1, $page['total'] );
+	}
+
+	public function test_a_missing_log_returns_the_empty_shape(): void {
+		Logger::get_instance()->clear();
+		wp_delete_file( $this->log_dir() . '/' . $this->log_basename() );
+
+		$page = Logger::get_instance()->get_entries();
+
+		$this->assertSame( [], $page['entries'] );
+		$this->assertSame( 0, $page['total'] );
 	}
 }
