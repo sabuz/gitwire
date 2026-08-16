@@ -33,6 +33,17 @@ class Error_Handler {
 	const GUARD_OPTION = 'gitwire_running_task';
 
 	/**
+	 * How long a guard stays actionable, in seconds.
+	 *
+	 * A guard outlives its request when an install crashes hard enough to skip the
+	 * cleanup. Past this window an unrelated fatal would otherwise trigger a
+	 * rollback for an install that finished, or never really started.
+	 *
+	 * @var int
+	 */
+	const GUARD_MAX_AGE = 900;
+
+	/**
 	 * Whether the shutdown function has already been registered.
 	 *
 	 * @var bool
@@ -251,8 +262,8 @@ class Error_Handler {
 		}
 
 		// Read the pending-update record directly from the DB.
-		$pending = self::db_get_option( 'gitwire_running_task' );
-		if ( ! $pending ) {
+		$pending = self::db_get_option( self::GUARD_OPTION );
+		if ( ! $pending || ! self::guard_is_current( $pending ) ) {
 			return;
 		}
 
@@ -346,6 +357,28 @@ class Error_Handler {
 		if ( 'activation' === $context && ! Repository_Detector::is_theme( $type ) ) {
 			self::redirect_to_gitwire_admin();
 		}
+	}
+
+	/**
+	 * Returns whether a guard is recent enough to act on.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $pending Guard record.
+	 * @return bool
+	 */
+	private static function guard_is_current( $pending ): bool {
+		if ( ! is_array( $pending ) ) {
+			return false;
+		}
+
+		$started = (int) ( $pending['started_at'] ?? 0 );
+
+		// Guards written before this field existed get one pass rather than a veto.
+		if ( $started <= 0 ) {
+			return true;
+		}
+
+		return ( time() - $started ) < self::GUARD_MAX_AGE;
 	}
 
 	/**

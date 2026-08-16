@@ -509,6 +509,7 @@ class Installer {
 	private static function begin_activation_guard( array $rec, string $full_name, ?string $plugin_file = null ): array {
 		$pending = [
 			'context'             => 'activation',
+			'started_at'          => time(),
 			'full_name'           => $full_name,
 			'type'                => $rec['type'],
 			'name'                => $rec['name'] ?? '',
@@ -1247,6 +1248,7 @@ class Installer {
 
 		// Register pending-update so the error handler can roll back.
 		$pending = [
+			'started_at'        => time(),
 			'full_name'         => $full_name,
 			'type'              => $type,
 			'name'              => $slug,

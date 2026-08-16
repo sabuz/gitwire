@@ -139,4 +139,35 @@ class ExceptionHandlerGateTest extends TestCase {
 		// The hook names above are built from this, so a rename must not go unnoticed.
 		$this->assertSame( 'gitwire_running_task', Error_Handler::GUARD_OPTION );
 	}
+
+	public function test_a_guard_without_a_timestamp_is_still_honoured(): void {
+		// Written before started_at existed; one pass rather than a veto.
+		$this->assertTrue( $this->guard_is_current( [ 'context' => 'update' ] ) );
+	}
+
+	public function test_a_fresh_guard_is_actionable(): void {
+		$this->assertTrue( $this->guard_is_current( [ 'started_at' => time() ] ) );
+	}
+
+	public function test_an_expired_guard_is_ignored(): void {
+		$stale = time() - Error_Handler::GUARD_MAX_AGE - 1;
+
+		// Otherwise an unrelated fatal rolls back an install that already finished.
+		$this->assertFalse( $this->guard_is_current( [ 'started_at' => $stale ] ) );
+	}
+
+	public function test_a_non_array_guard_is_ignored(): void {
+		$this->assertFalse( $this->guard_is_current( 'corrupted' ) );
+	}
+
+	/**
+	 * Reaches the private age check the shutdown handler gates on.
+	 *
+	 * @param mixed $pending Guard record.
+	 * @return bool
+	 */
+	private function guard_is_current( $pending ): bool {
+		$method = new ReflectionMethod( Error_Handler::class, 'guard_is_current' );
+		return (bool) $method->invoke( null, $pending );
+	}
 }
