@@ -25,6 +25,34 @@ class REST_Repositories {
 	private const PAGE_SIZE = 100;
 
 	/**
+	 * Shared provider argument definition.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, mixed>
+	 */
+	private static function provider_arg(): array {
+		return [
+			'type'    => 'string',
+			'default' => 'github',
+			'enum'    => [ 'github', 'gitlab', 'bitbucket' ],
+		];
+	}
+
+	/**
+	 * Shared connection ID argument definition.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, mixed>
+	 */
+	private static function connection_arg(): array {
+		return [
+			'type'              => 'string',
+			'default'           => '',
+			'sanitize_callback' => 'sanitize_text_field',
+		];
+	}
+
+	/**
 	 * Registers /repos routes.
 	 *
 	 * @since 1.0.0
@@ -77,6 +105,10 @@ class REST_Repositories {
 				'methods'             => 'GET',
 				'callback'            => [ self::class, 'get_branches' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
+				'args'                => [
+					'provider'      => self::provider_arg(),
+					'connection_id' => self::connection_arg(),
+				],
 			]
 		);
 
@@ -87,6 +119,15 @@ class REST_Repositories {
 				'methods'             => 'GET',
 				'callback'            => [ self::class, 'detect_repo' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
+				'args'                => [
+					'provider'      => self::provider_arg(),
+					'connection_id' => self::connection_arg(),
+					'branch'        => [
+						'type'              => 'string',
+						'default'           => 'HEAD',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+				],
 			]
 		);
 

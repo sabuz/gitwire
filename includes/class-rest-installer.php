@@ -470,10 +470,14 @@ class REST_Installer {
 	}
 
 	/**
-	 * Returns all currently installed repository records (read-only).
+	 * Returns all currently installed repository records.
+	 *
+	 * Not read-only despite being a GET: records whose directory has disappeared are
+	 * pruned here, and the queued-orphan notices are consumed. Both are reported back
+	 * so the client can tell the user what happened.
 	 *
 	 * @since 1.0.0
-	 * @return array<string, mixed> Installed records and empty orphaned list.
+	 * @return array<string, mixed> Installed records and any orphaned entries.
 	 */
 	public static function get_installed(): array {
 		$records  = Installer::get_installed();
