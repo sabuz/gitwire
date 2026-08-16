@@ -512,11 +512,28 @@ class REST_Repositories {
 		}
 
 		$repositories = array_slice( $repositories, 0, 10 );
+		$started      = time();
+
+		/**
+		 * Filters how long one detect-batch request may spend calling providers.
+		 *
+		 * Each repository costs a tree listing plus up to five file fetches, so ten
+		 * of them can be seventy round trips. Returning what is ready beats handing
+		 * the client a gateway timeout.
+		 *
+		 * @since 1.0.0
+		 * @param int $budget Seconds per request. Default 15.
+		 * @return int
+		 */
+		$budget = (int) apply_filters( 'gitwire_detect_batch_time_budget', 15 );
 
 		foreach ( $repositories as $entry ) {
 			if ( ! is_array( $entry ) ) {
 				continue;
 			}
+
+			// Cache hits below are free, so only stop once a live lookup is needed.
+			$out_of_time = ( time() - $started ) >= $budget;
 
 			$owner         = sanitize_text_field( $entry['owner'] ?? '' );
 			$repo          = sanitize_text_field( $entry['repo'] ?? '' );
@@ -540,6 +557,10 @@ class REST_Repositories {
 				continue;
 			}
 
+			if ( $out_of_time ) {
+				continue;
+			}
+
 			if ( null !== $connection_id ) {
 				$scope_error = REST::assert_connection_scope( $connection_id );
 				if ( null !== $scope_error ) {
@@ -558,17 +579,11 @@ class REST_Repositories {
 			if ( is_wp_error( $result ) ) {
 				Logger::log( sprintf( 'Detection failed — %s: %s', $key, $result->get_error_message() ), 'error' );
 				$error_code = $result->get_error_code();
-				Repositories::set_repository_type(
-					$provider,
-					$owner,
-					$repo,
-					$branch,
-					[
-						'type'       => 'unknown',
-						'confidence' => 'none',
-						'name'       => '',
-					]
-				);
+
+				/*
+				 * Deliberately not cached. A rate-limit 403 or a network blip would
+				 * otherwise pin the repo as 'unknown' until someone clears the cache.
+				 */
 				$result          = [
 					'type'       => 'unknown',
 					'confidence' => 'none',
