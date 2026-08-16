@@ -28,7 +28,10 @@ require_once __DIR__ . '/class-fake-wpdb.php';
  * @return void
  */
 function gitwire_test_reset_options(): void {
-	$GLOBALS['gitwire_test_options'] = [];
+	$GLOBALS['gitwire_test_options']    = [];
+	$GLOBALS['gitwire_test_actions']    = [];
+	$GLOBALS['gitwire_test_is_admin']   = false;
+	$GLOBALS['gitwire_test_doing_cron'] = false;
 	\Gitwire\Settings::invalidate_cache();
 }
 
@@ -184,6 +187,61 @@ if ( ! function_exists( 'wp_upload_dir' ) ) {
 	 */
 	function wp_upload_dir( $time = null, $create_dir = true ): array {
 		return [ 'basedir' => WP_CONTENT_DIR . '/uploads' ];
+	}
+}
+
+if ( ! function_exists( 'is_admin' ) ) {
+	/**
+	 * @return bool
+	 */
+	function is_admin(): bool {
+		return (bool) ( $GLOBALS['gitwire_test_is_admin'] ?? false );
+	}
+}
+
+if ( ! function_exists( 'wp_doing_cron' ) ) {
+	/**
+	 * @return bool
+	 */
+	function wp_doing_cron(): bool {
+		return (bool) ( $GLOBALS['gitwire_test_doing_cron'] ?? false );
+	}
+}
+
+if ( ! function_exists( 'add_action' ) ) {
+	/**
+	 * @param string $hook     Hook name.
+	 * @param mixed  $callback Callback.
+	 * @param int    $priority Priority.
+	 * @param int    $args     Accepted args.
+	 * @return bool
+	 */
+	function add_action( string $hook, $callback, int $priority = 10, int $args = 1 ): bool {
+		$GLOBALS['gitwire_test_actions'][ $hook ][] = $callback;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'add_filter' ) ) {
+	/**
+	 * @param string $hook     Hook name.
+	 * @param mixed  $callback Callback.
+	 * @param int    $priority Priority.
+	 * @param int    $args     Accepted args.
+	 * @return bool
+	 */
+	function add_filter( string $hook, $callback, int $priority = 10, int $args = 1 ): bool {
+		$GLOBALS['gitwire_test_actions'][ $hook ][] = $callback;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'register_shutdown_function_stub' ) ) {
+	/**
+	 * @return array<string, array<int, mixed>>
+	 */
+	function gitwire_test_actions(): array {
+		return $GLOBALS['gitwire_test_actions'] ?? [];
 	}
 }
 
