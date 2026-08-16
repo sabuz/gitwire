@@ -35,6 +35,7 @@ $class_map = [
 	'Gitwire\Constants'               => 'includes/class-constants.php',
 	'Gitwire\GitLab_API'              => 'includes/class-gitlab-api.php',
 	'Gitwire\Error_Handler'           => 'includes/class-error-handler.php',
+	'Gitwire\Filesystem_Guard'        => 'includes/class-filesystem-guard.php',
 	'Gitwire\Theme_Scraper'           => 'includes/class-theme-scraper.php',
 	'Gitwire\Git_Provider_Interface'  => 'includes/interface-git-provider.php',
 	'Gitwire\Installer'               => 'includes/class-installer.php',

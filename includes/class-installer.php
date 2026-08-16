@@ -1638,20 +1638,23 @@ class Installer {
 	public static function find_orphaned_backup( string $install_path ): ?string {
 		$slug = basename( $install_path );
 
-		// Check the temp-dir backup location first (current storage).
-		$matches = glob( self::get_backup_base_dir() . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
-		if ( ! is_array( $matches ) || empty( $matches ) ) {
-			// Legacy fallback: pre-fix backups stored alongside the install.
-			$parent  = dirname( $install_path );
+		$parents = [
+			self::get_backup_base_dir(),
+			// Earlier builds stored backups next to the install, then in the system temp dir.
+			dirname( $install_path ),
+			trailingslashit( sys_get_temp_dir() ) . 'gitwire-backups',
+		];
+
+		foreach ( $parents as $parent ) {
 			$matches = glob( $parent . DIRECTORY_SEPARATOR . $slug . '--gitwire-bak-*' );
 			if ( ! is_array( $matches ) || empty( $matches ) ) {
-				return null;
+				continue;
 			}
+			rsort( $matches );
+			return $matches[0];
 		}
 
-		rsort( $matches );
-
-		return $matches[0];
+		return null;
 	}
 
 	/**
@@ -1876,24 +1879,27 @@ class Installer {
 	 * @return void
 	 */
 	public static function purge_orphaned_backups(): void {
-		// Temp-dir backups (current location).
-		$backup_base = self::get_backup_base_dir();
-		foreach ( [ '--gitwire-bak-', '--gitwire-failed-' ] as $marker ) {
-			$matches = glob( $backup_base . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
-			if ( is_array( $matches ) ) {
-				foreach ( $matches as $dir ) {
-					self::rmdir_recursive( $dir );
-				}
-			}
-		}
-		// Legacy webroot backups left behind before this fix was applied.
-		foreach ( [ WP_PLUGIN_DIR, get_theme_root() ] as $parent ) {
+		$parents = [
+			self::get_backup_base_dir(),
+			// Earlier builds stored backups next to the install, then in the system temp dir.
+			WP_PLUGIN_DIR,
+			get_theme_root(),
+			trailingslashit( sys_get_temp_dir() ) . 'gitwire-backups',
+		];
+
+		foreach ( $parents as $parent ) {
 			foreach ( [ '--gitwire-bak-', '--gitwire-failed-' ] as $marker ) {
 				$matches = glob( $parent . DIRECTORY_SEPARATOR . '*' . $marker . '*' );
-				if ( is_array( $matches ) ) {
-					foreach ( $matches as $dir ) {
-						self::rmdir_recursive( $dir );
+				if ( ! is_array( $matches ) ) {
+					continue;
+				}
+				foreach ( $matches as $dir ) {
+					// A symlinked stray in a world-writable temp dir would delete its target.
+					if ( is_link( $dir ) ) {
+						wp_delete_file( $dir );
+						continue;
 					}
+					self::rmdir_recursive( $dir );
 				}
 			}
 		}
@@ -1908,6 +1914,11 @@ class Installer {
 	 * @return void
 	 */
 	public static function rmdir_recursive( string $dir ): void {
+		// is_dir() follows symlinks, so recursing into one would delete its target.
+		if ( is_link( $dir ) ) {
+			wp_delete_file( $dir );
+			return;
+		}
 		if ( ! is_dir( $dir ) ) {
 			return;
 		}
@@ -1932,19 +1943,22 @@ class Installer {
 	}
 
 	/**
-	 * Returns the base directory for temporary backup storage, outside the webroot.
+	 * Returns the base directory for temporary backup storage.
 	 *
-	 * The sys_get_temp_dir() path is outside the document root on virtually all hosts,
-	 * so PHP files inside backups cannot be executed via HTTP.
+	 * Same location core uses for its own plugin/theme rollbacks since 6.3. Lives on
+	 * the same filesystem as the install path, so move_dir_safe() gets an atomic
+	 * rename instead of a full recursive copy, and it is not shared with other
+	 * accounts the way sys_get_temp_dir() is.
 	 *
 	 * @since 1.0.0
 	 * @return string Absolute path to the backup directory.
 	 */
 	private static function get_backup_base_dir(): string {
-		$dir = trailingslashit( sys_get_temp_dir() ) . 'gitwire-backups';
+		$dir = WP_CONTENT_DIR . '/upgrade-temp-backup/gitwire';
 		if ( ! is_dir( $dir ) ) {
 			wp_mkdir_p( $dir );
 		}
+		Filesystem_Guard::protect_directory( $dir );
 		return $dir;
 	}
 

@@ -47,13 +47,15 @@ class Logger {
 	/**
 	 * Resolves the log file path and ensures the directory exists.
 	 *
-	 * Stored outside the webroot (like install backups, see
-	 * Installer::get_backup_base_dir()) so it is never reachable by a direct
-	 * request regardless of server config -- .htaccess only protects Apache.
+	 * Lives in uploads rather than the system temp dir: /tmp is shared with every
+	 * other account on the box, and PrivateTmp/tmpwatch wipe it out from under us.
+	 * The filename is salt-derived and the directory is blocked from web access.
 	 */
 	private function __construct() {
-		$dir            = trailingslashit( sys_get_temp_dir() ) . 'gitwire-logs';
-		$hash           = substr( hash( 'sha256', wp_salt( 'auth' ) . 'gitwire-log' ), 0, 12 );
+		$uploads        = function_exists( 'wp_upload_dir' ) ? wp_upload_dir( null, false ) : [];
+		$base           = ! empty( $uploads['basedir'] ) ? $uploads['basedir'] : WP_CONTENT_DIR . '/uploads';
+		$dir            = trailingslashit( $base ) . 'gitwire-logs';
+		$hash           = substr( hash( 'sha256', wp_salt( 'auth' ) . 'gitwire-log' ), 0, 32 );
 		$this->log_file = $dir . '/' . $hash . '.log';
 		$this->ensure_dir( $dir );
 	}
@@ -246,17 +248,15 @@ class Logger {
 	/**
 	 * Removes anything from the log directory that should not be there.
 	 *
-	 * Keeps only index.html and the current log file. Everything else — stale log
-	 * files from a salt rotation, leftover .tmp files from interrupted trims, any
-	 * unexpected files — is deleted. Empty subdirectories are removed; non-empty
-	 * ones are left alone.
+	 * Keeps the guard files and the current log. Everything else (stale logs from a
+	 * salt rotation, .tmp files from an interrupted trim) is deleted.
 	 *
 	 * @since 1.0.0
 	 * @param string $dir Absolute path to the log directory.
 	 * @return void
 	 */
 	private function purge_stale_log_files( string $dir ): void {
-		$keep  = [ 'index.html', basename( $this->log_file ) ];
+		$keep  = array_merge( Filesystem_Guard::GUARD_FILES, [ basename( $this->log_file ) ] );
 		$files = glob( $dir . '/*' );
 		if ( ! $files ) {
 			return;
@@ -272,7 +272,7 @@ class Logger {
 	}
 
 	/**
-	 * Creates the log directory and blocks direct web access via .htaccess.
+	 * Creates the log directory and blocks direct web access.
 	 *
 	 * @since 1.0.0
 	 * @param string $dir Absolute path to the log directory.
@@ -283,16 +283,6 @@ class Logger {
 			wp_mkdir_p( $dir );
 		}
 
-		$htaccess = $dir . '/.htaccess';
-		if ( ! file_exists( $htaccess ) ) {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			file_put_contents( $htaccess, 'Deny from all' );
-		}
-
-		$index = $dir . '/index.html';
-		if ( ! file_exists( $index ) ) {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			file_put_contents( $index, '' );
-		}
+		Filesystem_Guard::protect_directory( $dir );
 	}
 }

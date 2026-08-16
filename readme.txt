@@ -44,7 +44,7 @@ You get an admin notice with the real PHP error, and the site stays up. Once a c
 
 For plugin activation Gitwire delegates to WordPress core's `activate_plugin()`, which already sandboxes the plugin file for parse and compile errors. Updates to an already-active plugin or the active theme get an additional live check, because that is the case where broken code is live the moment it lands.
 
-Backups are written outside your webroot, so they are never reachable by a direct HTTP request, and are deleted as soon as an update is confirmed successful.
+Backups are written to `wp-content/upgrade-temp-backup/`, the same place WordPress itself keeps rollback copies during an update, blocked from direct web access, and deleted as soon as an update is confirmed successful.
 
 **Remove safely**
 
@@ -171,9 +171,9 @@ In the normal `wp-content/plugins` and `wp-content/themes` directories, not a sa
 
 By default, your connections and installation records are kept, so reinstalling picks up where you left off, and the plugins and themes it installed keep running. To wipe everything, turn on **Remove all data on uninstall** in **Gitwire → Tools** before deleting the plugin.
 
-= Does the activity log need extra server configuration? =
+= Where is the activity log stored, and can anyone read it? =
 
-No. The log file is stored outside your site's webroot, the same way Gitwire stores installer backups, so it is never reachable by a direct request regardless of server software.
+It is a file in your uploads directory whose name is derived from your site's own secret keys, so it cannot be guessed. Gitwire also writes deny rules for Apache and IIS alongside it. No extra server configuration is needed.
 
 == Screenshots ==
 
