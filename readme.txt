@@ -68,6 +68,40 @@ Gitwire works with public repositories out of the box, with no token at all. Pri
 
 Full documentation: [gitwire.app/docs](https://gitwire.app/docs/)
 
+Source code, including the unminified JavaScript and SCSS this plugin's `build/` assets are compiled from, is at [github.com/sabuz/gitwire](https://github.com/sabuz/gitwire). Run `npm install && npm run build` to reproduce the bundle.
+
+== External Services ==
+
+Gitwire talks to the Git hosting service you connect it to. Nothing is sent anywhere until you add a connection or install a repository, and no data is sent to Gitwire or to any analytics service.
+
+**GitHub**
+
+Used to list your repositories, read repository contents for type detection, list branches and commits, and download branch archives. Requests go to `api.github.com`, and to `codeload.github.com` when downloading an archive. Sent: the repository owner, repository name, and branch you are working with, plus your personal access token when you have added one in Gitwire Pro. Public repositories are read without a token.
+Terms: https://docs.github.com/en/site-policy/github-terms/github-terms-of-service
+Privacy: https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement
+
+**GitLab**
+
+Used for the same operations against `gitlab.com`, or against the self-hosted instance URL you enter in Gitwire Pro. Sent: the namespace, project path, and branch you are working with, plus your personal access token when you have added one.
+Terms: https://about.gitlab.com/terms/
+Privacy: https://about.gitlab.com/privacy/
+
+**Bitbucket**
+
+Used for the same operations against `api.bitbucket.org` and `bitbucket.org`. Sent: the workspace, repository slug, and branch you are working with, plus your Atlassian account email and API token when you have added them in Gitwire Pro.
+Terms: https://www.atlassian.com/legal/cloud-terms-of-service
+Privacy: https://www.atlassian.com/legal/privacy-policy
+
+**GitHub avatars**
+
+When you connect a GitHub account, its profile picture is displayed in the Gitwire admin screens by loading an image from `avatars.githubusercontent.com`. Only the GitHub username is part of that URL. This happens in wp-admin only, never on the front end. It is covered by the GitHub policies linked above.
+
+== Privacy ==
+
+Gitwire stores connection details, installation records, and a cached list of your repositories in your own database. Access tokens added through Gitwire Pro are encrypted before being written and are only ever sent to the Git host they belong to.
+
+When the activity log is enabled, Gitwire records the WordPress username of whoever performed each install, update, branch switch, activation, or removal, along with the repository name and a timestamp. The log is written to a file in your uploads directory with a name derived from your site's secret keys, is not linked from anywhere, and is blocked from direct web access. Turn logging off in **Gitwire → Settings** to stop recording, and use **Clear log** to delete what has already been recorded.
+
 == Installation ==
 
 1. Upload the `gitwire` folder to `/wp-content/plugins/`, or install it from **Plugins → Add New Plugin**.
