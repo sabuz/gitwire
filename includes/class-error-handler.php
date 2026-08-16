@@ -560,6 +560,8 @@ class Error_Handler {
 		}
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->delete( $wpdb->options, [ 'option_name' => $name ], [ '%s' ] );
+
+		self::flush_option_cache( $name );
 	}
 
 	/**
@@ -572,6 +574,11 @@ class Error_Handler {
 	 * @return void
 	 */
 	private static function db_update_option( string $name, mixed $value ): void {
+		if ( function_exists( 'update_option' ) ) {
+			update_option( $name, $value, false );
+			return;
+		}
+
 		global $wpdb;
 		if ( ! isset( $wpdb ) ) {
 			return;
@@ -602,6 +609,27 @@ class Error_Handler {
 				[ '%s', '%s', '%s' ]
 			);
 		}
+
+		self::flush_option_cache( $name );
+	}
+
+	/**
+	 * Drops the object-cache entries a raw option write leaves stale.
+	 *
+	 * Misses are cached in 'notoptions', which survives the request on sites with a
+	 * persistent object cache, so without this the value we just wrote is never read back.
+	 *
+	 * @since 1.0.0
+	 * @param string $name Option name.
+	 * @return void
+	 */
+	private static function flush_option_cache( string $name ): void {
+		if ( ! function_exists( 'wp_cache_delete' ) ) {
+			return;
+		}
+		wp_cache_delete( $name, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
 	}
 
 	/**
@@ -636,6 +664,9 @@ class Error_Handler {
 				[ '%s' ],
 				[ '%s' ]
 			);
+
+			// both are autoloaded, so the write is invisible until alloptions is dropped.
+			self::flush_option_cache( $option_name );
 		}
 	}
 
