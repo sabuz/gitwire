@@ -124,4 +124,49 @@ abstract class Migration_Base {
 			)
 		);
 	}
+
+	/**
+	 * Returns the column list of an index, in index order.
+	 *
+	 * @since 1.0.0
+	 * @param string $table_name Table name without prefix.
+	 * @param string $index_name Index name.
+	 * @return string[] Empty when the index does not exist.
+	 */
+	protected function index_columns( string $table_name, string $index_name ): array {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$cols = $wpdb->get_col(
+			$wpdb->prepare(
+				'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND INDEX_NAME = %s ORDER BY SEQ_IN_INDEX ASC',
+				$wpdb->dbname,
+				$wpdb->base_prefix . $table_name,
+				$index_name
+			)
+		);
+
+		return is_array( $cols ) ? $cols : [];
+	}
+
+	/**
+	 * Returns true when the named table has at least one column.
+	 *
+	 * Confirms a CREATE TABLE actually landed: dbDelta reports its intentions, not
+	 * whether MySQL accepted them.
+	 *
+	 * @since 1.0.0
+	 * @param string $table_name Table name without prefix.
+	 * @return bool
+	 */
+	protected function table_is_usable( string $table_name ): bool {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (bool) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s',
+				$wpdb->dbname,
+				$wpdb->base_prefix . $table_name
+			)
+		);
+	}
 }

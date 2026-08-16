@@ -59,21 +59,62 @@ class Installation extends Migration_Base {
 			) {$charset};"
 		);
 
+		if ( ! $this->table_is_usable( self::TABLE ) ) {
+			return false;
+		}
+
 		// rename plugin_file → basename on pre-1.0 installs (dbDelta cannot rename columns).
 		if ( $this->column_exists( self::TABLE, 'plugin_file' ) && ! $this->column_exists( self::TABLE, 'basename' ) ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->query( "ALTER TABLE `{$table}` CHANGE `plugin_file` `basename` VARCHAR(512) DEFAULT NULL" );
+			if ( false === $wpdb->query( "ALTER TABLE `{$table}` CHANGE `plugin_file` `basename` VARCHAR(512) DEFAULT NULL" ) ) {
+				return false;
+			}
 		}
 
-		// dbDelta cannot reliably manage key renames; handle the unique constraint explicitly.
+		return $this->ensure_repo_key( $table );
+	}
+
+	/**
+	 * Ensures the (provider, full_name) unique key exists, without a destructive rebuild.
+	 *
+	 * Installation::upsert() leans on this key entirely: lose it and every ON DUPLICATE
+	 * KEY UPDATE turns into an INSERT. So the key is only dropped when it is genuinely
+	 * wrong, and never before the replacement is known to be addable.
+	 *
+	 * @since 1.0.0
+	 * @param string $table Fully-prefixed table name.
+	 * @return bool
+	 */
+	private function ensure_repo_key( string $table ): bool {
+		global $wpdb;
+
+		$wanted = [ 'provider', 'full_name' ];
+
+		if ( $this->index_columns( self::TABLE, 'repo' ) === $wanted ) {
+			return true;
+		}
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$duplicates = (int) $wpdb->get_var(
+			"SELECT COUNT(*) FROM (SELECT 1 FROM `{$table}` GROUP BY provider, full_name HAVING COUNT(*) > 1) d"
+		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		if ( $duplicates > 0 ) {
+			return false;
+		}
+
 		if ( $this->index_exists( self::TABLE, 'repo' ) ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->query( "ALTER TABLE `{$table}` DROP KEY `repo`" );
+			if ( false === $wpdb->query( "ALTER TABLE `{$table}` DROP KEY `repo`" ) ) {
+				return false;
+			}
 		}
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->query( "ALTER TABLE `{$table}` ADD UNIQUE KEY `repo` (`provider`, `full_name`)" );
 
-		return true;
+		return $this->index_columns( self::TABLE, 'repo' ) === $wanted;
 	}
 
 	/**

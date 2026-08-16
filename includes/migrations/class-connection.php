@@ -60,7 +60,7 @@ class Connection extends Migration_Base {
 			) {$charset};"
 		);
 
-		return true;
+		return $this->table_is_usable( self::TABLE );
 	}
 
 	/**
