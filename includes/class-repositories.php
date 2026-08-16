@@ -359,6 +359,7 @@ class Repositories {
 			delete_option( 'gitwire_detection_cursor' );
 		} else {
 			$processed = 0;
+			$stuck     = 0;
 			foreach ( $untyped as $row ) {
 				// 25 s guard — leave time for the next item on the queue.
 				if ( time() - $batch_start > 25 ) {
@@ -383,19 +384,22 @@ class Repositories {
 					$branch,
 					$connection_id
 				);
-				if ( ! is_wp_error( $result ) ) {
+				if ( is_wp_error( $result ) ) {
+					++$stuck;
+				} else {
 					self::set_repository_type( $row['provider'], $row['owner'], $row['name'], $branch, $result );
 				}
 				++$processed;
 			}
 
-			$fetched    = count( $untyped );
-			$new_cursor = $cursor + $processed;
-			// Last (partial) batch or time guard exhausted the batch — wrap to 0 so newly inserted rows aren't skipped.
-			if ( $processed < $fetched || $fetched < $batch_size ) {
+			$fetched = count( $untyped );
+
+			// The IS NULL filter shifts left by every row we just typed, so the cursor may
+			// only advance past the ones that failed — otherwise each cycle skips a batch.
+			if ( $processed < $fetched || $fetched < $batch_size || 0 === $stuck ) {
 				delete_option( 'gitwire_detection_cursor' );
 			} else {
-				update_option( 'gitwire_detection_cursor', $new_cursor, false );
+				update_option( 'gitwire_detection_cursor', $cursor + $stuck, false );
 			}
 		}
 
