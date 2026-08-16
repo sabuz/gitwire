@@ -26,6 +26,13 @@ class Admin {
 	private const PAGE_SLUG = 'gitwire';
 
 	/**
+	 * Screen IDs WordPress generates for this plugin's pages.
+	 *
+	 * @var string[]
+	 */
+	private const SCREEN_IDS = [ 'toplevel_page_gitwire', 'gitwire_page_gitwire' ];
+
+	/**
 	 * Registers all admin hooks.
 	 *
 	 * @since 1.0.0
@@ -52,18 +59,31 @@ class Admin {
 	 * @return void
 	 */
 	public static function hide_admin_notices(): void {
-		$screen = get_current_screen();
-		if ( ! $screen ) {
-			return;
-		}
-
-		if ( false === strpos( $screen->id, '_page_gitwire' ) ) {
+		if ( ! self::is_gitwire_screen() ) {
 			return;
 		}
 
 		remove_all_actions( 'admin_notices' );
 		remove_all_actions( 'all_admin_notices' );
-		remove_all_actions( 'admin_footer_text' );
+	}
+
+	/**
+	 * Returns whether the current screen is one of ours.
+	 *
+	 * Exact match rather than a substring: '_page_gitwire' also matches any other
+	 * plugin whose page slug happens to start with gitwire.
+	 *
+	 * @since 1.0.0
+	 * @return bool
+	 */
+	private static function is_gitwire_screen(): bool {
+		if ( ! function_exists( 'get_current_screen' ) ) {
+			return false;
+		}
+
+		$screen = get_current_screen();
+
+		return $screen && in_array( $screen->id, self::SCREEN_IDS, true );
 	}
 
 	/**
@@ -74,8 +94,7 @@ class Admin {
 	 * @return string Modified body class string.
 	 */
 	public static function body_class( string $classes ): string {
-		$screen = get_current_screen();
-		if ( $screen && false !== strpos( $screen->id, '_page_gitwire' ) ) {
+		if ( self::is_gitwire_screen() ) {
 			$classes .= ' gitwire-admin-page';
 		}
 		return $classes;
@@ -194,8 +213,7 @@ class Admin {
 	 * @return void
 	 */
 	public static function enqueue( string $hook ): void {
-		// Match toplevel_page_gitwire and gitwire_page_gitwire-{browse,settings}.
-		if ( false === strpos( $hook, '_page_gitwire' ) ) {
+		if ( ! in_array( $hook, self::SCREEN_IDS, true ) ) {
 			return;
 		}
 
