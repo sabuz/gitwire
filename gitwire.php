@@ -10,7 +10,6 @@
  * Author URI:        https://gitwire.app
  * License:           GPL-2.0-or-later
  * Text Domain:       gitwire
- * Domain Path:       /languages
  *
  * @package Gitwire
  */

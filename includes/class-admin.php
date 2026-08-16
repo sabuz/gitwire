@@ -246,7 +246,8 @@ class Admin {
 			true
 		);
 
-		wp_set_script_translations( 'gitwire-app', 'gitwire', GITWIRE_DIR . 'languages' );
+		// No path argument: WordPress.org serves the JSON language packs itself.
+		wp_set_script_translations( 'gitwire-app', 'gitwire' );
 
 		$settings = Settings::get_public();
 		Error_Handler::clear_stale_activation_guard();

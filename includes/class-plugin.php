@@ -57,7 +57,6 @@ final class Plugin {
 		// must be constructed here so register_activation_hook() fires before the file finishes loading.
 		Database_Manager::instance();
 
-		add_action( 'init', [ $this, 'load_textdomain' ], 0 );
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] ); // phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
 		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
@@ -70,19 +69,6 @@ final class Plugin {
 			register_activation_hook( $this->file, [ $this, 'activate' ] );
 			register_deactivation_hook( $this->file, [ $this, 'deactivate' ] );
 		}
-	}
-
-	/**
-	 * Loads the plugin text domain.
-	 *
-	 * @return void
-	 */
-	public function load_textdomain(): void {
-		load_plugin_textdomain(
-			'gitwire',
-			false,
-			dirname( plugin_basename( $this->file ) ) . '/languages'
-		);
 	}
 
 	/**
