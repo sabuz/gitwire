@@ -440,6 +440,11 @@ class GitLab_API implements Git_Provider_Interface {
 			return new \WP_Error( 'gitwire_ssrf', 'Invalid GitLab base URL.' );
 		}
 
+		$host = Settings::normalize_host( $host );
+		if ( '' === $host || 'localhost' === $host ) {
+			return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+		}
+
 		if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
 			if ( ! Settings::is_safe_ip( $host ) ) {
 				return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );

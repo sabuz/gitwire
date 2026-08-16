@@ -293,7 +293,7 @@ class Settings {
 			return false;
 		}
 
-		$host = strtolower( $parts['host'] ?? '' );
+		$host = self::normalize_host( $parts['host'] ?? '' );
 		if ( '' === $host ) {
 			return false;
 		}
@@ -330,6 +330,27 @@ class Settings {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Lowercases a URL host and unwraps an IPv6 literal.
+	 *
+	 * RFC 3986 brackets survive wp_parse_url() on an IPv6 host, and filter_var()
+	 * rejects that form, so leaving them on lets https://[::1] slip past every check
+	 * below as if it were an unresolvable hostname.
+	 *
+	 * @since 1.0.0
+	 * @param string $host Raw host from wp_parse_url().
+	 * @return string
+	 */
+	public static function normalize_host( string $host ): string {
+		$host = strtolower( trim( $host ) );
+
+		if ( str_starts_with( $host, '[' ) && str_ends_with( $host, ']' ) ) {
+			return substr( $host, 1, -1 );
+		}
+
+		return $host;
 	}
 
 	/**
