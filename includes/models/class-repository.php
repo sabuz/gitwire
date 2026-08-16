@@ -275,7 +275,8 @@ class Repository extends Model_Base {
 		$table     = $this->table_name();
 		$meta_json = $meta ? wp_json_encode( $meta ) : null;
 
-		// Update any existing rows for this full_name across all connection_ids.
+		// Update existing rows for this repo across all connection_ids. Scoped by provider
+		// to match get_type(): the same owner/name can exist on two hosts as two repos.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->update(
 			$this->table_name(),
@@ -283,14 +284,17 @@ class Repository extends Model_Base {
 				'type'      => $type,
 				'type_meta' => $meta_json,
 			],
-			[ 'full_name' => $full_name ],
+			[
+				'provider'  => $provider,
+				'full_name' => $full_name,
+			],
 			[ '%s', '%s' ],
-			[ '%s' ]
+			[ '%s', '%s' ]
 		);
 
 		// Upsert a connection-agnostic fallback when no real connection row exists (URL import path).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$has_real = (bool) $wpdb->get_var( $wpdb->prepare( "SELECT 1 FROM `{$table}` WHERE full_name = %s AND connection_id != '' LIMIT 1", $full_name ) );
+		$has_real = (bool) $wpdb->get_var( $wpdb->prepare( "SELECT 1 FROM `{$table}` WHERE provider = %s AND full_name = %s AND connection_id != '' LIMIT 1", $provider, $full_name ) );
 
 		if ( ! $has_real ) {
 			$parts = explode( '/', $full_name, 2 );
