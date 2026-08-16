@@ -88,20 +88,7 @@ class Admin {
 	 * @return void
 	 */
 	public static function add_menu(): void {
-		$menu_icon = 'none';
-		$icon_path = GITWIRE_DIR . 'assets/images/icon.svg';
-		if ( file_exists( $icon_path ) ) {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			$svg_raw = (string) file_get_contents( $icon_path );
-
-			/*
-			 * Replace all hex fill/stroke colours with white so WordPress
-			 * colour-scheme CSS can tint the icon via opacity correctly.
-			 */
-			$svg_white = (string) preg_replace( '/(fill|stroke)="#[0-9a-fA-F]{3,6}"/', '$1="#ffffff"', $svg_raw );
-			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
-			$menu_icon = 'data:image/svg+xml;base64,' . base64_encode( $svg_white );
-		}
+		$menu_icon = self::menu_icon();
 
 		add_menu_page(
 			__( 'Gitwire', 'gitwire' ),
@@ -160,6 +147,43 @@ class Admin {
 				[ self::class, 'render_page' ],
 			);
 		}
+	}
+
+	/**
+	 * Returns the sidebar icon as a data URI, cached across requests.
+	 *
+	 * The hook runs on every admin page load and the file never changes between
+	 * releases, so reading and re-encoding it each time is pure overhead.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
+	private static function menu_icon(): string {
+		$cache_key = 'gitwire_menu_icon_' . GITWIRE_VERSION;
+		$cached    = get_transient( $cache_key );
+		if ( is_string( $cached ) && '' !== $cached ) {
+			return $cached;
+		}
+
+		$icon_path = GITWIRE_DIR . 'assets/images/icon.svg';
+		if ( ! file_exists( $icon_path ) ) {
+			return 'none';
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$svg_raw = (string) file_get_contents( $icon_path );
+
+		/*
+		 * Replace all hex fill/stroke colours with white so WordPress
+		 * colour-scheme CSS can tint the icon via opacity correctly.
+		 */
+		$svg_white = (string) preg_replace( '/(fill|stroke)="#[0-9a-fA-F]{3,6}"/', '$1="#ffffff"', $svg_raw );
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		$icon = 'data:image/svg+xml;base64,' . base64_encode( $svg_white );
+
+		set_transient( $cache_key, $icon, WEEK_IN_SECONDS );
+
+		return $icon;
 	}
 
 	/**
