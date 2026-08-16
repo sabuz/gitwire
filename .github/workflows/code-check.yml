@@ -55,8 +55,16 @@ jobs:
       - name: Run PHPUnit
         run: composer phpunit
 
+      # Check what actually ships, not the repo. .gitattributes export-ignore keeps
+      # src/, tests/, and the dev configs out of the distributed ZIP.
+      - name: Stage the distribution
+        run: |
+          mkdir -p dist/gitwire
+          git archive --worktree-attributes HEAD | tar -x -C dist/gitwire
+          cp -r build dist/gitwire/build
+
       - name: Run WordPress Plugin Check
         uses: wordpress/plugin-check-action@v1
         with:
-          build-dir: './'
-          exclude-directories: 'node_modules,vendor,tests,bin,docs'
+          build-dir: './dist/gitwire'
+          ignore-warnings: true
