@@ -278,7 +278,7 @@ class REST_Repositories {
 			}
 
 			$api = $has_auth
-				? new Bitbucket_API( sanitize_email( $creds['email'] ), $creds['api_token'] )
+				? Provider_Factory::make( 'bitbucket', $connection_id )
 				: new Bitbucket_API( '', '' );
 			// Authenticated: empty string — get_repos auto-discovers workspaces via /user/workspaces.
 			$result = $api->get_repos( $workspace, $page );
@@ -327,7 +327,7 @@ class REST_Repositories {
 			}
 
 			$api    = $has_auth
-				? new GitLab_API( $creds['token'], $creds['gitlab_url'] ?? '' )
+				? Provider_Factory::make( 'gitlab', $connection_id )
 				: new GitLab_API( '', $gitlab_url );
 			$result = $api->get_repos( $username, $page );
 
@@ -370,7 +370,12 @@ class REST_Repositories {
 			return new \WP_Error( 'missing_config', 'Add a GitHub account in Settings first.', [ 'status' => 400 ] );
 		}
 
-		$api    = new GitHub_API( $creds['token'] ?? '' );
+		/*
+		 * Through the factory so the gitwire_provider_factory_auth filter applies here
+		 * too, and so the client carries the connection ID its rate-limit transient is
+		 * keyed by. Built directly, every listing counted against the 'anon' bucket.
+		 */
+		$api    = Provider_Factory::make( 'github', $connection_id );
 		$result = $api->get_repos( $username, $page );
 
 		if ( is_wp_error( $result ) ) {
