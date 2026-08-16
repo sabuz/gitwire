@@ -190,6 +190,9 @@ class Admin {
 			$asset['version']
 		);
 
+		// wp-scripts emits style-index-rtl.css alongside the LTR build.
+		wp_style_add_data( 'gitwire-app', 'rtl', 'replace' );
+
 		wp_enqueue_script(
 			'gitwire-app',
 			GITWIRE_URL . 'build/index.js',
