@@ -218,6 +218,13 @@ class Installer {
 			'full_name' => $rec['full_name'] ?? '',
 			'provider'  => $rec['provider'] ?? 'github',
 		];
+
+		// Nothing drains this until someone opens a Gitwire screen, so a bulk delete
+		// would otherwise grow the option without limit.
+		if ( count( $pending ) > 50 ) {
+			$pending = array_slice( $pending, -50 );
+		}
+
 		update_option( 'gitwire_orphan_queue', $pending, false );
 	}
 
