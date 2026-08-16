@@ -269,7 +269,11 @@ final class Plugin {
 	 * @return void
 	 */
 	public function deactivate(): void {
-		Repositories::clear_all();
+		/*
+		 * The repository and detection caches deliberately survive. Deactivating to
+		 * troubleshoot should not cost a full re-fetch of every repo on every
+		 * connection when the plugin comes back.
+		 */
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
 		wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
