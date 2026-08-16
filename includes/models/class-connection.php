@@ -153,6 +153,29 @@ class Connection extends Model_Base {
 	}
 
 	/**
+	 * Returns every connection matching provider and identifier.
+	 *
+	 * A public row and a Pro row may share both, so callers that care which kind they
+	 * got cannot use the LIMIT 1 lookup above.
+	 *
+	 * @since 1.0.0
+	 * @param string $provider   Provider key.
+	 * @param string $identifier Username or workspace slug.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function find_all_by_identifier( string $provider, string $identifier ): array {
+		if ( '' === $identifier ) {
+			return [];
+		}
+		return $this->get_rows(
+			[
+				'provider'   => $provider,
+				'identifier' => $identifier,
+			]
+		);
+	}
+
+	/**
 	 * Inserts a new connection row.
 	 *
 	 * @since 1.0.0

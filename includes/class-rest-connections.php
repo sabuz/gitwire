@@ -108,6 +108,18 @@ class REST_Connections {
 			return $valid;
 		}
 
+		if ( null !== Public_Connections::find_by_identifier( $provider, $valid['identifier'] ) ) {
+			return new \WP_Error(
+				'duplicate_connection',
+				sprintf(
+					/* translators: %s: GitHub/GitLab username or Bitbucket workspace slug */
+					__( 'A connection for @%s already exists.', 'gitwire' ),
+					$valid['identifier']
+				),
+				[ 'status' => 409 ]
+			);
+		}
+
 		$conn = Public_Connections::add( $provider, $valid['identifier'], $valid['gitlab_url'] );
 		$id   = $conn['id'] ?? '';
 

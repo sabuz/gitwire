@@ -110,11 +110,12 @@ class Public_Connections {
 	 * @return array<string, mixed>|null
 	 */
 	public static function find_by_identifier( string $provider, string $identifier ): ?array {
-		$row = Connection::instance()->find_by_identifier( $provider, $identifier );
-		if ( ! $row || null !== ( $row['credentials'] ?? null ) ) {
-			return null;
+		foreach ( Connection::instance()->find_all_by_identifier( $provider, $identifier ) as $row ) {
+			if ( null === ( $row['credentials'] ?? null ) ) {
+				return self::enrich( self::strip_credentials( $row ) );
+			}
 		}
-		return self::enrich( self::strip_credentials( $row ) );
+		return null;
 	}
 
 	/**

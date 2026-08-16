@@ -55,7 +55,8 @@ class Connection extends Migration_Base {
 			  created_at     DATETIME NOT NULL,
 			  updated_at     DATETIME NOT NULL,
 			  PRIMARY KEY  (id),
-			  KEY provider (provider)
+			  KEY provider (provider),
+			  KEY provider_identifier (provider, identifier)
 			) {$charset};"
 		);
 
