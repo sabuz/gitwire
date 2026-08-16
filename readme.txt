@@ -1,4 +1,4 @@
-=== Gitwire - Deploy WordPress Plugins & Themes from Git ===
+=== Gitwire ===
 Contributors: nazsabuz
 Tags: github, gitlab, bitbucket, git, deploy
 Requires at least: 6.9
