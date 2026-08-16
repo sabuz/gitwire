@@ -182,4 +182,42 @@ class SettingsTest extends TestCase {
 		$this->assertFalse( Settings::is_safe_ip( 'not-an-ip' ) );
 		$this->assertTrue( Settings::is_safe_ip( '140.82.121.4' ) );
 	}
+
+	public function test_every_schema_key_appears_in_get_public_and_merge_save(): void {
+		$keys = array_keys( Settings::schema() );
+
+		// The three copies of this list are what drifted apart in #48 and #49.
+		$this->assertSame( $keys, array_keys( Settings::get_public() ) );
+		$this->assertSame( $keys, array_keys( Settings::merge_save( [] ) ) );
+		$this->assertSame( $keys, array_keys( Settings::defaults() ) );
+	}
+
+	public function test_refresh_frequency_accepts_every_value_the_getter_allows(): void {
+		foreach ( Settings::schema()['repositories_refresh_frequency']['values'] as $value ) {
+			$merged = Settings::merge_save( [ 'repositories_refresh_frequency' => $value ] );
+			$this->assertSame( $value, $merged['repositories_refresh_frequency'] );
+
+			gitwire_test_set_option( 'gitwire_settings', $merged );
+			$this->assertSame( $value, Settings::get_repositories_refresh_frequency() );
+		}
+	}
+
+	public function test_an_invalid_value_falls_back_to_the_default_not_the_loosest_option(): void {
+		// log_retention_days used to fall back to 30, the most permissive choice.
+		$merged = Settings::merge_save( [ 'log_retention_days' => 999 ] );
+
+		$this->assertSame( 7, $merged['log_retention_days'] );
+	}
+
+	public function test_log_retention_is_never_zero(): void {
+		gitwire_test_set_option( 'gitwire_settings', [ 'log_retention_days' => 0 ] );
+
+		// A zero window would make trim_old_entries() delete everything before today.
+		$this->assertSame( 7, Settings::get_log_retention_days() );
+	}
+
+	public function test_numeric_enum_values_survive_a_json_round_trip(): void {
+		$this->assertSame( 250, Settings::merge_save( [ 'max_repos_per_source' => '250' ] )['max_repos_per_source'] );
+		$this->assertSame( 15, Settings::merge_save( [ 'log_retention_days' => '15' ] )['log_retention_days'] );
+	}
 }

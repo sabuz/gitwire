@@ -212,20 +212,7 @@ final class Plugin {
 	public function activate(): void {
 
 		if ( ! get_option( 'gitwire_settings' ) ) {
-			add_option(
-				'gitwire_settings',
-				[
-					'smart_install'                  => true,
-					'show_repo_label'                => true,
-					'enable_logging'                 => true,
-					'log_retention_days'             => 7,
-					'log_level'                      => 'activity',
-					'remove_data_on_uninstall'       => false,
-					'repositories_refresh_frequency' => 'daily',
-				],
-				'',
-				false
-			);
+			add_option( 'gitwire_settings', Settings::defaults(), '', false );
 		}
 		$this->ensure_cron_events();
 	}
