@@ -520,7 +520,7 @@ class REST_Installer {
 	}
 
 	/**
-	 * Prunes missing directories, heals plugin files, and refreshes remote HEADs.
+	 * Prunes records whose directory is gone and re-finds missing plugin entry files.
 	 *
 	 * @since 1.0.0
 	 * @return array<string, mixed> Synced installed records and any orphaned entries.

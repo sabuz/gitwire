@@ -119,16 +119,7 @@ class GitHub_API implements Git_Provider_Interface {
 	/**
 	 * Detects whether a repo is a WordPress plugin, classic theme, or block theme.
 	 *
-	 * Detection order (highest confidence first):
-	 *  1. theme.json in root                          → block theme  (high)
-	 *  2. style.css with "Theme Name:" header         → theme        (high)
-	 *  3. PHP file in root with "Plugin Name:" header → plugin       (high)
-	 *  4. templates/ directory present                → block theme  (medium)
-	 *  5. functions.php present                       → classic theme (medium)
-	 *  6. Any PHP files in root                       → plugin       (low)
-	 *  7. Otherwise                                   → unknown
-	 *
-	 * Returns: { type, subtype, confidence, name }
+	 * Detection rules live in Repository_Detector::detect().
 	 *
 	 * @since 1.0.0
 	 * @param string            $owner         GitHub repository owner.

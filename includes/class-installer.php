@@ -1522,11 +1522,16 @@ class Installer {
 			return $result;
 		}
 
-		// GitHub ZIPs contain exactly one top-level folder.
+		// Every provider's archive endpoint wraps the tree in one prefixed folder. Bail
+		// rather than guess if that ever stops being true.
 		$subdirs = glob( trailingslashit( $tmp_dir ) . '*', GLOB_ONLYDIR );
 		if ( empty( $subdirs ) ) {
 			$wp_filesystem->delete( $tmp_dir, true );
 			return new \WP_Error( 'gitwire_empty_zip', 'The downloaded ZIP contained no directory.' );
+		}
+		if ( count( $subdirs ) > 1 ) {
+			$wp_filesystem->delete( $tmp_dir, true );
+			return new \WP_Error( 'gitwire_ambiguous_zip', 'The downloaded ZIP contained more than one top-level directory.' );
 		}
 
 		$extracted_folder = $subdirs[0];
