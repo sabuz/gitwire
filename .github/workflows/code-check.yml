@@ -54,3 +54,9 @@ jobs:
 
       - name: Run PHPUnit
         run: composer phpunit
+
+      - name: Run WordPress Plugin Check
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: './'
+          exclude-directories: 'node_modules,vendor,tests,bin,docs'
