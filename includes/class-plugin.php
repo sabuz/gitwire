@@ -247,15 +247,9 @@ final class Plugin {
 			return;
 		}
 
-		$recurrence_map = [
-			'everyfiveminutes' => 'everyfiveminutes',
-			'halfhourly'       => 'halfhourly',
-			'hourly'           => 'hourly',
-			'twicedaily'       => 'twicedaily',
-			'daily'            => 'daily',
-		];
-		$recurrence     = $recurrence_map[ $interval ] ?? 'halfhourly';
-		$current        = wp_get_schedule( 'gitwire_update_check' );
+		$allowed    = [ 'everyfiveminutes', 'halfhourly', 'hourly', 'twicedaily', 'daily', 'weekly' ];
+		$recurrence = in_array( $interval, $allowed, true ) ? $interval : 'halfhourly';
+		$current    = wp_get_schedule( 'gitwire_update_check' );
 
 		if ( $current === $recurrence ) {
 			return;
