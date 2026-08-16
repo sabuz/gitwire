@@ -394,8 +394,10 @@ class Repositories {
 
 			$fetched = count( $untyped );
 
-			// The IS NULL filter shifts left by every row we just typed, so the cursor may
-			// only advance past the ones that failed — otherwise each cycle skips a batch.
+			/*
+			 * The IS NULL filter shifts left by every row we just typed, so the cursor may
+			 * only advance past the ones that failed — otherwise each cycle skips a batch.
+			 */
 			if ( $processed < $fetched || $fetched < $batch_size || 0 === $stuck ) {
 				delete_option( 'gitwire_detection_cursor' );
 			} else {

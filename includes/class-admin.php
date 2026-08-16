@@ -93,8 +93,11 @@ class Admin {
 		if ( file_exists( $icon_path ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 			$svg_raw = (string) file_get_contents( $icon_path );
-			// Replace all hex fill/stroke colours with white so WordPress
-			// colour-scheme CSS can tint the icon via opacity correctly.
+
+			/*
+			 * Replace all hex fill/stroke colours with white so WordPress
+			 * colour-scheme CSS can tint the icon via opacity correctly.
+			 */
 			$svg_white = (string) preg_replace( '/(fill|stroke)="#[0-9a-fA-F]{3,6}"/', '$1="#ffffff"', $svg_raw );
 			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 			$menu_icon = 'data:image/svg+xml;base64,' . base64_encode( $svg_white );

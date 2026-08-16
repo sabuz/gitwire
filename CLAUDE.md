@@ -28,7 +28,7 @@ composer phpunit       # PHP tests
 - `@return void` explicit on void methods
 - DocBlocks follow WPCS format — single-line description, blank line, tags
 - Class files named `class-{slug}.php`, interface files `interface-{slug}.php`
-- No inline comments unless the *why* is non-obvious. When needed: single `//` line, written like a human left a note — not a description of what the next line does
+- No inline comments unless the *why* is non-obvious. When needed, written like a human left a note, not a description of what the next line does
 
 ## JS conventions
 
@@ -39,19 +39,33 @@ composer phpunit       # PHP tests
 
 ## Comments — important
 
-Write comments like a developer left a quick note, not like documentation. Short, lowercase, no trailing period for single thoughts. Multi-line `/* */` blocks only for file/class docblocks required by WPCS. Never use `//` for a block of explanation that could be a sentence — keep it one line.
+Write comments like a developer left a quick note, not like documentation. Prefer one line. Say the *why*, never the what.
 
-Bad:
+**One line uses `//`. More than one line uses `/* */`. Never stack `//` lines.**
+
+Bad, stacked `//`:
 ```php
 // We need to check if the file exists before we attempt to read it
 // because if it doesn't exist the file_get_contents call will fail
 // and we'll get a PHP warning in the logs.
 ```
 
-Good:
+Good, when one line carries it:
 ```php
-// file_get_contents warns on missing files
+// file_get_contents warns on missing files.
 ```
+
+Good, when it genuinely needs two:
+```php
+/*
+ * Bitbucket 302s to an S3 host and WP_Http replays the header set,
+ * so following the redirect would hand the API token to Amazon.
+ */
+```
+
+WPCS notes: a block comment needs a blank line above it, and a `//` comment has to end in a full stop. Keep `// phpcs:` directives on their own single line, never inside a block.
+
+If a comment wants four or more lines, it wants a doc instead. Cut it down or move it out.
 
 ## Repo detection logic (class-repo-detector.php)
 

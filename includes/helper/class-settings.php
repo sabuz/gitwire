@@ -306,8 +306,10 @@ class Settings {
 			return self::is_safe_ip( $host );
 		}
 
-		// Resolve IPv4 and check the returned address.
-		// Both functions live in ext/standard but can be blocked via disable_functions.
+		/*
+		 * Resolve IPv4 and check the returned address.
+		 * Both functions live in ext/standard but can be blocked via disable_functions.
+		 */
 		if ( function_exists( 'gethostbyname' ) ) {
 			$ipv4 = gethostbyname( $host );
 			if ( $ipv4 !== $host && ! self::is_safe_ip( $ipv4 ) ) {

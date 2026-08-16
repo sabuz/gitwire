@@ -145,8 +145,10 @@ final class Plugin {
 			Admin::init();
 		}
 
-		// Everything below reads non-autoloaded options. Gitwire has no front-end
-		// surface, so a page view should not pay for schema and cron bookkeeping.
+		/*
+		 * Everything below reads non-autoloaded options. Gitwire has no front-end
+		 * surface, so a page view should not pay for schema and cron bookkeeping.
+		 */
 		if ( self::is_management_request() ) {
 			if ( Database_Manager::instance()->needs_migrate() ) {
 				Database_Manager::instance()->migrate();

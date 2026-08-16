@@ -1160,9 +1160,11 @@ class Installer {
 		$full_name = $owner . '/' . $repo;
 		$api       = Provider_Factory::make( $provider, $connection_id );
 
-		// Auto-rename if the target directory exists but doesn't belong to this exact record.
-		// Covers both conflicts with other git-managed installs and unmanaged directories
-		// (e.g. a WP.org install with the same slug).
+		/*
+		 * Auto-rename if the target directory exists but doesn't belong to this exact record.
+		 * Covers both conflicts with other git-managed installs and unmanaged directories
+		 * (e.g. a WP.org install with the same slug).
+		 */
 		$current_key   = $provider . ':' . $full_name;
 		$all_installed = self::get_installed();
 		$slug_renamed  = false;
@@ -1342,8 +1344,10 @@ class Installer {
 
 			$scrape = Theme_Scraper::scrape_plugin_bootstrap();
 			if ( is_wp_error( $scrape ) ) {
-				// Restoring the backup returns the working version to disk while the
-				// plugin stays active, preserving the user's current install.
+				/*
+				 * Restoring the backup returns the working version to disk while the
+				 * plugin stays active, preserving the user's current install.
+				 */
 				self::restore_backup( $install_path, $backup_path );
 				self::refresh_plugin_runtime( $install_path, $slug );
 				Error_Handler::restore_pending_installed_record( $pending );
@@ -1522,8 +1526,10 @@ class Installer {
 			return $result;
 		}
 
-		// Every provider's archive endpoint wraps the tree in one prefixed folder. Bail
-		// rather than guess if that ever stops being true.
+		/*
+		 * Every provider's archive endpoint wraps the tree in one prefixed folder. Bail
+		 * rather than guess if that ever stops being true.
+		 */
 		$subdirs = glob( trailingslashit( $tmp_dir ) . '*', GLOB_ONLYDIR );
 		if ( empty( $subdirs ) ) {
 			$wp_filesystem->delete( $tmp_dir, true );

@@ -120,8 +120,10 @@ class Repository extends Model_Base {
 		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
 		if ( empty( $rows ) ) {
-			// When filters are active, check if any rows exist for these connections.
-			// If none exist, it's a cache miss (null). If rows exist, filters matched nothing.
+			/*
+			 * When filters are active, check if any rows exist for these connections.
+			 * If none exist, it's a cache miss (null). If rows exist, filters matched nothing.
+			 */
 			if ( ! empty( $excluded ) || $search ) {
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 				$has_any = $wpdb->get_var( $wpdb->prepare( "SELECT 1 FROM `{$table}` WHERE connection_id IN ({$phs}) LIMIT 1", ...$connection_ids ) );
