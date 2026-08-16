@@ -33,6 +33,13 @@ class GitLab_API implements Git_Provider_Interface {
 	private string $base;
 
 	/**
+	 * Per-request cache of host safety checks, keyed by hostname.
+	 *
+	 * @var array<string, bool>
+	 */
+	private static array $host_checked = [];
+
+	/**
 	 * Rate limit data captured from the last API response headers.
 	 *
 	 * @var array<string, int>
@@ -406,8 +413,10 @@ class GitLab_API implements Git_Provider_Interface {
 		$response = wp_remote_get(
 			$this->base . '/projects/' . $project_id . '/repository/files/' . $file_path . '/raw?ref=' . rawurlencode( $branch ),
 			[
-				'headers' => $this->headers(),
-				'timeout' => 15,
+				'headers'            => $this->headers(),
+				'timeout'            => 15,
+				// WP re-validates the host it is about to connect to, not the one we resolved.
+				'reject_unsafe_urls' => true,
 			]
 		);
 
@@ -445,17 +454,42 @@ class GitLab_API implements Git_Provider_Interface {
 			return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
 		}
 
+		/*
+		 * detect_type() alone can make seven calls per repository, so resolving on
+		 * every one of them meant two synchronous DNS lookups each. Same answer
+		 * within a request, so cache it.
+		 */
+		if ( array_key_exists( $host, self::$host_checked ) ) {
+			return self::$host_checked[ $host ]
+				? true
+				: new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+		}
+
+		$safe = self::host_resolves_safely( $host );
+
+		self::$host_checked[ $host ] = $safe;
+
+		return $safe
+			? true
+			: new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+	}
+
+	/**
+	 * Resolves a host and returns whether every address it maps to is public.
+	 *
+	 * @since 1.0.0
+	 * @param string $host Hostname or IP literal.
+	 * @return bool
+	 */
+	private static function host_resolves_safely( string $host ): bool {
 		if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
-			if ( ! Settings::is_safe_ip( $host ) ) {
-				return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
-			}
-			return true;
+			return Settings::is_safe_ip( $host );
 		}
 
 		if ( function_exists( 'gethostbyname' ) ) {
 			$ipv4 = gethostbyname( $host );
 			if ( $ipv4 !== $host && ! Settings::is_safe_ip( $ipv4 ) ) {
-				return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+				return false;
 			}
 		}
 
@@ -464,7 +498,7 @@ class GitLab_API implements Git_Provider_Interface {
 			if ( is_array( $aaaa ) ) {
 				foreach ( $aaaa as $record ) {
 					if ( ! empty( $record['ipv6'] ) && ! Settings::is_safe_ip( $record['ipv6'] ) ) {
-						return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+						return false;
 					}
 				}
 			}
@@ -505,8 +539,10 @@ class GitLab_API implements Git_Provider_Interface {
 		$response = wp_remote_get(
 			$this->base . $endpoint,
 			[
-				'headers' => $this->headers(),
-				'timeout' => 15,
+				'headers'            => $this->headers(),
+				'timeout'            => 15,
+				// WP re-validates the host it is about to connect to, not the one we resolved.
+				'reject_unsafe_urls' => true,
 			]
 		);
 
