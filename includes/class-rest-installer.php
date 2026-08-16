@@ -108,8 +108,9 @@ class REST_Installer {
 	}
 
 	/**
-	 * Fetches the latest commit SHA for a branch and stores it on the installed record.
-	 * Runs fire-and-forget after install/switch — failures are silently ignored.
+	 * Stores the head SHA and the commit list for a branch after an install or pull.
+	 *
+	 * Fire-and-forget: failures are ignored, the next sync re-resolves.
 	 *
 	 * @since 1.0.0
 	 * @param string      $owner         Repository owner.
@@ -120,35 +121,20 @@ class REST_Installer {
 	 * @return void
 	 */
 	private static function store_head( string $owner, string $repo, string $branch, string $provider, ?string $connection_id = null ): void {
-		$api       = self::make_api( $provider, $connection_id );
-		$commits   = $api->get_commits( $owner, $repo, $branch, 1 );
-		$full_name = $owner . '/' . $repo;
-		if ( ! is_wp_error( $commits ) && ! empty( $commits ) ) {
-			Installer::set_head( $provider, $full_name, $commits[0]['sha'] );
-		}
-	}
-
-	/**
-	 * Fetches commits and writes them to an option after a successful install or pull.
-	 *
-	 * @since 1.0.0
-	 * @param string      $provider      Provider key.
-	 * @param string      $owner         Repository owner.
-	 * @param string      $repo          Repository name.
-	 * @param string      $branch        Branch name.
-	 * @param string|null $connection_id Connection ID.
-	 * @return void
-	 */
-	private static function update_commit_history_after_pull( string $provider, string $owner, string $repo, string $branch, ?string $connection_id ): void {
 		$record = Installer::get_record( $provider, $owner . '/' . $repo );
 		if ( ! $record ) {
 			return;
 		}
+
 		$api     = self::make_api( $provider, $connection_id );
 		$commits = $api->get_commits( $owner, $repo, $branch );
-		if ( ! is_wp_error( $commits ) ) {
-			self::save_cached_commits( $record['id'], $branch, $commits );
+		if ( is_wp_error( $commits ) || empty( $commits ) ) {
+			return;
 		}
+
+		// One fetch serves both: the newest entry is the head we were about to ask for.
+		Installer::set_head( $provider, $owner . '/' . $repo, $commits[0]['sha'] );
+		self::save_cached_commits( $record['id'], $branch, $commits );
 	}
 
 	/**
@@ -455,7 +441,6 @@ class REST_Installer {
 		unset( $result['_evicted'] );
 
 		self::store_head( $owner, $repo, $branch, $provider, $connection_id );
-		self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $connection_id );
 
 		if ( $is_update ) {
 			Logger::log( sprintf( '[%s] Updated %s/%s (%s) on branch %s', $provider, $owner, $repo, $type, $branch ) );
@@ -769,7 +754,6 @@ class REST_Installer {
 
 		$stored_conn_id = $override_id ?? ( $existing_record['connection_id'] ?? null );
 		self::store_head( $owner, $repo, $branch, $provider, $stored_conn_id );
-		self::update_commit_history_after_pull( $provider, $owner, $repo, $branch, $stored_conn_id );
 
 		if ( ! $is_pull ) {
 			// remote_head was for the previous branch; wipe it so sync_installed re-resolves.
