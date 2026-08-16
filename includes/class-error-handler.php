@@ -339,15 +339,19 @@ class Error_Handler {
 			]
 		);
 
+		/*
+		 * Untranslated, like every other Logger::log() call. The log is a diagnostic
+		 * record read alongside PHP's own error log, not UI copy, and translations
+		 * may not even be loaded this late in a fatal.
+		 */
 		Logger::log(
 			sprintf(
-				/* translators: 1: install or activation, 2: repository full name, 3: plugin or theme, 4: full error with file and line, 5: rollback outcome */
-				__( 'Fatal error during %1$s of "%2$s" (%3$s): %4$s. %5$s', 'gitwire' ),
+				'Fatal error during %1$s of "%2$s" (%3$s): %4$s. %5$s',
 				$context,
 				$full_name,
 				$type,
 				$error_string,
-				$notice['restored'] ? __( 'Changes were rolled back.', 'gitwire' ) : __( 'Rollback failed.', 'gitwire' )
+				$notice['restored'] ? 'Changes were rolled back.' : 'Rollback failed.'
 			),
 			'error'
 		);
@@ -467,7 +471,6 @@ class Error_Handler {
 		$is_active = get_stylesheet() === $slug || get_template() === $slug;
 		if ( ! $is_active ) {
 			delete_option( 'gitwire_running_task' );
-
 		}
 	}
 
@@ -480,7 +483,6 @@ class Error_Handler {
 	public static function abort_pending_guard(): bool {
 		$pending = get_option( 'gitwire_running_task' );
 		if ( ! is_array( $pending ) ) {
-
 			return false;
 		}
 
