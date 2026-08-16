@@ -66,22 +66,6 @@ class Repositories {
 	}
 
 	/**
-	 * Stores a repository page payload using upsert.
-	 *
-	 * Omits type_meta and type from ON DUPLICATE KEY UPDATE intentionally —
-	 * cached detection results must survive across cron refreshes.
-	 *
-	 * @since 1.0.0
-	 * @param string               $connection_id Connection ID or 'public:{provider}'.
-	 * @param string               $provider      Provider key.
-	 * @param array<string, mixed> $payload       Repos payload.
-	 * @return void
-	 */
-	public static function set_repositories( string $connection_id, string $provider, array $payload ): void {
-		Repository::instance()->upsert_batch( $connection_id, $payload['repositories'] ?? [], $provider );
-	}
-
-	/**
 	 * Builds the canonical key for a repo type detection entry.
 	 *
 	 * @since 1.0.0
@@ -139,6 +123,15 @@ class Repositories {
 	 */
 	public static function clear_repositories( ?string $connection_id = null ): void {
 		Repository::instance()->clear( $connection_id ?? '' );
+
+		// Drop any parked cursor too, or a deleted connection resumes from nowhere.
+		$state = self::get_refresh_state();
+		if ( null === $connection_id ) {
+			$state = [];
+		} else {
+			unset( $state[ $connection_id ] );
+		}
+		self::save_refresh_state( $state );
 	}
 
 	/**
@@ -176,12 +169,14 @@ class Repositories {
 	 * Fetches repositories from the provider API and stores them in the cache table.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider      Provider key.
-	 * @param int    $page          Page number.
-	 * @param string $connection_id Connection ID to use for credentials.
+	 * @param string   $provider      Provider key.
+	 * @param int      $page          Page number.
+	 * @param string   $connection_id Connection ID to use for credentials.
+	 * @param int|null $limit       Cap on rows to store from this page; null for all.
+	 * @param string   $stamp       Cycle marker written to updated_at; empty for now.
 	 * @return array<string, mixed>|\WP_Error Stored payload on success.
 	 */
-	public static function fetch_repositories( string $provider, int $page, string $connection_id ): array|\WP_Error {
+	public static function fetch_repositories( string $provider, int $page, string $connection_id, ?int $limit = null, string $stamp = '' ): array|\WP_Error {
 		$cache_id = '' !== $connection_id ? $connection_id : 'public:' . $provider;
 		$payload  = REST_Repositories::build_repositories( $provider, $page, $connection_id );
 
@@ -189,7 +184,12 @@ class Repositories {
 			return $payload;
 		}
 
-		self::set_repositories( $cache_id, $provider, $payload );
+		// Trim before the write, not after: the cap is meant to bound what we store.
+		if ( null !== $limit ) {
+			$payload['repositories'] = array_slice( $payload['repositories'] ?? [], 0, max( 0, $limit ) );
+		}
+
+		Repository::instance()->upsert_batch( $cache_id, $payload['repositories'] ?? [], $provider, $stamp );
 
 		return $payload;
 	}
@@ -207,6 +207,21 @@ class Repositories {
 		$last_err    = null;
 		$max_setting = Settings::get_public()['max_repos_per_source'] ?? 'unlimited';
 		$max         = 'unlimited' === $max_setting ? PHP_INT_MAX : (int) $max_setting;
+		$state       = self::get_refresh_state();
+		$started     = time();
+
+		/**
+		 * Filters how long one refresh tick may spend sweeping repository pages.
+		 *
+		 * Sweeps inherit php.ini max_execution_time because wp-cron.php never raises
+		 * it, commonly 30s. Staying under that is what lets the cursor below survive
+		 * to the next tick instead of the whole request being killed.
+		 *
+		 * @since 1.0.0
+		 * @param int $budget Seconds per tick. Default 20.
+		 * @return int
+		 */
+		$budget = (int) apply_filters( 'gitwire_refresh_time_budget', 20 );
 
 		foreach ( Connection_Resolver::all() as $conn ) {
 			$id       = $conn['id'] ?? '';
@@ -215,38 +230,87 @@ class Repositories {
 				continue;
 			}
 
-			$page               = 1;
-			$conn_err           = null;
-			$fetched_full_names = [];
+			$cursor      = $state[ $id ] ?? [];
+			$page        = max( 1, (int) ( $cursor['page'] ?? 1 ) );
+			$stored      = (int) ( $cursor['stored'] ?? 0 );
+			$cycle_start = (string) ( $cursor['cycle_start'] ?? '' );
+
+			if ( '' === $cycle_start ) {
+				$cycle_start = current_datetime()->format( 'Y-m-d H:i:s' );
+			}
+
+			$exhausted = false;
+			$conn_err  = null;
 
 			do {
-				$result = self::fetch_repositories( $provider, $page, $id );
+				if ( time() - $started >= $budget ) {
+					$exhausted = true;
+					break;
+				}
+
+				$result = self::fetch_repositories( $provider, $page, $id, $max - $stored, $cycle_start );
 				if ( is_wp_error( $result ) ) {
 					$conn_err = $result;
 					$last_err = $result;
 					break;
 				}
-				// max rarely divides evenly by the provider's fixed page size, so cap mid-page too.
-				$page_repos = array_slice(
-					$result['repositories'] ?? [],
-					0,
-					max( 0, $max - count( $fetched_full_names ) )
-				);
-				foreach ( $page_repos as $repo ) {
-					if ( ! empty( $repo['full_name'] ) ) {
-						$fetched_full_names[] = $repo['full_name'];
-					}
-				}
-				$has_more = ( $result['has_more'] ?? false ) && count( $fetched_full_names ) < $max;
+
+				$stored += count( $result['repositories'] ?? [] );
 				++$page;
+
+				$has_more = ( $result['has_more'] ?? false ) && $stored < $max;
 			} while ( $has_more );
 
-			if ( ! $conn_err ) {
-				Repository::instance()->remove_stale( $id, $fetched_full_names );
+			if ( $exhausted ) {
+				// Park the cursor and stop; the next tick resumes this connection mid-sweep.
+				$state[ $id ] = [
+					'page'        => $page,
+					'stored'      => $stored,
+					'cycle_start' => $cycle_start,
+				];
+				self::save_refresh_state( $state );
+				return $last_err ?? true;
 			}
+
+			/*
+			 * Only prune once a sweep has actually seen every page. Doing it after a
+			 * partial sweep would delete every repo the run never reached.
+			 */
+			if ( ! $conn_err ) {
+				Repository::instance()->remove_stale_since( $id, $cycle_start );
+			}
+
+			unset( $state[ $id ] );
+			self::save_refresh_state( $state );
 		}
 
 		return $last_err ?? true;
+	}
+
+	/**
+	 * Returns the per-connection resume cursors for an in-progress sweep.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function get_refresh_state(): array {
+		$state = get_option( 'gitwire_refresh_state', [] );
+		return is_array( $state ) ? $state : [];
+	}
+
+	/**
+	 * Persists the resume cursors, clearing the option once nothing is in flight.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, array<string, mixed>> $state Cursors keyed by connection ID.
+	 * @return void
+	 */
+	private static function save_refresh_state( array $state ): void {
+		if ( empty( $state ) ) {
+			delete_option( 'gitwire_refresh_state' );
+			return;
+		}
+		update_option( 'gitwire_refresh_state', $state, false );
 	}
 
 	/**
@@ -258,6 +322,12 @@ class Repositories {
 	public static function scheduled_refresh(): void {
 		$result = self::refresh_repositories();
 		if ( is_wp_error( $result ) ) {
+			return;
+		}
+
+		// A parked cursor means the sweep used its budget; type detection would spend
+		// another 25 s on top and push the tick past max_execution_time.
+		if ( ! empty( self::get_refresh_state() ) ) {
 			return;
 		}
 
@@ -417,6 +487,10 @@ class Repositories {
 	public static function force_refresh(): bool|\WP_Error {
 		$result = self::refresh_repositories();
 		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		if ( ! empty( self::get_refresh_state() ) ) {
 			return $result;
 		}
 

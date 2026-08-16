@@ -167,32 +167,61 @@ class Repository extends Model_Base {
 	 * @param string                           $connection_id Connection ID.
 	 * @param array<int, array<string, mixed>> $repos Array of repo payloads from the provider API.
 	 * @param string                           $provider      Provider key; overrides per-repo 'provider' when set.
-	 * @return bool False only when $repos is empty.
+	 * @param string                           $stamp         Cycle marker for updated_at; empty uses the current time.
+	 * @return bool False when nothing was written.
 	 */
-	public function upsert_batch( string $connection_id, array $repos, string $provider = '' ): bool {
+	public function upsert_batch( string $connection_id, array $repos, string $provider = '', string $stamp = '' ): bool {
 		if ( empty( $repos ) ) {
 			return false;
 		}
 
 		global $wpdb;
 		$table = $this->table_name();
-		$now   = current_datetime()->format( 'Y-m-d H:i:s' );
+		$now   = '' !== $stamp ? $stamp : current_datetime()->format( 'Y-m-d H:i:s' );
 
+		$rows = [];
 		foreach ( $repos as $repo ) {
-			$full_name     = $repo['full_name'] ?? '';
-			$repo_provider = $provider ? $provider : ( $repo['provider'] ?? '' );
+			$full_name = $repo['full_name'] ?? '';
 			if ( ! $full_name ) {
 				continue;
 			}
 			$raw_at   = $repo['last_activity_at'] ?? '';
 			$ts       = $raw_at ? (int) strtotime( $raw_at ) : 0;
 			$last_act = $ts > 0 ? gmdate( 'Y-m-d H:i:s', $ts ) : '1970-01-01 00:00:00';
-			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+			$rows[] = [
+				$connection_id,
+				$provider ? $provider : ( $repo['provider'] ?? '' ),
+				$repo['owner'] ?? '',
+				$repo['name'] ?? '',
+				$full_name,
+				(int) ( $repo['private'] ?? false ),
+				$repo['html_url'] ?? '',
+				$repo['default_branch'] ?? 'main',
+				$last_act,
+				$now,
+			];
+		}
+
+		if ( empty( $rows ) ) {
+			return false;
+		}
+
+		/*
+		 * Chunked rather than one row per query: autocommit turns every INSERT into
+		 * its own transaction, so a per-row loop costs one durability flush per repo.
+		 * 100 keeps the statement well under a 4 MB max_allowed_packet.
+		 */
+		foreach ( array_chunk( $rows, 100 ) as $chunk ) {
+			$tuples = implode( ', ', array_fill( 0, count( $chunk ), '(%s, %s, %s, %s, %s, %d, %s, %s, %s, %s)' ) );
+			$values = array_merge( ...$chunk );
+
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 			$wpdb->query(
 				$wpdb->prepare(
 					"INSERT INTO `{$table}`
 					(connection_id, provider, owner, name, full_name, private, html_url, default_branch, last_activity_at, updated_at)
-					VALUES (%s, %s, %s, %s, %s, %d, %s, %s, %s, %s)
+					VALUES {$tuples}
 					ON DUPLICATE KEY UPDATE
 					  provider          = VALUES(provider),
 					  owner             = VALUES(owner),
@@ -202,19 +231,10 @@ class Repository extends Model_Base {
 					  default_branch    = VALUES(default_branch),
 					  last_activity_at  = VALUES(last_activity_at),
 					  updated_at        = VALUES(updated_at)",
-					$connection_id,
-					$repo_provider,
-					$repo['owner'] ?? '',
-					$repo['name'] ?? '',
-					$full_name,
-					(int) ( $repo['private'] ?? false ),
-					$repo['html_url'] ?? '',
-					$repo['default_branch'] ?? 'main',
-					$last_act,
-					$now
+					$values
 				)
 			);
-			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		}
 
 		return true;
@@ -378,26 +398,28 @@ class Repository extends Model_Base {
 	}
 
 	/**
-	 * Deletes rows for a connection that are not in the provided full_name list.
+	 * Deletes rows for a connection that this refresh cycle did not touch.
 	 *
-	 * Intended for post-refresh cleanup: call after a full provider page sweep with
-	 * the complete set of full_names returned by the API.
+	 * Only safe once a sweep has walked every page: anything still carrying an
+	 * updated_at from before the cycle began is a repo the provider no longer
+	 * returns. Using the cycle stamp rather than a full_name list keeps this to one
+	 * bound parameter instead of one per repository, and lets a sweep that spans
+	 * several cron ticks finish correctly.
 	 *
 	 * @since 1.0.0
-	 * @param string   $connection_id      Connection ID.
-	 * @param string[] $current_full_names Full names to preserve.
+	 * @param string $connection_id Connection ID.
+	 * @param string $cycle_start   Datetime the sweep began, in the site timezone.
 	 * @return bool
 	 */
-	public function remove_stale( string $connection_id, array $current_full_names ): bool {
-		if ( empty( $current_full_names ) ) {
-			return $this->clear( $connection_id );
+	public function remove_stale_since( string $connection_id, string $cycle_start ): bool {
+		if ( '' === $cycle_start ) {
+			return false;
 		}
 
 		global $wpdb;
 		$table = $this->table_name();
-		$phs   = implode( ', ', array_fill( 0, count( $current_full_names ), '%s' ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
-		return false !== $wpdb->query( $wpdb->prepare( "DELETE FROM `{$table}` WHERE connection_id = %s AND full_name NOT IN ({$phs})", $connection_id, ...$current_full_names ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return false !== $wpdb->query( $wpdb->prepare( "DELETE FROM `{$table}` WHERE connection_id = %s AND updated_at < %s", $connection_id, $cycle_start ) );
 	}
 
 	/**

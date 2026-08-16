@@ -23,6 +23,7 @@ $options = [
 	'gitwire_pending_deactivate',
 	'gitwire_orphan_queue',
 	'gitwire_detection_cursor',
+	'gitwire_refresh_state',
 ];
 
 foreach ( $options as $option ) {
