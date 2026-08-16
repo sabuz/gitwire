@@ -18,10 +18,12 @@ parameters:
 		- tests/bootstrap.php
 		- tests/stubs.php
 		- tests/class-wp-error.php
+		- tests/class-fake-wpdb.php
 	# read for symbols (test helpers, sandbox constants) without analysing the bodies
 	scanFiles:
 		- tests/bootstrap.php
 		- tests/stubs.php
+		- tests/class-fake-wpdb.php
 	dynamicConstantNames:
 		- AUTH_COOKIE
 		- LOGGED_IN_COOKIE

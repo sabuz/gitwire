@@ -20,6 +20,7 @@
 $GLOBALS['gitwire_test_options'] = [];
 
 require_once __DIR__ . '/class-wp-error.php';
+require_once __DIR__ . '/class-fake-wpdb.php';
 
 /**
  * Resets all stub state between tests.
@@ -183,6 +184,15 @@ if ( ! function_exists( 'wp_upload_dir' ) ) {
 	 */
 	function wp_upload_dir( $time = null, $create_dir = true ): array {
 		return [ 'basedir' => WP_CONTENT_DIR . '/uploads' ];
+	}
+}
+
+if ( ! function_exists( 'current_datetime' ) ) {
+	/**
+	 * @return DateTimeImmutable
+	 */
+	function current_datetime(): DateTimeImmutable {
+		return new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
 	}
 }
 
