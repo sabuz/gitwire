@@ -87,7 +87,7 @@ class Logger {
 	 * @param string   $to     ISO date string 'YYYY-MM-DD' or empty for no upper bound.
 	 * @param string   $level  Level to keep ('activity', 'error'), or empty for all.
 	 * @param string[] $actors User logins to include; empty means all actors.
-	 * @return array<int, array{timestamp: string, level: string, message: string}>
+	 * @return array<int, array{timestamp: string, level: string, actor: string, message: string}>
 	 */
 	public function get_entries( string $from = '', string $to = '', string $level = '', array $actors = [] ): array {
 		if ( ! file_exists( $this->log_file ) ) {
