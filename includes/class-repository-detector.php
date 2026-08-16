@@ -35,6 +35,16 @@ class Repository_Detector {
 	];
 
 	/**
+	 * Filenames that survive the extension filter below.
+	 *
+	 * Extension filtering drops *.json to skip package.json and composer.json, but
+	 * theme.json is the one file that promotes a confirmed theme to a block theme.
+	 *
+	 * @var string[]
+	 */
+	private const SIGNIFICANT_FILES = [ 'theme.json' ];
+
+	/**
 	 * File extensions that are never relevant to WP type detection.
 	 *
 	 * @var string[]
@@ -124,8 +134,11 @@ class Repository_Detector {
 			$lc  = strtolower( $item['name'] );
 			$ext = pathinfo( $lc, PATHINFO_EXTENSION );
 			if (
-				in_array( $lc, self::IGNORED_DIRS, true ) ||
-				in_array( $ext, self::IGNORED_EXTENSIONS, true )
+				! in_array( $lc, self::SIGNIFICANT_FILES, true )
+				&& (
+					in_array( $lc, self::IGNORED_DIRS, true )
+					|| in_array( $ext, self::IGNORED_EXTENSIONS, true )
+				)
 			) {
 				continue;
 			}
