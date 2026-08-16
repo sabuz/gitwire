@@ -60,30 +60,15 @@ class REST_Settings {
 	 * @return array<string, mixed>|\WP_Error Success data or WP_Error on validation failure.
 	 */
 	public static function save_settings( \WP_REST_Request $req ): array|\WP_Error {
+		/*
+		 * Driven from the schema rather than a fourth copy of the key list. Adding a
+		 * setting and forgetting this loop would mean it could never be saved.
+		 */
 		$incoming = [];
-		foreach ( [
-			'smart_install',
-			'show_repo_label',
-			'enable_logging',
-			'log_retention_days',
-			'log_level',
-			'remove_data_on_uninstall',
-			'repositories_refresh_frequency',
-			'auto_detect_type',
-			'repos_per_page',
-			'max_repos_per_source',
-			'background_type_detection',
-			'shallow_detection',
-			'block_on_fatal',
-			'update_check_interval',
-		] as $key ) {
+		foreach ( array_keys( Settings::schema() ) as $key ) {
 			if ( null !== $req->get_param( $key ) ) {
 				$incoming[ $key ] = $req->get_param( $key );
 			}
-		}
-		// excluded_repos is an array — check for it separately.
-		if ( null !== $req->get_param( 'excluded_repos' ) ) {
-			$incoming['excluded_repos'] = $req->get_param( 'excluded_repos' );
 		}
 
 		$was_logging          = Settings::is_logging_enabled();
