@@ -246,6 +246,28 @@ class Logger {
 	}
 
 	/**
+	 * Removes the log file and its directory. Called from uninstall.php.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function uninstall(): void {
+		$dir = dirname( self::get_instance()->log_file );
+
+		$files = glob( $dir . '/{,.}*', GLOB_BRACE );
+		if ( is_array( $files ) ) {
+			foreach ( $files as $file ) {
+				if ( is_file( $file ) ) {
+					wp_delete_file( $file );
+				}
+			}
+		}
+
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
+		@rmdir( $dir );
+	}
+
+	/**
 	 * Removes anything from the log directory that should not be there.
 	 *
 	 * Keeps the guard files and the current log. Everything else (stale logs from a

@@ -20,6 +20,7 @@ $options = [
 	'gitwire_settings',
 	'gitwire_running_task',
 	'gitwire_pending_message',
+	'gitwire_pending_deactivate',
 	'gitwire_orphan_queue',
 	'gitwire_detection_cursor',
 ];
@@ -41,12 +42,14 @@ global $wpdb;
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 $wpdb->query(
 	$wpdb->prepare(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s",
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s",
 		$wpdb->esc_like( '_transient_gitwire_' ) . '%',
 		$wpdb->esc_like( '_transient_timeout_gitwire_' ) . '%',
 		$wpdb->esc_like( 'gitwire_commits_' ) . '%',
-		$wpdb->esc_like( 'gitwire_repo_type_' ) . '%'
+		$wpdb->esc_like( 'gitwire_repo_type_' ) . '%',
+		$wpdb->esc_like( 'gitwire_lock_' ) . '%'
 	)
 );
 
 \Gitwire\Installer::purge_orphaned_backups();
+\Gitwire\Logger::uninstall();
