@@ -138,10 +138,6 @@ final class Plugin {
 			return;
 		}
 
-		if ( Database_Manager::instance()->needs_migrate() ) {
-			Database_Manager::instance()->migrate();
-		}
-
 		Installer::init();
 		REST::init();
 
@@ -149,21 +145,15 @@ final class Plugin {
 			Admin::init();
 		}
 
-		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
-			wp_schedule_event( time(), 'hourly', 'gitwire_maintenance' );
+		// Everything below reads non-autoloaded options. Gitwire has no front-end
+		// surface, so a page view should not pay for schema and cron bookkeeping.
+		if ( self::is_management_request() ) {
+			if ( Database_Manager::instance()->needs_migrate() ) {
+				Database_Manager::instance()->migrate();
+			}
+
+			$this->ensure_cron_events();
 		}
-
-		$this->schedule_repos_cron();
-
-		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
-			wp_schedule_event( time(), 'halfhourly', 'gitwire_refresh_connections' );
-		}
-
-		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
-			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
-		}
-
-		$this->schedule_update_check_cron();
 
 		/**
 		 * Fires after the free plugin finishes bootstrapping.
@@ -174,6 +164,42 @@ final class Plugin {
 		 * @since 1.0.0
 		 */
 		do_action( 'gitwire_loaded' );
+	}
+
+	/**
+	 * Returns whether this request is one that manages Gitwire state.
+	 *
+	 * @since 1.0.0
+	 * @return bool
+	 */
+	public static function is_management_request(): bool {
+		return is_admin()
+			|| wp_doing_cron()
+			|| ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+			|| ( defined( 'WP_CLI' ) && WP_CLI );
+	}
+
+	/**
+	 * Registers every recurring event, rescheduling the two that follow a setting.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	private function ensure_cron_events(): void {
+		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
+			wp_schedule_event( time(), 'hourly', 'gitwire_maintenance' );
+		}
+
+		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
+			wp_schedule_event( time(), 'halfhourly', 'gitwire_refresh_connections' );
+		}
+
+		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
+			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
+		}
+
+		$this->schedule_repos_cron();
+		$this->schedule_update_check_cron();
 	}
 
 	/**
@@ -199,17 +225,7 @@ final class Plugin {
 				false
 			);
 		}
-		if ( ! wp_next_scheduled( 'gitwire_maintenance' ) ) {
-			wp_schedule_event( time(), 'hourly', 'gitwire_maintenance' );
-		}
-		$this->schedule_repos_cron();
-		if ( ! wp_next_scheduled( 'gitwire_refresh_connections' ) ) {
-			wp_schedule_event( time(), 'halfhourly', 'gitwire_refresh_connections' );
-		}
-		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
-			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
-		}
-		$this->schedule_update_check_cron();
+		$this->ensure_cron_events();
 	}
 
 	/**
