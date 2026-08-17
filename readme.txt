@@ -96,6 +96,12 @@ Privacy: https://www.atlassian.com/legal/privacy-policy
 
 When you connect a GitHub account, its profile picture is displayed in the Gitwire admin screens by loading an image from `avatars.githubusercontent.com`. Only the GitHub username is part of that URL. This happens in wp-admin only, never on the front end. It is covered by the GitHub policies linked above.
 
+**Gravatar**
+
+Bitbucket has no public avatar API, and GitLab's is used when reachable, so both fall back to a generated identicon for the connection's picture. An MD5 hash of the account's username or workspace slug is sent to `www.gravatar.com`; no other data leaves your site for this. This happens in wp-admin only, never on the front end.
+Terms: https://wordpress.com/tos/
+Privacy: https://automattic.com/privacy/
+
 == Privacy ==
 
 Gitwire stores connection details, installation records, and a cached list of your repositories in your own database. Access tokens added through Gitwire Pro are encrypted before being written and are only ever sent to the Git host they belong to.
