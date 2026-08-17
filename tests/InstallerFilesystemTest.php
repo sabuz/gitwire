@@ -245,4 +245,13 @@ class InstallerFilesystemTest extends TestCase {
 		$this->assertFalse( is_link( $stray ) );
 		$this->assertFileExists( $target . '/keep.txt' );
 	}
+
+	public function test_remove_backup_base_dir_deletes_the_directory_and_its_guard_files(): void {
+		$base = WP_CONTENT_DIR . '/upgrade-temp-backup/gitwire';
+		$this->tree( $base, [ '.htaccess' => 'deny from all' ] );
+
+		Installer::remove_backup_base_dir();
+
+		$this->assertDirectoryDoesNotExist( $base );
+	}
 }

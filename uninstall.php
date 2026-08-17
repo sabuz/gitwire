@@ -54,4 +54,5 @@ $wpdb->query(
 );
 
 \Gitwire\Installer::purge_orphaned_backups();
+\Gitwire\Installer::remove_backup_base_dir();
 \Gitwire\Logger::uninstall();

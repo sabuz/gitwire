@@ -2007,6 +2007,21 @@ class Installer {
 	}
 
 	/**
+	 * Removes the entire backup base directory, guard files included.
+	 *
+	 * The orphaned-backup purge only clears stray backup subdirectories
+	 * because it also runs from the maintenance cron on a live site, where
+	 * the guarded base directory needs to stay in place for the next
+	 * backup. Uninstall has no next backup, so this removes it outright.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function remove_backup_base_dir(): void {
+		self::rmdir_recursive( self::get_backup_base_dir() );
+	}
+
+	/**
 	 * Pure-PHP recursive directory delete.
 	 * Safe to call from the shutdown handler where WP Filesystem may not be available.
 	 *
