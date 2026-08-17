@@ -1258,6 +1258,24 @@ class Installer {
 			}
 		}
 
+		/*
+		 * Short-circuit a retry of a known-fatal commit before paying for the archive.
+		 * The guard further down runs after the plugin has been deactivated, which makes
+		 * is_active_install() false and leaves it unreachable on the very retry it exists for.
+		 */
+		if ( is_dir( $install_path )
+			&& self::is_active_install( $type, $slug, $all_installed[ $current_key ]['basename'] ?? null )
+		) {
+			$known = self::get_known_fatal_remote_head( $provider, $full_name, $branch );
+			if ( $known && self::fetch_remote_head_sha( $api, $owner, $repo, $branch ) === $known ) {
+				return new \WP_Error(
+					'gitwire_known_fatal_head',
+					self::known_fatal_head_message( $type, $known, self::get_known_fatal_location( $provider, $full_name, $branch ) ),
+					[ 'status' => 409 ]
+				);
+			}
+		}
+
 		// Download.
 		$zip_file = $api->download_zip( $owner, $repo, $branch );
 		if ( is_wp_error( $zip_file ) ) {
