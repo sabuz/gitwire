@@ -806,7 +806,50 @@ class Installer {
 	 */
 	public static function get_known_fatal_remote_head( string $provider, string $full_name, string $branch ): ?string {
 		$value = get_transient( self::known_fatal_head_key( $provider, $full_name, $branch ) );
+
+		// Entries written before the location was recorded are still a bare SHA string.
+		if ( is_array( $value ) ) {
+			$value = $value['sha'] ?? '';
+		}
+
 		return is_string( $value ) && $value ? $value : null;
+	}
+
+	/**
+	 * Returns where the remembered fatal was thrown, as "path:line".
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @param string $branch    Branch name.
+	 * @return string Empty when the location was not recorded.
+	 */
+	public static function get_known_fatal_location( string $provider, string $full_name, string $branch ): string {
+		$value = get_transient( self::known_fatal_head_key( $provider, $full_name, $branch ) );
+		return is_array( $value ) ? (string) ( $value['location'] ?? '' ) : '';
+	}
+
+	/**
+	 * Formats the file and line out of a scrape payload for display.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed> $scrape Scrape failure payload from the sandbox.
+	 * @return string Empty when the payload carries no file.
+	 */
+	private static function fatal_location_from_scrape( array $scrape ): string {
+		$file = (string) ( $scrape['file'] ?? '' );
+		$line = (int) ( $scrape['line'] ?? 0 );
+
+		if ( '' === $file ) {
+			return '';
+		}
+
+		// Absolute paths expose the server layout, so report relative to wp-content.
+		if ( defined( 'WP_CONTENT_DIR' ) && 0 === strpos( $file, WP_CONTENT_DIR ) ) {
+			$file = ltrim( substr( $file, strlen( WP_CONTENT_DIR ) ), '/\\' );
+		}
+
+		return $line > 0 ? $file . ':' . $line : $file;
 	}
 
 	/**
@@ -830,13 +873,27 @@ class Installer {
 	 * @since 1.0.0
 	 * @param string $type       Installation type: plugin or theme.
 	 * @param string $remote_sha Remote commit SHA.
+	 * @param string $location   Where the error was thrown, as "path:line". Optional.
 	 * @return string
 	 */
-	public static function known_fatal_head_message( string $type, string $remote_sha ): string {
+	public static function known_fatal_head_message( string $type, string $remote_sha, string $location = '' ): string {
 		$short = substr( $remote_sha, 0, 7 );
 		$label = Repository_Detector::is_theme( $type )
 			? __( 'theme', 'gitwire' )
 			: __( 'plugin', 'gitwire' );
+
+		if ( '' !== $location ) {
+			return sprintf(
+				/* translators: 1: short commit SHA, 2: plugin or theme, 3: file path and line number */
+				__(
+					'The latest commit (%1$s) caused a fatal error in %3$s on this active %2$s and was not pulled. Your current version was kept. Push a new commit or wait a few minutes to retry %1$s.',
+					'gitwire'
+				),
+				$short,
+				$label,
+				$location
+			);
+		}
 
 		return sprintf(
 			/* translators: 1: short commit SHA, 2: plugin or theme */
@@ -876,11 +933,12 @@ class Installer {
 			return $scrape;
 		}
 
-		self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha );
+		$location = self::fatal_location_from_scrape( $data['scrape'] );
+		self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha, $location );
 
 		return new \WP_Error(
 			'gitwire_known_fatal_head',
-			self::known_fatal_head_message( $type, $remote_sha ),
+			self::known_fatal_head_message( $type, $remote_sha, $location ),
 			[ 'status' => 409 ]
 		);
 	}
@@ -909,12 +967,16 @@ class Installer {
 	 * @param string $full_name Repository full name.
 	 * @param string $branch    Branch name.
 	 * @param string $sha       Remote commit SHA.
+	 * @param string $location  Where the error was thrown, as "path:line". Optional.
 	 * @return void
 	 */
-	public static function mark_known_fatal_remote_head( string $provider, string $full_name, string $branch, string $sha ): void {
+	public static function mark_known_fatal_remote_head( string $provider, string $full_name, string $branch, string $sha, string $location = '' ): void {
 		set_transient(
 			self::known_fatal_head_key( $provider, $full_name, $branch ),
-			$sha,
+			'' !== $location ? [
+				'sha'      => $sha,
+				'location' => $location,
+			] : $sha,
 			5 * MINUTE_IN_SECONDS
 		);
 	}
@@ -942,7 +1004,7 @@ class Installer {
 
 		$sha = self::resolve_remote_head_for_record( $rec, $provider, $full_name, $branch );
 		if ( $sha ) {
-			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha );
+			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha, self::fatal_location_from_scrape( $data['scrape'] ) );
 		}
 	}
 
@@ -962,9 +1024,10 @@ class Installer {
 			return;
 		}
 
-		$sha = self::resolve_remote_head_for_record( $rec, $provider, $full_name, $branch );
+		$data = $error->get_error_data();
+		$sha  = self::resolve_remote_head_for_record( $rec, $provider, $full_name, $branch );
 		if ( $sha ) {
-			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha );
+			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha, self::fatal_location_from_scrape( is_array( $data ) ? $data : [] ) );
 		}
 	}
 
@@ -1237,7 +1300,7 @@ class Installer {
 				wp_delete_file( $zip_file );
 				return new \WP_Error(
 					'gitwire_known_fatal_head',
-					self::known_fatal_head_message( $type, $remote_sha ),
+					self::known_fatal_head_message( $type, $remote_sha, self::get_known_fatal_location( $provider, $full_name, $branch ) ),
 					[ 'status' => 409 ]
 				);
 			}
