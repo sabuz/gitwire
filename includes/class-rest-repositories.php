@@ -675,14 +675,61 @@ class REST_Repositories {
 	}
 
 	/**
-	 * Clears browse repo and type caches so the next request refetches from the API.
+	 * Refetches every connection's repository list, replacing each only on success.
+	 *
+	 * Clearing up front and refetching afterwards loses the whole list when the
+	 * refetch fails, so a rate-limit blip used to empty the browse tab. Rows are
+	 * upserted under a cycle stamp instead, and only the ones the provider no
+	 * longer returns are pruned once that connection has answered.
 	 *
 	 * @since 1.0.0
-	 * @return array<string, bool> Confirmation payload.
+	 * @return array<string, mixed> Refresh outcome, with any per-connection errors.
 	 */
 	public static function clear_cache(): array {
-		Repositories::clear_all();
-		return [ 'cleared' => true ];
+		$connections = array_values(
+			array_filter(
+				Connection_Resolver::all(),
+				static fn( $c ) => isset( $c['id'] ) && '' !== $c['id']
+					&& in_array( $c['provider'] ?? '', [ 'github', 'gitlab', 'bitbucket' ], true )
+					&& null !== Connection_Resolver::get_credentials( $c['id'] )
+			)
+		);
+
+		$errors    = [];
+		$refreshed = 0;
+
+		foreach ( $connections as $conn ) {
+			$stamp  = current_datetime()->format( 'Y-m-d H:i:s' );
+			$result = Repositories::fetch_repositories( $conn['provider'], 1, $conn['id'], null, $stamp );
+
+			if ( is_wp_error( $result ) ) {
+				$errors[] = [
+					'connection_id' => $conn['id'],
+					'provider'      => $conn['provider'],
+					'message'       => $result->get_error_message(),
+				];
+				continue;
+			}
+
+			Repositories::remove_stale_since( $conn['id'], $stamp );
+			++$refreshed;
+		}
+
+		// Detections are expensive to rebuild, so keep them when nothing could be reached.
+		if ( $refreshed > 0 ) {
+			Repositories::clear_repository_types();
+		}
+
+		$payload = [
+			'cleared'   => empty( $errors ),
+			'refreshed' => $refreshed,
+		];
+
+		if ( ! empty( $errors ) ) {
+			$payload['connection_errors'] = $errors;
+		}
+
+		return $payload;
 	}
 
 	/**

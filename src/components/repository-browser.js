@@ -243,12 +243,21 @@ export default function RepositoryBrowser( {
 		loadRepos( 0, false, '' );
 	}, [ connIds ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
+	// Keep the current list on screen until the refetch lands, so a failure leaves it intact.
 	const handleRefresh = useCallback( async () => {
 		setLoading( true );
-		setRepositories( [] );
-		setHasMore( false );
 		try {
-			await api.clearCache();
+			const result = await api.clearCache();
+			( result?.connection_errors ?? [] ).forEach( ( err ) => {
+				toast.error(
+					sprintf(
+						/* translators: 1: provider name (e.g. GitLab), 2: error message */
+						__( '%1$s: %2$s', 'gitwire' ),
+						providerLabel( err.provider ),
+						err.message
+					)
+				);
+			} );
 			reset();
 			await loadRepos( 0, false, search, activeSourceFilters );
 		} catch ( e ) {

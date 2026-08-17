@@ -155,6 +155,18 @@ class Repositories {
 	}
 
 	/**
+	 * Drops rows for a connection that the current refresh cycle did not return.
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_id Connection ID whose rows to prune.
+	 * @param string $cycle_start   Datetime the refresh began, in the site timezone.
+	 * @return void
+	 */
+	public static function remove_stale_since( string $connection_id, string $cycle_start ): void {
+		Repository::instance()->remove_stale_since( $connection_id, $cycle_start );
+	}
+
+	/**
 	 * Clears all browse caches.
 	 *
 	 * @since 1.0.0
