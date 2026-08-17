@@ -331,12 +331,17 @@ if ( ! function_exists( '__' ) ) {
 
 if ( ! function_exists( 'apply_filters' ) ) {
 	/**
+	 * Runs any callbacks registered via add_filter() for this hook, in registration order.
+	 *
 	 * @param string $hook_name Hook name.
 	 * @param mixed  $value     Value to filter.
 	 * @param mixed  ...$args   Extra args.
 	 * @return mixed
 	 */
 	function apply_filters( string $hook_name, $value, ...$args ) {
+		foreach ( $GLOBALS['gitwire_test_actions'][ $hook_name ] ?? [] as $callback ) {
+			$value = call_user_func( $callback, $value, ...$args );
+		}
 		return $value;
 	}
 }

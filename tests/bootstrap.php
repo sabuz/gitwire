@@ -31,6 +31,8 @@ define( 'DAY_IN_SECONDS', 86400 );
 define( 'WEEK_IN_SECONDS', 604800 );
 define( 'MB_IN_BYTES', 1048576 );
 
+define( 'ARRAY_A', 'ARRAY_A' );
+
 require_once dirname( __DIR__ ) . '/autoload.php';
 require_once __DIR__ . '/stubs.php';
 

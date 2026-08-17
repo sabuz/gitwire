@@ -187,16 +187,17 @@ class Connection_Resolver {
 	/**
 	 * Returns credentials for the default connection of a provider.
 	 *
+	 * Tries a Pro connection first. A public row still gets stored (and still
+	 * browses fine) when a Pro connection exists for the same identifier, per
+	 * all()'s shadowing — but checking public first here meant every default
+	 * lookup for that provider silently used the weaker, unauthenticated
+	 * credentials instead of the one meant to shadow it.
+	 *
 	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @return array<string, mixed>|null Null when no connection exists for the provider.
 	 */
 	public static function get_credentials_for_provider( string $provider ): ?array {
-		$pub = Public_Connections::get_first_for_provider( $provider );
-		if ( $pub ) {
-			return Public_Connections::to_credentials( $pub );
-		}
-
 		/**
 		 * Filters the credentials for the default connection of a provider.
 		 *
@@ -206,6 +207,11 @@ class Connection_Resolver {
 		 * @return array<string, mixed>|null
 		 */
 		$creds = apply_filters( 'gitwire_provider_credentials', null, $provider );
-		return is_array( $creds ) ? $creds : null;
+		if ( is_array( $creds ) ) {
+			return $creds;
+		}
+
+		$pub = Public_Connections::get_first_for_provider( $provider );
+		return $pub ? Public_Connections::to_credentials( $pub ) : null;
 	}
 }
