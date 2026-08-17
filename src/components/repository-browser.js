@@ -691,6 +691,10 @@ const RepoCard = memo( function RepoCard( {
 	const isInstalled = !! installed;
 	const detecting = autoDetectType && ! detection && ! isInstalled;
 
+	// Guard both directions: a stringified tinyint makes "0" truthy and 0 falsy.
+	const isPrivate =
+		repo.private === true || repo.private === 1 || repo.private === '1';
+
 	const canInstall =
 		! isInstalled &&
 		( ! autoDetectType ||
@@ -761,10 +765,10 @@ const RepoCard = memo( function RepoCard( {
 					) }
 					<span
 						className={ `gitwire-badge gitwire-badge--${
-							repo.private ? 'warning' : 'success'
+							isPrivate ? 'warning' : 'success'
 						}` }
 					>
-						{ repo.private
+						{ isPrivate
 							? __( 'Private', 'gitwire' )
 							: __( 'Public', 'gitwire' ) }
 					</span>

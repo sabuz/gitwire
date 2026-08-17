@@ -146,6 +146,10 @@ class Repository extends Model_Base {
 					if ( ! empty( $row['type_meta'] ) ) {
 						$row['type_meta'] = json_decode( $row['type_meta'], true );
 					}
+
+					// wpdb hands back tinyint as "0"/"1", and "0" is truthy once it reaches JS.
+					$row['private'] = (bool) ( $row['private'] ?? false );
+
 					return $row;
 				},
 				$rows
