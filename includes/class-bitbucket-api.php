@@ -321,6 +321,12 @@ class Bitbucket_API implements Git_Provider_Interface {
 				@unlink( $tmp_file );
 				return new \WP_Error( 'gitwire_no_location', 'Bitbucket did not return a download URL.' );
 			}
+			// the redirect target is chosen by the remote, so it gets the same host check the base URL got.
+			if ( ! Settings::is_safe_remote_url( $location ) ) {
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
+				@unlink( $tmp_file );
+				return new \WP_Error( 'gitwire_unsafe_redirect', 'Bitbucket redirected the download to an address that is not publicly routable.' );
+			}
 			$response = $this->stream_to( $location, [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ], $tmp_file );
 		}
 

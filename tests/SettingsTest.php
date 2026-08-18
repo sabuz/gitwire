@@ -193,6 +193,14 @@ class SettingsTest extends TestCase {
 			'mapped private 192' => [ '::ffff:192.168.1.1' ],
 			'mapped metadata'    => [ '::ffff:169.254.169.254' ],
 			'compat loopback'    => [ '::127.0.0.1' ],
+			// the same addresses spelled in hex or fully expanded: the dotted form is
+			// only one of several spellings, and the range flags see through none of
+			// them before 8.5.
+			'hex loopback'       => [ '::ffff:7f00:1' ],
+			'hex metadata'       => [ '::ffff:a9fe:a9fe' ],
+			'hex private 192'    => [ '::ffff:c0a8:101' ],
+			'expanded loopback'  => [ '0:0:0:0:0:ffff:127.0.0.1' ],
+			'compat hex'         => [ '::7f00:1' ],
 		];
 	}
 
@@ -246,5 +254,23 @@ class SettingsTest extends TestCase {
 	public function test_numeric_enum_values_survive_a_json_round_trip(): void {
 		$this->assertSame( 250, Settings::merge_save( [ 'max_repos_per_source' => '250' ] )['max_repos_per_source'] );
 		$this->assertSame( 15, Settings::merge_save( [ 'log_retention_days' => '15' ] )['log_retention_days'] );
+	}
+
+	/**
+	 * @dataProvider blocked_gitlab_urls
+	 * @param string $url URL that must be rejected.
+	 */
+	public function test_is_safe_remote_url_blocks_unsafe_hosts( string $url ): void {
+		$this->assertFalse( Settings::is_safe_remote_url( $url ) );
+	}
+
+	public function test_is_safe_remote_url_allows_a_public_https_host(): void {
+		$this->assertTrue( Settings::is_safe_remote_url( 'https://gitlab.com/archive.zip' ) );
+	}
+
+	public function test_is_safe_remote_url_rejects_empty(): void {
+		// Unlike is_allowed_gitlab_url(), empty is not "use the default" here -- it is
+		// a redirect target that names nothing, which must never be fetched.
+		$this->assertFalse( Settings::is_safe_remote_url( '' ) );
 	}
 }

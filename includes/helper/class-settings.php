@@ -317,7 +317,22 @@ class Settings {
 			return true;
 		}
 
-		$parts = wp_parse_url( $url );
+		return self::is_safe_remote_url( $url );
+	}
+
+	/**
+	 * Returns true only for an https URL whose host resolves to a publicly routable address.
+	 *
+	 * Also applied to redirect targets, not just configured base URLs: a self-hosted GitLab
+	 * answers archive requests with a 30x whose Location it chooses freely, so an unvalidated
+	 * follow is a blind GET against whatever internal host that Location names.
+	 *
+	 * @since 1.0.0
+	 * @param string $url Absolute URL to check.
+	 * @return bool
+	 */
+	public static function is_safe_remote_url( string $url ): bool {
+		$parts = wp_parse_url( trim( $url ) );
 		if ( empty( $parts['scheme'] ) || 'https' !== strtolower( $parts['scheme'] ) ) {
 			return false;
 		}
@@ -392,18 +407,27 @@ class Settings {
 	public static function is_safe_ip( string $ip ): bool {
 		$ip = strtolower( trim( $ip ) );
 
-		/*
-		 * Unwrap IPv4-mapped and IPv4-compatible IPv6 before anything else. PHP's
-		 * range flags only learned to see through the wrapper in 8.5, so on 8.1, the
-		 * supported floor, ::ffff:127.0.0.1 validated as a public address.
-		 */
-		if ( preg_match( '/^::(?:ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/', $ip, $m ) ) {
-			return self::is_safe_ip( $m[1] );
-		}
-
 		// IPv6 loopback and unspecified.
 		if ( in_array( $ip, [ '::1', '::' ], true ) ) {
 			return false;
+		}
+
+		/*
+		 * Unwrap IPv4-mapped and IPv4-compatible IPv6 before anything else. PHP's
+		 * range flags only learned to see through the wrapper in 8.5, so on 8.1, the
+		 * supported floor, ::ffff:127.0.0.1 validated as a public address. Unwrapping
+		 * the packed bytes rather than the text form covers every spelling of the same
+		 * address: ::ffff:7f00:1 and 0:0:0:0:0:ffff:127.0.0.1 are both 127.0.0.1.
+		 */
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- a malformed address is a plain false return here, not a condition worth warning about.
+		$packed = @inet_pton( $ip );
+
+		if ( false !== $packed && 16 === strlen( $packed ) ) {
+			$prefix = substr( $packed, 0, 12 );
+
+			if ( str_repeat( "\0", 12 ) === $prefix || str_repeat( "\0", 10 ) . "\xff\xff" === $prefix ) {
+				return self::is_safe_ip( inet_ntop( substr( $packed, 12 ) ) );
+			}
 		}
 
 		// 127.0.0.0/8 loopback range, not covered by FILTER_FLAG_NO_RES_RANGE.
