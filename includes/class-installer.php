@@ -1608,8 +1608,10 @@ class Installer {
 	private static function extract_zip( string $zip_path, string $destination ): bool|\WP_Error {
 		global $wp_filesystem;
 
-		// Unzip to a temp directory first.
-		$tmp_dir = get_temp_dir() . 'gitwire-extract-' . uniqid( '', true );
+		// Unzip to a temp directory first. The name is unguessable rather than uniqid()'s
+		// timestamp, so a local user on shared hosting cannot pre-create the path we are
+		// about to extract into.
+		$tmp_dir = get_temp_dir() . 'gitwire-extract-' . wp_generate_password( 20, false );
 
 		$result = unzip_file( $zip_path, $tmp_dir );
 		if ( is_wp_error( $result ) ) {
