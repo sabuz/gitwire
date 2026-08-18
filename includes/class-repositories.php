@@ -155,6 +155,17 @@ class Repositories {
 	}
 
 	/**
+	 * Clears cached type detection data for a single connection.
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_id Connection whose detections to clear.
+	 * @return void
+	 */
+	public static function clear_repository_types_for_connection( string $connection_id ): void {
+		Repository::instance()->clear_types_for_connection( $connection_id );
+	}
+
+	/**
 	 * Drops rows for a connection that the current refresh cycle did not return.
 	 *
 	 * @since 1.0.0

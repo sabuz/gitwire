@@ -385,6 +385,31 @@ class Repository extends Model_Base {
 	}
 
 	/**
+	 * Resets type detection data for one connection's rows only.
+	 *
+	 * A refresh that reached some connections but not others must not discard detections
+	 * belonging to the ones it could not reach: those rows are still valid, and nothing
+	 * will rebuild them until that connection answers again.
+	 *
+	 * @since 1.0.0
+	 * @param string $connection_id Connection whose rows to reset.
+	 * @return bool
+	 */
+	public function clear_types_for_connection( string $connection_id ): bool {
+		global $wpdb;
+		$table = $this->table_name();
+
+		if ( '' === $connection_id ) {
+			return false;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET type = '', type_meta = NULL WHERE connection_id = %s", $connection_id ) );
+
+		return true;
+	}
+
+	/**
 	 * Returns a batch of repository rows that have no type detection result.
 	 *
 	 * @since 1.0.0

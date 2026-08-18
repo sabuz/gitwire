@@ -712,12 +712,11 @@ class REST_Repositories {
 			}
 
 			Repositories::remove_stale_since( $conn['id'], $stamp );
+			// Detections are expensive to rebuild, so only the connection that just
+			// answered loses its own; one rate-limited connection must not wipe the
+			// detections of every other.
+			Repositories::clear_repository_types_for_connection( $conn['id'] );
 			++$refreshed;
-		}
-
-		// Detections are expensive to rebuild, so keep them when nothing could be reached.
-		if ( $refreshed > 0 ) {
-			Repositories::clear_repository_types();
 		}
 
 		$payload = [
