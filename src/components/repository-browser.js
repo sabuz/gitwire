@@ -688,7 +688,7 @@ export default function RepositoryBrowser( {
 	);
 }
 
-const RepoCard = memo( function RepoCard( {
+const RepoCard = memo( function ( {
 	repo,
 	detection,
 	installed,
@@ -823,6 +823,7 @@ const RepoCard = memo( function RepoCard( {
 		</Card>
 	);
 } );
+RepoCard.displayName = 'RepoCard';
 
 function TypeBadge( { detection, installed } ) {
 	if ( installed ) {
