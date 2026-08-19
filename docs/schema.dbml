@@ -20,9 +20,9 @@ Table gitwire_connections {
   error         text           [null, note: 'Last test error message — e.g. "Invalid credentials". NULL when last test passed or untested']
   name          varchar(255)   [not null, default: '', note: 'Profile display name from provider API — e.g. "Nazmul Sabuz". Empty until first credentials test']
   avatar_url    varchar(512)   [not null, default: '', note: 'Profile avatar URL — e.g. "https://avatars.githubusercontent.com/u/123456". Empty until first test']
-  rate_limit     int unsigned  [not null, default: 0, note: 'API rate limit ceiling — e.g. 5000 (GitHub authenticated), 60 (unauthenticated). 0 until first test']
-  rate_remaining int unsigned  [not null, default: 0, note: 'Remaining API calls in the current window — e.g. 4982. 0 until first test']
-  rate_reset     int unsigned  [not null, default: 0, note: 'Unix timestamp when the rate-limit window resets — e.g. 1741946400. 0 until first test']
+  rate_limit     int  [not null, default: 0, note: 'API rate limit ceiling — e.g. 5000 (GitHub authenticated), 60 (unauthenticated). 0 until first test']
+  rate_remaining int  [not null, default: 0, note: 'Remaining API calls in the current window — e.g. 4982. 0 until first test']
+  rate_reset     int  [not null, default: 0, note: 'Unix timestamp when the rate-limit window resets — e.g. 1741946400. 0 until first test']
   created_at    datetime       [not null, note: 'e.g. 2025-03-14 09:00:00']
   updated_at    datetime       [not null, note: 'Last profile cache write — e.g. 2025-03-20 11:30:00. Returned to JS as updated_at (Unix int via strtotime)']
 
@@ -33,7 +33,7 @@ Table gitwire_connections {
 }
 
 Table gitwire_installations {
-  id           bigint unsigned [pk, increment]
+  id           bigint [pk, increment]
   connection_id varchar(64) [not null, default: '', note: 'FK → gitwire_connections.id. Empty string for URL-based installs']
   provider     varchar(32)  [not null, note: '"github" | "gitlab" | "bitbucket"']
   owner        varchar(255) [not null, default: '', note: 'e.g. "nazmulsabuz"']
