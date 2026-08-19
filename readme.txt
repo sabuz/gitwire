@@ -1,7 +1,7 @@
 === Gitwire ===
 Contributors: nazsabuz
 Tags: github, gitlab, bitbucket, git, deploy
-Requires at least: 6.8
+Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.1
 Stable tag: 1.0.0
@@ -167,7 +167,7 @@ Yes. Enter your instance URL when creating the connection. The URL must use HTTP
 
 = What WordPress and PHP versions are required? =
 
-WordPress 6.8 or later, and PHP 8.1 or later.
+WordPress 7.0 or later, and PHP 8.1 or later.
 
 = Does Gitwire work on multisite? =
 

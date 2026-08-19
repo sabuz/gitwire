@@ -4,7 +4,7 @@
  * Plugin URI:        https://gitwire.app
  * Description:       Install and update plugins and themes from GitHub, GitLab, or Bitbucket. Switch branches, and roll back automatically if an update breaks the site.
  * Version:           1.0.0
- * Requires at least: 6.8
+ * Requires at least: 7.0
  * Requires PHP:      8.1
  * Author:            Gitwire
  * Author URI:        https://gitwire.app
