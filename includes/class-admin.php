@@ -233,10 +233,10 @@ class Admin {
 	 * Returns the sidebar icon as a data URI, cached across requests.
 	 *
 	 * The hook runs on every admin page load, so reading and encoding the file
-	 * each time is pure overhead. Deliberately its own asset rather than the
-	 * full-colour icon.svg: a menu icon has to be a flat white glyph for
-	 * WordPress to tint it per colour scheme, and icon.svg is a dark rounded
-	 * tile with gradient fills that no recolouring can turn into one.
+	 * each time is pure overhead. The asset is a flat white glyph rather than
+	 * the full brand mark: WordPress paints a menu icon as a background at 60
+	 * percent opacity against the dark sidebar, so a dark tile with gradient
+	 * fills would all but disappear there.
 	 *
 	 * @since 1.0.0
 	 * @return string
@@ -342,7 +342,6 @@ class Admin {
 					'nonce'                => wp_create_nonce( 'wp_rest' ),
 					'public_connections'   => Public_Connections::all(),
 					'connections_metadata' => Connection_Meta::get_connection_cache(),
-					'icon_url'             => GITWIRE_URL . 'assets/images/icon.svg',
 					'disconnected_url'     => GITWIRE_URL . 'assets/images/cloud-alert.svg',
 					'not_found_url'        => GITWIRE_URL . 'assets/images/folder-x.svg',
 					'themes_url'           => self::admin_url_for( 'themes.php' ),
