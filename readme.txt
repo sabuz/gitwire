@@ -30,7 +30,7 @@ Already installed something? Pull the latest commit on the tracked branch with o
 
 **Automatic updates**
 
-Enable auto-update per repository and Gitwire applies new commits on its own, on a schedule you choose (from every five minutes to once a day). It is off by default for every repository, so nothing deploys automatically until you say so.
+Enable auto-update per repository and Gitwire applies new commits on its own, on a schedule you choose (from every five minutes to once a day, or never). It is off by default for every repository, so nothing deploys automatically until you say so.
 
 **Fatal Guard: automatic fatal-error recovery**
 
@@ -64,7 +64,7 @@ Repository lists and type-detection results are cached and refreshed in the back
 
 **Private repositories**
 
-Gitwire works with public repositories out of the box, with no token at all. Private repositories, higher API rate limits, and self-hosted GitLab require [Gitwire Pro](https://gitwire.app/pro), which stores an encrypted access token and authenticates with the provider API. Tokens are encrypted before being written to the database and are never sent anywhere except to the Git host they belong to.
+Gitwire works with public repositories out of the box, with no token at all. Private repositories, higher API rate limits, and self-hosted GitLab require [Gitwire Pro](https://gitwire.app/pro), which stores an encrypted access token and authenticates with the provider API. An authenticated GitHub connection raises the ceiling from 60 requests per hour to a typical 5,000, which matters as soon as you browse an account with many repositories or check for updates often. Tokens are encrypted before being written to the database and are never sent anywhere except to the Git host they belong to.
 
 Full documentation: [gitwire.app/docs](https://gitwire.app/docs/)
 
@@ -168,6 +168,10 @@ Yes, with Gitwire Pro. Enter your instance URL alongside the token when creating
 = What WordPress and PHP versions are required? =
 
 WordPress 6.9 or later, and PHP 8.1 or later.
+
+= Does Gitwire work on multisite? =
+
+Yes. Plugins and themes are shared across a whole network, so Gitwire runs in the Network Admin only and is limited to Super Admins. It does not appear in an individual site's own dashboard, and a site Administrator cannot reach it.
 
 = Where is my code stored? =
 
