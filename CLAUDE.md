@@ -23,7 +23,7 @@ composer phpunit       # PHP tests
 
 ## PHP conventions
 
-- Short array syntax `[]`, PHP 8.1+
+- Short array syntax `[]`, PHP 8.0+
 - `@since` tag on every method
 - `@return void` explicit on void methods
 - DocBlocks follow WPCS format — single-line description, blank line, tags

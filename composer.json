@@ -1,26 +1,29 @@
 {
-	"name": "sabuz/gitwire",
-	"description": "Install and update plugins and themes from GitHub, GitLab, or Bitbucket. Switch branches, and roll back automatically if an update breaks the site.",
-	"license": "GPL-2.0-or-later",
-	"require-dev": {
-		"squizlabs/php_codesniffer": "^3.10",
-		"wp-coding-standards/wpcs": "^3.1",
-		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
-		"phpunit/phpunit": "^10.5",
-		"phpstan/phpstan": "^2.2",
-		"szepeviktor/phpstan-wordpress": "^2.0"
-	},
-	"scripts": {
-		"phpcs": "./vendor/bin/phpcs --standard=phpcs.xml --extensions=php ./includes ./tests autoload.php gitwire.php uninstall.php",
-		"phpcbf": "./vendor/bin/phpcbf --standard=phpcs.xml --extensions=php ./includes ./tests autoload.php gitwire.php uninstall.php",
-		"phpunit": "./vendor/bin/phpunit -c phpunit.xml.dist",
-		"phpstan": "./vendor/bin/phpstan analyse --memory-limit=2G",
-		"update-deps": "composer update --with-dependencies",
-		"check-updates": "composer outdated"
-	},
-	"config": {
-		"allow-plugins": {
-			"dealerdirect/phpcodesniffer-composer-installer": true
-		}
-	}
+    "name": "sabuz/gitwire",
+    "description": "Install and update plugins and themes from GitHub, GitLab, or Bitbucket. Switch branches, and roll back automatically if an update breaks the site.",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.10",
+        "wp-coding-standards/wpcs": "^3.1",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+        "phpunit/phpunit": "^10.5",
+        "phpstan/phpstan": "^2.2",
+        "szepeviktor/phpstan-wordpress": "^2.0"
+    },
+    "scripts": {
+        "phpcs": "./vendor/bin/phpcs --standard=phpcs.xml --extensions=php ./includes ./tests autoload.php gitwire.php uninstall.php",
+        "phpcbf": "./vendor/bin/phpcbf --standard=phpcs.xml --extensions=php ./includes ./tests autoload.php gitwire.php uninstall.php",
+        "phpunit": "./vendor/bin/phpunit -c phpunit.xml.dist",
+        "phpstan": "./vendor/bin/phpstan analyse --memory-limit=2G",
+        "update-deps": "composer update --with-dependencies",
+        "check-updates": "composer outdated"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
 }

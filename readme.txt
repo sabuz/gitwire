@@ -3,7 +3,7 @@ Contributors: nazsabuz
 Tags: github, gitlab, bitbucket, git, deploy
 Requires at least: 7.0
 Tested up to: 7.0
-Requires PHP: 8.1
+Requires PHP: 8.0
 Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -167,7 +167,7 @@ Yes. Enter your instance URL when creating the connection. The URL must use HTTP
 
 = What WordPress and PHP versions are required? =
 
-WordPress 7.0 or later, and PHP 8.1 or later.
+WordPress 7.0 or later, and PHP 8.0 or later.
 
 = Does Gitwire work on multisite? =
 
