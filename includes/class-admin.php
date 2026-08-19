@@ -232,34 +232,37 @@ class Admin {
 	/**
 	 * Returns the sidebar icon as a data URI, cached across requests.
 	 *
-	 * The hook runs on every admin page load and the file never changes between
-	 * releases, so reading and re-encoding it each time is pure overhead.
+	 * The hook runs on every admin page load, so reading and encoding the file
+	 * each time is pure overhead. Deliberately its own asset rather than the
+	 * full-colour icon.svg: a menu icon has to be a flat white glyph for
+	 * WordPress to tint it per colour scheme, and icon.svg is a dark rounded
+	 * tile with gradient fills that no recolouring can turn into one.
 	 *
 	 * @since 1.0.0
 	 * @return string
 	 */
 	private static function menu_icon(): string {
-		$cache_key = 'gitwire_menu_icon_' . GITWIRE_VERSION;
+		$icon_path = GITWIRE_DIR . 'assets/images/menu-icon.svg';
+		if ( ! file_exists( $icon_path ) ) {
+			return 'none';
+		}
+
+		/*
+		 * Keyed on the file's own mtime rather than the plugin version: the
+		 * version does not change between builds, so an edited icon would
+		 * otherwise stay stale until the transient expired.
+		 */
+		$cache_key = 'gitwire_menu_icon_' . filemtime( $icon_path );
 		$cached    = get_transient( $cache_key );
 		if ( is_string( $cached ) && '' !== $cached ) {
 			return $cached;
 		}
 
-		$icon_path = GITWIRE_DIR . 'assets/images/icon.svg';
-		if ( ! file_exists( $icon_path ) ) {
-			return 'none';
-		}
-
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$svg_raw = (string) file_get_contents( $icon_path );
+		$svg = (string) file_get_contents( $icon_path );
 
-		/*
-		 * Replace all hex fill/stroke colours with white so WordPress
-		 * colour-scheme CSS can tint the icon via opacity correctly.
-		 */
-		$svg_white = (string) preg_replace( '/(fill|stroke)="#[0-9a-fA-F]{3,6}"/', '$1="#ffffff"', $svg_raw );
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
-		$icon = 'data:image/svg+xml;base64,' . base64_encode( $svg_white );
+		$icon = 'data:image/svg+xml;base64,' . base64_encode( $svg );
 
 		set_transient( $cache_key, $icon, WEEK_IN_SECONDS );
 
