@@ -1,28 +1,39 @@
+// Owned by the free plugin, but four columns are added by Gitwire Pro via
+// ALTER TABLE and dropped again when Pro is uninstalled (see
+// Gitwire_Pro\Migrations\Connection). They are marked "Pro" below. On a
+// free-only site those columns do not exist at all, so anything reading them
+// must tolerate their absence rather than assume NULL.
+//
+// Pro's own drop_columns() deletes every row where credentials IS NOT NULL
+// before dropping the column, so uninstalling Pro removes private connections
+// outright rather than leaving them behind as unusable public ones.
 Table gitwire_connections {
   id            varchar(64)    [primary key, note: 'e.g. pub_a1b2c3d4-e5f6-7890-abcd-ef1234567890 (public) or prv_7f3e9c1a-… (Pro private)']
   provider      varchar(32)    [not null, note: '"github" | "gitlab" | "bitbucket"']
   host_url      varchar(512)   [null, note: 'GitLab self-hosted base URL — e.g. "https://gitlab.acme.com". NULL for github.com/gitlab.com. Reserved for future Gitea support']
   identifier    varchar(255)   [not null, default: '', note: 'GitHub/GitLab: username — e.g. "nazmulsabuz". Bitbucket: workspace slug — e.g. "acme-org"']
-  email         varchar(255)   [null, note: 'Bitbucket Pro only — account email used for PAT auth — e.g. "dev@acme.com". NULL otherwise']
-  credentials   text           [null, note: 'NULL = public connection; encrypted JSON for Pro — e.g. {"api_token":"ghp_…"} (GitHub/GitLab) or {"email":"dev@acme.com","api_token":"ATB…"} (Bitbucket)']
-  scope         varchar(16)    [not null, default: 'all', note: '"all" = site-wide; WP user ID string = user-scoped — e.g. "42"']
+  email         varchar(255)   [null, note: 'Pro. Bitbucket only — Atlassian account email paired with the API token — e.g. "dev@acme.com". NULL otherwise']
+  credentials   text           [null, note: 'Pro. NULL = public connection; AES-256-GCM encrypted JSON otherwise — e.g. {"api_token":"ghp_…"} (GitHub/GitLab) or {"email":"dev@acme.com","api_token":"ATB…"} (Bitbucket)']
+  scope         varchar(16)    [null, note: 'Pro. "all" = shared with every admin ("Save for all admins"); WP user ID string = private to that user — e.g. "42". NULL on rows predating Pro']
+  token_preview varchar(64)    [null, note: 'Pro. Masked token for display only, from Settings::mask_token() — e.g. "ghp_••••••••••••1a2b". Never the usable secret; that lives encrypted in credentials']
   authenticated tinyint(1)     [not null, default: 0, note: '1 = last credentials test passed; 0 = untested or failed. Distinct from credentials IS NOT NULL']
   error         text           [null, note: 'Last test error message — e.g. "Invalid credentials". NULL when last test passed or untested']
   name          varchar(255)   [not null, default: '', note: 'Profile display name from provider API — e.g. "Nazmul Sabuz". Empty until first credentials test']
   avatar_url    varchar(512)   [not null, default: '', note: 'Profile avatar URL — e.g. "https://avatars.githubusercontent.com/u/123456". Empty until first test']
-  rate_limit     int           [not null, default: 0, note: 'API rate limit ceiling — e.g. 5000 (GitHub authenticated). 0 until first test']
-  rate_remaining int           [not null, default: 0, note: 'Remaining API calls in the current window — e.g. 4982. 0 until first test']
-  rate_reset     int           [not null, default: 0, note: 'Unix timestamp when the rate-limit window resets — e.g. 1741946400. 0 until first test']
+  rate_limit     int unsigned  [not null, default: 0, note: 'API rate limit ceiling — e.g. 5000 (GitHub authenticated), 60 (unauthenticated). 0 until first test']
+  rate_remaining int unsigned  [not null, default: 0, note: 'Remaining API calls in the current window — e.g. 4982. 0 until first test']
+  rate_reset     int unsigned  [not null, default: 0, note: 'Unix timestamp when the rate-limit window resets — e.g. 1741946400. 0 until first test']
   created_at    datetime       [not null, note: 'e.g. 2025-03-14 09:00:00']
   updated_at    datetime       [not null, note: 'Last profile cache write — e.g. 2025-03-20 11:30:00. Returned to JS as updated_at (Unix int via strtotime)']
 
   indexes {
     provider
+    (provider, identifier)
   }
 }
 
 Table gitwire_installations {
-  id           bigint       [pk, increment]
+  id           bigint unsigned [pk, increment]
   connection_id varchar(64) [not null, default: '', note: 'FK → gitwire_connections.id. Empty string for URL-based installs']
   provider     varchar(32)  [not null, note: '"github" | "gitlab" | "bitbucket"']
   owner        varchar(255) [not null, default: '', note: 'e.g. "nazmulsabuz"']
@@ -47,7 +58,7 @@ Table gitwire_installations {
 }
 
 Table gitwire_commits {
-  installation_id bigint       [not null, note: 'FK → gitwire_installations.id']
+  installation_id bigint unsigned [not null, note: 'FK → gitwire_installations.id']
   branch          varchar(255) [not null, default: 'main', note: 'e.g. "main"']
   data            mediumtext   [not null, note: 'JSON array from provider API — e.g. [{"sha":"a3f8c1d…","message":"Fix size chart layout","date":"2025-03-20T11:00:00Z","author":"nazmulsabuz"}]']
   updated_at      datetime     [not null, note: 'Last time this cache was refreshed — e.g. 2025-03-20 11:30:00']
