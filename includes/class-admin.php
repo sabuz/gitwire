@@ -53,6 +53,7 @@ class Admin {
 		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue' ] );
 		add_filter( 'admin_body_class', [ self::class, 'body_class' ] );
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
+		add_action( 'admin_head', [ self::class, 'hide_footer_text' ], 999 );
 
 		// Native list repo labels.
 		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
@@ -105,6 +106,25 @@ class Admin {
 
 		remove_all_actions( 'admin_notices' );
 		remove_all_actions( 'all_admin_notices' );
+	}
+
+	/**
+	 * Removes the "Thank you for creating with WordPress" text and version number
+	 * from the admin footer on Gitwire pages. Both defaults are baked into
+	 * admin-footer.php's own apply_filters() call, so they have to be overridden
+	 * rather than unhooked.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function hide_footer_text(): void {
+		if ( ! self::is_gitwire_screen() ) {
+			return;
+		}
+
+		// Priority 999 wins without unregistering other plugins' callbacks on this screen.
+		add_filter( 'admin_footer_text', '__return_empty_string', 999 );
+		add_filter( 'update_footer', '__return_empty_string', 999 );
 	}
 
 	/**
