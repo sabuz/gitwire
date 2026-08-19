@@ -58,12 +58,19 @@ class REST {
 	}
 
 	/**
-	 * Permission callback — requires manage_options capability.
+	 * Permission callback. On multisite, plugins/themes are shared across the
+	 * whole network, so only a Super Admin may install or update them —
+	 * matching the Network Admin-only menu registered in Admin::init(). REST
+	 * requests don't pass through wp-admin/network.php's own Super Admin gate,
+	 * so is_super_admin() has to be checked explicitly here.
 	 *
 	 * @since 1.0.0
-	 * @return bool True if the current user can manage options.
+	 * @return bool True if the current user can manage Gitwire.
 	 */
 	public static function can_manage(): bool {
+		if ( is_multisite() ) {
+			return is_super_admin();
+		}
 		return current_user_can( 'manage_options' );
 	}
 

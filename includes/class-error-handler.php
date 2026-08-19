@@ -391,7 +391,7 @@ class Error_Handler {
 			return;
 		}
 
-		$url = admin_url( 'admin.php?page=gitwire' );
+		$url = is_multisite() ? network_admin_url( 'admin.php?page=gitwire' ) : admin_url( 'admin.php?page=gitwire' );
 
 		if ( ! headers_sent() ) {
 			wp_safe_redirect( $url );

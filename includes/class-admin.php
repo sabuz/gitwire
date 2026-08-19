@@ -26,11 +26,18 @@ class Admin {
 	private const PAGE_SLUG = 'gitwire';
 
 	/**
-	 * Screen IDs WordPress generates for this plugin's pages.
+	 * Screen IDs WordPress generates for this plugin's pages. The '-network'
+	 * variants are what WP_Screen produces when the menu is registered via
+	 * network_admin_menu (multisite) instead of admin_menu.
 	 *
 	 * @var string[]
 	 */
-	private const SCREEN_IDS = [ 'toplevel_page_gitwire', 'gitwire_page_gitwire' ];
+	private const SCREEN_IDS = [
+		'toplevel_page_gitwire',
+		'gitwire_page_gitwire',
+		'toplevel_page_gitwire-network',
+		'gitwire_page_gitwire-network',
+	];
 
 	/**
 	 * Registers all admin hooks.
@@ -39,7 +46,10 @@ class Admin {
 	 * @return void
 	 */
 	public static function init(): void {
-		add_action( 'admin_menu', [ self::class, 'add_menu' ] );
+		// Plugins/themes are network-shared resources, so the menu lives in Network
+		// Admin on multisite — only a Super Admin can reach it there, not every
+		// site's own Administrator (see required_cap() below).
+		add_action( is_multisite() ? 'network_admin_menu' : 'admin_menu', [ self::class, 'add_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue' ] );
 		add_filter( 'admin_body_class', [ self::class, 'body_class' ] );
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
@@ -48,8 +58,38 @@ class Admin {
 		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
 		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'label_managed_themes' ] );
 
-		// Repositories and Settings links in the plugins list table.
-		add_filter( 'plugin_action_links_' . GITWIRE_BASENAME, [ self::class, 'add_plugin_action_links' ] );
+		// Repositories and Settings links in the plugins list table. Gitwire is only
+		// site-activated on the main site, so its row still appears on that site's
+		// own Plugins page as well as (for multisite) Network Admin's; each fires a
+		// differently named filter for the same row.
+		$link_filter = is_multisite() ? 'network_admin_plugin_action_links_' : 'plugin_action_links_';
+		add_filter( $link_filter . GITWIRE_BASENAME, [ self::class, 'add_plugin_action_links' ] );
+	}
+
+	/**
+	 * Capability required to access Gitwire. Plugins/themes are shared across a
+	 * multisite network, so only a Super Admin may install or update them there —
+	 * 'manage_network_plugins' is only ever granted to Super Admins (see
+	 * WP_User::has_cap()), unlike 'manage_options' which every site Administrator
+	 * has, including on subsites that never boot Gitwire at all.
+	 *
+	 * @since 1.0.0
+	 * @return string
+	 */
+	private static function required_cap(): string {
+		return is_multisite() ? 'manage_network_plugins' : 'manage_options';
+	}
+
+	/**
+	 * Builds an admin URL for the Gitwire page, routed through Network Admin on
+	 * multisite since that's the only place the menu is registered.
+	 *
+	 * @since 1.0.0
+	 * @param string $path Admin-relative path, e.g. 'admin.php'.
+	 * @return string
+	 */
+	private static function admin_url_for( string $path ): string {
+		return is_multisite() ? network_admin_url( $path ) : admin_url( $path );
 	}
 
 	/**
@@ -108,11 +148,12 @@ class Admin {
 	 */
 	public static function add_menu(): void {
 		$menu_icon = self::menu_icon();
+		$cap       = self::required_cap();
 
 		add_menu_page(
 			__( 'Gitwire', 'gitwire' ),
 			__( 'Gitwire', 'gitwire' ),
-			'manage_options',
+			$cap,
 			self::PAGE_SLUG,
 			[ self::class, 'render_page' ],
 			$menu_icon,
@@ -124,7 +165,7 @@ class Admin {
 			self::PAGE_SLUG,
 			__( 'Repositories', 'gitwire' ),
 			__( 'Repositories', 'gitwire' ),
-			'manage_options',
+			$cap,
 			self::PAGE_SLUG,
 			[ self::class, 'render_page' ],
 		);
@@ -133,7 +174,7 @@ class Admin {
 			self::PAGE_SLUG,
 			__( 'Add Repository', 'gitwire' ),
 			__( 'Add Repository', 'gitwire' ),
-			'manage_options',
+			$cap,
 			self::PAGE_SLUG . '&path=add-repository',
 			[ self::class, 'render_page' ],
 		);
@@ -142,7 +183,7 @@ class Admin {
 			self::PAGE_SLUG,
 			__( 'Settings', 'gitwire' ),
 			__( 'Settings', 'gitwire' ),
-			'manage_options',
+			$cap,
 			self::PAGE_SLUG . '&path=settings',
 			[ self::class, 'render_page' ],
 		);
@@ -151,7 +192,7 @@ class Admin {
 			self::PAGE_SLUG,
 			__( 'Tools', 'gitwire' ),
 			__( 'Tools', 'gitwire' ),
-			'manage_options',
+			$cap,
 			self::PAGE_SLUG . '&path=tools',
 			[ self::class, 'render_page' ],
 		);
@@ -161,7 +202,7 @@ class Admin {
 				self::PAGE_SLUG,
 				__( 'Logs', 'gitwire' ),
 				__( 'Logs', 'gitwire' ),
-				'manage_options',
+				$cap,
 				self::PAGE_SLUG . '&path=logs',
 				[ self::class, 'render_page' ],
 			);
@@ -281,7 +322,7 @@ class Admin {
 					'icon_url'             => GITWIRE_URL . 'assets/images/icon.svg',
 					'disconnected_url'     => GITWIRE_URL . 'assets/images/cloud-alert.svg',
 					'not_found_url'        => GITWIRE_URL . 'assets/images/folder-x.svg',
-					'themes_url'           => admin_url( 'themes.php' ),
+					'themes_url'           => self::admin_url_for( 'themes.php' ),
 					'initial_tab'          => $initial_tab,
 					'settings'             => $settings,
 					'installed'            => $installed ? $installed : (object) [],
@@ -310,7 +351,7 @@ class Admin {
 	 * @return void
 	 */
 	public static function render_page(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( self::required_cap() ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'gitwire' ) );
 		}
 		require_once GITWIRE_DIR . 'views/admin-page.php';
@@ -324,13 +365,13 @@ class Admin {
 	 * @return array<string, string>
 	 */
 	public static function add_plugin_action_links( array $actions ): array {
-		$repositories_url = add_query_arg( 'page', 'gitwire', admin_url( 'admin.php' ) );
+		$repositories_url = add_query_arg( 'page', 'gitwire', self::admin_url_for( 'admin.php' ) );
 		$settings_url     = add_query_arg(
 			[
 				'page' => 'gitwire',
 				'path' => 'settings',
 			],
-			admin_url( 'admin.php' )
+			self::admin_url_for( 'admin.php' )
 		);
 
 		return array_merge(
