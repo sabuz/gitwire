@@ -47,7 +47,7 @@ class Admin {
 	 */
 	public static function init(): void {
 		// Plugins/themes are network-shared resources, so the menu lives in Network
-		// Admin on multisite — only a Super Admin can reach it there, not every
+		// Admin on multisite. Only a Super Admin can reach it there, not every
 		// site's own Administrator (see required_cap() below).
 		add_action( is_multisite() ? 'network_admin_menu' : 'admin_menu', [ self::class, 'add_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue' ] );
@@ -68,7 +68,7 @@ class Admin {
 
 	/**
 	 * Capability required to access Gitwire. Plugins/themes are shared across a
-	 * multisite network, so only a Super Admin may install or update them there —
+	 * multisite network, so only a Super Admin may install or update them there.
 	 * 'manage_network_plugins' is only ever granted to Super Admins (see
 	 * WP_User::has_cap()), unlike 'manage_options' which every site Administrator
 	 * has, including on subsites that never boot Gitwire at all.

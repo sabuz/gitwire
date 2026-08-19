@@ -59,7 +59,7 @@ class REST {
 
 	/**
 	 * Permission callback. On multisite, plugins/themes are shared across the
-	 * whole network, so only a Super Admin may install or update them —
+	 * whole network, so only a Super Admin may install or update them,
 	 * matching the Network Admin-only menu registered in Admin::init(). REST
 	 * requests don't pass through wp-admin/network.php's own Super Admin gate,
 	 * so is_super_admin() has to be checked explicitly here.
