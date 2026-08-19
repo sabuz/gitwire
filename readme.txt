@@ -64,7 +64,7 @@ Repository lists and type-detection results are cached and refreshed in the back
 
 **Private repositories**
 
-Gitwire works with public repositories out of the box, with no token at all, including public repositories on a self-hosted GitLab instance. Private repositories and higher API rate limits require [Gitwire Pro](https://gitwire.app/pro), which stores an encrypted access token and authenticates with the provider API. An authenticated GitHub connection raises the ceiling from 60 requests per hour to a typical 5,000, which matters as soon as you browse an account with many repositories or check for updates often. Tokens are encrypted before being written to the database and are never sent anywhere except to the Git host they belong to.
+Gitwire works with public repositories out of the box, with no token at all, including public repositories on a self-hosted GitLab instance. Private repositories and higher API rate limits require [Gitwire Pro](https://gitwire.app/pricing/), which stores an encrypted access token and authenticates with the provider API. An authenticated GitHub connection raises the ceiling from 60 requests per hour to a typical 5,000, which matters as soon as you browse an account with many repositories or check for updates often. Tokens are encrypted before being written to the database and are never sent anywhere except to the Git host they belong to.
 
 Full documentation: [gitwire.app/docs](https://gitwire.app/docs/)
 

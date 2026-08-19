@@ -389,7 +389,7 @@ export default function ImportFromUrl( {
 										providerLabel( resolved.provider )
 									) }{ ' ' }
 									<a
-										href="https://gitwire.app/pro"
+										href="https://gitwire.app/pricing/"
 										rel="noopener noreferrer"
 										target="_blank"
 									>

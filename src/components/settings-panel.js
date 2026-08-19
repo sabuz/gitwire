@@ -1071,7 +1071,7 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 									'gitwire'
 								) }{ ' ' }
 								<a
-									href="https://gitwire.app/pro"
+									href="https://gitwire.app/pricing/"
 									rel="noopener noreferrer"
 									target="_blank"
 								>
@@ -1086,7 +1086,7 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 							<>
 								{ __( 'Public access only.', 'gitwire' ) }{ ' ' }
 								<a
-									href="https://gitwire.app/pro"
+									href="https://gitwire.app/pricing/"
 									rel="noopener noreferrer"
 									target="_blank"
 								>
@@ -1257,7 +1257,7 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 					'gitwire'
 				) }{ ' ' }
 				<a
-					href="https://gitwire.app/pro"
+					href="https://gitwire.app/pricing/"
 					rel="noopener noreferrer"
 					target="_blank"
 				>
