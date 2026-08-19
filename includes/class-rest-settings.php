@@ -25,7 +25,7 @@ class REST_Settings {
 	 */
 	public static function register_routes(): void {
 		register_rest_route(
-			REST::NS,
+			REST::NAMESPACE,
 			'/settings',
 			[
 				[

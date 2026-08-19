@@ -22,7 +22,7 @@ class REST {
 	 *
 	 * @var string
 	 */
-	const NS = 'gitwire/v1';
+	const NAMESPACE = 'gitwire/v1';
 
 	/**
 	 * Registers the rest_api_init hook.

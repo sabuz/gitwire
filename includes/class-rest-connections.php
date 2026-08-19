@@ -24,10 +24,10 @@ class REST_Connections {
 	 * @return void
 	 */
 	public static function register_routes(): void {
-		$ns = REST::NS;
+		$namespace = REST::NAMESPACE;
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/public-connections',
 			[
 				[
@@ -60,7 +60,7 @@ class REST_Connections {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/public-connections/(?P<id>[^/]+)/rate-limit',
 			[
 				'methods'             => 'GET',
@@ -70,7 +70,7 @@ class REST_Connections {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/public-connections/(?P<id>[^/]+)',
 			[
 				'methods'             => 'DELETE',

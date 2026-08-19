@@ -24,10 +24,10 @@ class REST_Logs {
 	 * @return void
 	 */
 	public static function register_routes(): void {
-		$ns = REST::NS;
+		$namespace = REST::NAMESPACE;
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/logs',
 			[
 				[
@@ -80,7 +80,7 @@ class REST_Logs {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/log-actors',
 			[
 				'methods'             => 'GET',

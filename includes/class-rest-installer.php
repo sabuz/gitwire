@@ -144,7 +144,7 @@ class REST_Installer {
 	 * @return void
 	 */
 	public static function register_routes(): void {
-		$ns = REST::NS;
+		$namespace = REST::NAMESPACE;
 
 		$provider_arg = [
 			'type'              => 'string',
@@ -156,7 +156,7 @@ class REST_Installer {
 		];
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/install',
 			[
 				'methods'             => 'POST',
@@ -211,7 +211,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/check-slug',
 			[
 				'methods'             => 'GET',
@@ -233,7 +233,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/installed/sync',
 			[
 				'methods'             => 'POST',
@@ -243,7 +243,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/installed',
 			[
 				'methods'             => 'GET',
@@ -253,7 +253,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branch',
 			[
 				'methods'             => 'POST',
@@ -276,7 +276,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/activate',
 			[
 				'methods'             => 'POST',
@@ -287,7 +287,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/deactivate',
 			[
 				'methods'             => 'POST',
@@ -298,7 +298,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/commits',
 			[
 				'methods'             => 'GET',
@@ -309,7 +309,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)',
 			[
 				'methods'             => 'DELETE',
@@ -320,7 +320,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/untrack',
 			[
 				'methods'             => 'DELETE',
@@ -331,7 +331,7 @@ class REST_Installer {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/auto-update',
 			[
 				'methods'             => 'POST',

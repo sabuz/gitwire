@@ -59,10 +59,10 @@ class REST_Repositories {
 	 * @return void
 	 */
 	public static function register_routes(): void {
-		$ns = REST::NS;
+		$namespace = REST::NAMESPACE;
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/repos',
 			[
 				'methods'             => 'GET',
@@ -89,7 +89,7 @@ class REST_Repositories {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/repos/cache',
 			[
 				'methods'             => 'DELETE',
@@ -99,7 +99,7 @@ class REST_Repositories {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branches',
 			[
 				'methods'             => 'GET',
@@ -113,7 +113,7 @@ class REST_Repositories {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/detect',
 			[
 				'methods'             => 'GET',
@@ -132,7 +132,7 @@ class REST_Repositories {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/repos/detect-batch',
 			[
 				'methods'             => 'POST',
@@ -148,7 +148,7 @@ class REST_Repositories {
 		);
 
 		register_rest_route(
-			$ns,
+			$namespace,
 			'/repos/resolve',
 			[
 				'methods'             => 'POST',
