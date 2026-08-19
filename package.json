@@ -1,7 +1,7 @@
 {
 	"name": "gitwire",
 	"version": "1.0.0",
-	"description": "Install and update WordPress plugins and themes from Git repositories. Switch branches when needed, and recover safely if an update causes a fatal error.",
+	"description": "Install and update plugins and themes from GitHub, GitLab, or Bitbucket. Switch branches, and roll back automatically if an update breaks the site.",
 	"private": true,
 	"author": "nazsabuz",
 	"license": "GPL-2.0-or-later",

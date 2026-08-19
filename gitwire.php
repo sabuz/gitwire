@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Gitwire
  * Plugin URI:        https://gitwire.app
- * Description:       Install and update WordPress plugins and themes from Git repositories. Switch branches when needed, and recover safely if an update causes a fatal error.
+ * Description:       Install and update plugins and themes from GitHub, GitLab, or Bitbucket. Switch branches, and roll back automatically if an update breaks the site.
  * Version:           1.0.0
  * Requires at least: 6.9
  * Requires PHP:      8.1

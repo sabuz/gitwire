@@ -1,6 +1,6 @@
 {
 	"name": "sabuz/gitwire",
-	"description": "Pull GitHub and GitLab repositories directly into WordPress as plugins or themes.",
+	"description": "Install and update plugins and themes from GitHub, GitLab, or Bitbucket. Switch branches, and roll back automatically if an update breaks the site.",
 	"license": "GPL-2.0-or-later",
 	"require-dev": {
 		"squizlabs/php_codesniffer": "^3.10",
