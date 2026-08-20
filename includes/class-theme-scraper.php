@@ -147,7 +147,9 @@ class Theme_Scraper {
 		$cookies = self::get_loopback_cookies();
 		$headers = self::get_loopback_headers();
 
+		// Keeps the PHP process alive until every loopback request has come back.
 		if ( function_exists( 'set_time_limit' ) ) {
+			// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Core does the same in its own loopback scrape, see wp_edit_theme_plugin_file().
 			set_time_limit( 5 * MINUTE_IN_SECONDS );
 		}
 
@@ -159,7 +161,7 @@ class Theme_Scraper {
 
 		$admin_url = $urls[0] ?? admin_url( 'themes.php' );
 
-		/** This filter is documented in wp-includes/class-wp-http-streams.php */
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core filter, documented in wp-includes/class-wp-http-streams.php.
 		$sslverify = apply_filters( 'https_local_ssl_verify', false, $admin_url );
 
 		$parsed = self::scrape_url_with_fallbacks(
@@ -218,7 +220,8 @@ class Theme_Scraper {
 			wp_cookie_constants();
 		}
 
-		$user_id    = get_current_user_id();
+		$user_id = get_current_user_id();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core filter.
 		$expiration = time() + (int) apply_filters( 'auth_cookie_expiration', 2 * DAY_IN_SECONDS, $user_id, false );
 
 		$cookies[ AUTH_COOKIE ]      = wp_generate_auth_cookie( $user_id, $expiration, 'auth' );
