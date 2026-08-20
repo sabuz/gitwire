@@ -152,7 +152,7 @@ Yes. Use the branch control in the Installed panel to point the site at another 
 Not in the current release. You pull updates from the WordPress admin, so you stay in control of when code goes live. Push-to-deploy may come later — check the changelog.
 
 **What WordPress and PHP versions are required?**
-WordPress 6.9+ and PHP 8.1+.
+WordPress 7.0+ and PHP 8.0+.
 
 **Is multisite supported?**
 > ⚠️ TODO — verify in your own environment before publishing. Competitors claim multisite; test and write the real answer here.
