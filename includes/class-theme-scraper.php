@@ -147,9 +147,6 @@ class Theme_Scraper {
 		$cookies = self::get_loopback_cookies();
 		$headers = self::get_loopback_headers();
 
-		/** This filter is documented in wp-includes/class-wp-http-streams.php */
-		$sslverify = apply_filters( 'https_local_sslverify', false );
-
 		if ( function_exists( 'set_time_limit' ) ) {
 			set_time_limit( 5 * MINUTE_IN_SECONDS );
 		}
@@ -161,7 +158,11 @@ class Theme_Scraper {
 		}
 
 		$admin_url = $urls[0] ?? admin_url( 'themes.php' );
-		$parsed    = self::scrape_url_with_fallbacks(
+
+		/** This filter is documented in wp-includes/class-wp-http-streams.php */
+		$sslverify = apply_filters( 'https_local_ssl_verify', false, $admin_url );
+
+		$parsed = self::scrape_url_with_fallbacks(
 			$admin_url,
 			$scrape_key,
 			$scrape_nonce,
