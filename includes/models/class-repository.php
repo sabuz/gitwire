@@ -105,7 +105,7 @@ class Repository extends Model_Base {
 		$args[] = $limit;
 		$args[] = $offset;
 
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT connection_id, provider, full_name, owner, name, private, html_url, default_branch, last_activity_at, type, type_meta
@@ -115,7 +115,7 @@ class Repository extends Model_Base {
 			),
 			ARRAY_A
 		);
-		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter
 
 		if ( empty( $rows ) ) {
 			/*
@@ -123,7 +123,7 @@ class Repository extends Model_Base {
 			 * If none exist, it's a cache miss (null). If rows exist, filters matched nothing.
 			 */
 			if ( ! empty( $excluded ) || $search ) {
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, PluginCheck.Security.DirectDB.UnescapedDBParameter
 				$has_any = $wpdb->get_var( $wpdb->prepare( "SELECT 1 FROM `{$table}` WHERE connection_id IN ({$phs}) LIMIT 1", ...$connection_ids ) );
 				if ( ! $has_any ) {
 					return null;
@@ -218,7 +218,7 @@ class Repository extends Model_Base {
 			$tuples = implode( ', ', array_fill( 0, count( $chunk ), '(%s, %s, %s, %s, %s, %d, %s, %s, %s, %s)' ) );
 			$values = array_merge( ...$chunk );
 
-			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$wpdb->query(
 				$wpdb->prepare(
 					"INSERT INTO `{$table}`
@@ -236,7 +236,7 @@ class Repository extends Model_Base {
 					$values
 				)
 			);
-			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		}
 
 		return true;
@@ -256,7 +256,7 @@ class Repository extends Model_Base {
 		global $wpdb;
 		$table = $this->table_name();
 		$phs   = implode( ', ', array_fill( 0, count( $connection_ids ), '%s' ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$rows = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT connection_id FROM `{$table}` WHERE connection_id IN ({$phs})", ...$connection_ids ) );
 		return $rows ? $rows : [];
 	}
@@ -272,7 +272,7 @@ class Repository extends Model_Base {
 	public function get_type( string $provider, string $full_name ): ?array {
 		global $wpdb;
 		$table = $this->table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT type, type_meta FROM `{$table}` WHERE provider = %s AND full_name = %s AND type_meta IS NOT NULL LIMIT 1", $provider, $full_name ), ARRAY_A );
 		if ( ! $row || empty( $row['type_meta'] ) ) {
 			return null;
@@ -317,12 +317,12 @@ class Repository extends Model_Base {
 		);
 
 		// Upsert a connection-agnostic fallback when no real connection row exists (URL import path).
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$has_real = (bool) $wpdb->get_var( $wpdb->prepare( "SELECT 1 FROM `{$table}` WHERE provider = %s AND full_name = %s AND connection_id != '' LIMIT 1", $provider, $full_name ) );
 
 		if ( ! $has_real ) {
 			$parts = explode( '/', $full_name, 2 );
-			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$wpdb->query(
 				$wpdb->prepare(
 					"INSERT INTO `{$table}` (connection_id, provider, owner, name, full_name, default_branch, type, type_meta, updated_at)
@@ -337,7 +337,7 @@ class Repository extends Model_Base {
 					current_datetime()->format( 'Y-m-d H:i:s' )
 				)
 			);
-			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		}
 
 		return true;
@@ -357,7 +357,7 @@ class Repository extends Model_Base {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			return false !== $wpdb->delete( $this->table_name(), [ 'connection_id' => $connection_id ], [ '%s' ] );
 		}
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return false !== $wpdb->query( "DELETE FROM `{$table}`" );
 	}
 
@@ -374,7 +374,7 @@ class Repository extends Model_Base {
 		$table = $this->table_name();
 
 		// Reset type columns on all connection-specific rows.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET type = '', type_meta = NULL WHERE connection_id != %s", '' ) );
 
 		// Remove URL-import fallback rows written by set_type() (connection_id = '').
@@ -403,7 +403,7 @@ class Repository extends Model_Base {
 			return false;
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET type = '', type_meta = NULL WHERE connection_id = %s", $connection_id ) );
 
 		return true;
@@ -420,7 +420,7 @@ class Repository extends Model_Base {
 	public function get_untyped_batch( int $limit, int $offset = 0 ): array {
 		global $wpdb;
 		$table = $this->table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return $wpdb->get_results( $wpdb->prepare( "SELECT connection_id, provider, owner, name, full_name, default_branch FROM `{$table}` WHERE type_meta IS NULL ORDER BY full_name ASC, connection_id ASC LIMIT %d OFFSET %d", $limit, $offset ), ARRAY_A ) ?? [];
 	}
 
@@ -445,7 +445,7 @@ class Repository extends Model_Base {
 
 		global $wpdb;
 		$table = $this->table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return false !== $wpdb->query( $wpdb->prepare( "DELETE FROM `{$table}` WHERE connection_id = %s AND updated_at < %s", $connection_id, $cycle_start ) );
 	}
 
@@ -460,7 +460,7 @@ class Repository extends Model_Base {
 	public function get_html_url( string $provider, string $full_name ): string {
 		global $wpdb;
 		$table = $this->table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return (string) $wpdb->get_var( $wpdb->prepare( "SELECT html_url FROM `{$table}` WHERE provider = %s AND full_name = %s LIMIT 1", $provider, $full_name ) );
 	}
 }

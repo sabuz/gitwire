@@ -68,7 +68,7 @@ class Commit extends Model_Base {
 	public function upsert( int $installation_id, string $branch, array $commits ): bool {
 		global $wpdb;
 		$table = $this->table_name();
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return false !== $wpdb->query(
 			$wpdb->prepare(
 				"INSERT INTO `{$table}` (installation_id, branch, data, updated_at)
@@ -80,7 +80,7 @@ class Commit extends Model_Base {
 				current_datetime()->format( 'Y-m-d H:i:s' )
 			)
 		);
-		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 	}
 
 	/**

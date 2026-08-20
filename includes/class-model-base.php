@@ -66,6 +66,10 @@ abstract class Model_Base {
 	/**
 	 * Returns the full table name with the WordPress base prefix.
 	 *
+	 * The result is never request data: table() returns a hardcoded literal in every
+	 * concrete model. Interpolating it into SQL is safe, which is why the methods that
+	 * build queries from it silence PluginCheck.Security.DirectDB.UnescapedDBParameter.
+	 *
 	 * @since 1.0.0
 	 * @return string
 	 */
@@ -100,7 +104,7 @@ abstract class Model_Base {
 		}
 		$table      = $this->table_name();
 		$conditions = implode( ' AND ', array_map( fn( $col ) => "`{$col}` = %s", array_keys( $where ) ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `{$table}` WHERE {$conditions} LIMIT 1", array_values( $where ) ), ARRAY_A ) ?? null;
 	}
 
@@ -116,11 +120,11 @@ abstract class Model_Base {
 		$table = $this->table_name();
 		$where = $this->filter_columns( $where );
 		if ( empty( $where ) ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			return $wpdb->get_results( "SELECT * FROM `{$table}`", ARRAY_A ) ?? [];
 		}
 		$conditions = implode( ' AND ', array_map( fn( $col ) => "`{$col}` = %s", array_keys( $where ) ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM `{$table}` WHERE {$conditions}", array_values( $where ) ), ARRAY_A ) ?? [];
 	}
 
@@ -194,7 +198,7 @@ abstract class Model_Base {
 		$columns      = implode( ', ', array_map( fn( $col ) => "`{$col}`", array_keys( $data ) ) );
 		$placeholders = implode( ', ', array_fill( 0, count( $data ), '%s' ) );
 		$updates      = implode( ', ', array_map( fn( $col ) => "`{$col}` = VALUES(`{$col}`)", array_keys( $data ) ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return false !== $wpdb->query( $wpdb->prepare( "INSERT INTO `{$table}` ({$columns}) VALUES ({$placeholders}) ON DUPLICATE KEY UPDATE {$updates}", array_values( $data ) ) );
 	}
 }

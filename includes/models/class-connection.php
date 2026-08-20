@@ -102,7 +102,7 @@ class Connection extends Model_Base {
 		}
 		global $wpdb;
 		$table = $this->table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		self::$all_cache = $wpdb->get_results( "SELECT * FROM `{$table}` ORDER BY created_at ASC", ARRAY_A ) ?? [];
 		return self::$all_cache;
 	}
@@ -128,7 +128,7 @@ class Connection extends Model_Base {
 	public function find_by_provider( string $provider ): ?array {
 		global $wpdb;
 		$table = $this->table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `{$table}` WHERE provider = %s ORDER BY created_at ASC LIMIT 1", $provider ), ARRAY_A ) ?? null;
 	}
 

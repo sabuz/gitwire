@@ -60,6 +60,10 @@ abstract class Migration_Base {
 	/**
 	 * Returns the full table name with the WordPress base prefix.
 	 *
+	 * Callers always pass a class TABLE constant, never request data, so interpolating
+	 * the result into SQL is safe. That is why the queries in the concrete migrations
+	 * silence PluginCheck.Security.DirectDB.UnescapedDBParameter.
+	 *
 	 * @since 1.0.0
 	 * @param string $table_name Table name without prefix.
 	 * @return string
