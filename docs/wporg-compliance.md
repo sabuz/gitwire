@@ -52,13 +52,24 @@ Required sections:
 
 ### Assets
 
+These live in the `/assets/` directory at the **root of the SVN repository**, a sibling of `/trunk/` and `/tags/`. They are not part of the plugin and never ship in the zip, so nothing here belongs in this git repo's own `assets/` directory.
+
+```
+gitwire/            <- SVN root
+├── assets/         <- these files
+├── trunk/          <- the plugin itself
+└── tags/
+```
+
 | Asset | Size | Location |
 |---|---|---|
-| Plugin icon (1x) | 128×128 px | `assets/icon-128x128.png` |
-| Plugin icon (2x) | 256×256 px | `assets/icon-256x256.png` |
-| Banner (1x) | 772×250 px | `assets/banner-772x250.png` |
-| Banner (2x) | 1544×500 px | `assets/banner-1544x500.png` |
-| Screenshots | any | `assets/screenshot-1.png`, etc. |
+| Plugin icon (1x) | 128×128 px | `/assets/icon-128x128.png` |
+| Plugin icon (2x) | 256×256 px | `/assets/icon-256x256.png` |
+| Banner (1x) | 772×250 px | `/assets/banner-772x250.png` |
+| Banner (2x) | 1544×500 px | `/assets/banner-1544x500.png` |
+| Screenshots | any | `/assets/screenshot-1.png`, etc. |
+
+None of these exist yet. Without them the directory listing falls back to a generic placeholder icon and no banner.
 
 ---
 
