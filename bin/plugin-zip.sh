@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 
 NAME=$(node -p "require('./package.json').name")
 VERSION=$(node -p "require('./package.json').version")
-RELEASES_DIR="../../releases"
+RELEASES_DIR="../../releases/plugins"
 STAGE_DIR=$(mktemp -d)
 
 npm run build
