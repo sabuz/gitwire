@@ -23,12 +23,12 @@ require_once trailingslashit( __DIR__ ) . 'autoload.php';
 use Gitwire\Constants;
 use Gitwire\Plugin;
 
-$constants = Constants::instance( __FILE__ );
+$gitwire_constants = Constants::instance( __FILE__ );
 
-define( 'GITWIRE_VERSION', $constants->version );
-define( 'GITWIRE_FILE', $constants->file );
-define( 'GITWIRE_DIR', $constants->dir );
-define( 'GITWIRE_URL', $constants->url );
-define( 'GITWIRE_BASENAME', $constants->basename );
+define( 'GITWIRE_VERSION', $gitwire_constants->version );
+define( 'GITWIRE_FILE', $gitwire_constants->file );
+define( 'GITWIRE_DIR', $gitwire_constants->dir );
+define( 'GITWIRE_URL', $gitwire_constants->url );
+define( 'GITWIRE_BASENAME', $gitwire_constants->basename );
 
 Plugin::instance( __FILE__ );

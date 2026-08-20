@@ -14,9 +14,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class mapping array for fast autoloading.
  *
- * @var array<string, string> $class_map
+ * @var array<string, string> $gitwire_class_map
  */
-$class_map = [
+$gitwire_class_map = [
 	'Gitwire\Admin'                   => 'includes/class-admin.php',
 	'Gitwire\Migration_Base'          => 'includes/class-migration-base.php',
 	'Gitwire\Model_Base'              => 'includes/class-model-base.php',
@@ -56,9 +56,9 @@ $class_map = [
 ];
 
 spl_autoload_register(
-	function ( $class_name ) use ( $class_map ) {
-		if ( isset( $class_map[ $class_name ] ) ) {
-			$file_path = trailingslashit( __DIR__ ) . $class_map[ $class_name ];
+	function ( $class_name ) use ( $gitwire_class_map ) {
+		if ( isset( $gitwire_class_map[ $class_name ] ) ) {
+			$file_path = trailingslashit( __DIR__ ) . $gitwire_class_map[ $class_name ];
 
 			if ( file_exists( $file_path ) ) {
 				require_once $file_path;

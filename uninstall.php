@@ -9,14 +9,14 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-$settings = get_option( 'gitwire_settings', [] );
-if ( empty( $settings['remove_data_on_uninstall'] ) ) {
+$gitwire_settings = get_option( 'gitwire_settings', [] );
+if ( empty( $gitwire_settings['remove_data_on_uninstall'] ) ) {
 	return;
 }
 
 require_once plugin_dir_path( __FILE__ ) . 'autoload.php';
 
-$options = [
+$gitwire_options = [
 	'gitwire_settings',
 	'gitwire_running_task',
 	'gitwire_pending_message',
@@ -27,8 +27,8 @@ $options = [
 	'gitwire_version_cache',
 ];
 
-foreach ( $options as $option ) {
-	delete_option( $option );
+foreach ( $gitwire_options as $gitwire_option ) {
+	delete_option( $gitwire_option );
 }
 
 \Gitwire\Database_Manager::uninstall();
