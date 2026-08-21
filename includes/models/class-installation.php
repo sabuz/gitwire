@@ -50,6 +50,7 @@ class Installation extends Model_Base {
 			'name',
 			'full_name',
 			'html_url',
+			'private',
 			'type',
 			'install_path',
 			'basename',

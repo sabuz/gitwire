@@ -576,9 +576,17 @@ class REST_Installer {
 				$rec['provider'] = 'github';
 			}
 
-			// Without Pro there are no connections to reconnect to — updates fall back to public.
+			// wpdb hands back tinyint as "0"/"1", and "0" is truthy once it reaches JS.
+			$rec['private'] = (bool) ( $rec['private'] ?? false );
+
+			/*
+			 * Only a private repo is actually stranded by a deleted connection. A public
+			 * one keeps updating through the anonymous client the provider factory falls
+			 * back to, so prompting to reconnect would be asking for something that
+			 * changes nothing. Without Pro there is nothing to reconnect to either.
+			 */
 			$conn_id = $rec['connection_id'] ?? null;
-			if ( $conn_id && ! empty( $all_connections ) && ! isset( $all_connections[ $conn_id ] ) ) {
+			if ( $conn_id && $rec['private'] && ! empty( $all_connections ) && ! isset( $all_connections[ $conn_id ] ) ) {
 				$rec['needs_reconnect'] = true;
 			}
 

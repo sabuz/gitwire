@@ -1379,12 +1379,23 @@ class Installer {
 		// Save record.
 		$html_url = Repository::instance()->get_html_url( $provider, $full_name );
 
+		/*
+		 * Recorded now because it cannot be recovered later: deleting a connection takes
+		 * its browse-cache rows with it, and whether this repo needs credentials at all
+		 * is the difference between a dead connection being a real problem and being
+		 * nothing. A URL import has no cache row, so fall back to whether one was needed
+		 * to reach it in the first place.
+		 */
+		$cached_private = Repository::instance()->is_private( $provider, $full_name );
+		$is_private     = $cached_private ?? ( '' !== $connection_id );
+
 		$record = [
 			'name'          => $slug,
 			'repo'          => $repo,
 			'owner'         => $owner,
 			'full_name'     => $full_name,
 			'branch'        => $branch,
+			'private'       => $is_private ? 1 : 0,
 			'type'          => 'plugin' === $type ? 'plugin' : ( file_exists( $install_path . '/theme.json' ) ? 'block-theme' : 'classic-theme' ),
 			'provider'      => $provider,
 			'connection_id' => $connection_id,

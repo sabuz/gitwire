@@ -62,6 +62,10 @@
 
 - [ ] Delete connection — removes connection and associated repositories from DB
 - [ ] Installations from deleted connection remain (orphaned, marked as such)
+- [ ] Install a **public** repo through a connection, add a second connection so one survives, then delete the first: the Installed row shows no "Connection Required" badge and no Reconnect action, since an anonymous client can still reach it
+- [ ] Run `wp cron event run gitwire_update_check` in that state and confirm the repo still picks up a new commit, which is what makes hiding the badge correct rather than cosmetic
+- [ ] Repeat with a **private** repo (Pro): the badge and the Reconnect action are both still there
+- [ ] Delete the last remaining connection too: no record shows Reconnect, since there is nothing left to reconnect to
 
 ---
 

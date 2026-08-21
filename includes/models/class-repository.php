@@ -472,6 +472,27 @@ class Repository extends Model_Base {
 	}
 
 	/**
+	 * Returns whether a cached repository is private, or null when it is not cached.
+	 *
+	 * Null is a real answer here, not a failure: a repo imported straight from a URL
+	 * never passes through the browse cache, so the caller has to decide what an
+	 * absent row means rather than reading it as "public".
+	 *
+	 * @since 1.0.0
+	 * @param string $provider  Git provider.
+	 * @param string $full_name Repository full name.
+	 * @return bool|null
+	 */
+	public function is_private( string $provider, string $full_name ): ?bool {
+		global $wpdb;
+		$table = $this->table_name();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+		$row = $wpdb->get_var( $wpdb->prepare( "SELECT private FROM `{$table}` WHERE provider = %s AND full_name = %s AND connection_id != '' LIMIT 1", $provider, $full_name ) );
+
+		return null === $row ? null : (bool) (int) $row;
+	}
+
+	/**
 	 * Returns the html_url for a repository, or empty string when not found.
 	 *
 	 * @since 1.0.0
