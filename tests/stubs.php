@@ -47,6 +47,22 @@ function gitwire_test_set_option( string $name, $value ): void {
 	\Gitwire\Settings::invalidate_cache();
 }
 
+/**
+ * Seeds the rows Installer::get_installed() will read.
+ *
+ * Expects the caller to have put a Fake_WPDB in place already, the same way
+ * every other model-backed test sets one up.
+ *
+ * @param array<int, array<string, mixed>> $rows Installation rows.
+ * @return void
+ */
+function gitwire_test_set_installations( array $rows ): void {
+	if ( isset( $GLOBALS['wpdb'] ) && $GLOBALS['wpdb'] instanceof Fake_WPDB ) {
+		$GLOBALS['wpdb']->results = $rows;
+	}
+	\Gitwire\Installer::invalidate_installed_cache();
+}
+
 if ( ! function_exists( 'get_option' ) ) {
 	/**
 	 * @param string $option  Option name.

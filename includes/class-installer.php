@@ -183,6 +183,150 @@ class Installer {
 	public static function init(): void {
 		add_action( 'deleted_plugin', [ self::class, 'on_plugin_deleted' ], 10, 2 );
 		add_action( 'deleted_theme', [ self::class, 'on_theme_deleted' ], 10, 2 );
+
+		/*
+		 * A repository installed into a directory whose name matches a plugin or theme
+		 * on WordPress.org is offered that project's release by the core update check,
+		 * which would overwrite the tracked code with an unrelated project. Gitwire owns
+		 * updates for what it installed, so those entries come out of the transients
+		 * core reads, and the auto-updater is told no as well in case anything puts
+		 * them back.
+		 */
+		add_filter( 'site_transient_update_plugins', [ self::class, 'suppress_plugin_updates' ] );
+		add_filter( 'site_transient_update_themes', [ self::class, 'suppress_theme_updates' ] );
+		add_filter( 'auto_update_plugin', [ self::class, 'block_plugin_auto_update' ], 10, 2 );
+		add_filter( 'auto_update_theme', [ self::class, 'block_theme_auto_update' ], 10, 2 );
+	}
+
+	/**
+	 * Returns the plugin directory slugs Gitwire manages, as a lookup set.
+	 *
+	 * Keyed on the directory rather than the bootstrap file: the directory is what
+	 * collides with a WordPress.org slug, and it is still known when the entry file
+	 * has not been resolved yet.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, true>
+	 */
+	private static function managed_plugin_dirs(): array {
+		$dirs = [];
+		foreach ( self::get_installed() as $rec ) {
+			$slug = (string) ( $rec['name'] ?? '' );
+			if ( 'plugin' === ( $rec['type'] ?? '' ) && '' !== $slug ) {
+				$dirs[ $slug ] = true;
+			}
+		}
+		return $dirs;
+	}
+
+	/**
+	 * Returns the theme stylesheets Gitwire manages, as a lookup set.
+	 *
+	 * @since 1.0.0
+	 * @return array<string, true>
+	 */
+	private static function managed_theme_slugs(): array {
+		$slugs = [];
+		foreach ( self::get_installed() as $rec ) {
+			$slug = (string) ( $rec['name'] ?? '' );
+			if ( Repository_Detector::is_theme( (string) ( $rec['type'] ?? '' ) ) && '' !== $slug ) {
+				$slugs[ $slug ] = true;
+			}
+		}
+		return $slugs;
+	}
+
+	/**
+	 * Drops Gitwire-managed plugins from the core update transient.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $value Transient value.
+	 * @return mixed
+	 */
+	public static function suppress_plugin_updates( $value ) {
+		$managed = self::managed_plugin_dirs();
+		if ( ! is_object( $value ) || ! $managed ) {
+			return $value;
+		}
+
+		// Cloned first: an object cache can hand the same instance to the next reader.
+		$value = clone $value;
+
+		foreach ( [ 'response', 'no_update' ] as $key ) {
+			if ( ! isset( $value->$key ) || ! is_array( $value->$key ) ) {
+				continue;
+			}
+			foreach ( array_keys( $value->$key ) as $plugin_file ) {
+				if ( isset( $managed[ dirname( (string) $plugin_file ) ] ) ) {
+					unset( $value->{$key}[ $plugin_file ] );
+				}
+			}
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Drops Gitwire-managed themes from the core update transient.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $value Transient value.
+	 * @return mixed
+	 */
+	public static function suppress_theme_updates( $value ) {
+		$managed = self::managed_theme_slugs();
+		if ( ! is_object( $value ) || ! $managed ) {
+			return $value;
+		}
+
+		$value = clone $value;
+
+		foreach ( [ 'response', 'no_update' ] as $key ) {
+			if ( ! isset( $value->$key ) || ! is_array( $value->$key ) ) {
+				continue;
+			}
+			foreach ( array_keys( $value->$key ) as $stylesheet ) {
+				if ( isset( $managed[ (string) $stylesheet ] ) ) {
+					unset( $value->{$key}[ $stylesheet ] );
+				}
+			}
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Refuses a core auto-update for a plugin Gitwire tracks.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $update Whether core intends to update.
+	 * @param mixed $item   Update offer, carrying the plugin basename.
+	 * @return mixed
+	 */
+	public static function block_plugin_auto_update( $update, $item ) {
+		$file = is_object( $item ) ? ( $item->plugin ?? '' ) : ( is_array( $item ) ? ( $item['plugin'] ?? '' ) : '' );
+		if ( '' === $file ) {
+			return $update;
+		}
+
+		return isset( self::managed_plugin_dirs()[ dirname( (string) $file ) ] ) ? false : $update;
+	}
+
+	/**
+	 * Refuses a core auto-update for a theme Gitwire tracks.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $update Whether core intends to update.
+	 * @param mixed $item   Update offer, carrying the stylesheet.
+	 * @return mixed
+	 */
+	public static function block_theme_auto_update( $update, $item ) {
+		$slug = is_object( $item ) ? ( $item->theme ?? '' ) : ( is_array( $item ) ? ( $item['theme'] ?? '' ) : '' );
+		if ( '' === $slug ) {
+			return $update;
+		}
+
+		return isset( self::managed_theme_slugs()[ (string) $slug ] ) ? false : $update;
 	}
 
 	/**
