@@ -60,7 +60,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 */
 	public function test_connection( string $owner = '' ): array|\WP_Error {
 		if ( ! $this->email || ! $this->api_token ) {
-			return new \WP_Error( 'gitwire_no_credentials', 'Bitbucket requires an Atlassian email and API token.' );
+			return new \WP_Error( 'gitwire_no_credentials', __( 'Bitbucket requires an Atlassian email and API token.', 'gitwire' ) );
 		}
 
 		$user = $this->get( '/user' );
@@ -170,7 +170,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 			)
 		);
 		if ( empty( $slugs ) ) {
-			return new \WP_Error( 'gitwire_api_error', 'No Bitbucket workspaces found for this account.' );
+			return new \WP_Error( 'gitwire_api_error', __( 'No Bitbucket workspaces found for this account.', 'gitwire' ) );
 		}
 		return array_values( $slugs );
 	}
@@ -301,7 +301,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 		) {
 			$location = (string) wp_remote_retrieve_header( $probe, 'location' );
 			if ( '' === $location ) {
-				return new \WP_Error( 'gitwire_no_location', 'Bitbucket did not return a download URL.' );
+				return new \WP_Error( 'gitwire_no_location', __( 'Bitbucket did not return a download URL.', 'gitwire' ) );
 			}
 			$url     = $location;
 			$headers = [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ];
@@ -319,13 +319,13 @@ class Bitbucket_API implements Git_Provider_Interface {
 			if ( '' === $location ) {
 				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 				@unlink( $tmp_file );
-				return new \WP_Error( 'gitwire_no_location', 'Bitbucket did not return a download URL.' );
+				return new \WP_Error( 'gitwire_no_location', __( 'Bitbucket did not return a download URL.', 'gitwire' ) );
 			}
 			// the redirect target is chosen by the remote, so it gets the same host check the base URL got.
 			if ( ! Settings::is_safe_remote_url( $location ) ) {
 				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 				@unlink( $tmp_file );
-				return new \WP_Error( 'gitwire_unsafe_redirect', 'Bitbucket redirected the download to an address that is not publicly routable.' );
+				return new \WP_Error( 'gitwire_unsafe_redirect', __( 'Bitbucket redirected the download to an address that is not publicly routable.', 'gitwire' ) );
 			}
 			$response = $this->stream_to( $location, [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ], $tmp_file );
 		}
@@ -343,7 +343,11 @@ class Bitbucket_API implements Git_Provider_Interface {
 			@unlink( $tmp_file );
 			return new \WP_Error(
 				'gitwire_api_error',
-				sprintf( 'Bitbucket archive download failed (HTTP %d).', $code ),
+				sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'Bitbucket archive download failed (HTTP %d).', 'gitwire' ),
+					$code
+				),
 				[ 'status' => $code ]
 			);
 		}
@@ -351,7 +355,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 		if ( filesize( $tmp_file ) > 256 * MB_IN_BYTES ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 			@unlink( $tmp_file );
-			return new \WP_Error( 'gitwire_archive_too_large', 'Repository ZIP exceeds the 256 MB size limit.' );
+			return new \WP_Error( 'gitwire_archive_too_large', __( 'Repository ZIP exceeds the 256 MB size limit.', 'gitwire' ) );
 		}
 
 		return $tmp_file;
@@ -406,7 +410,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( $code >= 400 ) {
-			return new \WP_Error( 'gitwire_api_error', 'Could not fetch file.', [ 'status' => $code ] );
+			return new \WP_Error( 'gitwire_api_error', __( 'Could not fetch file.', 'gitwire' ), [ 'status' => $code ] );
 		}
 
 		return wp_remote_retrieve_body( $response );
@@ -454,9 +458,11 @@ class Bitbucket_API implements Git_Provider_Interface {
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( $code >= 400 ) {
-			$message = $body['error']['message'] ?? sprintf( 'Bitbucket API error (HTTP %d)', $code );
+			/* translators: %d: HTTP status code */
+			$fallback = sprintf( __( 'Bitbucket API error (HTTP %d)', 'gitwire' ), $code );
+			$message  = $body['error']['message'] ?? $fallback;
 			if ( ! is_string( $message ) ) {
-				$message = sprintf( 'Bitbucket API error (HTTP %d)', $code );
+				$message = $fallback;
 			}
 			// Scope errors mean the API token was created without Bitbucket access.
 			if ( 403 === $code && str_contains( $message, 'privilege scopes' ) ) {

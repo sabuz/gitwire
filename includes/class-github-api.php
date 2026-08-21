@@ -76,7 +76,7 @@ class GitHub_API implements Git_Provider_Interface {
 			if ( is_wp_error( $user ) ) {
 				$status = (int) ( $user->get_error_data()['status'] ?? 0 );
 				if ( 404 === $status ) {
-					return new \WP_Error( 'gitwire_not_found', 'GitHub user not found.', [ 'status' => 404 ] );
+					return new \WP_Error( 'gitwire_not_found', __( 'GitHub user not found.', 'gitwire' ), [ 'status' => 404 ] );
 				}
 				return $user;
 			}
@@ -231,13 +231,14 @@ class GitHub_API implements Git_Provider_Interface {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
 			return new \WP_Error(
 				'gitwire_api_error',
-				$body['message'] ?? sprintf( 'GitHub API returned HTTP %d', $code ),
+				/* translators: %d: HTTP status code */
+				$body['message'] ?? sprintf( __( 'GitHub API returned HTTP %d', 'gitwire' ), $code ),
 				[ 'status' => $code ]
 			);
 		}
 
 		if ( empty( $download_url ) ) {
-			return new \WP_Error( 'gitwire_no_location', 'GitHub did not return a download URL.' );
+			return new \WP_Error( 'gitwire_no_location', __( 'GitHub did not return a download URL.', 'gitwire' ) );
 		}
 
 		/*
@@ -247,7 +248,7 @@ class GitHub_API implements Git_Provider_Interface {
 		 */
 		$declared = self::declared_size( $download_url );
 		if ( $declared > 256 * MB_IN_BYTES ) {
-			return new \WP_Error( 'gitwire_archive_too_large', 'Repository ZIP exceeds the 256 MB size limit.' );
+			return new \WP_Error( 'gitwire_archive_too_large', __( 'Repository ZIP exceeds the 256 MB size limit.', 'gitwire' ) );
 		}
 
 		// Stream to disk via WordPress (handles large repos safely).
@@ -259,7 +260,7 @@ class GitHub_API implements Git_Provider_Interface {
 
 		if ( filesize( $tmp ) > 256 * MB_IN_BYTES ) {
 			wp_delete_file( $tmp );
-			return new \WP_Error( 'gitwire_archive_too_large', 'Repository ZIP exceeds the 256 MB size limit.' );
+			return new \WP_Error( 'gitwire_archive_too_large', __( 'Repository ZIP exceeds the 256 MB size limit.', 'gitwire' ) );
 		}
 
 		return $tmp;
@@ -301,7 +302,7 @@ class GitHub_API implements Git_Provider_Interface {
 			return $result;
 		}
 		if ( empty( $result['content'] ) ) {
-			return new \WP_Error( 'gitwire_no_content', 'File has no readable content.' );
+			return new \WP_Error( 'gitwire_no_content', __( 'File has no readable content.', 'gitwire' ) );
 		}
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 		return base64_decode( str_replace( "\n", '', $result['content'] ) );
@@ -357,7 +358,8 @@ class GitHub_API implements Git_Provider_Interface {
 		if ( $code >= 400 ) {
 			return new \WP_Error(
 				'gitwire_api_error',
-				$body['message'] ?? sprintf( 'GitHub API error (HTTP %d)', $code ),
+				/* translators: %d: HTTP status code */
+				$body['message'] ?? sprintf( __( 'GitHub API error (HTTP %d)', 'gitwire' ), $code ),
 				[ 'status' => $code ]
 			);
 		}

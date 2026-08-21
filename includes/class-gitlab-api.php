@@ -84,7 +84,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 */
 	public function test_connection( string $owner = '' ): array|\WP_Error {
 		if ( ! $this->token ) {
-			return new \WP_Error( 'gitwire_no_token', 'GitLab requires a Personal Access Token.' );
+			return new \WP_Error( 'gitwire_no_token', __( 'GitLab requires a Personal Access Token.', 'gitwire' ) );
 		}
 
 		$user = $this->get( '/user' );
@@ -161,7 +161,7 @@ class GitLab_API implements Git_Provider_Interface {
 		) {
 			return new \WP_Error(
 				'gitwire_gitlab_scope',
-				'Use a classic token with read_user, read_api, and read_repository; or add API: Read under Global permissions in your fine-grained token.',
+				__( 'Use a classic token with read_user, read_api, and read_repository; or add API: Read under Global permissions in your fine-grained token.', 'gitwire' ),
 				[ 'status' => 403 ]
 			);
 		}
@@ -213,7 +213,7 @@ class GitLab_API implements Git_Provider_Interface {
 		}
 
 		if ( empty( $all ) ) {
-			return new \WP_Error( 'gitwire_gitlab_empty', 'No accessible GitLab repositories found.' );
+			return new \WP_Error( 'gitwire_gitlab_empty', __( 'No accessible GitLab repositories found.', 'gitwire' ) );
 		}
 
 		usort(
@@ -346,13 +346,13 @@ class GitLab_API implements Git_Provider_Interface {
 			if ( '' === $location ) {
 				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 				@unlink( $tmp_file );
-				return new \WP_Error( 'gitwire_no_location', 'GitLab did not return a download URL.' );
+				return new \WP_Error( 'gitwire_no_location', __( 'GitLab did not return a download URL.', 'gitwire' ) );
 			}
 			// the redirect target is chosen by the remote, so it gets the same host check the base URL got.
 			if ( ! Settings::is_safe_remote_url( $location ) ) {
 				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 				@unlink( $tmp_file );
-				return new \WP_Error( 'gitwire_unsafe_redirect', 'GitLab redirected the download to an address that is not publicly routable.' );
+				return new \WP_Error( 'gitwire_unsafe_redirect', __( 'GitLab redirected the download to an address that is not publicly routable.', 'gitwire' ) );
 			}
 			$response = $this->stream_to( $location, [ 'User-Agent' => 'Gitwire/' . GITWIRE_VERSION ], $tmp_file );
 		}
@@ -370,7 +370,11 @@ class GitLab_API implements Git_Provider_Interface {
 			@unlink( $tmp_file );
 			return new \WP_Error(
 				'gitwire_api_error',
-				sprintf( 'GitLab archive download failed (HTTP %d).', $code ),
+				sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'GitLab archive download failed (HTTP %d).', 'gitwire' ),
+					$code
+				),
 				[ 'status' => $code ]
 			);
 		}
@@ -378,7 +382,7 @@ class GitLab_API implements Git_Provider_Interface {
 		if ( filesize( $tmp_file ) > 256 * MB_IN_BYTES ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 			@unlink( $tmp_file );
-			return new \WP_Error( 'gitwire_archive_too_large', 'Repository ZIP exceeds the 256 MB size limit.' );
+			return new \WP_Error( 'gitwire_archive_too_large', __( 'Repository ZIP exceeds the 256 MB size limit.', 'gitwire' ) );
 		}
 
 		return $tmp_file;
@@ -441,7 +445,7 @@ class GitLab_API implements Git_Provider_Interface {
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( $code >= 400 ) {
-			return new \WP_Error( 'gitwire_api_error', 'Could not fetch file.', [ 'status' => $code ] );
+			return new \WP_Error( 'gitwire_api_error', __( 'Could not fetch file.', 'gitwire' ), [ 'status' => $code ] );
 		}
 
 		return wp_remote_retrieve_body( $response );
@@ -461,12 +465,12 @@ class GitLab_API implements Git_Provider_Interface {
 	private function assert_base_url_safe(): bool|\WP_Error {
 		$host = wp_parse_url( $this->base, PHP_URL_HOST );
 		if ( ! is_string( $host ) || '' === $host ) {
-			return new \WP_Error( 'gitwire_ssrf', 'Invalid GitLab base URL.' );
+			return new \WP_Error( 'gitwire_ssrf', __( 'Invalid GitLab base URL.', 'gitwire' ) );
 		}
 
 		$host = Settings::normalize_host( $host );
 		if ( '' === $host || 'localhost' === $host ) {
-			return new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+			return new \WP_Error( 'gitwire_ssrf', __( 'GitLab URL resolves to a disallowed address.', 'gitwire' ) );
 		}
 
 		/*
@@ -477,7 +481,7 @@ class GitLab_API implements Git_Provider_Interface {
 		if ( array_key_exists( $host, self::$host_checked ) ) {
 			return self::$host_checked[ $host ]
 				? true
-				: new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+				: new \WP_Error( 'gitwire_ssrf', __( 'GitLab URL resolves to a disallowed address.', 'gitwire' ) );
 		}
 
 		$safe = self::host_resolves_safely( $host );
@@ -486,7 +490,7 @@ class GitLab_API implements Git_Provider_Interface {
 
 		return $safe
 			? true
-			: new \WP_Error( 'gitwire_ssrf', 'GitLab URL resolves to a disallowed address.' );
+			: new \WP_Error( 'gitwire_ssrf', __( 'GitLab URL resolves to a disallowed address.', 'gitwire' ) );
 	}
 
 	/**
@@ -600,10 +604,12 @@ class GitLab_API implements Git_Provider_Interface {
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( $code >= 400 ) {
-			$message = $body['message'] ?? ( $body['error'] ?? sprintf( 'GitLab API error (HTTP %d)', $code ) );
+			/* translators: %d: HTTP status code */
+			$fallback = sprintf( __( 'GitLab API error (HTTP %d)', 'gitwire' ), $code );
+			$message  = $body['message'] ?? ( $body['error'] ?? $fallback );
 			return new \WP_Error(
 				'gitwire_api_error',
-				is_string( $message ) ? $message : sprintf( 'GitLab API error (HTTP %d)', $code ),
+				is_string( $message ) ? $message : $fallback,
 				[ 'status' => $code ]
 			);
 		}

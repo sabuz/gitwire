@@ -340,7 +340,7 @@ class REST_Repositories {
 			if ( ! $has_auth ) {
 				$workspace = $creds['workspace'] ?? '';
 				if ( '' === $workspace ) {
-					return new \WP_Error( 'missing_config', 'Add a Bitbucket workspace in Settings first.', [ 'status' => 400 ] );
+					return new \WP_Error( 'missing_config', __( 'Add a Bitbucket workspace in Settings first.', 'gitwire' ), [ 'status' => 400 ] );
 				}
 			}
 
@@ -389,7 +389,7 @@ class REST_Repositories {
 				$username   = $creds['username'] ?? '';
 				$gitlab_url = $creds['gitlab_url'] ?? '';
 				if ( '' === $username ) {
-					return new \WP_Error( 'missing_config', 'Add a GitLab account in Settings first.', [ 'status' => 400 ] );
+					return new \WP_Error( 'missing_config', __( 'Add a GitLab account in Settings first.', 'gitwire' ), [ 'status' => 400 ] );
 				}
 			}
 
@@ -439,7 +439,7 @@ class REST_Repositories {
 		$username = sanitize_text_field( $creds['username'] ?? '' );
 
 		if ( ! $username && empty( $creds['token'] ) ) {
-			return new \WP_Error( 'missing_config', 'Add a GitHub account in Settings first.', [ 'status' => 400 ] );
+			return new \WP_Error( 'missing_config', __( 'Add a GitHub account in Settings first.', 'gitwire' ), [ 'status' => 400 ] );
 		}
 
 		/*

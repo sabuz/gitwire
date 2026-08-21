@@ -350,7 +350,7 @@ class REST_Installer {
 		$force_type = (bool) $req->get_param( 'force_type' );
 
 		if ( ! $owner || ! $repo ) {
-			return new \WP_Error( 'missing_params', 'Missing owner or repo.', [ 'status' => 400 ] );
+			return new \WP_Error( 'missing_params', __( 'Missing owner or repo.', 'gitwire' ), [ 'status' => 400 ] );
 		}
 
 		$settings      = Settings::get_raw();
@@ -633,7 +633,7 @@ class REST_Installer {
 		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
 		if ( ! $record ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
 		$provider  = (string) $record['provider'];
@@ -689,7 +689,7 @@ class REST_Installer {
 		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
 		if ( ! $record ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
 		$provider  = (string) $record['provider'];
@@ -718,7 +718,7 @@ class REST_Installer {
 		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
 		if ( ! $record ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
 		$owner  = (string) $record['owner'];
@@ -726,7 +726,7 @@ class REST_Installer {
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? '' );
 
 		if ( ! $branch ) {
-			return new \WP_Error( 'missing_branch', 'Branch is required.', [ 'status' => 400 ] );
+			return new \WP_Error( 'missing_branch', __( 'Branch is required.', 'gitwire' ), [ 'status' => 400 ] );
 		}
 
 		if ( ! function_exists( 'unzip_file' ) ) {
@@ -785,7 +785,7 @@ class REST_Installer {
 		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
 		if ( ! $record ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
 		$provider  = (string) $record['provider'];
@@ -847,7 +847,7 @@ class REST_Installer {
 		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
 		if ( ! $record ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
 		$result = Installer::untrack( (string) $record['provider'], (string) $record['full_name'] );
@@ -870,7 +870,7 @@ class REST_Installer {
 		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
 		if ( ! $record ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
 		$provider    = (string) $record['provider'];
@@ -898,7 +898,7 @@ class REST_Installer {
 		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
 		if ( ! $record ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
 		$provider  = (string) $record['provider'];

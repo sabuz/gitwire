@@ -509,7 +509,7 @@ class Installer {
 		$key       = $provider . ':' . $full_name;
 
 		if ( ! isset( $installed[ $key ] ) ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ) );
 		}
 
 		$rec       = $installed[ $key ];
@@ -531,7 +531,7 @@ class Installer {
 				} elseif ( 1 !== count( $provider_conns ) ) {
 					return new \WP_Error(
 						'gitwire_no_connection',
-						'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',
+						__( 'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.', 'gitwire' ),
 						[ 'status' => 400 ]
 					);
 				} else {
@@ -544,7 +544,7 @@ class Installer {
 		if ( null !== $connection_id && null === Connection_Resolver::get_credentials( $connection_id ) ) {
 			return new \WP_Error(
 				'gitwire_no_connection',
-				'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',
+				__( 'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.', 'gitwire' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -554,7 +554,7 @@ class Installer {
 		if ( $was_stale && is_wp_error( $result ) ) {
 			return new \WP_Error(
 				'gitwire_no_connection',
-				'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.',
+				__( 'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.', 'gitwire' ),
 				[ 'status' => 400 ]
 			);
 		}
@@ -575,7 +575,7 @@ class Installer {
 		$rec = self::get_record( $provider, $full_name );
 
 		if ( ! $rec ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ) );
 		}
 
 		if ( ! self::file_mods_allowed() ) {
@@ -604,7 +604,7 @@ class Installer {
 	 */
 	public static function untrack( string $provider, string $full_name ): bool|\WP_Error {
 		if ( ! self::get_record( $provider, $full_name ) ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ) );
 		}
 
 		self::delete_record( $provider, $full_name );
@@ -625,7 +625,7 @@ class Installer {
 		$key       = $provider . ':' . $full_name;
 
 		if ( ! isset( $installed[ $key ] ) ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ) );
 		}
 
 		$rec = $installed[ $key ];
@@ -646,7 +646,7 @@ class Installer {
 			if ( ! $plugin_file ) {
 				return new \WP_Error(
 					'gitwire_no_plugin_file',
-					'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.',
+					__( 'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.', 'gitwire' ),
 					[ 'status' => 500 ]
 				);
 			}
@@ -777,13 +777,13 @@ class Installer {
 		$key       = $provider . ':' . $full_name;
 
 		if ( ! isset( $installed[ $key ] ) ) {
-			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
+			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ) );
 		}
 
 		$rec = $installed[ $key ];
 
 		if ( 'plugin' !== $rec['type'] ) {
-			return new \WP_Error( 'gitwire_unsupported', 'Only plugins can be deactivated this way.', [ 'status' => 400 ] );
+			return new \WP_Error( 'gitwire_unsupported', __( 'Only plugins can be deactivated this way.', 'gitwire' ), [ 'status' => 400 ] );
 		}
 
 		if ( ! function_exists( 'deactivate_plugins' ) ) {
@@ -801,7 +801,7 @@ class Installer {
 		if ( ! $plugin_file ) {
 			return new \WP_Error(
 				'gitwire_no_plugin_file',
-				'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.',
+				__( 'Could not locate the plugin entry file. Try using "Pull latest" to re-sync.', 'gitwire' ),
 				[ 'status' => 500 ]
 			);
 		}
@@ -1365,7 +1365,7 @@ class Installer {
 		}
 
 		if ( ! self::acquire_install_lock( $provider, $full_name ) ) {
-			return new \WP_Error( 'gitwire_locked', 'Another install is already in progress for this repository.', [ 'status' => 409 ] );
+			return new \WP_Error( 'gitwire_locked', __( 'Another install is already in progress for this repository.', 'gitwire' ), [ 'status' => 409 ] );
 		}
 
 		try {
@@ -1556,7 +1556,7 @@ class Installer {
 			$backup_path = self::get_backup_base_dir() . DIRECTORY_SEPARATOR . basename( $install_path ) . '--gitwire-bak-' . time();
 			if ( ! self::move_dir_safe( $install_path, $backup_path ) ) {
 				wp_delete_file( $zip_file );
-				return new \WP_Error( 'gitwire_backup_failed', 'Could not create backup of existing installation.' );
+				return new \WP_Error( 'gitwire_backup_failed', __( 'Could not create backup of existing installation.', 'gitwire' ) );
 			}
 		}
 
@@ -1851,11 +1851,11 @@ class Installer {
 		$subdirs = glob( trailingslashit( $tmp_dir ) . '*', GLOB_ONLYDIR );
 		if ( empty( $subdirs ) ) {
 			$wp_filesystem->delete( $tmp_dir, true );
-			return new \WP_Error( 'gitwire_empty_zip', 'The downloaded ZIP contained no directory.' );
+			return new \WP_Error( 'gitwire_empty_zip', __( 'The downloaded ZIP contained no directory.', 'gitwire' ) );
 		}
 		if ( count( $subdirs ) > 1 ) {
 			$wp_filesystem->delete( $tmp_dir, true );
-			return new \WP_Error( 'gitwire_ambiguous_zip', 'The downloaded ZIP contained more than one top-level directory.' );
+			return new \WP_Error( 'gitwire_ambiguous_zip', __( 'The downloaded ZIP contained more than one top-level directory.', 'gitwire' ) );
 		}
 
 		$extracted_folder = $subdirs[0];
@@ -1863,7 +1863,7 @@ class Installer {
 		// Move to final destination.
 		if ( ! $wp_filesystem->move( $extracted_folder, $destination, true ) ) {
 			$wp_filesystem->delete( $tmp_dir, true );
-			return new \WP_Error( 'gitwire_move_failed', 'Could not move extracted files to destination.' );
+			return new \WP_Error( 'gitwire_move_failed', __( 'Could not move extracted files to destination.', 'gitwire' ) );
 		}
 
 		$wp_filesystem->delete( $tmp_dir, true );

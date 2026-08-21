@@ -252,7 +252,7 @@ class REST {
 		$conn     = Connection_Resolver::find( $connection_id );
 		$db_scope = $conn['scope'] ?? 'all';
 		if ( $conn && 'all' !== $db_scope && (string) get_current_user_id() !== $db_scope ) {
-			return new \WP_Error( 'forbidden', 'You do not have permission to use this connection.', [ 'status' => 403 ] );
+			return new \WP_Error( 'forbidden', __( 'You do not have permission to use this connection.', 'gitwire' ), [ 'status' => 403 ] );
 		}
 		return null;
 	}
