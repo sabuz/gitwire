@@ -226,6 +226,7 @@
 
 - [ ] `wp cron event list` shows `gitwire_background_type_detection` scheduled every 30 minutes regardless of either refresh frequency setting, including when Repository Type Refresh Frequency is "Never"
 - [ ] With the toggle off, `wp cron event run gitwire_background_type_detection` makes no detect_type_for_repo calls
+- [ ] Force the stored flag back on behind the UI (`wp option patch update gitwire_settings background_type_detection 1`) while Smart Install and Auto-Detect are both off, then run the cron and confirm it still detects nothing
 - [ ] With the toggle on and some cache rows untyped, `wp cron event run gitwire_background_type_detection` types a batch of them without touching `gitwire_refresh_repositories` or `gitwire_refresh_repository_types`
 - [ ] Deactivating the plugin clears `gitwire_background_type_detection` from the cron list; reactivating restores it
 - [ ] With a GitHub connection whose `gitwire_gh_rl_{connection_id}` transient reads 3000+, run `wp cron event run gitwire_background_type_detection` and confirm it pulls up to 100 untyped rows instead of 25 (check `gitwire_detection_cursor` advancement or add `error_log` to `Repository::get_untyped_batch()` temporarily)

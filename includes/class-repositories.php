@@ -467,12 +467,18 @@ class Repositories {
 	/**
 	 * Types a batch of cache rows that have no detection yet.
 	 *
-	 * No-op unless background_type_detection is on.
+	 * No-op unless background_type_detection is on and type detection is wanted at all.
+	 * The settings screen already switches the former off with the latter, but nothing
+	 * stops a stored true from outliving that, and this cron runs on a fixed schedule.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	private static function run_background_detection(): void {
+		if ( ! Settings::is_type_detection_enabled() ) {
+			return;
+		}
+
 		if ( ! ( Settings::get_public()['background_type_detection'] ?? false ) ) {
 			return;
 		}
