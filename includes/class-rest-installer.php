@@ -146,15 +146,6 @@ class REST_Installer {
 	public static function register_routes(): void {
 		$namespace = REST::NAMESPACE;
 
-		$provider_arg = [
-			'type'              => 'string',
-			'default'           => 'github',
-			'sanitize_callback' => static function ( $val ) {
-				$val = sanitize_key( $val );
-				return in_array( $val, [ 'github', 'gitlab', 'bitbucket' ], true ) ? $val : 'github';
-			},
-		];
-
 		register_rest_route(
 			$namespace,
 			'/install',
@@ -254,13 +245,12 @@ class REST_Installer {
 
 		register_rest_route(
 			$namespace,
-			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branch',
+			'/installed/(?P<id>\\d+)/branch',
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'switch_branch' ],
 				'permission_callback' => [ REST::class, 'can_write_installed' ],
 				'args'                => [
-					'provider'      => $provider_arg,
 					'branch'        => [
 						'required'          => true,
 						'type'              => 'string',
@@ -277,68 +267,62 @@ class REST_Installer {
 
 		register_rest_route(
 			$namespace,
-			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/activate',
+			'/installed/(?P<id>\\d+)/activate',
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'activate_installed' ],
 				'permission_callback' => [ REST::class, 'can_activate' ],
-				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
 
 		register_rest_route(
 			$namespace,
-			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/deactivate',
+			'/installed/(?P<id>\\d+)/deactivate',
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'deactivate_installed' ],
 				'permission_callback' => [ REST::class, 'can_activate' ],
-				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
 
 		register_rest_route(
 			$namespace,
-			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/commits',
+			'/installed/(?P<id>\\d+)/commits',
 			[
 				'methods'             => 'GET',
 				'callback'            => [ self::class, 'get_commits' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
-				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
 
 		register_rest_route(
 			$namespace,
-			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)',
+			'/installed/(?P<id>\\d+)',
 			[
 				'methods'             => 'DELETE',
 				'callback'            => [ self::class, 'remove_installed' ],
 				'permission_callback' => [ REST::class, 'can_delete_installed' ],
-				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
 
 		register_rest_route(
 			$namespace,
-			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/untrack',
+			'/installed/(?P<id>\\d+)/untrack',
 			[
 				'methods'             => 'DELETE',
 				'callback'            => [ self::class, 'untrack_installed' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
-				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
 
 		register_rest_route(
 			$namespace,
-			'/installed/(?P<owner>[^/]+)/(?P<repo>[^/]+)/auto-update',
+			'/installed/(?P<id>\\d+)/auto-update',
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'save_auto_update' ],
 				'permission_callback' => [ REST::class, 'can_toggle_auto_update' ],
 				'args'                => [
-					'provider'    => $provider_arg,
 					'auto_update' => [
 						'required' => true,
 						'type'     => 'string',
@@ -646,11 +630,16 @@ class REST_Installer {
 	 * @return array<string, bool>|\WP_Error Success data or WP_Error on failure.
 	 */
 	public static function activate_installed( \WP_REST_Request $req ): array|\WP_Error {
-		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = (string) $req->get_param( 'provider' );
-		$full_name = $owner . '/' . $repo;
-		$record    = Installer::get_record( $provider, $full_name );
+		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
+
+		if ( ! $record ) {
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+		}
+
+		$provider  = (string) $record['provider'];
+		$full_name = (string) $record['full_name'];
+		$owner     = (string) $record['owner'];
+		$repo      = (string) $record['repo'];
 
 		Error_Handler::clear_stale_activation_guard();
 
@@ -697,11 +686,16 @@ class REST_Installer {
 	 * @return array<string, bool>|\WP_Error Success data or WP_Error on failure.
 	 */
 	public static function deactivate_installed( \WP_REST_Request $req ): array|\WP_Error {
-		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = (string) $req->get_param( 'provider' );
-		$full_name = $owner . '/' . $repo;
-		$record    = Installer::get_record( $provider, $full_name );
+		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
+
+		if ( ! $record ) {
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+		}
+
+		$provider  = (string) $record['provider'];
+		$full_name = (string) $record['full_name'];
+		$owner     = (string) $record['owner'];
+		$repo      = (string) $record['repo'];
 		$result    = Installer::deactivate( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
@@ -721,8 +715,14 @@ class REST_Installer {
 	 * @return array<string, mixed>|\WP_Error Updated record on success, WP_Error on failure.
 	 */
 	public static function switch_branch( \WP_REST_Request $req ): array|\WP_Error {
-		$owner  = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo   = sanitize_text_field( $req->get_param( 'repo' ) );
+		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
+
+		if ( ! $record ) {
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+		}
+
+		$owner  = (string) $record['owner'];
+		$repo   = (string) $record['repo'];
 		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? '' );
 
 		if ( ! $branch ) {
@@ -733,8 +733,8 @@ class REST_Installer {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
-		$provider    = (string) $req->get_param( 'provider' );
-		$full_name   = $owner . '/' . $repo;
+		$provider    = (string) $record['provider'];
+		$full_name   = (string) $record['full_name'];
 		$override_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 		$override_id = '' !== $override_id ? $override_id : null;
 
@@ -745,8 +745,8 @@ class REST_Installer {
 			}
 		}
 
-		$existing_record = Installer::get_record( $provider, $full_name );
-		$is_pull         = $existing_record && ( $existing_record['branch'] ?? '' ) === $branch;
+		$existing_record = $record;
+		$is_pull         = ( $record['branch'] ?? '' ) === $branch;
 
 		$result = Installer::switch_branch( $provider, $full_name, $branch, $override_id );
 
@@ -782,15 +782,16 @@ class REST_Installer {
 	 * @return array<string, bool>|\WP_Error Success data or WP_Error on failure.
 	 */
 	public static function remove_installed( \WP_REST_Request $req ): array|\WP_Error {
-		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = (string) $req->get_param( 'provider' );
-		$full_name = $owner . '/' . $repo;
-		$record    = Installer::get_record( $provider, $full_name );
+		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
 		if ( ! $record ) {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
+
+		$provider  = (string) $record['provider'];
+		$full_name = (string) $record['full_name'];
+		$owner     = (string) $record['owner'];
+		$repo      = (string) $record['repo'];
 
 		if ( 'plugin' === ( $record['type'] ?? '' ) ) {
 			if ( ! function_exists( 'is_plugin_active' ) ) {
@@ -843,12 +844,13 @@ class REST_Installer {
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function untrack_installed( \WP_REST_Request $req ): array|\WP_Error {
-		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = (string) $req->get_param( 'provider' );
-		$full_name = $owner . '/' . $repo;
+		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
-		$result = Installer::untrack( $provider, $full_name );
+		if ( ! $record ) {
+			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
+		}
+
+		$result = Installer::untrack( (string) $record['provider'], (string) $record['full_name'] );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -865,15 +867,15 @@ class REST_Installer {
 	 * @return array<string, mixed>|\WP_Error Updated values or WP_Error on failure.
 	 */
 	public static function save_auto_update( \WP_REST_Request $req ): array|\WP_Error {
-		$owner       = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo        = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider    = (string) $req->get_param( 'provider' );
-		$auto_update = (string) $req->get_param( 'auto_update' );
-		$full_name   = $owner . '/' . $repo;
+		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
-		if ( ! Installer::get_record( $provider, $full_name ) ) {
+		if ( ! $record ) {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
+
+		$provider    = (string) $record['provider'];
+		$full_name   = (string) $record['full_name'];
+		$auto_update = (string) $req->get_param( 'auto_update' );
 
 		Installation::instance()->update_auto_update( $provider, $full_name, $auto_update );
 		Installer::invalidate_installed_cache();
@@ -893,15 +895,16 @@ class REST_Installer {
 	 * @return array<int, array<string, string>>|\WP_Error Commit list or WP_Error on failure.
 	 */
 	public static function get_commits( \WP_REST_Request $req ): array|\WP_Error {
-		$owner     = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo      = sanitize_text_field( $req->get_param( 'repo' ) );
-		$provider  = (string) $req->get_param( 'provider' );
-		$full_name = $owner . '/' . $repo;
+		$record = Installer::get_record_by_id( (int) $req->get_param( 'id' ) );
 
-		$record = Installer::get_record( $provider, $full_name );
 		if ( ! $record ) {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.', [ 'status' => 404 ] );
 		}
+
+		$provider  = (string) $record['provider'];
+		$full_name = (string) $record['full_name'];
+		$owner     = (string) $record['owner'];
+		$repo      = (string) $record['repo'];
 
 		$installation_id = $record['id'];
 		$cached          = self::get_cached_commits( $installation_id, $record['branch'] );

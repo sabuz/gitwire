@@ -374,6 +374,34 @@ if ( ! function_exists( 'apply_filters' ) ) {
 	}
 }
 
+if ( ! function_exists( 'is_plugin_active' ) ) {
+	/**
+	 * @param string $plugin Plugin basename.
+	 * @return bool
+	 */
+	function is_plugin_active( string $plugin ): bool {
+		return in_array( $plugin, (array) ( $GLOBALS['gitwire_test_active_plugins'] ?? [] ), true );
+	}
+}
+
+if ( ! function_exists( 'get_stylesheet' ) ) {
+	/**
+	 * @return string
+	 */
+	function get_stylesheet(): string {
+		return (string) ( $GLOBALS['gitwire_test_stylesheet'] ?? 'twentytwentyfour' );
+	}
+}
+
+if ( ! function_exists( 'get_template' ) ) {
+	/**
+	 * @return string
+	 */
+	function get_template(): string {
+		return (string) ( $GLOBALS['gitwire_test_template'] ?? get_stylesheet() );
+	}
+}
+
 if ( ! function_exists( 'wp_is_file_mod_allowed' ) ) {
 	/**
 	 * Mirrors core: the constant, then the filter that can override it.

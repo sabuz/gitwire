@@ -57,13 +57,7 @@ export default function ReconnectModal( {
 	const handlePull = async ( connId ) => {
 		setPulling( connId );
 		try {
-			await api.switchBranch(
-				item.owner,
-				item.repo,
-				item.branch,
-				item.provider ?? 'github',
-				connId
-			);
+			await api.switchBranch( item.id, item.branch, connId );
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */

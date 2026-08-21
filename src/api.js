@@ -98,82 +98,45 @@ export const checkSlug = ( slug, type = 'plugin' ) =>
 		) }&type=${ type }`,
 	} );
 
-export const getCommits = ( owner, repo, provider = 'github' ) =>
-	apiFetch( {
-		path: `${ BASE }/installed/${ encodeURIComponent(
-			owner
-		) }/${ encodeURIComponent( repo ) }/commits?provider=${ provider }`,
-	} );
+export const getCommits = ( id ) =>
+	apiFetch( { path: `${ BASE }/installed/${ id }/commits` } );
 
-export const switchBranch = (
-	owner,
-	repo,
-	branch,
-	provider = 'github',
-	connectionId = ''
-) =>
+export const switchBranch = ( id, branch, connectionId = '' ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ encodeURIComponent(
-			owner
-		) }/${ encodeURIComponent( repo ) }/branch`,
+		path: `${ BASE }/installed/${ id }/branch`,
 		method: 'POST',
 		data: {
 			branch,
-			provider,
 			...( connectionId ? { connection_id: connectionId } : {} ),
 		},
 	} );
 
-export const activateInstalled = ( owner, repo, provider = 'github' ) =>
+export const activateInstalled = ( id ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ encodeURIComponent(
-			owner
-		) }/${ encodeURIComponent( repo ) }/activate`,
+		path: `${ BASE }/installed/${ id }/activate`,
 		method: 'POST',
-		data: { provider },
 	} );
 
-export const deactivateInstalled = ( owner, repo, provider = 'github' ) =>
+export const deactivateInstalled = ( id ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ encodeURIComponent(
-			owner
-		) }/${ encodeURIComponent( repo ) }/deactivate`,
+		path: `${ BASE }/installed/${ id }/deactivate`,
 		method: 'POST',
-		data: { provider },
 	} );
 
-export const removeInstalled = ( owner, repo, provider = 'github' ) =>
+export const removeInstalled = ( id ) =>
+	apiFetch( { path: `${ BASE }/installed/${ id }`, method: 'DELETE' } );
+
+export const untrackInstalled = ( id ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ encodeURIComponent(
-			owner
-		) }/${ encodeURIComponent( repo ) }?provider=${ encodeURIComponent(
-			provider
-		) }`,
+		path: `${ BASE }/installed/${ id }/untrack`,
 		method: 'DELETE',
 	} );
 
-export const untrackInstalled = ( owner, repo, provider = 'github' ) =>
+export const saveAutoUpdate = ( id, autoUpdate ) =>
 	apiFetch( {
-		path: `${ BASE }/installed/${ encodeURIComponent(
-			owner
-		) }/${ encodeURIComponent(
-			repo
-		) }/untrack?provider=${ encodeURIComponent( provider ) }`,
-		method: 'DELETE',
-	} );
-
-export const saveAutoUpdate = (
-	owner,
-	repo,
-	provider = 'github',
-	autoUpdate
-) =>
-	apiFetch( {
-		path: `${ BASE }/installed/${ encodeURIComponent(
-			owner
-		) }/${ encodeURIComponent( repo ) }/auto-update`,
+		path: `${ BASE }/installed/${ id }/auto-update`,
 		method: 'POST',
-		data: { provider, auto_update: autoUpdate },
+		data: { auto_update: autoUpdate },
 	} );
 
 export const resolveRepo = ( url ) =>

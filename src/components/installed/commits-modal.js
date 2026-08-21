@@ -35,7 +35,7 @@ export default function CommitsModal( { item, onClose } ) {
 		setCommits( null );
 		setFetchError( false );
 		let cancelled = false;
-		api.getCommits( item.owner, item.repo, item.provider ?? 'github' )
+		api.getCommits( item.id )
 			.then( ( data ) => {
 				if ( cancelled ) {
 					return;

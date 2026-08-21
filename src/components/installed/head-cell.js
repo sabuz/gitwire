@@ -34,12 +34,7 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 	const handlePull = useCallback( async () => {
 		setPulling( true );
 		try {
-			await api.switchBranch(
-				item.owner,
-				item.repo,
-				item.branch,
-				item.provider ?? 'github'
-			);
+			await api.switchBranch( item.id, item.branch );
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */

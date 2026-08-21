@@ -79,16 +79,47 @@ class Installer {
 	 * @return array<string, mixed>
 	 */
 	private static function hydrate_record( array $row ): array {
-		$parts = explode( '/', (string) ( $row['full_name'] ?? '' ), 2 );
+		/*
+		 * Split on the last slash, not the first. A GitLab subgroup makes full_name
+		 * three or more segments, and splitting at the front gave an owner and a repo
+		 * that overlapped: acme/team/widget came back as owner acme/team and repo
+		 * team/widget, so owner . '/' . repo addressed a project that does not exist.
+		 * Every caller that rebuilds the pair, get_record() included, missed.
+		 */
+		$full  = (string) ( $row['full_name'] ?? '' );
+		$slash = strrpos( $full, '/' );
+
 		return array_merge(
 			$row,
 			[
 				'id'          => (int) ( $row['id'] ?? 0 ),
-				'repo'        => $parts[1] ?? '',
+				'owner'       => false !== $slash ? substr( $full, 0, $slash ) : $full,
+				'repo'        => false !== $slash ? substr( $full, $slash + 1 ) : '',
 				'updated_at'  => $row['updated_at'] ?? '',
 				'auto_update' => $row['auto_update'] ?? 'disabled',
 			]
 		);
+	}
+
+	/**
+	 * Returns a single installation record by its primary key.
+	 *
+	 * @since 1.0.0
+	 * @param int $id Row ID from gitwire_installations.
+	 * @return array<string, mixed>|null
+	 */
+	public static function get_record_by_id( int $id ): ?array {
+		if ( $id <= 0 ) {
+			return null;
+		}
+
+		foreach ( self::get_installed() as $rec ) {
+			if ( (int) ( $rec['id'] ?? 0 ) === $id ) {
+				return $rec;
+			}
+		}
+
+		return null;
 	}
 
 	/**

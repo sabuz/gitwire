@@ -26,11 +26,7 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 	const handleUntrack = async () => {
 		setBusy( 'untrack' );
 		try {
-			await api.untrackInstalled(
-				item.owner,
-				item.repo,
-				item.provider ?? 'github'
-			);
+			await api.untrackInstalled( item.id );
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
@@ -55,11 +51,7 @@ export default function DeleteModal( { items, closeModal, onRefresh } ) {
 	const handleDelete = async () => {
 		setBusy( 'delete' );
 		try {
-			await api.removeInstalled(
-				item.owner,
-				item.repo,
-				item.provider ?? 'github'
-			);
+			await api.removeInstalled( item.id );
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */

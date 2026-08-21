@@ -248,11 +248,7 @@ export default function InstalledPanel( {
 					! item.active && ! item.activation_pending,
 				callback: async ( [ item ] ) => {
 					try {
-						await api.activateInstalled(
-							item.owner,
-							item.repo,
-							item.provider ?? 'github'
-						);
+						await api.activateInstalled( item.id );
 						queuePendingToastAndReload(
 							sprintf(
 								/* translators: %s: repository full name */
@@ -274,11 +270,7 @@ export default function InstalledPanel( {
 				isEligible: ( item ) => item.active && item.type === 'plugin',
 				callback: async ( [ item ] ) => {
 					try {
-						await api.deactivateInstalled(
-							item.owner,
-							item.repo,
-							item.provider ?? 'github'
-						);
+						await api.deactivateInstalled( item.id );
 						queuePendingToastAndReload(
 							sprintf(
 								/* translators: %s: repository full name */
@@ -339,12 +331,7 @@ export default function InstalledPanel( {
 				isEligible: ( item ) => item.auto_update !== 'disabled',
 				callback: async ( [ item ] ) => {
 					try {
-						await api.saveAutoUpdate(
-							item.owner,
-							item.repo,
-							item.provider ?? 'github',
-							'disabled'
-						);
+						await api.saveAutoUpdate( item.id, 'disabled' );
 						toast.success(
 							sprintf(
 								/* translators: %s: repository full name */
@@ -457,12 +444,7 @@ function AutoUpdateModal( {
 	const handleConfirm = async () => {
 		setBusy( true );
 		try {
-			await api.saveAutoUpdate(
-				item.owner,
-				item.repo,
-				item.provider ?? 'github',
-				autoUpdate
-			);
+			await api.saveAutoUpdate( item.id, autoUpdate );
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */

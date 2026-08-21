@@ -118,9 +118,15 @@ class REST_Repositories {
 			]
 		);
 
+		/*
+		 * The owner segment is greedy because a GitLab subgroup path is itself
+		 * multi-segment, and WP url-decodes %2F back to a slash before matching, so
+		 * an encoded owner cannot survive as one segment. The fixed suffix is what
+		 * keeps the split unambiguous: the last segment before it is always the repo.
+		 */
 		register_rest_route(
 			$namespace,
-			'/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/branches',
+			'/repos/(?P<owner>.+)/(?P<repo>[^/]+)/branches',
 			[
 				'methods'             => 'GET',
 				'callback'            => [ self::class, 'get_branches' ],
@@ -134,7 +140,7 @@ class REST_Repositories {
 
 		register_rest_route(
 			$namespace,
-			'/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/detect',
+			'/repos/(?P<owner>.+)/(?P<repo>[^/]+)/detect',
 			[
 				'methods'             => 'GET',
 				'callback'            => [ self::class, 'detect_repo' ],

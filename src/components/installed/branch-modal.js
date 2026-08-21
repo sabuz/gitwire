@@ -73,12 +73,7 @@ export default function BranchModal( {
 		}
 		setSwitching( true );
 		try {
-			await api.switchBranch(
-				owner,
-				repo,
-				selectedBranch,
-				item.provider ?? 'github'
-			);
+			await api.switchBranch( item.id, selectedBranch );
 			onSwitched( selectedBranch );
 			onClose();
 		} catch ( e ) {

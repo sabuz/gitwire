@@ -227,30 +227,18 @@ class REST {
 	}
 
 	/**
-	 * Resolves the installation a route's owner/repo/provider params point at.
+	 * Resolves the installation a route's id param points at.
 	 *
-	 * Permission callbacks run before the route's own sanitize_callbacks, so the
-	 * provider is normalised the same way here. Reading it raw would let
-	 * "provider=GitHub" miss the record and fall through to the looser branch.
+	 * The id is a primary key rather than a composed owner/repo pair, so nothing
+	 * here depends on how a full_name splits, and the route pattern does not have
+	 * to survive a slash inside a GitLab subgroup path.
 	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $request Incoming request.
 	 * @return array<string, mixed>|null
 	 */
 	private static function record_for( \WP_REST_Request $request ): ?array {
-		$owner = (string) $request->get_param( 'owner' );
-		$repo  = (string) $request->get_param( 'repo' );
-
-		if ( '' === $owner || '' === $repo ) {
-			return null;
-		}
-
-		$provider = sanitize_key( (string) $request->get_param( 'provider' ) );
-		if ( ! in_array( $provider, [ 'github', 'gitlab', 'bitbucket' ], true ) ) {
-			$provider = 'github';
-		}
-
-		return Installer::get_record( $provider, $owner . '/' . $repo );
+		return Installer::get_record_by_id( (int) $request->get_param( 'id' ) );
 	}
 
 	/**
