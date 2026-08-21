@@ -62,6 +62,7 @@ final class Plugin {
 		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
 		add_action( 'gitwire_refresh_repositories', [ Repositories::class, 'scheduled_refresh' ] );
 		add_action( 'gitwire_refresh_repository_types', [ Repositories::class, 'scheduled_type_refresh' ] );
+		add_action( 'gitwire_background_type_detection', [ Repositories::class, 'scheduled_background_detection' ] );
 		add_action( 'gitwire_refresh_connections', [ Connection_Meta::class, 'refresh_public_connections' ] );
 		add_action( 'gitwire_update_check', [ Installer::class, 'run_auto_updates' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
@@ -183,6 +184,16 @@ final class Plugin {
 			wp_schedule_event( time(), 'halfhourly', 'gitwire_refresh_connections' );
 		}
 
+		/*
+		 * Fixed cadence, not a setting: this is opportunistic work bounded by its own
+		 * rate-limit guard, not a freshness sweep, so it doesn't belong on either
+		 * refresh frequency. The Background Type Pre-Detection toggle gates whether it
+		 * does anything on a given tick.
+		 */
+		if ( ! wp_next_scheduled( 'gitwire_background_type_detection' ) ) {
+			wp_schedule_event( time(), 'halfhourly', 'gitwire_background_type_detection' );
+		}
+
 		if ( ! wp_next_scheduled( 'gitwire_trim_logs' ) ) {
 			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
 		}
@@ -292,6 +303,7 @@ final class Plugin {
 		wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repository_types' );
+		wp_clear_scheduled_hook( 'gitwire_background_type_detection' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
 		wp_clear_scheduled_hook( 'gitwire_update_check' );
 	}

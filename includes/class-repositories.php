@@ -361,16 +361,28 @@ class Repositories {
 	}
 
 	/**
-	 * Re-detects installed repository types, then types any cache rows that have none.
+	 * Scheduled cron callback: types cache rows that have no detection yet.
+	 *
+	 * Runs on its own fixed cadence, independent of both refresh frequencies, since it
+	 * is opportunistic work (typing repos nobody has checked yet) rather than a
+	 * freshness sweep, and the rate-limit guard inside already keeps it from competing
+	 * with real API usage.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function scheduled_background_detection(): void {
+		self::run_background_detection();
+	}
+
+	/**
+	 * Re-detects repository types for installed repositories.
 	 *
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
 	 */
 	public static function cron_refresh_repository_types(): bool|\WP_Error {
-		$result = self::refresh_installed_repository_types();
-		self::run_background_detection();
-
-		return $result;
+		return self::refresh_installed_repository_types();
 	}
 
 	/**
@@ -448,8 +460,7 @@ class Repositories {
 	/**
 	 * Types a batch of cache rows that have no detection yet.
 	 *
-	 * No-op unless background_type_detection is on. Only ever touches untyped rows,
-	 * so calling it from more than one cron is repeat-safe.
+	 * No-op unless background_type_detection is on.
 	 *
 	 * @since 1.0.0
 	 * @return void
