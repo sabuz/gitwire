@@ -108,6 +108,16 @@ Gitwire stores connection details, installation records, and a cached list of yo
 
 When the activity log is enabled, Gitwire records the WordPress username of whoever performed each install, update, branch switch, activation, or removal, along with the repository name and a timestamp. The log is written to a file in your uploads directory with a name derived from your site's secret keys, is not linked from anywhere, and is blocked from direct web access. Turn logging off in **Gitwire → Settings** to stop recording, and use **Clear log** to delete what has already been recorded.
 
+== Third-Party Libraries ==
+
+Gitwire is licensed GPL-2.0-or-later, and all of its own PHP, JavaScript, and SCSS is original work.
+
+Most of the WordPress packages the admin screens use (`@wordpress/components`, `@wordpress/element`, `@wordpress/api-fetch`, and others) are loaded from WordPress core at runtime and are not bundled. The remainder, including `@wordpress/dataviews` and its dependency tree, is compiled into `build/index.js`. That comes to 43 third-party packages, licensed MIT or 0BSD, all compatible with the GPL.
+
+Every one of those licenses is reproduced in full in `LICENSE-THIRD-PARTY.txt`, which ships with the plugin. It is generated from the actual webpack module list rather than maintained by hand, so it cannot drift from what is really in the bundle. Notable entries include Sonner (MIT, Copyright (c) 2023 Emil Kowalski) for the admin toasts, and the Ariakit, Floating UI, and date-fns families pulled in by DataViews.
+
+Any license banner carried in the source of a bundled library is also preserved at `build/index.js.LICENSE.txt`.
+
 == Installation ==
 
 1. Upload the `gitwire` folder to `/wp-content/plugins/`, or install it from **Plugins → Add New Plugin**.
