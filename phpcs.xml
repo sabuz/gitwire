@@ -52,7 +52,18 @@
 		<exclude-pattern>tests/stubs.php</exclude-pattern>
 	</rule>
 
-	<!-- Minimum supported versions. -->
-	<config name="minimum_supported_wp_version" value="6.9"/>
-	<config name="testVersion" value="8.1-"/>
+	<!--
+		Flags anything newer than the declared PHP floor. Without the
+		PHPCompatibilityWP standard below, testVersion is inert: it is only read by
+		that sniff set, so a stray 8.1 feature would have passed review and fataled
+		on the 8.0 sites the header promises to support.
+	-->
+	<rule ref="PHPCompatibilityWP"/>
+
+	<!--
+		Both values track the headers in gitwire.php and readme.txt. Change them
+		together or this stops checking what the plugin actually claims to support.
+	-->
+	<config name="minimum_supported_wp_version" value="7.0"/>
+	<config name="testVersion" value="8.0-"/>
 </ruleset>
