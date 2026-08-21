@@ -210,7 +210,8 @@
 - [ ] Change it, then confirm `wp cron event list` shows `gitwire_refresh_repository_types` on the new recurrence
 - [ ] Set to "Never" and confirm `gitwire_refresh_repository_types` is gone from the cron list
 - [ ] Run `wp cron event run gitwire_refresh_repositories` and confirm the repo list updates while stored types are left alone
-- [ ] Run `wp cron event run gitwire_refresh_repository_types` and confirm installed repos are typed again
+- [ ] With Background Type Pre-Detection on and some cache rows untyped, run `wp cron event run gitwire_refresh_repositories` and confirm no detect_type_for_repo calls happen (untyped rows stay untyped)
+- [ ] Run `wp cron event run gitwire_refresh_repository_types` and confirm installed repos are typed again, and (with Background Type Pre-Detection on) untyped cache rows get typed too
 
 ### Refresh Repositories vs Refresh Types
 

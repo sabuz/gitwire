@@ -337,28 +337,17 @@ class Repositories {
 	}
 
 	/**
-	 * Scheduled cron callback: refreshes repo lists, then types the rows that have none.
+	 * Scheduled cron callback: refreshes repo lists only.
 	 *
-	 * Re-detecting types for repos that already have one runs on its own schedule
-	 * (gitwire_refresh_repository_types), since a full re-detect costs an API round
-	 * trip per repo and rarely changes anything.
+	 * All type detection, re-detecting known types and typing the untyped, runs on its
+	 * own schedule (gitwire_refresh_repository_types) instead, since Repository Refresh
+	 * Frequency and Repository Type Refresh Frequency are independent settings.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function scheduled_refresh(): void {
-		$result = self::refresh_repositories();
-		if ( is_wp_error( $result ) ) {
-			return;
-		}
-
-		// A parked cursor means the sweep used its budget; type detection would spend
-		// another 25 s on top and push the tick past max_execution_time.
-		if ( ! empty( self::get_refresh_state() ) ) {
-			return;
-		}
-
-		self::run_background_detection();
+		self::refresh_repositories();
 	}
 
 	/**
