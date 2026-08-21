@@ -422,7 +422,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					checked={ backgroundTypeDetection }
 					disabled={ ! detectionActive }
 					help={ __(
-						'Detect types for unscanned repos in the background every 30 minutes, independent of the refresh frequencies above. Best for large collections.',
+						'Detect types for unscanned repos in the background every 30 minutes, independent of the refresh frequency settings below. Best for large collections.',
 						'gitwire'
 					) }
 					label={ __( 'Background Type Pre-Detection', 'gitwire' ) }
