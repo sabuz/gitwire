@@ -219,8 +219,11 @@
 - [ ] Run `wp cron event run gitwire_refresh_repository_types` by hand in that state and confirm no repos are typed, since the callback rechecks the setting rather than trusting the schedule
 - [ ] Turn Auto-Detect back on: the control re-enables still reading Daily, and `gitwire_refresh_repository_types` returns to the cron list on that same recurrence without needing to be set again
 - [ ] Repeat with Smart Install as the switch being toggled instead of Auto-Detect, since either one keeps detection alive
-- [ ] With Auto-Detect off, the Add Repository tab's chevron next to "Refresh Repositories" is disabled, so stored types can't be dropped with nothing left to rebuild them
-- [ ] "Refresh Repositories" itself stays enabled in that state, since relisting doesn't touch types
+- [ ] With Auto-Detect off, the Add Repository tab's chevron next to "Refresh Repositories" is gone entirely, so stored types can't be dropped with nothing left to rebuild them
+- [ ] "Refresh Repositories" itself stays enabled in that state and renders with normal rounded corners, not the squared-off edge it uses when paired with the chevron
+- [ ] With Auto-Detect off, repo cards show no type badge and no "Detecting…" spinner, since nothing will ever resolve it
+- [ ] Cards for already-installed repos still show their Plugin/Theme badge in that state, since it comes from the install record rather than detection
+- [ ] Turn Auto-Detect back on and confirm the chevron, the badges, and the spinner all return
 
 ### Background Type Pre-Detection
 

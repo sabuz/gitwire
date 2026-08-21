@@ -596,7 +596,11 @@ export default function RepositoryBrowser( {
 				<FlexItem>
 					<div className="gitwire-refresh">
 						<Button
-							className="gitwire-refresh__main"
+							className={
+								canRefreshTypes
+									? 'gitwire-refresh__main'
+									: undefined
+							}
 							disabled={ loading }
 							isBusy={ loading }
 							variant="secondary"
@@ -604,55 +608,59 @@ export default function RepositoryBrowser( {
 						>
 							{ __( 'Refresh Repositories', 'gitwire' ) }
 						</Button>
-						<DropdownMenu
-							icon={ chevronDown }
-							label={ __( 'Refresh Options', 'gitwire' ) }
-							popoverProps={ {
-								placement: 'bottom-end',
-								className: 'gitwire-refresh-dropdown',
-								focusOnMount: 'container',
-							} }
-							toggleProps={ {
-								className: 'gitwire-refresh__toggle',
-								disabled: loading || ! canRefreshTypes,
-								variant: 'secondary',
-							} }
-						>
-							{ ( { onClose } ) => (
-								<MenuGroup>
-									<MenuItem
-										info={ __(
-											'Re-detects every type. Uses more API calls.',
-											'gitwire'
-										) }
-										onClick={ () => {
-											onClose();
-											handleRefresh( 'repos_and_types' );
-										} }
-									>
-										{ __(
-											'Refresh Repositories & Types',
-											'gitwire'
-										) }
-									</MenuItem>
-									<MenuItem
-										info={ __(
-											'Keeps the list, re-detects types only.',
-											'gitwire'
-										) }
-										onClick={ () => {
-											onClose();
-											handleRefresh( 'types' );
-										} }
-									>
-										{ __(
-											'Refresh Types Only',
-											'gitwire'
-										) }
-									</MenuItem>
-								</MenuGroup>
-							) }
-						</DropdownMenu>
+						{ canRefreshTypes && (
+							<DropdownMenu
+								icon={ chevronDown }
+								label={ __( 'Refresh Options', 'gitwire' ) }
+								popoverProps={ {
+									placement: 'bottom-end',
+									className: 'gitwire-refresh-dropdown',
+									focusOnMount: 'container',
+								} }
+								toggleProps={ {
+									className: 'gitwire-refresh__toggle',
+									disabled: loading,
+									variant: 'secondary',
+								} }
+							>
+								{ ( { onClose } ) => (
+									<MenuGroup>
+										<MenuItem
+											info={ __(
+												'Re-detects every type. Uses more API calls.',
+												'gitwire'
+											) }
+											onClick={ () => {
+												onClose();
+												handleRefresh(
+													'repos_and_types'
+												);
+											} }
+										>
+											{ __(
+												'Refresh Repositories & Types',
+												'gitwire'
+											) }
+										</MenuItem>
+										<MenuItem
+											info={ __(
+												'Keeps the list, re-detects types only.',
+												'gitwire'
+											) }
+											onClick={ () => {
+												onClose();
+												handleRefresh( 'types' );
+											} }
+										>
+											{ __(
+												'Refresh Types Only',
+												'gitwire'
+											) }
+										</MenuItem>
+									</MenuGroup>
+								) }
+							</DropdownMenu>
+						) }
 					</div>
 				</FlexItem>
 				{ onOpenUrlImport && (
@@ -845,6 +853,7 @@ const RepoCard = memo( function ( {
 							: __( 'Public', 'gitwire' ) }
 					</span>
 					<TypeBadge
+						autoDetectType={ autoDetectType }
 						detection={ detection }
 						installed={ installed }
 					/>
@@ -888,7 +897,7 @@ const RepoCard = memo( function ( {
 } );
 RepoCard.displayName = 'RepoCard';
 
-function TypeBadge( { detection, installed } ) {
+function TypeBadge( { detection, installed, autoDetectType } ) {
 	if ( installed ) {
 		if ( installed.type === 'block-theme' ) {
 			return (
@@ -909,6 +918,10 @@ function TypeBadge( { detection, installed } ) {
 				{ __( 'Plugin', 'gitwire' ) }
 			</span>
 		);
+	}
+	// Nothing is detecting with auto-detect off, so the spinner below would never resolve.
+	if ( ! autoDetectType ) {
+		return null;
 	}
 	if ( ! detection ) {
 		return (
