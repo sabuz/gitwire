@@ -48,7 +48,8 @@ class Provider_Factory {
 		if ( 'gitlab' === $provider ) {
 			return new GitLab_API(
 				$creds['token'] ?? '',
-				$creds['gitlab_url'] ?? ''
+				$creds['gitlab_url'] ?? '',
+				$connection_id ?? ''
 			);
 		}
 

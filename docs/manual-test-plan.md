@@ -220,7 +220,10 @@
 - [ ] Deactivating the plugin clears `gitwire_background_type_detection` from the cron list; reactivating restores it
 - [ ] With a GitHub connection whose `gitwire_gh_rl_{connection_id}` transient reads 3000+, run `wp cron event run gitwire_background_type_detection` and confirm it pulls up to 100 untyped rows instead of 25 (check `gitwire_detection_cursor` advancement or add `error_log` to `Repository::get_untyped_batch()` temporarily)
 - [ ] With that transient reading below 3000, or no GitHub connection configured at all, confirm the batch stays at 25
-- [ ] Setting the `gitwire_detection_batch_size` filter still overrides both cases
+- [ ] With a GitLab connection whose `gitwire_gl_rl_{connection_id}` transient reads `remaining >= 500` and `remaining/limit >= 0.5`, confirm the batch also bumps to 100
+- [ ] With a GitLab connection below that ratio (e.g. a self-managed instance with a small configured limit sitting at 90% used), confirm the batch stays at 25 even if the raw remaining count looks large
+- [ ] Setting the `gitwire_detection_batch_size` filter still overrides all of the above
+- [ ] Confirm a GitLab row in the batch still aborts the loop early once its connection's cached remaining drops below 50, mirroring the existing GitHub per-row guard
 
 ### Refresh Repositories vs Refresh Types
 

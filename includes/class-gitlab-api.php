@@ -33,6 +33,13 @@ class GitLab_API implements Git_Provider_Interface {
 	private string $base;
 
 	/**
+	 * Connection ID used as the rate-limit cache key.
+	 *
+	 * @var string
+	 */
+	private string $connection_id;
+
+	/**
 	 * Per-request cache of host safety checks, keyed by hostname.
 	 *
 	 * @var array<string, bool>
@@ -54,12 +61,14 @@ class GitLab_API implements Git_Provider_Interface {
 	 * Constructor.
 	 *
 	 * @since 1.0.0
-	 * @param string $token    Personal access token.
-	 * @param string $base_url GitLab instance base URL (defaults to gitlab.com).
+	 * @param string $token         Personal access token.
+	 * @param string $base_url      GitLab instance base URL (defaults to gitlab.com).
+	 * @param string $connection_id Connection ID used for the rate-limit cache key.
 	 */
-	public function __construct( string $token = '', string $base_url = '' ) {
-		$this->token = $token;
-		$this->base  = rtrim( $base_url ? $base_url : 'https://gitlab.com', '/' ) . '/api/v4';
+	public function __construct( string $token = '', string $base_url = '', string $connection_id = '' ) {
+		$this->token         = $token;
+		$this->base          = rtrim( $base_url ? $base_url : 'https://gitlab.com', '/' ) . '/api/v4';
+		$this->connection_id = $connection_id;
 	}
 
 	/**
@@ -569,6 +578,22 @@ class GitLab_API implements Git_Provider_Interface {
 				'remaining' => $remaining,
 				'reset'     => $reset,
 			];
+
+			/*
+			 * Unlike GitHub's fixed hourly shape, GitLab's limit varies per instance
+			 * (2,000/min on GitLab.com, admin-configurable on self-managed), so the
+			 * cache carries both numbers rather than a bare remaining count.
+			 */
+			$conn_key = '' !== $this->connection_id ? $this->connection_id : 'anon';
+			$ttl      = min( max( 1, $reset - time() ), HOUR_IN_SECONDS );
+			set_transient(
+				'gitwire_gl_rl_' . $conn_key,
+				[
+					'limit'     => $limit,
+					'remaining' => $remaining,
+				],
+				$ttl
+			);
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );

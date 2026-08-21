@@ -475,7 +475,7 @@ class Repositories {
 		 *
 		 * Lower this on resource-constrained servers; raise it to speed up initial
 		 * detection on large installs (at the cost of longer cron execution). Defaults
-		 * to a larger batch when GitHub quota is sitting mostly idle.
+		 * to a larger batch when GitHub or GitLab quota is sitting mostly idle.
 		 *
 		 * @since 1.0.0
 		 * @param int $batch_size Repositories per cycle. Default 25, or 100 when idle.
@@ -505,6 +505,14 @@ class Repositories {
 					$conn_key  = $connection_id ?? 'anon';
 					$remaining = get_transient( 'gitwire_gh_rl_' . $conn_key );
 					if ( false !== $remaining && (int) $remaining < 50 ) {
+						break;
+					}
+				}
+
+				if ( 'gitlab' === $row['provider'] ) {
+					$conn_key = $connection_id ?? 'anon';
+					$cached   = get_transient( 'gitwire_gl_rl_' . $conn_key );
+					if ( is_array( $cached ) && ( $cached['remaining'] ?? 0 ) < 50 ) {
 						break;
 					}
 				}
@@ -539,12 +547,12 @@ class Repositories {
 	}
 
 	/**
-	 * Sizes the background-detection batch to the currently idle GitHub quota.
+	 * Sizes the background-detection batch to whichever provider has idle quota.
 	 *
-	 * This cron ticks every 30 minutes against an hourly GitHub limit, so a reading
-	 * with plenty of quota left is evidence this window has gone mostly unused and can
-	 * take a bigger batch. GitLab and Bitbucket aren't tracked the same way, so a
-	 * connection on either provider falls through to the fixed default; the per-row
+	 * This cron ticks every 30 minutes, well inside GitHub's hourly window and GitLab's
+	 * usual per-minute one, so a reading with plenty left is evidence that window has
+	 * gone mostly unused and can take a bigger batch. Bitbucket isn't tracked the same
+	 * way, so a Bitbucket-only site falls through to the fixed default; the per-row
 	 * floor check further down still aborts early regardless of this batch size.
 	 *
 	 * @since 1.0.0
@@ -554,7 +562,11 @@ class Repositories {
 		$default   = 25;
 		$remaining = self::min_github_remaining();
 
-		return ( null !== $remaining && $remaining >= 3000 ) ? 100 : $default;
+		if ( null !== $remaining && $remaining >= 3000 ) {
+			return 100;
+		}
+
+		return self::gitlab_has_idle_quota() ? 100 : $default;
 	}
 
 	/**
@@ -587,6 +599,44 @@ class Repositories {
 		}
 
 		return $lowest;
+	}
+
+	/**
+	 * Returns true when every GitLab connection's cached reading shows comfortable headroom.
+	 *
+	 * Unlike GitHub's roughly-fixed hourly shape, GitLab's limit varies per instance
+	 * (2,000/min on GitLab.com, admin-configurable on self-managed), so a bare remaining
+	 * count means nothing without its limit. Requires both an absolute floor and a
+	 * fraction of the total, so a connection with a small configured limit is never
+	 * mistaken for idle just because it happens to be mostly untouched. False when no
+	 * GitLab connection has a cached reading yet, same as the GitHub check.
+	 *
+	 * @since 1.0.0
+	 * @return bool
+	 */
+	private static function gitlab_has_idle_quota(): bool {
+		$found = false;
+
+		foreach ( Connection_Resolver::all() as $conn ) {
+			if ( 'gitlab' !== ( $conn['provider'] ?? '' ) ) {
+				continue;
+			}
+
+			$conn_key = ! empty( $conn['id'] ) ? $conn['id'] : 'anon';
+			$cached   = get_transient( 'gitwire_gl_rl_' . $conn_key );
+			if ( ! is_array( $cached ) || empty( $cached['limit'] ) ) {
+				continue;
+			}
+
+			$found = true;
+			$ratio = $cached['remaining'] / $cached['limit'];
+
+			if ( $cached['remaining'] < 500 || $ratio < 0.5 ) {
+				return false;
+			}
+		}
+
+		return $found;
 	}
 
 	/**
