@@ -167,6 +167,9 @@ export default function RepositoryBrowser( {
 	activeSourceFiltersRef.current = activeSourceFilters;
 	const smartInstall = settings?.smart_install !== false;
 	const autoDetectType = settings?.auto_detect_type !== false;
+	// Nothing re-types a repo once its detection is dropped, so offering to drop it
+	// would just blank the badges for good.
+	const canRefreshTypes = autoDetectType || smartInstall;
 
 	const loadRepos = useCallback(
 		async (
@@ -611,7 +614,7 @@ export default function RepositoryBrowser( {
 							} }
 							toggleProps={ {
 								className: 'gitwire-refresh__toggle',
-								disabled: loading,
+								disabled: loading || ! canRefreshTypes,
 								variant: 'secondary',
 							} }
 						>

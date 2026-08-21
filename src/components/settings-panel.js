@@ -292,6 +292,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 		const payload = { auto_detect_type: newVal };
 		const prevBackground = backgroundTypeDetection;
 		const prevShallow = shallowDetection;
+		const prevTypeFreq = repositoryTypeRefreshFrequency;
 		if ( ! newVal ) {
 			if ( backgroundTypeDetection ) {
 				setBackgroundTypeDetection( false );
@@ -301,12 +302,19 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				setShallowDetection( false );
 				payload.shallow_detection = false;
 			}
+			// 'never' unschedules the cron, so the disabled control below reflects
+			// what actually runs rather than just greying out a live setting.
+			if ( 'never' !== repositoryTypeRefreshFrequency ) {
+				setRepositoryTypeRefreshFrequency( 'never' );
+				payload.repository_type_refresh_frequency = 'never';
+			}
 		}
 		save( payload, () => {
 			setAutoDetectType( ! newVal );
 			if ( ! newVal ) {
 				setBackgroundTypeDetection( prevBackground );
 				setShallowDetection( prevShallow );
+				setRepositoryTypeRefreshFrequency( prevTypeFreq );
 			}
 		} ).catch( () => {} );
 	};
@@ -522,6 +530,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				<ToggleGroupControl
 					__nextHasNoMarginBottom
 					isBlock
+					disabled={ ! detectionActive }
 					label={ __(
 						'Repository Type Refresh Frequency',
 						'gitwire'
