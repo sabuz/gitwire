@@ -522,31 +522,42 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				<ToggleGroupControl
 					__nextHasNoMarginBottom
 					isBlock
-					disabled={ ! detectionActive }
 					label={ __(
 						'Repository Type Refresh Frequency',
 						'gitwire'
 					) }
-					help={ __(
-						'How often already-detected repository types are checked again. Detection costs an API call per repository, so keep this low on large collections.',
-						'gitwire'
-					) }
+					help={
+						detectionActive
+							? __(
+									'How often already-detected repository types are checked again. Detection costs an API call per repository, so keep this low on large collections.',
+									'gitwire'
+							  )
+							: __(
+									'Requires Auto-Detect Repository Type.',
+									'gitwire'
+							  )
+					}
 					value={ repositoryTypeRefreshFrequency }
 					onChange={ handleRepositoryTypeRefreshFrequencyChange }
 				>
+					{ /* ToggleGroupControl drops its own disabled prop onto a wrapper div, so it has to go on each option. */ }
 					<ToggleGroupControlOption
+						disabled={ ! detectionActive }
 						label={ __( 'Twice Daily', 'gitwire' ) }
 						value="twicedaily"
 					/>
 					<ToggleGroupControlOption
+						disabled={ ! detectionActive }
 						label={ __( 'Daily', 'gitwire' ) }
 						value="daily"
 					/>
 					<ToggleGroupControlOption
+						disabled={ ! detectionActive }
 						label={ __( 'Weekly', 'gitwire' ) }
 						value="weekly"
 					/>
 					<ToggleGroupControlOption
+						disabled={ ! detectionActive }
 						label={ __( 'Never', 'gitwire' ) }
 						value="never"
 					/>
