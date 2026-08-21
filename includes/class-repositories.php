@@ -474,13 +474,14 @@ class Repositories {
 		 * Filters the number of repositories to type-detect per cron cycle.
 		 *
 		 * Lower this on resource-constrained servers; raise it to speed up initial
-		 * detection on large installs (at the cost of longer cron execution).
+		 * detection on large installs (at the cost of longer cron execution). Defaults
+		 * to a larger batch when GitHub quota is sitting mostly idle.
 		 *
 		 * @since 1.0.0
-		 * @param int $batch_size Repositories per cycle. Default 25.
+		 * @param int $batch_size Repositories per cycle. Default 25, or 100 when idle.
 		 * @return int
 		 */
-		$batch_size  = (int) apply_filters( 'gitwire_detection_batch_size', 25 );
+		$batch_size  = (int) apply_filters( 'gitwire_detection_batch_size', self::adaptive_batch_size() );
 		$cursor      = (int) get_option( 'gitwire_detection_cursor', 0 );
 		$batch_start = time();
 
@@ -535,6 +536,57 @@ class Repositories {
 				update_option( 'gitwire_detection_cursor', $cursor + $stuck, false );
 			}
 		}
+	}
+
+	/**
+	 * Sizes the background-detection batch to the currently idle GitHub quota.
+	 *
+	 * This cron ticks every 30 minutes against an hourly GitHub limit, so a reading
+	 * with plenty of quota left is evidence this window has gone mostly unused and can
+	 * take a bigger batch. GitLab and Bitbucket aren't tracked the same way, so a
+	 * connection on either provider falls through to the fixed default; the per-row
+	 * floor check further down still aborts early regardless of this batch size.
+	 *
+	 * @since 1.0.0
+	 * @return int
+	 */
+	private static function adaptive_batch_size(): int {
+		$default   = 25;
+		$remaining = self::min_github_remaining();
+
+		return ( null !== $remaining && $remaining >= 3000 ) ? 100 : $default;
+	}
+
+	/**
+	 * Returns the lowest cached GitHub rate-limit remaining across all GitHub connections.
+	 *
+	 * Null when the site has no GitHub connections, or none has a cached reading yet
+	 * (nothing to size against, not necessarily low).
+	 *
+	 * @since 1.0.0
+	 * @return int|null
+	 */
+	private static function min_github_remaining(): ?int {
+		$lowest = null;
+
+		foreach ( Connection_Resolver::all() as $conn ) {
+			if ( 'github' !== ( $conn['provider'] ?? '' ) ) {
+				continue;
+			}
+
+			$conn_key  = ! empty( $conn['id'] ) ? $conn['id'] : 'anon';
+			$remaining = get_transient( 'gitwire_gh_rl_' . $conn_key );
+			if ( false === $remaining ) {
+				continue;
+			}
+
+			$remaining = (int) $remaining;
+			if ( null === $lowest || $remaining < $lowest ) {
+				$lowest = $remaining;
+			}
+		}
+
+		return $lowest;
 	}
 
 	/**

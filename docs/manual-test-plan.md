@@ -218,6 +218,9 @@
 - [ ] With the toggle off, `wp cron event run gitwire_background_type_detection` makes no detect_type_for_repo calls
 - [ ] With the toggle on and some cache rows untyped, `wp cron event run gitwire_background_type_detection` types a batch of them without touching `gitwire_refresh_repositories` or `gitwire_refresh_repository_types`
 - [ ] Deactivating the plugin clears `gitwire_background_type_detection` from the cron list; reactivating restores it
+- [ ] With a GitHub connection whose `gitwire_gh_rl_{connection_id}` transient reads 3000+, run `wp cron event run gitwire_background_type_detection` and confirm it pulls up to 100 untyped rows instead of 25 (check `gitwire_detection_cursor` advancement or add `error_log` to `Repository::get_untyped_batch()` temporarily)
+- [ ] With that transient reading below 3000, or no GitHub connection configured at all, confirm the batch stays at 25
+- [ ] Setting the `gitwire_detection_batch_size` filter still overrides both cases
 
 ### Refresh Repositories vs Refresh Types
 
