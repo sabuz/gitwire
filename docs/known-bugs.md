@@ -2,7 +2,36 @@
 
 ## Open
 
-_None currently open._
+### Public repos prompt to reconnect after their connection is deleted
+
+**Status:** open, deferred
+**Affects:** free
+**Reported:** 2026-08-22
+
+**Symptoms:**
+Install a public repo through a connection, then delete that connection while another one remains. The Installed row shows a "Connection Required" badge and a Reconnect action, even though nothing is broken: `get_credentials()` returns null for the dead ID, `Provider_Factory` builds a token-less client from it, and updates keep working.
+
+With only one connection on the site the prompt never appears at all, because `annotate_installed()` guards on `! empty( $all_connections )` — there has to be a surviving connection for a dead ID to be measured against.
+
+**Root cause:**
+`annotate_installed()` sets `needs_reconnect` purely on the connection ID no longer resolving. That is the right test for a private repo and meaningless for a public one, and the record has no way to tell them apart.
+
+**Rejected: storing a `private` flag on `gitwire_installations`.**
+Implemented and reverted (`a190ee6`, `30a5b81`). Repository visibility is not a stable property — a repo can be flipped public or private on the provider at any time, so a value written at install time goes stale and the prompt becomes wrong in whichever direction it moved. The dangerous direction is a repo that has since gone private still reading as public: no prompt, and updates fail silently. A column is also a poor home for a fact that is derived rather than owned.
+
+**Candidate: check whether the connection was public.**
+A token-less connection can only ever have seen public repositories, so its removal cannot strand anything. Drawbacks:
+
+- The connection is gone by the time the badge renders, so its type has to have been recorded somewhere — the same extra-state objection, though connection type does not drift the way repo visibility does.
+- A repo installed through a public connection could have been made private since. No prompt would show, and updates would fail silently: the same failure as the rejected approach, reached by a different route.
+- Says nothing about Pro, where a private connection is often used for a public repo, which is the case that generates the most false prompts.
+
+**Candidate: prompt on an observed failure instead of a guess.**
+Have the update check record that the last remote read failed, and drive the badge off that. Correct regardless of visibility flips, in both directions, because it reports what actually happened rather than predicting it. Costs a stored flag too, but one that reflects an event rather than a guess, and the prompt only appears after the first failed check rather than immediately.
+
+**Workaround:**
+The prompt is cosmetic for public repos. Reconnecting is harmless, and ignoring it costs nothing.
+
 
 ## Fixed
 
