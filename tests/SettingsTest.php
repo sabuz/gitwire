@@ -237,6 +237,23 @@ class SettingsTest extends TestCase {
 		}
 	}
 
+	public function test_repository_type_refresh_frequency_accepts_every_value_the_getter_allows(): void {
+		foreach ( Settings::schema()['repository_type_refresh_frequency']['values'] as $value ) {
+			$merged = Settings::merge_save( [ 'repository_type_refresh_frequency' => $value ] );
+			$this->assertSame( $value, $merged['repository_type_refresh_frequency'] );
+
+			gitwire_test_set_option( 'gitwire_settings', $merged );
+			$this->assertSame( $value, Settings::get_repository_type_refresh_frequency() );
+		}
+	}
+
+	public function test_repository_type_refresh_frequency_rejects_an_unknown_recurrence(): void {
+		gitwire_test_set_option( 'gitwire_settings', [ 'repository_type_refresh_frequency' => 'hourly' ] );
+
+		// Hourly is a real WP recurrence but not an offered value: type detection is too expensive for it.
+		$this->assertSame( 'weekly', Settings::get_repository_type_refresh_frequency() );
+	}
+
 	public function test_an_invalid_value_falls_back_to_the_default_not_the_loosest_option(): void {
 		// log_retention_days used to fall back to 30, the most permissive choice.
 		$merged = Settings::merge_save( [ 'log_retention_days' => 999 ] );

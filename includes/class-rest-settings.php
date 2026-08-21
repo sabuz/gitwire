@@ -74,6 +74,7 @@ class REST_Settings {
 		$was_logging          = Settings::is_logging_enabled();
 		$prev_settings        = Settings::get_public();
 		$prev_freq            = $prev_settings['repositories_refresh_frequency'] ?? 'daily';
+		$prev_type_freq       = $prev_settings['repository_type_refresh_frequency'] ?? 'weekly';
 		$prev_update_interval = $prev_settings['update_check_interval'] ?? 'halfhourly';
 		$merged               = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
@@ -87,6 +88,10 @@ class REST_Settings {
 		if ( ( $merged['repositories_refresh_frequency'] ?? 'hourly' ) !== $prev_freq ) {
 			Repositories::clear_repositories();
 			Plugin::instance()->schedule_repos_cron();
+		}
+
+		if ( ( $merged['repository_type_refresh_frequency'] ?? 'weekly' ) !== $prev_type_freq ) {
+			Plugin::instance()->schedule_repository_types_cron();
 		}
 
 		if ( ( $merged['update_check_interval'] ?? 'halfhourly' ) !== $prev_update_interval ) {

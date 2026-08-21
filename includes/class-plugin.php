@@ -61,6 +61,7 @@ final class Plugin {
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );
 		add_action( 'gitwire_trim_logs', [ $this, 'trim_logs' ] );
 		add_action( 'gitwire_refresh_repositories', [ Repositories::class, 'scheduled_refresh' ] );
+		add_action( 'gitwire_refresh_repository_types', [ Repositories::class, 'scheduled_type_refresh' ] );
 		add_action( 'gitwire_refresh_connections', [ Connection_Meta::class, 'refresh_public_connections' ] );
 		add_action( 'gitwire_update_check', [ Installer::class, 'run_auto_updates' ] );
 		add_action( 'plugins_loaded', [ $this, 'boot' ] );
@@ -187,6 +188,7 @@ final class Plugin {
 		}
 
 		$this->schedule_repos_cron();
+		$this->schedule_repository_types_cron();
 		$this->schedule_update_check_cron();
 	}
 
@@ -219,6 +221,32 @@ final class Plugin {
 		}
 		wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
 		wp_schedule_event( time(), $freq, 'gitwire_refresh_repositories' );
+	}
+
+	/**
+	 * Schedules or reschedules the repository type re-detection cron to match its frequency setting.
+	 *
+	 * When the frequency is 'never', the event is removed and types are only re-detected
+	 * by a manual "Refresh Repositories & Types" or "Refresh Types Only" from the Browse
+	 * tab. Safe to call on every boot, since it only reschedules when the stored interval
+	 * differs.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function schedule_repository_types_cron(): void {
+		$freq = Settings::get_repository_type_refresh_frequency();
+
+		if ( 'never' === $freq ) {
+			wp_clear_scheduled_hook( 'gitwire_refresh_repository_types' );
+			return;
+		}
+
+		if ( wp_get_schedule( 'gitwire_refresh_repository_types' ) === $freq ) {
+			return;
+		}
+		wp_clear_scheduled_hook( 'gitwire_refresh_repository_types' );
+		wp_schedule_event( time(), $freq, 'gitwire_refresh_repository_types' );
 	}
 
 	/**
@@ -263,6 +291,7 @@ final class Plugin {
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
 		wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
+		wp_clear_scheduled_hook( 'gitwire_refresh_repository_types' );
 		wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
 		wp_clear_scheduled_hook( 'gitwire_update_check' );
 	}

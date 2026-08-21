@@ -241,6 +241,10 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	);
 	const [ repositoriesRefreshFrequency, setRepositoriesRefreshFrequency ] =
 		useState( settings.repositories_refresh_frequency ?? 'daily' );
+	const [
+		repositoryTypeRefreshFrequency,
+		setRepositoryTypeRefreshFrequency,
+	] = useState( settings.repository_type_refresh_frequency ?? 'weekly' );
 	const [ backgroundTypeDetection, setBackgroundTypeDetection ] = useState(
 		!! settings.background_type_detection
 	);
@@ -336,6 +340,13 @@ function BrowseDetectionCard( { settings, onSave } ) {
 		setRepositoriesRefreshFrequency( newVal );
 		save( { repositories_refresh_frequency: newVal }, () =>
 			setRepositoriesRefreshFrequency( repositoriesRefreshFrequency )
+		).catch( () => {} );
+	};
+
+	const handleRepositoryTypeRefreshFrequencyChange = ( newVal ) => {
+		setRepositoryTypeRefreshFrequency( newVal );
+		save( { repository_type_refresh_frequency: newVal }, () =>
+			setRepositoryTypeRefreshFrequency( repositoryTypeRefreshFrequency )
 		).catch( () => {} );
 	};
 
@@ -503,6 +514,40 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					<ToggleGroupControlOption
 						label={ __( 'Weekly', 'gitwire' ) }
 						value="weekly"
+					/>
+				</ToggleGroupControl>
+
+				<Spacer marginTop={ 4 } />
+
+				<ToggleGroupControl
+					__nextHasNoMarginBottom
+					isBlock
+					label={ __(
+						'Repository Type Refresh Frequency',
+						'gitwire'
+					) }
+					help={ __(
+						'How often already-detected repository types are checked again. Detection costs an API call per repository, so keep this low on large collections.',
+						'gitwire'
+					) }
+					value={ repositoryTypeRefreshFrequency }
+					onChange={ handleRepositoryTypeRefreshFrequencyChange }
+				>
+					<ToggleGroupControlOption
+						label={ __( 'Twice Daily', 'gitwire' ) }
+						value="twicedaily"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Daily', 'gitwire' ) }
+						value="daily"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Weekly', 'gitwire' ) }
+						value="weekly"
+					/>
+					<ToggleGroupControlOption
+						label={ __( 'Never', 'gitwire' ) }
+						value="never"
 					/>
 				</ToggleGroupControl>
 

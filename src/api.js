@@ -33,8 +33,11 @@ export const getRepos = ( {
 	connectionIds.forEach( ( id ) => params.append( 'connection_ids[]', id ) );
 	return apiFetch( { path: `${ BASE }/repos?${ params }` } );
 };
-export const clearCache = () =>
-	apiFetch( { path: `${ BASE }/repos/cache`, method: 'DELETE' } );
+export const clearCache = ( mode = 'repos' ) =>
+	apiFetch( {
+		path: `${ BASE }/repos/cache?mode=${ mode }`,
+		method: 'DELETE',
+	} );
 export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );
 export const syncInstalled = () =>
 	apiFetch( { path: `${ BASE }/installed/sync`, method: 'POST' } );

@@ -95,6 +95,13 @@ class REST_Repositories {
 				'methods'             => 'DELETE',
 				'callback'            => [ self::class, 'clear_cache' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
+				'args'                => [
+					'mode' => [
+						'type'    => 'string',
+						'default' => 'repos',
+						'enum'    => [ 'repos', 'repos_and_types', 'types' ],
+					],
+				],
 			]
 		);
 
@@ -675,17 +682,29 @@ class REST_Repositories {
 	}
 
 	/**
-	 * Refetches every connection's repository list, replacing each only on success.
+	 * Refetches connection repository lists and/or clears stored type detections.
 	 *
-	 * Clearing up front and refetching afterwards loses the whole list when the
-	 * refetch fails, so a rate-limit blip used to empty the browse tab. Rows are
-	 * upserted under a cycle stamp instead, and only the ones the provider no
-	 * longer returns are pruned once that connection has answered.
+	 * Clearing the list up front and refetching afterwards loses the whole list when
+	 * the refetch fails, so a rate-limit blip used to empty the browse tab. Rows are
+	 * upserted under a cycle stamp instead, and only the ones the provider no longer
+	 * returns are pruned once that connection has answered.
+	 *
+	 * 'repos' only relists. Rows already in the cache keep their stored type, since
+	 * upsert_batch() never touches the type columns, so a repo the provider just added
+	 * still lands untyped and gets detected without re-detecting everything else.
+	 * 'repos_and_types' relists and drops every stored type, so each repo is typed
+	 * again on an API round trip. 'types' skips the relist and only drops stored
+	 * types, for when the list itself is not in question.
 	 *
 	 * @since 1.0.0
+	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed> Refresh outcome, with any per-connection errors.
 	 */
-	public static function clear_cache(): array {
+	public static function clear_cache( \WP_REST_Request $req ): array {
+		$mode          = (string) $req->get_param( 'mode' );
+		$refresh_list  = 'types' !== $mode;
+		$refresh_types = 'types' === $mode || 'repos_and_types' === $mode;
+
 		$connections = array_values(
 			array_filter(
 				Connection_Resolver::all(),
@@ -699,29 +718,37 @@ class REST_Repositories {
 		$refreshed = 0;
 
 		foreach ( $connections as $conn ) {
-			$stamp  = current_datetime()->format( 'Y-m-d H:i:s' );
-			$result = Repositories::fetch_repositories( $conn['provider'], 1, $conn['id'], null, $stamp );
+			if ( $refresh_list ) {
+				$stamp  = current_datetime()->format( 'Y-m-d H:i:s' );
+				$result = Repositories::fetch_repositories( $conn['provider'], 1, $conn['id'], null, $stamp );
 
-			if ( is_wp_error( $result ) ) {
-				$errors[] = [
-					'connection_id' => $conn['id'],
-					'provider'      => $conn['provider'],
-					'message'       => $result->get_error_message(),
-				];
-				continue;
+				if ( is_wp_error( $result ) ) {
+					$errors[] = [
+						'connection_id' => $conn['id'],
+						'provider'      => $conn['provider'],
+						'message'       => $result->get_error_message(),
+					];
+					continue;
+				}
+
+				Repositories::remove_stale_since( $conn['id'], $stamp );
 			}
 
-			Repositories::remove_stale_since( $conn['id'], $stamp );
-			// Detections are expensive to rebuild, so only the connection that just
-			// answered loses its own; one rate-limited connection must not wipe the
-			// detections of every other.
-			Repositories::clear_repository_types_for_connection( $conn['id'] );
+			/*
+			 * Detections are expensive to rebuild, so only the connection that just
+			 * answered loses its own; one rate-limited connection must not wipe the
+			 * detections of every other.
+			 */
+			if ( $refresh_types ) {
+				Repositories::clear_repository_types_for_connection( $conn['id'] );
+			}
 			++$refreshed;
 		}
 
 		$payload = [
 			'cleared'   => empty( $errors ),
 			'refreshed' => $refreshed,
+			'mode'      => $mode,
 		];
 
 		if ( ! empty( $errors ) ) {

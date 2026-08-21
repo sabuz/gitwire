@@ -337,7 +337,11 @@ class Repositories {
 	}
 
 	/**
-	 * Scheduled cron callback: refreshes repo lists then re-detects types.
+	 * Scheduled cron callback: refreshes repo lists, then types the rows that have none.
+	 *
+	 * Re-detecting types for repos that already have one runs on its own schedule
+	 * (gitwire_refresh_repository_types), since a full re-detect costs an API round
+	 * trip per repo and rarely changes anything.
 	 *
 	 * @since 1.0.0
 	 * @return void
@@ -354,7 +358,30 @@ class Repositories {
 			return;
 		}
 
+		self::run_background_detection();
+	}
+
+	/**
+	 * Scheduled cron callback for the repository type re-detection event.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function scheduled_type_refresh(): void {
 		self::cron_refresh_repository_types();
+	}
+
+	/**
+	 * Re-detects installed repository types, then types any cache rows that have none.
+	 *
+	 * @since 1.0.0
+	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
+	 */
+	public static function cron_refresh_repository_types(): bool|\WP_Error {
+		$result = self::refresh_installed_repository_types();
+		self::run_background_detection();
+
+		return $result;
 	}
 
 	/**
@@ -363,7 +390,7 @@ class Repositories {
 	 * @since 1.0.0
 	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
 	 */
-	public static function cron_refresh_repository_types(): bool|\WP_Error {
+	private static function refresh_installed_repository_types(): bool|\WP_Error {
 		$keys           = [];
 		$connection_ids = [];
 		$records        = Installer::get_installed();
@@ -426,10 +453,21 @@ class Repositories {
 			self::set_repository_type( $provider, $owner, $repo, $full_branch, $result );
 		}
 
-		// Background detection: process a batch of cache rows that haven't been typed yet.
-		$settings = Settings::get_public();
-		if ( ! ( $settings['background_type_detection'] ?? false ) ) {
-			return $last_err ?? true;
+		return $last_err ?? true;
+	}
+
+	/**
+	 * Types a batch of cache rows that have no detection yet.
+	 *
+	 * No-op unless background_type_detection is on. Only ever touches untyped rows,
+	 * so calling it from more than one cron is repeat-safe.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	private static function run_background_detection(): void {
+		if ( ! ( Settings::get_public()['background_type_detection'] ?? false ) ) {
+			return;
 		}
 
 		/**
@@ -497,8 +535,6 @@ class Repositories {
 				update_option( 'gitwire_detection_cursor', $cursor + $stuck, false );
 			}
 		}
-
-		return $last_err ?? true;
 	}
 
 	/**

@@ -361,6 +361,38 @@ body.gitwire-admin-page {
 	background: #dcdcde;
 }
 
+// Refresh ───────────────────
+
+.gitwire-refresh {
+	display: inline-flex;
+
+	&__main.components-button {
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
+	}
+
+	&__toggle.components-button {
+		// The negative margin overlaps both borders, so the pair reads as one button.
+		min-width: 32px;
+		margin-left: -1px;
+		padding: 0;
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
+
+	.components-button:focus,
+	.components-button:hover:not(:disabled) {
+		z-index: 1;
+	}
+}
+
+.gitwire-refresh-dropdown {
+
+	&.components-popover {
+		z-index: 8;
+	}
+}
+
 // Filter ────────────────────
 
 .gitwire-filter {

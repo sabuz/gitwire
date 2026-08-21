@@ -36,6 +36,7 @@ foreach ( $gitwire_options as $gitwire_option ) {
 wp_clear_scheduled_hook( 'gitwire_maintenance' );
 wp_clear_scheduled_hook( 'gitwire_trim_logs' );
 wp_clear_scheduled_hook( 'gitwire_refresh_repositories' );
+wp_clear_scheduled_hook( 'gitwire_refresh_repository_types' );
 wp_clear_scheduled_hook( 'gitwire_refresh_connections' );
 wp_clear_scheduled_hook( 'gitwire_update_check' );
 

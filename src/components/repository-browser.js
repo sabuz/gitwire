@@ -9,9 +9,13 @@ import {
 	useRef,
 	memo,
 } from '@wordpress/element';
+import { chevronDown } from '@wordpress/icons';
 import {
 	Button,
 	Dropdown,
+	DropdownMenu,
+	MenuGroup,
+	MenuItem,
 	Spinner,
 	Flex,
 	FlexBlock,
@@ -244,29 +248,33 @@ export default function RepositoryBrowser( {
 	}, [ connIds ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Keep the current list on screen until the refetch lands, so a failure leaves it intact.
-	const handleRefresh = useCallback( async () => {
-		setLoading( true );
-		try {
-			const result = await api.clearCache();
-			( result?.connection_errors ?? [] ).forEach( ( err ) => {
+	const handleRefresh = useCallback(
+		async ( mode = 'repos' ) => {
+			setLoading( true );
+			try {
+				const result = await api.clearCache( mode );
+				( result?.connection_errors ?? [] ).forEach( ( err ) => {
+					toast.error(
+						sprintf(
+							/* translators: 1: provider name (e.g. GitLab), 2: error message */
+							__( '%1$s: %2$s', 'gitwire' ),
+							providerLabel( err.provider ),
+							err.message
+						)
+					);
+				} );
+				reset();
+				await loadRepos( 0, false, search, activeSourceFilters );
+			} catch ( e ) {
 				toast.error(
-					sprintf(
-						/* translators: 1: provider name (e.g. GitLab), 2: error message */
-						__( '%1$s: %2$s', 'gitwire' ),
-						providerLabel( err.provider ),
-						err.message
-					)
+					e.message ||
+						__( 'Failed to refresh repositories.', 'gitwire' )
 				);
-			} );
-			reset();
-			await loadRepos( 0, false, search, activeSourceFilters );
-		} catch ( e ) {
-			toast.error(
-				e.message || __( 'Failed to refresh repositories.', 'gitwire' )
-			);
-			setLoading( false );
-		}
-	}, [ loadRepos, reset, search, activeSourceFilters ] );
+				setLoading( false );
+			}
+		},
+		[ loadRepos, reset, search, activeSourceFilters ]
+	);
 
 	const handleLoadMore = () => {
 		loadRepos( repositories.length, true, search, activeSourceFilters );
@@ -583,14 +591,66 @@ export default function RepositoryBrowser( {
 					/>
 				</FlexItem>
 				<FlexItem>
-					<Button
-						disabled={ loading }
-						isBusy={ loading }
-						variant="secondary"
-						onClick={ handleRefresh }
-					>
-						{ __( 'Refresh', 'gitwire' ) }
-					</Button>
+					<div className="gitwire-refresh">
+						<Button
+							className="gitwire-refresh__main"
+							disabled={ loading }
+							isBusy={ loading }
+							variant="secondary"
+							onClick={ () => handleRefresh( 'repos' ) }
+						>
+							{ __( 'Refresh Repositories', 'gitwire' ) }
+						</Button>
+						<DropdownMenu
+							icon={ chevronDown }
+							label={ __( 'Refresh Options', 'gitwire' ) }
+							popoverProps={ {
+								placement: 'bottom-end',
+								className: 'gitwire-refresh-dropdown',
+								focusOnMount: 'container',
+							} }
+							toggleProps={ {
+								className: 'gitwire-refresh__toggle',
+								disabled: loading,
+								variant: 'secondary',
+							} }
+						>
+							{ ( { onClose } ) => (
+								<MenuGroup>
+									<MenuItem
+										info={ __(
+											'Re-detects every type. Uses more API calls.',
+											'gitwire'
+										) }
+										onClick={ () => {
+											onClose();
+											handleRefresh( 'repos_and_types' );
+										} }
+									>
+										{ __(
+											'Refresh Repositories & Types',
+											'gitwire'
+										) }
+									</MenuItem>
+									<MenuItem
+										info={ __(
+											'Keeps the list, re-detects types only.',
+											'gitwire'
+										) }
+										onClick={ () => {
+											onClose();
+											handleRefresh( 'types' );
+										} }
+									>
+										{ __(
+											'Refresh Types Only',
+											'gitwire'
+										) }
+									</MenuItem>
+								</MenuGroup>
+							) }
+						</DropdownMenu>
+					</div>
 				</FlexItem>
 				{ onOpenUrlImport && (
 					<FlexItem>

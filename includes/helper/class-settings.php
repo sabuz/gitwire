@@ -57,70 +57,75 @@ class Settings {
 	 */
 	public static function schema(): array {
 		return [
-			'smart_install'                  => [
+			'smart_install'                     => [
 				'type'    => 'bool',
 				'default' => true,
 			],
-			'auto_detect_type'               => [
+			'auto_detect_type'                  => [
 				'type'    => 'bool',
 				'default' => true,
 			],
-			'repos_per_page'                 => [
+			'repos_per_page'                    => [
 				'type'    => 'int',
 				'default' => 50,
 				'min'     => 10,
 				'max'     => 100,
 			],
-			'excluded_repos'                 => [
+			'excluded_repos'                    => [
 				'type'    => 'repo_list',
 				'default' => [],
 			],
-			'max_repos_per_source'           => [
+			'max_repos_per_source'              => [
 				'type'    => 'enum',
 				'default' => 'unlimited',
 				'values'  => [ 'unlimited', 100, 250, 500 ],
 			],
-			'repositories_refresh_frequency' => [
+			'repositories_refresh_frequency'    => [
 				'type'    => 'enum',
 				'default' => 'daily',
 				'values'  => [ 'hourly', 'twicedaily', 'daily', 'weekly' ],
 			],
-			'background_type_detection'      => [
+			'repository_type_refresh_frequency' => [
+				'type'    => 'enum',
+				'default' => 'weekly',
+				'values'  => [ 'twicedaily', 'daily', 'weekly', 'never' ],
+			],
+			'background_type_detection'         => [
 				'type'    => 'bool',
 				'default' => false,
 			],
-			'shallow_detection'              => [
+			'shallow_detection'                 => [
 				'type'    => 'bool',
 				'default' => false,
 			],
-			'show_repo_label'                => [
+			'show_repo_label'                   => [
 				'type'    => 'bool',
 				'default' => true,
 			],
-			'block_on_fatal'                 => [
+			'block_on_fatal'                    => [
 				'type'    => 'bool',
 				'default' => true,
 			],
-			'update_check_interval'          => [
+			'update_check_interval'             => [
 				'type'    => 'enum',
 				'default' => 'halfhourly',
 				'values'  => [ 'everyfiveminutes', 'halfhourly', 'hourly', 'twicedaily', 'daily', 'weekly', 'never' ],
 			],
-			'enable_logging'                 => [
+			'enable_logging'                    => [
 				'type'    => 'bool',
 				'default' => true,
 			],
-			'log_retention_days'             => [
+			'log_retention_days'                => [
 				'type'    => 'enum',
 				'default' => 7,
 				'values'  => [ 7, 15, 30 ],
 			],
-			'log_level'                      => [
+			'log_level'                         => [
 				'type'    => 'enum',
 				'default' => 'activity',
 				'values'  => [ 'activity', 'error' ],
 			],
-			'remove_data_on_uninstall'       => [
+			'remove_data_on_uninstall'          => [
 				'type'    => 'bool',
 				'default' => false,
 			],
@@ -265,6 +270,16 @@ class Settings {
 	 */
 	public static function get_repositories_refresh_frequency(): string {
 		return (string) self::get_public()['repositories_refresh_frequency'];
+	}
+
+	/**
+	 * Returns the configured repository type re-detection frequency.
+	 *
+	 * @since 1.0.0
+	 * @return string WP cron recurrence, or 'never' when re-detection is off.
+	 */
+	public static function get_repository_type_refresh_frequency(): string {
+		return (string) self::get_public()['repository_type_refresh_frequency'];
 	}
 
 	/**

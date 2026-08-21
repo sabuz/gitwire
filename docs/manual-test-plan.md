@@ -203,3 +203,20 @@
 - [ ] Set to 250 — trigger refresh — confirm cap rises to 250
 - [ ] Set to "No limit" — trigger refresh — confirm all repos are fetched and shown
 - [ ] Confirm that `max_repos_per_source` does not affect the initial single-page cache warm (only full cron refresh is capped)
+
+### Repository Type Refresh Frequency
+
+- [ ] Settings > Browse & Detection shows "Repository Type Refresh Frequency" below "Repository Refresh Frequency", defaulting to Weekly
+- [ ] Change it, then confirm `wp cron event list` shows `gitwire_refresh_repository_types` on the new recurrence
+- [ ] Set to "Never" and confirm `gitwire_refresh_repository_types` is gone from the cron list
+- [ ] Run `wp cron event run gitwire_refresh_repositories` and confirm the repo list updates while stored types are left alone
+- [ ] Run `wp cron event run gitwire_refresh_repository_types` and confirm installed repos are typed again
+
+### Refresh Repositories vs Refresh Types
+
+- [ ] Add Repository tab: "Refresh Repositories" relists repos and leaves stored types alone, so badges stay put with no detect-batch calls in the network tab
+- [ ] Add a repo on the provider side, then "Refresh Repositories" again: the new repo appears with no stored type and gets a detect-batch call, while every already-typed repo is untouched
+- [ ] The chevron next to it opens a menu with "Refresh Repositories & Types" and "Refresh Types Only"
+- [ ] "Refresh Repositories & Types" relists repos and drops stored types, so badges clear and then repopulate from fresh detect-batch calls
+- [ ] "Refresh Types Only" leaves the list untouched (no fetch_repositories calls) but drops stored types the same way, so badges clear and repopulate without the list itself changing
+- [ ] All three modes keep the current list on screen when a connection errors, and surface a toast per failing connection
