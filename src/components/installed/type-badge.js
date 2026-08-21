@@ -37,7 +37,7 @@ function TypeBadgeLabel( { isBlockTheme, isTheme } ) {
 		return __( 'Block Theme', 'gitwire' );
 	}
 	if ( isTheme ) {
-		return __( 'Theme', 'gitwire' );
+		return __( 'Classic Theme', 'gitwire' );
 	}
 	return __( 'Plugin', 'gitwire' );
 }

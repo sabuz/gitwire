@@ -5,7 +5,7 @@ import * as api from '../api';
 const BATCH_SIZE = 10;
 
 /**
- * @param {string} repo Repository object with provider and full_name.
+ * @param {Object} repo Repository object with provider and full_name.
  * @return {string} Detection cache key.
  */
 export function detectionKey( repo ) {

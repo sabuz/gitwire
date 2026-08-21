@@ -6,6 +6,57 @@ _None currently open._
 
 ## Fixed
 
+### "Refresh Repositories" truncated large connections to a single API page
+
+**Status:** fixed
+**Affects:** free
+**Reported:** 2026-08-22
+
+**Symptoms:**
+A connection with more than 100 repositories loses everything past the first 100 when the Browse tab's Refresh button is used. The missing repos come back on the next scheduled refresh, so it reads as an intermittent disappearance.
+
+**Root cause:**
+`REST_Repositories::clear_cache()` fetched page one per connection and then called `remove_stale_since()` anyway. Rows on later pages still carried an `updated_at` from before the cycle stamp, so the prune deleted them — the same shape as the bug its own docblock claimed to have fixed, moved from the whole list to its tail. The endpoint also ignored `max_repos_per_source`, which the cron sweep honoured.
+
+**Fix:**
+`Repositories::refresh_repositories()` became the single sweep both paths run: it walks every page, honours the cap, prunes only once a connection has answered its last page, and parks a resume cursor when the time budget runs out. `clear_cache()` now calls it and maps its per-connection errors straight into the response.
+
+---
+
+### Repository activity dates shifted by the viewer's timezone
+
+**Status:** fixed
+**Affects:** free
+**Reported:** 2026-08-22
+
+**Symptoms:**
+The "last updated" line on a browse card is wrong by a fixed number of hours, matching the browser's UTC offset. East of UTC every repo looks staler than it is; west of UTC, a repo pushed hours ago reads "just now", because the parsed date lands in the future and the relative-time helper's `s < 60` branch catches it.
+
+**Root cause:**
+`last_activity_at` is written with `gmdate( 'Y-m-d H:i:s' )` and reached the client as that bare string. `Date()` does not treat the space-separated form as UTC — it parses it as local time.
+
+**Fix:**
+`Repository::get_paginated()` converts the column to ISO-8601 with an explicit `Z` on the way out, and maps the `1970-01-01` sentinel (written when a provider gives no usable date) to an empty string so the card omits the row instead of rendering "56y ago".
+
+---
+
+### Detection results cached inconsistently between the single and batch endpoints
+
+**Status:** fixed
+**Affects:** free
+**Reported:** 2026-08-22
+
+**Symptoms:**
+The same repository could be typed on one code path and re-typed on every request through another, and a rate-limit blip during a single detect pinned a repo as "unknown" until the cache was cleared by hand.
+
+**Root cause:**
+`detect_repo()` read and wrote the detection cache only for unauthenticated lookups, on the theory that a connection-scoped result might be private. `detect_batch()` cached unconditionally. Detection is not connection-scoped — it is per provider and repository — so the guard bought nothing and only made the two endpoints disagree. Worse, the unauthenticated branch it did allow was the one that cached failures as `unknown`, which `detect_batch()` explicitly refuses to do.
+
+**Fix:**
+`detect_repo()` now reads and writes the cache the same way `detect_batch()` does, and neither persists an error result. The unauthenticated caller still gets an `unknown` payload rather than an error, so the existing UI flows are unchanged; it is just never stored.
+
+---
+
 ### Public connection silently hidden when a Pro private connection is added for the same account
 
 **Status:** fixed
@@ -55,7 +106,7 @@ The "Repositories per Page" and "Max per Source" settings exist in plugin settin
 "Repositories per Page" was already applied correctly end to end (`Repositories::get_repositories()` → `Repository::get_paginated()` → SQL `LIMIT`/`OFFSET`, JS "Load More" reads the offset from `has_more`). "Max per Source" was the actual bug: `refresh_repositories()` stopped requesting *new* pages once the running total passed the cap, but every page already fetched was stored in full. The provider API's page size is a fixed 100, which doesn't evenly divide 250 (one of the three preset cap values), so a cap of 250 let 300 repos land in the cache before the loop noticed.
 
 **Fix:**
-Slice each page to the remaining budget before adding it to `fetched_full_names`, so the existing `remove_stale()` cleanup (which deletes anything not in that list) prunes the overflow down to the configured cap. gitwire `a7e5309`.
+Slice each page to the remaining budget before storing it, so a cap that does not divide the provider's fixed 100-row page size still lands exactly on the cap. gitwire `a7e5309`. The stale cleanup this originally leaned on (`remove_stale()` against a `fetched_full_names` list) has since been replaced by `remove_stale_since()`, which prunes on a per-cycle `updated_at` stamp so a sweep can span several cron ticks.
 
 ---
 

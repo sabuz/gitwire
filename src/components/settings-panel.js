@@ -1,7 +1,7 @@
 import { toast } from '../toast';
 
 import { __ } from '@wordpress/i18n';
-import { useState, useCallback, useEffect } from '@wordpress/element';
+import { useState, useCallback, useEffect, useRef } from '@wordpress/element';
 import { applyFilters } from '@wordpress/hooks';
 import {
 	Button,
@@ -202,15 +202,15 @@ export default function SettingsPanel( {
 								onChange={ handleLogRetentionChange }
 							>
 								<ToggleGroupControlOption
-									label={ __( '7 days', 'gitwire' ) }
+									label={ __( '7 Days', 'gitwire' ) }
 									value="7"
 								/>
 								<ToggleGroupControlOption
-									label={ __( '15 days', 'gitwire' ) }
+									label={ __( '15 Days', 'gitwire' ) }
 									value="15"
 								/>
 								<ToggleGroupControlOption
-									label={ __( '30 days', 'gitwire' ) }
+									label={ __( '30 Days', 'gitwire' ) }
 									value="30"
 								/>
 							</ToggleGroupControl>
@@ -239,8 +239,8 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const [ maxReposPerSource, setMaxReposPerSource ] = useState(
 		String( settings.max_repos_per_source ?? 'unlimited' )
 	);
-	const [ repositoriesRefreshFrequency, setRepositoriesRefreshFrequency ] =
-		useState( settings.repositories_refresh_frequency ?? 'daily' );
+	const [ repositoryRefreshFrequency, setRepositoryRefreshFrequency ] =
+		useState( settings.repository_refresh_frequency ?? 'daily' );
 	const [
 		repositoryTypeRefreshFrequency,
 		setRepositoryTypeRefreshFrequency,
@@ -253,8 +253,20 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	);
 	const [ repoSuggestions, setRepoSuggestions ] = useState( [] );
 	const [ excludedRepoInput, setExcludedRepoInput ] = useState( '' );
+	const suggestionsRequestedRef = useRef( false );
 
+	const wantsSuggestions = excludedRepoInput.trim().length >= 2;
+
+	/*
+	 * Deferred until the field is actually in use: /repos fetches live from any
+	 * connection with no cached rows yet, so loading it on mount made opening
+	 * Settings wait on provider API calls it never needed.
+	 */
 	useEffect( () => {
+		if ( ! wantsSuggestions || suggestionsRequestedRef.current ) {
+			return;
+		}
+		suggestionsRequestedRef.current = true;
 		api.getRepos( { offset: 0 } )
 			.then( ( result ) => {
 				setRepoSuggestions(
@@ -262,7 +274,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 				);
 			} )
 			.catch( () => {} );
-	}, [] );
+	}, [ wantsSuggestions ] );
 
 	const save = ( payload, rollback ) =>
 		persistSetting( payload, onSave, rollback );
@@ -313,7 +325,9 @@ function BrowseDetectionCard( { settings, onSave } ) {
 
 	const handleReposPerPageChange = ( newVal ) => {
 		setReposPerPage( newVal );
-		save( { repos_per_page: newVal } ).catch( () => {} );
+		save( { repos_per_page: newVal }, () =>
+			setReposPerPage( reposPerPage )
+		).catch( () => {} );
 	};
 
 	const handleExcludedReposChange = ( tokens ) => {
@@ -326,20 +340,24 @@ function BrowseDetectionCard( { settings, onSave } ) {
 			);
 		}
 		setExcludedRepos( valid );
-		save( { excluded_repos: valid } ).catch( () => {} );
+		save( { excluded_repos: valid }, () =>
+			setExcludedRepos( excludedRepos )
+		).catch( () => {} );
 	};
 
 	const handleMaxReposPerSourceChange = ( newVal ) => {
 		setMaxReposPerSource( newVal );
 		const parsed =
 			'unlimited' === newVal ? 'unlimited' : parseInt( newVal, 10 );
-		save( { max_repos_per_source: parsed } ).catch( () => {} );
+		save( { max_repos_per_source: parsed }, () =>
+			setMaxReposPerSource( maxReposPerSource )
+		).catch( () => {} );
 	};
 
-	const handleRepositoriesRefreshFrequencyChange = ( newVal ) => {
-		setRepositoriesRefreshFrequency( newVal );
-		save( { repositories_refresh_frequency: newVal }, () =>
-			setRepositoriesRefreshFrequency( repositoriesRefreshFrequency )
+	const handleRepositoryRefreshFrequencyChange = ( newVal ) => {
+		setRepositoryRefreshFrequency( newVal );
+		save( { repository_refresh_frequency: newVal }, () =>
+			setRepositoryRefreshFrequency( repositoryRefreshFrequency )
 		).catch( () => {} );
 	};
 
@@ -422,7 +440,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					checked={ backgroundTypeDetection }
 					disabled={ ! detectionActive }
 					help={ __(
-						'Detect types for unscanned repos in the background every 30 minutes, scaling batch size to the available API quota. Best for large collections.',
+						'Detect types for unscanned repos in the background every 30 minutes, taking a bigger batch while GitHub quota sits idle. Best for large collections.',
 						'gitwire'
 					) }
 					label={ __( 'Background Type Pre-Detection', 'gitwire' ) }
@@ -473,17 +491,11 @@ function BrowseDetectionCard( { settings, onSave } ) {
 						'gitwire'
 					) }
 					value={ excludedRepos }
-					suggestions={
-						excludedRepoInput.trim().length >= 2
-							? repoSuggestions
-							: []
-					}
+					suggestions={ wantsSuggestions ? repoSuggestions : [] }
 					onChange={ handleExcludedReposChange }
 					onInputChange={ setExcludedRepoInput }
 					tokenizeOnSpace={ false }
-					__experimentalExpandOnFocus={
-						excludedRepoInput.trim().length >= 2
-					}
+					__experimentalExpandOnFocus={ wantsSuggestions }
 				/>
 
 				<Spacer marginTop={ 4 } />
@@ -496,8 +508,8 @@ function BrowseDetectionCard( { settings, onSave } ) {
 						'How often the repository list is refreshed in the background.',
 						'gitwire'
 					) }
-					value={ repositoriesRefreshFrequency }
-					onChange={ handleRepositoriesRefreshFrequencyChange }
+					value={ repositoryRefreshFrequency }
+					onChange={ handleRepositoryRefreshFrequencyChange }
 				>
 					<ToggleGroupControlOption
 						label={ __( 'Hourly', 'gitwire' ) }
@@ -570,7 +582,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					isBlock
 					label={ __( 'Max per Source', 'gitwire' ) }
 					help={ __(
-						'Cap total repos fetched per connection per cron cycle.',
+						'Cap how many repositories are fetched from each connection, on both the scheduled refresh and the Refresh button.',
 						'gitwire'
 					) }
 					value={ maxReposPerSource }
@@ -580,7 +592,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					<ToggleGroupControlOption label="250" value="250" />
 					<ToggleGroupControlOption label="500" value="500" />
 					<ToggleGroupControlOption
-						label={ __( 'No limit', 'gitwire' ) }
+						label={ __( 'No Limit', 'gitwire' ) }
 						value="unlimited"
 					/>
 				</ToggleGroupControl>
@@ -926,19 +938,6 @@ function PublicConnectionsSummary( {
 	);
 }
 
-function gravatarFallback( identifier ) {
-	let h = 5381;
-	const s = String( identifier || '' )
-		.toLowerCase()
-		.trim();
-	for ( let i = 0; i < s.length; i++ ) {
-		h = ( Math.imul( 33, h ) ^ s.charCodeAt( i ) ) >>> 0; // eslint-disable-line no-bitwise
-	}
-	return `https://www.gravatar.com/avatar/${ h
-		.toString( 16 )
-		.padStart( 32, '0' ) }?d=identicon&s=96`;
-}
-
 function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 	const [ busy, setBusy ] = useState( false );
 	const [ confirming, setConfirming ] = useState( false );
@@ -1007,23 +1006,24 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 			</CardHeader>
 			<CardBody>
 				<Flex align="center" gap={ 3 }>
-					<img
-						alt={ rateData?.username || rec.identifier }
-						height={ 44 }
-						src={
-							rateData?.avatar_url ||
-							rec.avatar_url ||
-							gravatarFallback(
-								rateData?.username || rec.identifier
-							)
-						}
-						style={ {
-							borderRadius: '50%',
-							display: 'block',
-							flexShrink: 0,
-						} }
-						width={ 44 }
-					/>
+					{ rateData?.avatar_url || rec.avatar_url ? (
+						<img
+							alt={ rateData?.username || rec.identifier }
+							height={ 44 }
+							src={ rateData?.avatar_url || rec.avatar_url }
+							style={ {
+								borderRadius: '50%',
+								display: 'block',
+								flexShrink: 0,
+							} }
+							width={ 44 }
+						/>
+					) : (
+						<span
+							className="gitwire-connection-avatar is-placeholder"
+							style={ { width: 44, height: 44 } }
+						/>
+					) }
 					<FlexBlock>
 						{ displayName && (
 							<div style={ { fontWeight: 700, fontSize: 14 } }>

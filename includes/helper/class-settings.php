@@ -80,7 +80,7 @@ class Settings {
 				'default' => 'unlimited',
 				'values'  => [ 'unlimited', 100, 250, 500 ],
 			],
-			'repositories_refresh_frequency'    => [
+			'repository_refresh_frequency'      => [
 				'type'    => 'enum',
 				'default' => 'daily',
 				'values'  => [ 'hourly', 'twicedaily', 'daily', 'weekly' ],
@@ -156,6 +156,16 @@ class Settings {
 			$out[ $key ] = array_key_exists( $key, $stored )
 				? self::coerce( $stored[ $key ], $rule )
 				: $rule['default'];
+		}
+
+		/*
+		 * Smart Install cannot decide anything without a detected type, so it implies
+		 * detection. Enforced on read rather than on save so the browse UI, the cron
+		 * gate, and the settings toggle can never disagree about a stored pair that
+		 * says otherwise.
+		 */
+		if ( ! empty( $out['smart_install'] ) ) {
+			$out['auto_detect_type'] = true;
 		}
 
 		return $out;
@@ -268,23 +278,21 @@ class Settings {
 	 * @since 1.0.0
 	 * @return string WP cron recurrence: 'hourly', 'daily', or 'weekly'.
 	 */
-	public static function get_repositories_refresh_frequency(): string {
-		return (string) self::get_public()['repositories_refresh_frequency'];
+	public static function get_repository_refresh_frequency(): string {
+		return (string) self::get_public()['repository_refresh_frequency'];
 	}
 
 	/**
 	 * Returns whether repository type detection is wanted at all.
 	 *
-	 * Smart Install cannot work without a detected type, so it keeps detection alive
-	 * even when auto_detect_type is off on its own.
+	 * Smart Install is already folded into auto_detect_type by get_public(), so this is
+	 * the one flag every caller should ask, rather than re-deriving the pair.
 	 *
 	 * @since 1.0.0
 	 * @return bool
 	 */
 	public static function is_type_detection_enabled(): bool {
-		$settings = self::get_public();
-
-		return ! empty( $settings['auto_detect_type'] ) || ! empty( $settings['smart_install'] );
+		return ! empty( self::get_public()['auto_detect_type'] );
 	}
 
 	/**
@@ -295,21 +303,6 @@ class Settings {
 	 */
 	public static function get_repository_type_refresh_frequency(): string {
 		return (string) self::get_public()['repository_type_refresh_frequency'];
-	}
-
-	/**
-	 * Returns the max age in seconds before a cached repositories page is considered stale.
-	 *
-	 * @since 1.0.0
-	 * @return int
-	 */
-	public static function get_repositories_max_age(): int {
-		return match ( self::get_repositories_refresh_frequency() ) {
-			'twicedaily' => 12 * HOUR_IN_SECONDS,
-			'daily'      => DAY_IN_SECONDS,
-			'weekly'     => WEEK_IN_SECONDS,
-			default      => HOUR_IN_SECONDS,
-		};
 	}
 
 	/**
@@ -444,7 +437,7 @@ class Settings {
 
 		/*
 		 * Unwrap IPv4-mapped and IPv4-compatible IPv6 before anything else. PHP's
-		 * range flags only learned to see through the wrapper in 8.5, so on 8.1, the
+		 * range flags only learned to see through the wrapper in 8.5, so on 8.0, the
 		 * supported floor, ::ffff:127.0.0.1 validated as a public address. Unwrapping
 		 * the packed bytes rather than the text form covers every spelling of the same
 		 * address: ::ffff:7f00:1 and 0:0:0:0:0:ffff:127.0.0.1 are both 127.0.0.1.

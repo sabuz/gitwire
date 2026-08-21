@@ -138,6 +138,71 @@ class RepositoryCacheTest extends TestCase {
 		$this->assertStringContainsString( '2026-01-02 03:04:05', $this->wpdb->queries_matching( 'INSERT INTO' )[0] );
 	}
 
+	/**
+	 * Reads one row back out through get_paginated().
+	 *
+	 * @param array<string, mixed> $overrides Column values to set on the row.
+	 * @return array<string, mixed>
+	 */
+	private function read_row( array $overrides = [] ): array {
+		$this->wpdb->results = [
+			array_merge(
+				[
+					'connection_id'    => 'conn-1',
+					'provider'         => 'github',
+					'full_name'        => 'acme/repo',
+					'owner'            => 'acme',
+					'name'             => 'repo',
+					'private'          => '0',
+					'html_url'         => '',
+					'default_branch'   => 'main',
+					'last_activity_at' => '2026-08-01 09:30:00',
+					'type'             => '',
+					'type_meta'        => null,
+				],
+				$overrides
+			),
+		];
+
+		$page = Repository::instance()->get_paginated(
+			[
+				'connection_ids' => [ 'conn-1' ],
+				'per_page'       => 50,
+			]
+		);
+
+		return $page['repositories'][0];
+	}
+
+	public function test_activity_dates_leave_as_iso8601_utc(): void {
+		/*
+		 * The column is written with gmdate(), and JS reads the bare 'Y-m-d H:i:s' form
+		 * as local time — every relative timestamp came out shifted by the viewer's offset.
+		 */
+		$this->assertSame( '2026-08-01T09:30:00Z', $this->read_row()['last_activity_at'] );
+	}
+
+	public function test_the_epoch_sentinel_is_not_handed_to_the_client_as_a_date(): void {
+		$row = $this->read_row( [ 'last_activity_at' => '1970-01-01 00:00:00' ] );
+
+		$this->assertSame( '', $row['last_activity_at'] );
+	}
+
+	public function test_pagination_order_has_a_tiebreaker(): void {
+		Repository::instance()->get_paginated(
+			[
+				'connection_ids' => [ 'conn-1' ],
+				'per_page'       => 50,
+			]
+		);
+
+		// Rows sharing a timestamp could otherwise reorder between LIMIT/OFFSET pages.
+		$this->assertStringContainsString(
+			'ORDER BY last_activity_at DESC, full_name ASC',
+			$this->wpdb->queries_matching( 'SELECT connection_id' )[0]
+		);
+	}
+
 	public function test_stale_sweep_targets_one_connection_by_cycle_stamp(): void {
 		Repository::instance()->remove_stale_since( 'conn-1', '2026-01-02 03:04:05' );
 

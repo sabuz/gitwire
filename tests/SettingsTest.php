@@ -92,12 +92,12 @@ class SettingsTest extends TestCase {
 		$this->assertSame( 'halfhourly', Settings::merge_save( [ 'update_check_interval' => 'yearly' ] )['update_check_interval'] );
 	}
 
-	public function test_repositories_refresh_frequency_accepts_only_real_recurrences(): void {
-		gitwire_test_set_option( 'gitwire_settings', [ 'repositories_refresh_frequency' => 'daily' ] );
-		$this->assertSame( 'daily', Settings::get_repositories_refresh_frequency() );
+	public function test_repository_refresh_frequency_accepts_only_real_recurrences(): void {
+		gitwire_test_set_option( 'gitwire_settings', [ 'repository_refresh_frequency' => 'daily' ] );
+		$this->assertSame( 'daily', Settings::get_repository_refresh_frequency() );
 
-		gitwire_test_set_option( 'gitwire_settings', [ 'repositories_refresh_frequency' => 'fortnightly' ] );
-		$this->assertSame( 'daily', Settings::get_repositories_refresh_frequency() );
+		gitwire_test_set_option( 'gitwire_settings', [ 'repository_refresh_frequency' => 'fortnightly' ] );
+		$this->assertSame( 'daily', Settings::get_repository_refresh_frequency() );
 	}
 
 	public function test_get_public_never_leaks_unknown_keys(): void {
@@ -228,12 +228,12 @@ class SettingsTest extends TestCase {
 	}
 
 	public function test_refresh_frequency_accepts_every_value_the_getter_allows(): void {
-		foreach ( Settings::schema()['repositories_refresh_frequency']['values'] as $value ) {
-			$merged = Settings::merge_save( [ 'repositories_refresh_frequency' => $value ] );
-			$this->assertSame( $value, $merged['repositories_refresh_frequency'] );
+		foreach ( Settings::schema()['repository_refresh_frequency']['values'] as $value ) {
+			$merged = Settings::merge_save( [ 'repository_refresh_frequency' => $value ] );
+			$this->assertSame( $value, $merged['repository_refresh_frequency'] );
 
 			gitwire_test_set_option( 'gitwire_settings', $merged );
-			$this->assertSame( $value, Settings::get_repositories_refresh_frequency() );
+			$this->assertSame( $value, Settings::get_repository_refresh_frequency() );
 		}
 	}
 
@@ -277,6 +277,34 @@ class SettingsTest extends TestCase {
 		);
 
 		$this->assertFalse( Settings::is_type_detection_enabled() );
+	}
+
+	public function test_smart_install_forces_auto_detect_type_on_read(): void {
+		gitwire_test_set_option(
+			'gitwire_settings',
+			[
+				'auto_detect_type' => false,
+				'smart_install'    => true,
+			]
+		);
+
+		/*
+		 * The browse UI reads auto_detect_type directly. Left disagreeing with
+		 * is_type_detection_enabled(), it hid every badge while the server kept detecting.
+		 */
+		$this->assertTrue( Settings::get_public()['auto_detect_type'] );
+	}
+
+	public function test_smart_install_does_not_rewrite_auto_detect_type_once_it_is_off(): void {
+		gitwire_test_set_option(
+			'gitwire_settings',
+			[
+				'auto_detect_type' => false,
+				'smart_install'    => false,
+			]
+		);
+
+		$this->assertFalse( Settings::get_public()['auto_detect_type'] );
 	}
 
 	public function test_an_invalid_value_falls_back_to_the_default_not_the_loosest_option(): void {

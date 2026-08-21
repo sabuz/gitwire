@@ -110,7 +110,7 @@ class Repository extends Model_Base {
 			$wpdb->prepare(
 				"SELECT connection_id, provider, full_name, owner, name, private, html_url, default_branch, last_activity_at, type, type_meta
 				FROM `{$table}` {$where}
-				ORDER BY last_activity_at DESC LIMIT %d OFFSET %d",
+				ORDER BY last_activity_at DESC, full_name ASC LIMIT %d OFFSET %d",
 				...$args
 			),
 			ARRAY_A
@@ -148,7 +148,8 @@ class Repository extends Model_Base {
 					}
 
 					// wpdb hands back tinyint as "0"/"1", and "0" is truthy once it reaches JS.
-					$row['private'] = (bool) ( $row['private'] ?? false );
+					$row['private']          = (bool) ( $row['private'] ?? false );
+					$row['last_activity_at'] = self::to_iso8601( (string) ( $row['last_activity_at'] ?? '' ) );
 
 					return $row;
 				},
@@ -157,6 +158,27 @@ class Repository extends Model_Base {
 			'has_more'     => $has_more,
 			'offset'       => $offset,
 		];
+	}
+
+	/**
+	 * Converts a stored UTC datetime to ISO-8601 for the client.
+	 *
+	 * The column is written with gmdate(), but 'Y-m-d H:i:s' is not a format JavaScript
+	 * parses as UTC — Date() reads the space-separated form as local time, shifting every
+	 * relative timestamp by the viewer's offset. The epoch sentinel written for repos
+	 * whose provider gave no usable date becomes an empty string, so the UI can leave it
+	 * out rather than render "56y ago".
+	 *
+	 * @since 1.0.0
+	 * @param string $stored Datetime as stored, in UTC.
+	 * @return string ISO-8601 datetime, or empty string when there is no real date.
+	 */
+	private static function to_iso8601( string $stored ): string {
+		if ( '' === $stored || str_starts_with( $stored, '1970-01-01' ) ) {
+			return '';
+		}
+
+		return str_replace( ' ', 'T', $stored ) . 'Z';
 	}
 
 	/**

@@ -66,30 +66,18 @@ class Repositories {
 	}
 
 	/**
-	 * Builds the canonical key for a repo type detection entry.
-	 *
-	 * @since 1.0.0
-	 * @param string $provider Provider key.
-	 * @param string $owner    Repository owner.
-	 * @param string $repo     Repository name.
-	 * @param string $branch   Branch name.
-	 * @return string
-	 */
-	public static function repository_type_key( string $provider, string $owner, string $repo, string $branch ): string {
-		return $provider . ':' . $owner . '/' . $repo . ':' . $branch;
-	}
-
-	/**
 	 * Returns a cached detection result.
 	 *
+	 * Detections are stored per repository, not per branch: the browse cache holds one
+	 * row per repo and every read path only ever asks about its default branch.
+	 *
 	 * @since 1.0.0
 	 * @param string $provider Provider key.
 	 * @param string $owner    Repository owner.
 	 * @param string $repo     Repository name.
-	 * @param string $branch   Branch name.
 	 * @return array<string, mixed>|null Cached detection or null when missing.
 	 */
-	public static function get_repository_type( string $provider, string $owner, string $repo, string $branch ): ?array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
+	public static function get_repository_type( string $provider, string $owner, string $repo ): ?array {
 		return Repository::instance()->get_type( $provider, $owner . '/' . $repo );
 	}
 
@@ -104,11 +92,10 @@ class Repositories {
 	 * @param string               $provider Provider key.
 	 * @param string               $owner    Repository owner.
 	 * @param string               $repo     Repository name.
-	 * @param string               $branch   Branch name.
 	 * @param array<string, mixed> $result   Detection payload (must include 'type').
 	 * @return void
 	 */
-	public static function set_repository_type( string $provider, string $owner, string $repo, string $branch, array $result ): void {
+	public static function set_repository_type( string $provider, string $owner, string $repo, array $result ): void {
 		$type = $result['type'] ?? '';
 		$meta = array_diff_key( $result, [ 'type' => true ] );
 		Repository::instance()->set_type( $provider, $owner . '/' . $repo, $type, ! empty( $meta ) ? $meta : null );
@@ -221,13 +208,20 @@ class Repositories {
 	 * Fetches all pages of the repository list for every known connection.
 	 *
 	 * After each connection completes successfully, rows not touched in this cycle
-	 * (repos removed from the provider) are deleted.
+	 * (repos removed from the provider) are deleted. A sweep that runs out of its time
+	 * budget parks a cursor and returns; the next tick resumes that connection
+	 * mid-sweep, and its stale rows are left alone until the sweep actually finishes.
+	 *
+	 * Shared by the cron event and the Browse tab's manual refresh, so both walk every
+	 * page and both honour max_repos_per_source. Fetching only page one and pruning
+	 * anyway is what used to truncate large connections down to a single page.
 	 *
 	 * @since 1.0.0
-	 * @return true|\WP_Error True on success, WP_Error when any source fails.
+	 * @return array<int, array<string, mixed>> One entry per connection that failed,
+	 *                                          each with connection_id, provider, and message.
 	 */
-	private static function refresh_repositories(): bool|\WP_Error {
-		$last_err    = null;
+	public static function refresh_repositories(): array {
+		$errors      = [];
 		$max_setting = Settings::get_public()['max_repos_per_source'] ?? 'unlimited';
 		$max         = 'unlimited' === $max_setting ? PHP_INT_MAX : (int) $max_setting;
 		$state       = self::get_refresh_state();
@@ -274,7 +268,11 @@ class Repositories {
 				$result = self::fetch_repositories( $provider, $page, $id, $max - $stored, $cycle_start );
 				if ( is_wp_error( $result ) ) {
 					$conn_err = $result;
-					$last_err = $result;
+					$errors[] = [
+						'connection_id' => $id,
+						'provider'      => $provider,
+						'message'       => $result->get_error_message(),
+					];
 					break;
 				}
 
@@ -292,7 +290,7 @@ class Repositories {
 					'cycle_start' => $cycle_start,
 				];
 				self::save_refresh_state( $state );
-				return $last_err ?? true;
+				return $errors;
 			}
 
 			/*
@@ -307,7 +305,7 @@ class Repositories {
 			self::save_refresh_state( $state );
 		}
 
-		return $last_err ?? true;
+		return $errors;
 	}
 
 	/**
@@ -364,7 +362,7 @@ class Repositories {
 			return;
 		}
 
-		self::cron_refresh_repository_types();
+		self::refresh_installed_repository_types();
 	}
 
 	/**
@@ -383,63 +381,35 @@ class Repositories {
 	}
 
 	/**
-	 * Re-detects repository types for installed repositories.
+	 * Re-detects repository types for every installed repository.
 	 *
 	 * @since 1.0.0
-	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
+	 * @return void
 	 */
-	public static function cron_refresh_repository_types(): bool|\WP_Error {
-		return self::refresh_installed_repository_types();
-	}
+	private static function refresh_installed_repository_types(): void {
+		$targets = [];
 
-	/**
-	 * Re-detects repository types for installed repositories.
-	 *
-	 * @since 1.0.0
-	 * @return true|\WP_Error True on success, WP_Error when detection fails globally.
-	 */
-	private static function refresh_installed_repository_types(): bool|\WP_Error {
-		$keys           = [];
-		$connection_ids = [];
-		$records        = Installer::get_installed();
-
-		foreach ( $records as $rec ) {
+		foreach ( Installer::get_installed() as $rec ) {
 			$provider = $rec['provider'] ?? 'github';
 			$owner    = $rec['owner'] ?? '';
 			$repo     = $rec['repo'] ?? '';
-			$branch   = $rec['branch'] ?? 'main';
-			if ( $owner && $repo ) {
-				$key          = self::repository_type_key( $provider, $owner, $repo, $branch );
-				$keys[ $key ] = true;
-				if ( ! empty( $rec['connection_id'] ) ) {
-					$connection_ids[ $key ] = $rec['connection_id'];
-				}
+			if ( ! $owner || ! $repo ) {
+				continue;
 			}
+
+			// Keyed so two installs of the same repo are only detected once.
+			$targets[ $provider . ':' . $owner . '/' . $repo ] = [
+				'provider'      => $provider,
+				'owner'         => $owner,
+				'repo'          => $repo,
+				'branch'        => $rec['branch'] ?? 'main',
+				'connection_id' => ! empty( $rec['connection_id'] ) ? $rec['connection_id'] : null,
+			];
 		}
 
-		$last_err = null;
-		foreach ( array_keys( $keys ) as $key ) {
-			$parts = explode( ':', $key, 2 );
-			if ( count( $parts ) < 2 ) {
-				continue;
-			}
-			$provider = $parts[0];
-			$rest     = $parts[1];
-			$at       = strrpos( $rest, ':' );
-			if ( false === $at ) {
-				continue;
-			}
-			$full_branch = substr( $rest, $at + 1 );
-			$full_name   = substr( $rest, 0, $at );
-			$slash       = strrpos( $full_name, '/' );
-			if ( false === $slash ) {
-				continue;
-			}
-			$owner = substr( $full_name, 0, $slash );
-			$repo  = substr( $full_name, $slash + 1 );
-
-			if ( 'github' === $provider ) {
-				$conn_key  = $connection_ids[ $key ] ?? 'anon';
+		foreach ( $targets as $target ) {
+			if ( 'github' === $target['provider'] ) {
+				$conn_key  = $target['connection_id'] ?? 'anon';
 				$remaining = get_transient( 'gitwire_gh_rl_' . $conn_key );
 				if ( false !== $remaining && (int) $remaining < 50 ) {
 					break;
@@ -447,21 +417,18 @@ class Repositories {
 			}
 
 			$result = REST_Repositories::detect_type_for_repo(
-				$provider,
-				$owner,
-				$repo,
-				$full_branch,
-				$connection_ids[ $key ] ?? null
+				$target['provider'],
+				$target['owner'],
+				$target['repo'],
+				$target['branch'],
+				$target['connection_id']
 			);
 			if ( is_wp_error( $result ) ) {
-				$last_err = $result;
 				continue;
 			}
 
-			self::set_repository_type( $provider, $owner, $repo, $full_branch, $result );
+			self::set_repository_type( $target['provider'], $target['owner'], $target['repo'], $result );
 		}
-
-		return $last_err ?? true;
 	}
 
 	/**
@@ -488,13 +455,27 @@ class Repositories {
 		 *
 		 * Lower this on resource-constrained servers; raise it to speed up initial
 		 * detection on large installs (at the cost of longer cron execution). Defaults
-		 * to a larger batch when GitHub or GitLab quota is sitting mostly idle.
+		 * to a larger batch when GitHub quota is sitting mostly idle.
 		 *
 		 * @since 1.0.0
-		 * @param int $batch_size Repositories per cycle. Default 25, or 100 when idle.
+		 * @param int $batch_size Repositories per cycle. Default 25, or 100 when GitHub is idle.
 		 * @return int
 		 */
-		$batch_size  = (int) apply_filters( 'gitwire_detection_batch_size', self::adaptive_batch_size() );
+		$batch_size = (int) apply_filters( 'gitwire_detection_batch_size', self::adaptive_batch_size() );
+
+		/**
+		 * Filters how long one background detection tick may spend calling providers.
+		 *
+		 * Ticks inherit php.ini max_execution_time because wp-cron.php never raises it,
+		 * commonly 30s. Stopping short of that is what lets the cursor below be written
+		 * instead of the whole request being killed mid-batch.
+		 *
+		 * @since 1.0.0
+		 * @param int $budget Seconds per tick. Default 20.
+		 * @return int
+		 */
+		$budget = (int) apply_filters( 'gitwire_detection_time_budget', 20 );
+
 		$cursor      = (int) get_option( 'gitwire_detection_cursor', 0 );
 		$batch_start = time();
 
@@ -506,8 +487,7 @@ class Repositories {
 			$processed = 0;
 			$stuck     = 0;
 			foreach ( $untyped as $row ) {
-				// 25 s guard — leave time for the next item on the queue.
-				if ( time() - $batch_start > 25 ) {
+				if ( time() - $batch_start >= $budget ) {
 					break;
 				}
 
@@ -540,7 +520,7 @@ class Repositories {
 				if ( is_wp_error( $result ) ) {
 					++$stuck;
 				} else {
-					self::set_repository_type( $row['provider'], $row['owner'], $row['name'], $branch, $result );
+					self::set_repository_type( $row['provider'], $row['owner'], $row['name'], $result );
 				}
 				++$processed;
 			}
@@ -560,26 +540,25 @@ class Repositories {
 	}
 
 	/**
-	 * Sizes the background-detection batch to whichever provider has idle quota.
+	 * Sizes the background-detection batch to GitHub's idle quota.
 	 *
-	 * This cron ticks every 30 minutes, well inside GitHub's hourly window and GitLab's
-	 * usual per-minute one, so a reading with plenty left is evidence that window has
-	 * gone mostly unused and can take a bigger batch. Bitbucket isn't tracked the same
-	 * way, so a Bitbucket-only site falls through to the fixed default; the per-row
-	 * floor check further down still aborts early regardless of this batch size.
+	 * GitHub's window is hourly and this cron ticks every 30 minutes, so a reading with
+	 * most of the hour still unspent is real evidence that window is going unused and
+	 * can absorb a bigger batch.
+	 *
+	 * Only GitHub qualifies. GitLab meters per minute, so a fresh minute always reads as
+	 * idle no matter how much of the next half hour is already committed, and its
+	 * headers expire long before the next tick reads them. Bitbucket reports nothing
+	 * outside scaled-tier orgs. Both fall through to the fixed default, and the per-row
+	 * floor checks in the batch loop still abort early whatever size is chosen.
 	 *
 	 * @since 1.0.0
 	 * @return int
 	 */
 	private static function adaptive_batch_size(): int {
-		$default   = 25;
 		$remaining = self::min_github_remaining();
 
-		if ( null !== $remaining && $remaining >= 3000 ) {
-			return 100;
-		}
-
-		return self::gitlab_has_idle_quota() ? 100 : $default;
+		return ( null !== $remaining && $remaining >= 3000 ) ? 100 : 25;
 	}
 
 	/**
@@ -612,62 +591,5 @@ class Repositories {
 		}
 
 		return $lowest;
-	}
-
-	/**
-	 * Returns true when every GitLab connection's cached reading shows comfortable headroom.
-	 *
-	 * Unlike GitHub's roughly-fixed hourly shape, GitLab's limit varies per instance
-	 * (2,000/min on GitLab.com, admin-configurable on self-managed), so a bare remaining
-	 * count means nothing without its limit. Requires both an absolute floor and a
-	 * fraction of the total, so a connection with a small configured limit is never
-	 * mistaken for idle just because it happens to be mostly untouched. False when no
-	 * GitLab connection has a cached reading yet, same as the GitHub check.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	private static function gitlab_has_idle_quota(): bool {
-		$found = false;
-
-		foreach ( Connection_Resolver::all() as $conn ) {
-			if ( 'gitlab' !== ( $conn['provider'] ?? '' ) ) {
-				continue;
-			}
-
-			$conn_key = ! empty( $conn['id'] ) ? $conn['id'] : 'anon';
-			$cached   = get_transient( 'gitwire_gl_rl_' . $conn_key );
-			if ( ! is_array( $cached ) || empty( $cached['limit'] ) ) {
-				continue;
-			}
-
-			$found = true;
-			$ratio = $cached['remaining'] / $cached['limit'];
-
-			if ( $cached['remaining'] < 500 || $ratio < 0.5 ) {
-				return false;
-			}
-		}
-
-		return $found;
-	}
-
-	/**
-	 * Forces an immediate full refresh outside the cron cycle.
-	 *
-	 * @since 1.0.0
-	 * @return true|\WP_Error
-	 */
-	public static function force_refresh(): bool|\WP_Error {
-		$result = self::refresh_repositories();
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-
-		if ( ! empty( self::get_refresh_state() ) ) {
-			return $result;
-		}
-
-		return self::cron_refresh_repository_types();
 	}
 }

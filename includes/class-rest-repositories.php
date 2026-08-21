@@ -374,9 +374,14 @@ class REST_Repositories {
 				}
 			}
 
+			/*
+			 * Through the factory when authenticated; either way the client carries the
+			 * connection ID its rate-limit transient is keyed by. Built without it, a
+			 * public connection's listings counted against the 'anon' bucket instead.
+			 */
 			$api    = $has_auth
 				? Provider_Factory::make( 'gitlab', $connection_id )
-				: new GitLab_API( '', $gitlab_url );
+				: new GitLab_API( '', $gitlab_url, $connection_id );
 			$result = $api->get_repos( $username, $page );
 
 			if ( is_wp_error( $result ) ) {
@@ -514,12 +519,9 @@ class REST_Repositories {
 		$provider      = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 
-		// Only use cache for unauthenticated lookups; a specific connection may access private repositories.
-		if ( '' === $connection_id ) {
-			$cached = Repositories::get_repository_type( $provider, $owner, $repo, $branch );
-			if ( is_array( $cached ) ) {
-				return $cached;
-			}
+		$cached = Repositories::get_repository_type( $provider, $owner, $repo );
+		if ( is_array( $cached ) ) {
+			return $cached;
 		}
 
 		$api    = self::make_api( $provider, '' !== $connection_id ? $connection_id : null );
@@ -530,16 +532,20 @@ class REST_Repositories {
 				$status = (int) ( $result->get_error_data()['status'] ?? 400 );
 				return new \WP_Error( $result->get_error_code(), $result->get_error_message(), [ 'status' => $status ] );
 			}
-			$result = [
+
+			/*
+			 * Answered as unknown but deliberately not cached, same as detect_batch():
+			 * a rate-limit 403 or a network blip would otherwise pin the repo as
+			 * unknown until someone clears the cache.
+			 */
+			return [
 				'type'       => 'unknown',
 				'confidence' => 'none',
 				'name'       => '',
 			];
 		}
 
-		if ( '' === $connection_id ) {
-			Repositories::set_repository_type( $provider, $owner, $repo, $branch, $result );
-		}
+		Repositories::set_repository_type( $provider, $owner, $repo, $result );
 
 		return $result;
 	}
@@ -599,7 +605,7 @@ class REST_Repositories {
 			}
 
 			$key    = $provider . ':' . $owner . '/' . $repo;
-			$cached = Repositories::get_repository_type( $provider, $owner, $repo, $branch );
+			$cached = Repositories::get_repository_type( $provider, $owner, $repo );
 			if ( is_array( $cached ) ) {
 				$results[ $key ] = $cached;
 				continue;
@@ -642,7 +648,7 @@ class REST_Repositories {
 				continue;
 			}
 
-			Repositories::set_repository_type( $provider, $owner, $repo, $branch, $result );
+			Repositories::set_repository_type( $provider, $owner, $repo, $result );
 			$results[ $key ] = $result;
 		}
 
@@ -668,8 +674,7 @@ class REST_Repositories {
 				$detection = Repositories::get_repository_type(
 					$repo['provider'] ?? '',
 					$repo['owner'] ?? '',
-					$repo['name'] ?? '',
-					$repo['default_branch'] ?? 'main'
+					$repo['name'] ?? ''
 				);
 				if ( is_array( $detection ) ) {
 					$repo['detection'] = $detection;
@@ -687,7 +692,9 @@ class REST_Repositories {
 	 * Clearing the list up front and refetching afterwards loses the whole list when
 	 * the refetch fails, so a rate-limit blip used to empty the browse tab. Rows are
 	 * upserted under a cycle stamp instead, and only the ones the provider no longer
-	 * returns are pruned once that connection has answered.
+	 * returns are pruned once that connection has answered every page. The page sweep
+	 * is the same one cron runs, so a connection larger than one API page is not
+	 * truncated to its first page, and max_repos_per_source applies here too.
 	 *
 	 * 'repos' only relists. Rows already in the cache keep their stored type, since
 	 * upsert_batch() never touches the type columns, so a repo the provider just added
@@ -696,6 +703,10 @@ class REST_Repositories {
 	 * again on an API round trip. 'types' skips the relist and only drops stored
 	 * types, for when the list itself is not in question.
 	 *
+	 * Both type modes are ignored when detection is off, since nothing would rebuild
+	 * what they drop. The Browse tab hides the menu in that state; this is the same
+	 * gate on the server, for callers that skip the UI.
+	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed> Refresh outcome, with any per-connection errors.
@@ -703,7 +714,8 @@ class REST_Repositories {
 	public static function clear_cache( \WP_REST_Request $req ): array {
 		$mode          = (string) $req->get_param( 'mode' );
 		$refresh_list  = 'types' !== $mode;
-		$refresh_types = 'types' === $mode || 'repos_and_types' === $mode;
+		$refresh_types = ( 'types' === $mode || 'repos_and_types' === $mode )
+			&& Settings::is_type_detection_enabled();
 
 		$connections = array_values(
 			array_filter(
@@ -714,31 +726,20 @@ class REST_Repositories {
 			)
 		);
 
-		$errors    = [];
+		$errors = $refresh_list ? Repositories::refresh_repositories() : [];
+		$failed = array_column( $errors, 'connection_id' );
+
+		/*
+		 * Detections are expensive to rebuild, so only the connections that actually
+		 * answered lose theirs; one rate-limited connection must not wipe the
+		 * detections of every other.
+		 */
 		$refreshed = 0;
-
 		foreach ( $connections as $conn ) {
-			if ( $refresh_list ) {
-				$stamp  = current_datetime()->format( 'Y-m-d H:i:s' );
-				$result = Repositories::fetch_repositories( $conn['provider'], 1, $conn['id'], null, $stamp );
-
-				if ( is_wp_error( $result ) ) {
-					$errors[] = [
-						'connection_id' => $conn['id'],
-						'provider'      => $conn['provider'],
-						'message'       => $result->get_error_message(),
-					];
-					continue;
-				}
-
-				Repositories::remove_stale_since( $conn['id'], $stamp );
+			if ( in_array( $conn['id'], $failed, true ) ) {
+				continue;
 			}
 
-			/*
-			 * Detections are expensive to rebuild, so only the connection that just
-			 * answered loses its own; one rate-limited connection must not wipe the
-			 * detections of every other.
-			 */
 			if ( $refresh_types ) {
 				Repositories::clear_repository_types_for_connection( $conn['id'] );
 			}

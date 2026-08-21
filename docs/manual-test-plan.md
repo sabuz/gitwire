@@ -187,6 +187,11 @@
 
 ## Settings Tests
 
+### Settings Save Failures
+
+- [ ] Block `POST /gitwire/v1/settings` in devtools, then change Repositories per Page, Excluded Repositories, and Max per Source in turn: each reverts to its previous value and shows an error toast, rather than displaying a value the server never accepted
+- [ ] Changing Repository Refresh Frequency does **not** empty the Browse tab: the cached list stays on screen and only `wp cron event list` shows the new recurrence
+
 ### Repositories per Page
 
 - [ ] Set "Repositories per Page" to 10 in Settings > Browse & Detection
@@ -198,11 +203,18 @@
 ### Max per Source
 
 - [ ] Set "Max per Source" to 100 in Settings > Browse & Detection
-- [ ] Trigger a cron refresh (WP-CLI: `wp cron event run gitwire_repos_refresh` or use the Refresh button which calls clear-cache + reload)
+- [ ] Trigger a cron refresh (WP-CLI: `wp cron event run gitwire_refresh_repositories`)
 - [ ] Confirm total repos shown for a single connection does not exceed 100
 - [ ] Set to 250 — trigger refresh — confirm cap rises to 250
 - [ ] Set to "No limit" — trigger refresh — confirm all repos are fetched and shown
-- [ ] Confirm that `max_repos_per_source` does not affect the initial single-page cache warm (only full cron refresh is capped)
+- [ ] Repeat with the Browse tab's "Refresh Repositories" button instead of cron and confirm the same cap applies, since both run the same sweep
+- [ ] Confirm that `max_repos_per_source` does not affect the initial single-page cache warm (only a full sweep is capped)
+
+### Repository Activity Dates
+
+- [ ] Add Repository tab: a repo pushed to minutes ago reads "just now", not a whole number of hours, on a browser whose timezone is not UTC (check in both a positive and a negative offset — `TZ='Asia/Dhaka'` and `TZ='America/Los_Angeles'`)
+- [ ] Hovering the clock icon shows a local-time tooltip matching the provider's own "updated" timestamp for that repo
+- [ ] A repo whose provider reports no usable date shows no clock row at all, rather than a date in 1970
 
 ### Repository Type Refresh Frequency
 
@@ -214,6 +226,7 @@
 
 ### Type Settings Follow Auto-Detect
 
+- [ ] With Smart Install on and `wp option patch update gitwire_settings auto_detect_type 0` applied behind the UI, the Settings screen still shows Auto-Detect as on **and** the Browse tab still shows type badges — the two must not disagree, since Smart Install implies detection
 - [ ] Set Repository Type Refresh Frequency to Daily, then turn off Smart Install followed by Auto-Detect Repository Type: the control greys out but keeps reading Daily, alongside Background Type Pre-Detection and Shallow Detection switching off
 - [ ] Confirm `gitwire_refresh_repository_types` disappears from `wp cron event list`, so the greyed-out control isn't quietly still running
 - [ ] Run `wp cron event run gitwire_refresh_repository_types` by hand in that state and confirm no repos are typed, since the callback rechecks the setting rather than trusting the schedule
@@ -237,16 +250,20 @@
 - [ ] Deactivating the plugin clears `gitwire_background_type_detection` from the cron list; reactivating restores it
 - [ ] With a GitHub connection whose `gitwire_gh_rl_{connection_id}` transient reads 3000+, run `wp cron event run gitwire_background_type_detection` and confirm it pulls up to 100 untyped rows instead of 25 (check `gitwire_detection_cursor` advancement or add `error_log` to `Repository::get_untyped_batch()` temporarily)
 - [ ] With that transient reading below 3000, or no GitHub connection configured at all, confirm the batch stays at 25
-- [ ] With a GitLab connection whose `gitwire_gl_rl_{connection_id}` transient reads `remaining >= 500` and `remaining/limit >= 0.5`, confirm the batch also bumps to 100
-- [ ] With a GitLab connection below that ratio (e.g. a self-managed instance with a small configured limit sitting at 90% used), confirm the batch stays at 25 even if the raw remaining count looks large
+- [ ] Confirm a GitLab-only or Bitbucket-only site always uses the 25 batch, since neither reports a reading a half-hourly tick can act on
 - [ ] Setting the `gitwire_detection_batch_size` filter still overrides all of the above
+- [ ] Setting `gitwire_detection_time_budget` to 1 makes a tick stop after roughly one repository and leave the rest for the next run
 - [ ] Confirm a GitLab row in the batch still aborts the loop early once its connection's cached remaining drops below 50, mirroring the existing GitHub per-row guard
 
 ### Refresh Repositories vs Refresh Types
 
 - [ ] Add Repository tab: "Refresh Repositories" relists repos and leaves stored types alone, so badges stay put with no detect-batch calls in the network tab
+- [ ] With a connection holding more than 100 repositories (one API page), "Refresh Repositories" leaves all of them in the list — repos past the first page must not disappear until the next cron sweep
+- [ ] With `add_filter( 'gitwire_refresh_time_budget', fn() => 1 )` in an mu-plugin, a refresh of that same connection returns early, leaves the existing rows in place, and `wp option get gitwire_refresh_state` shows a parked cursor that the next `wp cron event run gitwire_refresh_repositories` resumes from
+- [ ] Make one connection fail (revoke access or point it at a bad host): its stored types survive a "Refresh Repositories & Types", while the connections that answered lose theirs
 - [ ] Add a repo on the provider side, then "Refresh Repositories" again: the new repo appears with no stored type and gets a detect-batch call, while every already-typed repo is untouched
 - [ ] The chevron next to it opens a menu with "Refresh Repositories & Types" and "Refresh Types Only"
 - [ ] "Refresh Repositories & Types" relists repos and drops stored types, so badges clear and then repopulate from fresh detect-batch calls
 - [ ] "Refresh Types Only" leaves the list untouched (no fetch_repositories calls) but drops stored types the same way, so badges clear and repopulate without the list itself changing
 - [ ] All three modes keep the current list on screen when a connection errors, and surface a toast per failing connection
+- [ ] With Auto-Detect off, `curl -X DELETE '.../gitwire/v1/repos/cache?mode=types'` with a valid nonce clears nothing — the server refuses to drop types nothing would rebuild, not just the hidden menu

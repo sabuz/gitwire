@@ -166,10 +166,12 @@ export default function RepositoryBrowser( {
 	const activeSourceFiltersRef = useRef( activeSourceFilters );
 	activeSourceFiltersRef.current = activeSourceFilters;
 	const smartInstall = settings?.smart_install !== false;
+	/*
+	 * The one flag for "types exist" anywhere in the UI. The server folds Smart Install
+	 * into it on read, so Smart Install does not need checking separately here — and
+	 * with detection off, nothing would re-type a repo whose detection was dropped.
+	 */
 	const autoDetectType = settings?.auto_detect_type !== false;
-	// Nothing re-types a repo once its detection is dropped, so offering to drop it
-	// would just blank the badges for good.
-	const canRefreshTypes = autoDetectType || smartInstall;
 	// With detection off and a single provider there is nothing left to filter on.
 	const hasAnyFilters = autoDetectType || showSourceBadge;
 
@@ -351,7 +353,7 @@ export default function RepositoryBrowser( {
 		hasBitbucket && 'bitbucket',
 	].filter( Boolean );
 	const totalOptions =
-		allTypeOptions.length +
+		( autoDetectType ? allTypeOptions.length : 0 ) +
 		( showSourceBadge ? allSourceOptions.length : 0 );
 	const allSelected = activeFilterCount === totalOptions;
 
@@ -626,7 +628,7 @@ export default function RepositoryBrowser( {
 					<div className="gitwire-refresh">
 						<Button
 							className={
-								canRefreshTypes
+								autoDetectType
 									? 'gitwire-refresh__main'
 									: undefined
 							}
@@ -637,7 +639,7 @@ export default function RepositoryBrowser( {
 						>
 							{ __( 'Refresh Repositories', 'gitwire' ) }
 						</Button>
-						{ canRefreshTypes && (
+						{ autoDetectType && (
 							<DropdownMenu
 								icon={ chevronDown }
 								label={ __( 'Refresh Options', 'gitwire' ) }
@@ -938,7 +940,7 @@ function TypeBadge( { detection, installed, autoDetectType } ) {
 		if ( installed.type === 'classic-theme' ) {
 			return (
 				<span className="gitwire-badge gitwire-badge--theme">
-					{ __( 'Theme', 'gitwire' ) }
+					{ __( 'Classic Theme', 'gitwire' ) }
 				</span>
 			);
 		}
@@ -977,7 +979,7 @@ function TypeBadge( { detection, installed, autoDetectType } ) {
 	if ( type === 'classic-theme' ) {
 		return (
 			<span className="gitwire-badge gitwire-badge--theme">
-				{ __( 'Theme', 'gitwire' ) }
+				{ __( 'Classic Theme', 'gitwire' ) }
 			</span>
 		);
 	}

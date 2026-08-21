@@ -321,7 +321,6 @@ class Admin {
 		}
 		// Boot data uses only DB records — orphan detection runs via REST on app init.
 		$installed = REST_Installer::annotate_installed( Installer::get_installed() );
-		$orphaned  = [];
 
 		// Derive initial tab from path param or setup status.
 		$path = sanitize_key( $_GET['path'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -348,7 +347,6 @@ class Admin {
 					'initial_tab'          => $initial_tab,
 					'settings'             => $settings,
 					'installed'            => $installed ? $installed : (object) [],
-					'orphaned'             => $orphaned,
 					'pending_msg'          => $pending_msg ? $pending_msg : null,
 				],
 				JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT

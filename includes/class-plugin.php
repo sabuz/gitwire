@@ -88,10 +88,6 @@ final class Plugin {
 			'interval' => 1800,
 			'display'  => __( 'Every 30 minutes', 'gitwire' ),
 		];
-		$schedules['gitwire_daily']    = [
-			'interval' => DAY_IN_SECONDS,
-			'display'  => __( 'Once daily', 'gitwire' ),
-		];
 		return $schedules;
 	}
 
@@ -225,7 +221,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function schedule_repos_cron(): void {
-		$freq    = Settings::get_repositories_refresh_frequency();
+		$freq    = Settings::get_repository_refresh_frequency();
 		$current = wp_get_schedule( 'gitwire_refresh_repositories' );
 		if ( $current === $freq ) {
 			return;

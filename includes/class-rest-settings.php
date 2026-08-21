@@ -73,7 +73,7 @@ class REST_Settings {
 
 		$was_logging          = Settings::is_logging_enabled();
 		$prev_settings        = Settings::get_public();
-		$prev_freq            = $prev_settings['repositories_refresh_frequency'] ?? 'daily';
+		$prev_freq            = $prev_settings['repository_refresh_frequency'] ?? 'daily';
 		$prev_type_freq       = $prev_settings['repository_type_refresh_frequency'] ?? 'weekly';
 		$prev_detection       = Settings::is_type_detection_enabled();
 		$prev_update_interval = $prev_settings['update_check_interval'] ?? 'halfhourly';
@@ -86,8 +86,13 @@ class REST_Settings {
 			Logger::log( 'Logging enabled' );
 		}
 
-		if ( ( $merged['repositories_refresh_frequency'] ?? 'hourly' ) !== $prev_freq ) {
-			Repositories::clear_repositories();
+		/*
+		 * Rescheduled, not re-fetched: the cached rows are just as valid on the new
+		 * cadence as the old one, and dropping them blanked the Browse tab until the
+		 * next cron tick. A leftover from when the cache was a transient whose TTL was
+		 * derived from this setting.
+		 */
+		if ( ( $merged['repository_refresh_frequency'] ?? 'daily' ) !== $prev_freq ) {
 			Plugin::instance()->schedule_repos_cron();
 		}
 
