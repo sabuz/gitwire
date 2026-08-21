@@ -785,15 +785,51 @@ class REST_Repositories {
 		$anon_api  = self::make_anon_api( $parsed );
 		$detect_br = '' !== $branch ? $branch : 'HEAD';
 		$detected  = $anon_api->detect_type( $owner, $repo, $detect_br );
-		$is_public = ! is_wp_error( $detected );
+		$error     = is_wp_error( $detected ) ? self::describe_resolve_failure( $detected ) : null;
 
 		return [
 			'provider'  => $provider,
 			'owner'     => $owner,
 			'repo'      => $repo,
 			'branch'    => '' !== $branch ? $branch : null,
-			'is_public' => $is_public,
-			'detection' => $is_public ? $detected : null,
+			'is_public' => null === $error,
+			'detection' => null === $error ? $detected : null,
+			'error'     => $error,
+		];
+	}
+
+	/**
+	 * Describes why a resolve attempt failed, separating access from everything else.
+	 *
+	 * Treating every failure as "not found or no access" turned a rate limit into an
+	 * accusation that the user cannot see their own public repository. Only 404 and 401
+	 * say anything about visibility — GitHub answers 404 for a private repo precisely so
+	 * an anonymous caller cannot tell it apart from a missing one. A 403 is the hourly
+	 * limit, and a 5xx or a transport failure is the provider's problem.
+	 *
+	 * @since 1.0.0
+	 * @param \WP_Error $err Failure from the detection call.
+	 * @return array<string, mixed>
+	 */
+	private static function describe_resolve_failure( \WP_Error $err ): array {
+		$status = (int) ( $err->get_error_data()['status'] ?? 0 );
+
+		if ( in_array( $status, [ 401, 404 ], true ) ) {
+			return [
+				'status'    => $status,
+				'is_access' => true,
+				'message'   => $err->get_error_message(),
+			];
+		}
+
+		$message = in_array( $status, [ 403, 429 ], true )
+			? __( 'The provider is rate limiting this site, so the repository could not be checked. Wait for the limit to reset, then try again.', 'gitwire' )
+			: $err->get_error_message();
+
+		return [
+			'status'    => $status,
+			'is_access' => false,
+			'message'   => $message,
 		];
 	}
 

@@ -82,6 +82,10 @@
 
 - [ ] Paste a GitHub/GitLab/Bitbucket repo URL directly
 - [ ] Installs correctly without a saved connection
+- [ ] A public repo that is not a WordPress project (e.g. `https://github.com/wintercms/winter.git`) resolves and reports what it is, rather than claiming it cannot be found
+- [ ] With Smart Install on, that same repo is blocked with the Smart Install explanation, not an access error
+- [ ] Exhaust the anonymous GitHub limit (`wp transient set gitwire_gh_rl_anon 0`, then load Browse a few times), paste any public URL, and confirm the message names the rate limit — "not found or you don't have access" must not be shown for a repo the site simply could not reach
+- [ ] A genuinely missing repo (`https://github.com/wintercms/does-not-exist`) still shows the not-found/private path with the connect-an-account prompt
 
 ### Branch Selection
 

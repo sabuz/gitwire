@@ -2,7 +2,25 @@
 
 ## Open
 
-_None currently open._
+### Browse detection exhausts GitHub's anonymous rate limit in one page load
+
+**Status:** open
+**Affects:** free
+**Reported:** 2026-08-22
+
+**Symptoms:**
+With a public (token-less) GitHub connection and Auto-Detect on, opening the Add Repository tab burns through GitHub's unauthenticated allowance almost immediately. Everything that needs the API afterwards fails for the rest of the hour: Import from URL, install, branch listings.
+
+**Root cause:**
+Unauthenticated GitHub allows 60 requests per hour per IP. `detect_batch()` handles 10 repositories per request, and each one costs a root listing plus up to five file fetches — the endpoint's own docblock notes "ten of them can be seventy round trips". At the default 50 repositories per page, `runBatch()` fires five such requests, so a single page load can ask for several hundred calls against a budget of 60. Even the floor case of one call per repository spends 50 of the 60.
+
+`run_background_detection()` guards every row against `gitwire_gh_rl_*` and aborts below 50 remaining. `detect_batch()`, the interactive path, has no such guard.
+
+**Workaround:**
+Turn Auto-Detect Repository Type off, or connect with a token via Pro (5,000/hour).
+
+**Candidate fix:**
+Give `detect_batch()` the same per-row floor check the background job uses, and return the repositories it skipped so the browse cards can show a "detection paused" state rather than a row of failed lookups. Needs a decision on whether to degrade silently or tell the user.
 
 ## Fixed
 
@@ -20,6 +38,25 @@ A connection with more than 100 repositories loses everything past the first 100
 
 **Fix:**
 `Repositories::refresh_repositories()` became the single sweep both paths run: it walks every page, honours the cap, prunes only once a connection has answered its last page, and parks a resume cursor when the time budget runs out. `clear_cache()` now calls it and maps its per-connection errors straight into the response.
+
+---
+
+### Every Import from URL failure reported as "not found or you don't have access"
+
+**Status:** fixed
+**Affects:** free
+**Reported:** 2026-08-22
+
+**Symptoms:**
+Pasting a public repository URL returns "Repository not found or you don't have access." even though the repository is public and plainly exists. Correlates with Smart Install being on, which is misleading — Smart Install is nowhere in this code path.
+
+**Root cause:**
+`resolve_repo()` computed `is_public` as `! is_wp_error( $detected )`, collapsing every failure mode into one. A rate-limit 403, a 5xx, and a DNS failure were all reported as an access problem, and the provider's own message was discarded. The Smart Install correlation is indirect: Smart Install forces Auto-Detect on, Auto-Detect makes the Browse tab run `detect-batch` over the whole page, and that exhausts GitHub's 60/hour anonymous limit — after which resolve gets a 403 and mislabels it.
+
+**Fix:**
+`describe_resolve_failure()` splits access from everything else. Only 401 and 404 route to the private/not-found path, since GitHub deliberately answers 404 for a private repo so an anonymous caller cannot distinguish it from a missing one. A 403 or 429 gets a rate-limit message, anything else surfaces the provider's own text, and both land on the error step instead of the access prompt. `handleConnectAndContinue`'s catch got the same split, so a rate limit no longer looks like "this connection cannot see it".
+
+**Open follow-up:** the underlying exhaustion is untouched — `detect_batch()` has no rate-limit guard, unlike `run_background_detection()`. See the note in the Open section.
 
 ---
 

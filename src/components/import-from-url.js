@@ -162,6 +162,10 @@ export default function ImportFromUrl( {
 					detection: result.detection,
 				} );
 				setStep( 'resolved' );
+			} else if ( result.error && ! result.error.is_access ) {
+				// A rate limit or a provider outage says nothing about access.
+				setCheckError( result.error.message );
+				setStep( 'error' );
 			} else {
 				setStep( 'private' );
 			}
@@ -211,6 +215,17 @@ export default function ImportFromUrl( {
 				} );
 				setStep( 'resolved' );
 			} catch ( e ) {
+				// Same split as the resolve above: only 401/404 mean this connection
+				// cannot see the repo and another one might.
+				const status = e?.data?.status ?? 0;
+				if ( 401 !== status && 404 !== status ) {
+					setCheckError(
+						e?.message ||
+							__( 'Could not check repository.', 'gitwire' )
+					);
+					setStep( 'error' );
+					return;
+				}
 				setStep( 'private' );
 			}
 		},
