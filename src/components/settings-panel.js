@@ -659,7 +659,7 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 									'gitwire'
 							  )
 					}
-					label={ __( 'Block on Fatal Error', 'gitwire' ) }
+					label={ __( 'Block Commit on Fatal Error', 'gitwire' ) }
 					onChange={ handleBlockOnFatalChange }
 				/>
 
