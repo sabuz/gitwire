@@ -4,9 +4,9 @@ WordPress plugin that installs GitHub/GitLab repositories as plugins or themes d
 
 ## Stack
 
-- **PHP** — WordPress plugin, PSR-4 via `autoload.php`, namespace `Gitwire\`
-- **JS/React** — `@wordpress/scripts` (webpack), plain JS with JSDoc, components in `src/`
-- **Standards** — WordPress Coding Standards (WPCS) for PHP, `@wordpress/eslint-plugin` for JS
+- **PHP**: WordPress plugin, PSR-4 via `autoload.php`, namespace `Gitwire\`
+- **JS/React**: `@wordpress/scripts` (webpack), plain JS with JSDoc, components in `src/`
+- **Standards**: WordPress Coding Standards (WPCS) for PHP, `@wordpress/eslint-plugin` for JS
 
 ## Commands
 
@@ -25,7 +25,7 @@ composer phpunit       # PHP tests
 - Short array syntax `[]`, PHP 8.0+
 - `@since` tag on every method
 - `@return void` explicit on void methods
-- DocBlocks follow WPCS format — single-line description, blank line, tags
+- DocBlocks follow WPCS format: single-line description, blank line, tags
 - Class files named `class-{slug}.php`, interface files `interface-{slug}.php`
 - No inline comments unless the *why* is non-obvious. When needed, written like a human left a note, not a description of what the next line does
 
@@ -36,7 +36,7 @@ composer phpunit       # PHP tests
 - `.js` extension even for JSX files
 - Lazy-load heavy panel components
 
-## Comments — important
+## Comments, important
 
 Write comments like a developer left a quick note, not like documentation. Prefer one line. Say the *why*, never the what.
 
@@ -68,7 +68,7 @@ If a comment wants four or more lines, it wants a doc instead. Cut it down or mo
 
 ## Repo detection logic (class-repository-detector.php)
 
-Detection priority — highest confidence first:
+Detection priority, highest confidence first:
 
 1. `style.css` with `Theme Name:` header → confirmed theme
    - + `theme.json` → block theme (high)
@@ -79,10 +79,10 @@ Detection priority — highest confidence first:
 4. Any PHP files → plugin (low)
 5. Unknown
 
-**`theme.json` alone does not indicate a block theme** — plugins ship it for block styling. It only promotes to block after theme identity is confirmed via `style.css` + `Theme Name:`.
+**`theme.json` alone does not indicate a block theme**, since plugins ship it for block styling. It only promotes to block after theme identity is confirmed via `style.css` + `Theme Name:`.
 
 ## Architecture notes
 
-- `Repository_Detector::detect()` is provider-agnostic — takes callables for fetching contents so GitHub and GitLab share the same logic
+- `Repository_Detector::detect()` is provider-agnostic and takes callables for fetching contents so GitHub and GitLab share the same logic
 - `class-installer.php` handles download, extract, backup, and WP hooks for cleanup on plugin/theme deletion
 - REST endpoints in `class-rest.php`, provider abstraction via `interface-git-provider.php`
