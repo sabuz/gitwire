@@ -148,7 +148,7 @@ export default function RepositoryBrowser( {
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 
-	const { detections, runBatch, seedFromRepos, reset } =
+	const { detections, paused, runBatch, seedFromRepos, reset } =
 		useRepositoryDetection();
 
 	const [ repositories, setRepositories ] = useState( [] );
@@ -703,6 +703,20 @@ export default function RepositoryBrowser( {
 				) }
 			</Flex>
 
+			{ paused.reason && (
+				<p className="gitwire-browse-notice">
+					{ 'rate_limit' === paused.reason
+						? __(
+								'Type detection paused: this provider has few API requests left this hour. Everything is still installable, and detection resumes once the limit resets.',
+								'gitwire'
+						  )
+						: __(
+								'Type detection stopped early to keep the page responsive. Refresh to carry on where it left off.',
+								'gitwire'
+						  ) }
+				</p>
+			) }
+
 			{ repositories.length === 0 && loading && (
 				<div style={ { textAlign: 'center', padding: 48 } }>
 					<Spinner />
@@ -738,6 +752,9 @@ export default function RepositoryBrowser( {
 							key={ `${ repo.provider }:${ repo.full_name }` }
 							autoDetectType={ autoDetectType }
 							detection={ detections[ detectionKey( repo ) ] }
+							detectionPaused={ paused.keys.has(
+								detectionKey( repo )
+							) }
 							installed={ lookupInstalled( installed, repo ) }
 							repo={ repo }
 							showSourceBadge={ showSourceBadge }
@@ -794,6 +811,7 @@ export default function RepositoryBrowser( {
 const RepoCard = memo( function ( {
 	repo,
 	detection,
+	detectionPaused,
 	installed,
 	smartInstall,
 	showSourceBadge,
@@ -801,7 +819,8 @@ const RepoCard = memo( function ( {
 	onInstall,
 } ) {
 	const isInstalled = !! installed;
-	const detecting = autoDetectType && ! detection && ! isInstalled;
+	const detecting =
+		autoDetectType && ! detection && ! detectionPaused && ! isInstalled;
 
 	// Guard both directions: a stringified tinyint makes "0" truthy and 0 falsy.
 	const isPrivate =
@@ -810,6 +829,7 @@ const RepoCard = memo( function ( {
 	const canInstall =
 		! isInstalled &&
 		( ! autoDetectType ||
+			detectionPaused ||
 			( detection
 				? detection.type !== 'unknown' || ! smartInstall
 				: ! smartInstall ) );
@@ -888,6 +908,7 @@ const RepoCard = memo( function ( {
 						autoDetectType={ autoDetectType }
 						detection={ detection }
 						installed={ installed }
+						paused={ detectionPaused }
 					/>
 					{ repo.last_activity_at && (
 						<Tooltip
@@ -929,7 +950,7 @@ const RepoCard = memo( function ( {
 } );
 RepoCard.displayName = 'RepoCard';
 
-function TypeBadge( { detection, installed, autoDetectType } ) {
+function TypeBadge( { detection, installed, autoDetectType, paused } ) {
 	if ( installed ) {
 		if ( installed.type === 'block-theme' ) {
 			return (
@@ -954,6 +975,20 @@ function TypeBadge( { detection, installed, autoDetectType } ) {
 	// Nothing is detecting with auto-detect off, so the spinner below would never resolve.
 	if ( ! autoDetectType ) {
 		return null;
+	}
+	if ( paused ) {
+		return (
+			<Tooltip
+				text={ __(
+					'Not enough API requests left this hour to check this one. It is still installable.',
+					'gitwire'
+				) }
+			>
+				<span className="gitwire-badge gitwire-badge--draft">
+					{ __( 'Detection Paused', 'gitwire' ) }
+				</span>
+			</Tooltip>
+		);
 	}
 	if ( ! detection ) {
 		return (

@@ -23,6 +23,27 @@ function detectionsReducer( state, action ) {
 	}
 }
 
+/*
+ * Paused repositories are kept out of the detections map on purpose. A placeholder in
+ * there would read as a real result everywhere downstream, and the install modal would
+ * take it as a reason not to detect the one repo the user actually asked about.
+ */
+function pausedReducer( state, action ) {
+	switch ( action.type ) {
+		case 'set_paused':
+			return {
+				reason: action.reason,
+				keys: new Set( [ ...state.keys, ...action.keys ] ),
+			};
+		case 'reset':
+			return { reason: null, keys: new Set() };
+		default:
+			return state;
+	}
+}
+
+const NO_PAUSED = { reason: null, keys: new Set() };
+
 /**
  * Manages batched repository type detection with React state updates per batch.
  *
@@ -30,6 +51,7 @@ function detectionsReducer( state, action ) {
  */
 export function useRepositoryDetection() {
 	const [ detections, dispatch ] = useReducer( detectionsReducer, {} );
+	const [ paused, dispatchPaused ] = useReducer( pausedReducer, NO_PAUSED );
 	const pendingRef = useRef( new Set() );
 	const detectionsRef = useRef( detections );
 	detectionsRef.current = detections;
@@ -55,7 +77,7 @@ export function useRepositoryDetection() {
 			);
 
 			try {
-				const { detections: batch } = await api.detectBatch(
+				const response = await api.detectBatch(
 					chunk.map( ( repo ) => ( {
 						owner: repo.owner,
 						repo: repo.name,
@@ -64,7 +86,28 @@ export function useRepositoryDetection() {
 						connection_id: repo.connection_id || '',
 					} ) )
 				);
-				dispatch( { type: 'set_batch', payload: batch } );
+				dispatch( {
+					type: 'set_batch',
+					payload: response.detections ?? {},
+				} );
+
+				if ( response.paused?.length ) {
+					/*
+					 * Every chunk still queued would be turned away on the same
+					 * grounds, so they are marked here rather than asked for and
+					 * left to sit on a spinner.
+					 */
+					const remaining = toDetect
+						.slice( i + BATCH_SIZE )
+						.map( detectionKey );
+
+					dispatchPaused( {
+						type: 'set_paused',
+						keys: [ ...response.paused, ...remaining ],
+						reason: response.paused_reason ?? 'rate_limit',
+					} );
+					return;
+				}
 			} catch {
 				const fallback = {};
 				chunk.forEach( ( repo ) => {
@@ -97,7 +140,8 @@ export function useRepositoryDetection() {
 	const reset = useCallback( () => {
 		pendingRef.current.clear();
 		dispatch( { type: 'reset' } );
+		dispatchPaused( { type: 'reset' } );
 	}, [] );
 
-	return { detections, runBatch, seedFromRepos, reset };
+	return { detections, paused, runBatch, seedFromRepos, reset };
 }

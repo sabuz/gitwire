@@ -2,27 +2,32 @@
 
 ## Open
 
-### Browse detection exhausts GitHub's anonymous rate limit in one page load
+_None currently open._
 
-**Status:** open
+## Fixed
+
+### Browse detection exhausted GitHub's anonymous rate limit in one page load
+
+**Status:** fixed
 **Affects:** free
 **Reported:** 2026-08-22
 
 **Symptoms:**
-With a public (token-less) GitHub connection and Auto-Detect on, opening the Add Repository tab burns through GitHub's unauthenticated allowance almost immediately. Everything that needs the API afterwards fails for the rest of the hour: Import from URL, install, branch listings.
+With a public (token-less) GitHub connection and Auto-Detect on, opening the Add Repository tab burned through GitHub's unauthenticated allowance almost immediately. Everything needing the API afterwards failed for the rest of the hour: Import from URL, install, branch listings. Cards for repositories the request gave up on sat on a "Detecting…" spinner that never resolved.
 
 **Root cause:**
-Unauthenticated GitHub allows 60 requests per hour per IP. `detect_batch()` handles 10 repositories per request, and each one costs a root listing plus up to five file fetches — the endpoint's own docblock notes "ten of them can be seventy round trips". At the default 50 repositories per page, `runBatch()` fires five such requests, so a single page load can ask for several hundred calls against a budget of 60. Even the floor case of one call per repository spends 50 of the 60.
+Unauthenticated GitHub allows 60 requests per hour per IP. `detect_batch()` handles 10 repositories per request, each costing a root listing plus up to five file fetches — the endpoint's own docblock notes "ten of them can be seventy round trips". At the default 50 repositories per page, `runBatch()` fires five such requests, so one page load could ask for several hundred calls against a budget of 60. Even the floor case of one call per repository spends 50 of the 60.
 
-`run_background_detection()` guards every row against `gitwire_gh_rl_*` and aborts below 50 remaining. `detect_batch()`, the interactive path, has no such guard.
+`run_background_detection()` guarded every row against `gitwire_gh_rl_*`. `detect_batch()`, the interactive path, had no such guard, and silently omitted anything it skipped from the response.
 
-**Workaround:**
-Turn Auto-Detect Repository Type off, or connect with a token via Pro (5,000/hour).
+**Fix:**
+`detect_batch()` holds back a `DETECTION_RESERVE` of 15 requests for user-initiated work (installing, branch listings, resolving a pasted URL) and declines speculative lookups below it. The background job keeps its higher floor of 50, since it is not even on screen.
 
-**Candidate fix:**
-Give `detect_batch()` the same per-row floor check the background job uses, and return the repositories it skipped so the browse cards can show a "detection paused" state rather than a row of failed lookups. Needs a decision on whether to degrade silently or tell the user.
+Skipped repositories are now named in the response under `paused`, with the reason, instead of being dropped — the omission is what left cards spinning. The client marks them, stops queueing further chunks that would be refused on the same grounds, and shows a "Detection Paused" badge plus a notice explaining why. They stay installable, and opening one detects that single repository, which is what the reserve is for.
 
-## Fixed
+Paused repositories are deliberately kept out of the detections map rather than given a placeholder, so nothing downstream mistakes them for a real result.
+
+---
 
 ### "Refresh Repositories" truncated large connections to a single API page
 
@@ -56,7 +61,7 @@ Pasting a public repository URL returns "Repository not found or you don't have 
 **Fix:**
 `describe_resolve_failure()` splits access from everything else. Only 401 and 404 route to the private/not-found path, since GitHub deliberately answers 404 for a private repo so an anonymous caller cannot distinguish it from a missing one. A 403 or 429 gets a rate-limit message, anything else surfaces the provider's own text, and both land on the error step instead of the access prompt. `handleConnectAndContinue`'s catch got the same split, so a rate limit no longer looks like "this connection cannot see it".
 
-**Open follow-up:** the underlying exhaustion is untouched — `detect_batch()` has no rate-limit guard, unlike `run_background_detection()`. See the note in the Open section.
+**Follow-up:** the underlying exhaustion is fixed separately, see "Browse detection exhausted GitHub's anonymous rate limit in one page load" above.
 
 ---
 

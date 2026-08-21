@@ -25,6 +25,19 @@ class REST_Repositories {
 	private const PAGE_SIZE = 100;
 
 	/**
+	 * Requests held back from detection for user-initiated work.
+	 *
+	 * Detection is speculative: nobody asked for the badge on a repo they are only
+	 * scrolling past. Installing, listing branches, and resolving a pasted URL are not,
+	 * and on an unauthenticated GitHub connection the whole hourly allowance is 60, so
+	 * a single browse page can spend it before any of those get a turn. The background
+	 * job yields at a higher floor still, since it is not even on screen.
+	 *
+	 * @var int
+	 */
+	private const DETECTION_RESERVE = 15;
+
+	/**
 	 * Shared provider argument definition.
 	 *
 	 * @since 1.0.0
@@ -553,9 +566,15 @@ class REST_Repositories {
 	/**
 	 * Detects repository types for a batch of repositories.
 	 *
+	 * Repositories the request declined to look up, because the time budget ran out or
+	 * the provider's remaining quota is down to the reserve, come back under 'paused'
+	 * with the reason. They are not failures and carry no type: the caller is expected
+	 * to say so rather than leave them looking like a detection still in flight.
+	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<string, array<string, mixed>> Map of detection keys to results.
+	 * @return array<string, mixed> Detections keyed by provider:owner/repo, plus any
+	 *                              paused keys and the reason they were skipped.
 	 */
 	public static function detect_batch( \WP_REST_Request $req ): array {
 		$repositories = $req->get_param( 'repositories' );
@@ -567,6 +586,8 @@ class REST_Repositories {
 
 		$repositories = array_slice( $repositories, 0, 10 );
 		$started      = time();
+		$paused       = [];
+		$reason       = '';
 
 		/**
 		 * Filters how long one detect-batch request may spend calling providers.
@@ -611,7 +632,20 @@ class REST_Repositories {
 				continue;
 			}
 
+			/*
+			 * Skipped rows are named rather than dropped. Leaving them out of the
+			 * response is what left browse cards spinning on a detection that was
+			 * never coming.
+			 */
 			if ( $out_of_time ) {
+				$paused[] = $key;
+				$reason   = '' !== $reason ? $reason : 'time';
+				continue;
+			}
+
+			if ( ! self::has_detection_quota( $provider, $connection_id ) ) {
+				$paused[] = $key;
+				$reason   = 'rate_limit';
 				continue;
 			}
 
@@ -652,7 +686,45 @@ class REST_Repositories {
 			$results[ $key ] = $result;
 		}
 
-		return [ 'detections' => $results ];
+		$payload = [ 'detections' => $results ];
+
+		if ( ! empty( $paused ) ) {
+			$payload['paused']        = $paused;
+			$payload['paused_reason'] = $reason;
+		}
+
+		return $payload;
+	}
+
+	/**
+	 * Returns whether a provider has enough budget left to spend on a speculative detect.
+	 *
+	 * Only GitHub and GitLab report a usable remaining count. Bitbucket exposes usage
+	 * headers to scaled-tier organisations alone, so there is nothing to check and
+	 * nothing to hold back against.
+	 *
+	 * @since 1.0.0
+	 * @param string      $provider      Provider key.
+	 * @param string|null $connection_id Connection ID, or null for the anonymous bucket.
+	 * @return bool
+	 */
+	private static function has_detection_quota( string $provider, ?string $connection_id ): bool {
+		$conn_key = $connection_id ?? 'anon';
+
+		if ( 'github' === $provider ) {
+			$remaining = get_transient( 'gitwire_gh_rl_' . $conn_key );
+
+			// No reading yet is not evidence of a low budget.
+			return false === $remaining || (int) $remaining >= self::DETECTION_RESERVE;
+		}
+
+		if ( 'gitlab' === $provider ) {
+			$cached = get_transient( 'gitwire_gl_rl_' . $conn_key );
+
+			return ! is_array( $cached ) || (int) ( $cached['remaining'] ?? 0 ) >= self::DETECTION_RESERVE;
+		}
+
+		return true;
 	}
 
 	/**

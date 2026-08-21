@@ -325,6 +325,16 @@ body.gitwire-admin-page {
 .gitwire-browse {
 	min-height: 200px;
 
+	&-notice {
+		margin: 0 0 16px;
+		padding: 10px 12px;
+		border-left: 3px solid #dba617;
+		border-radius: 2px;
+		background: #fcf9e8;
+		font-size: 13px;
+		color: #50575e;
+	}
+
 	&-no-connection {
 		padding: 72px 24px;
 		text-align: center;

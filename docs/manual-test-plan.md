@@ -239,6 +239,17 @@
 - [ ] Turn Smart Install on (which forces Auto-Detect on) and confirm the badge and the automatic type selection both come back
 - [ ] Turn Auto-Detect back on and confirm the chevron, the badges, the spinner, and the type filters all return
 
+### Detection Yields to the Rate Limit
+
+- [ ] `wp transient set gitwire_gh_rl_anon 5`, then load the Add Repository tab: cards show a "Detection Paused" badge instead of a spinner, and a notice above the grid explains the provider is low on requests
+- [ ] In that state the Install button is still enabled, and opening it detects that one repository, since the 15-request reserve exists exactly so user-initiated work still works
+- [ ] Confirm the network tab shows one `detect-batch` call, not one per chunk: the client stops queueing once the first response comes back paused
+- [ ] `wp transient delete gitwire_gh_rl_anon`, then "Refresh Repositories": badges resolve normally again and the notice is gone
+- [ ] `wp transient set gitwire_gh_rl_anon 500` and confirm detection runs as usual, so the guard only bites near the floor
+- [ ] Repeat with `gitwire_gl_rl_{connection_id}` set to `{"limit":2000,"remaining":5}` for a GitLab connection
+- [ ] With `add_filter( 'gitwire_detect_batch_time_budget', fn() => 0 )`, cards come back paused with the responsiveness notice rather than the rate-limit one, and none are left spinning
+- [ ] A Bitbucket-only page never pauses on quota grounds, since Bitbucket reports no usable reading
+
 ### Background Type Pre-Detection
 
 - [ ] `wp cron event list` shows `gitwire_background_type_detection` scheduled every 30 minutes regardless of either refresh frequency setting, including when Repository Type Refresh Frequency is "Never"
