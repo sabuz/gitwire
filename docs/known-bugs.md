@@ -6,25 +6,6 @@ _None currently open._
 
 ## Fixed
 
-### Public repos prompted to reconnect after their connection was deleted
-
-**Status:** fixed
-**Affects:** free
-**Reported:** 2026-08-22
-
-**Symptoms:**
-Install a public repo through a connection, then delete that connection while another one remains. The Installed row shows a "Connection Required" badge and a Reconnect action, even though nothing is broken: updates keep working.
-
-**Root cause:**
-`annotate_installed()` set `needs_reconnect` purely on the connection ID no longer resolving. That is the right test for a private repo and meaningless for a public one, which `Provider_Factory` already falls back to an anonymous client for — `get_credentials()` returns null for a dead ID and the factory builds a token-less client from it. The record had no way to tell the two apart: the installations table stored no privacy flag, and by the time the badge renders the browse-cache rows that knew are gone, deleted along with the connection.
-
-**Fix:**
-`gitwire_installations` gained a `private` column, written at install time from the browse-cache row. A URL import has no such row, so it falls back to whether a connection was needed to reach the repo at all. `needs_reconnect` now requires the repo to be private.
-
-**Note:** existing rows default to `private = 0`, so a private install predating this change stops prompting until it is reinstalled. Acceptable pre-release; there is no migration to backfill it.
-
----
-
 ### Browse detection exhausted GitHub's anonymous rate limit in one page load
 
 **Status:** fixed

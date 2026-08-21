@@ -44,7 +44,6 @@ class Installation extends Migration_Base {
 			  name          VARCHAR(255) NOT NULL DEFAULT '',
 			  full_name     VARCHAR(255) NOT NULL DEFAULT '',
 			  html_url      VARCHAR(512) NOT NULL DEFAULT '',
-			  private       TINYINT(1) NOT NULL DEFAULT 0,
 			  type          VARCHAR(16) NOT NULL DEFAULT 'plugin',
 			  install_path  VARCHAR(1024) NOT NULL DEFAULT '',
 			  basename      VARCHAR(512) DEFAULT NULL,
