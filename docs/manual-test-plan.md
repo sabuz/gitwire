@@ -239,6 +239,15 @@
 - [ ] Turn Smart Install on (which forces Auto-Detect on) and confirm the badge and the automatic type selection both come back
 - [ ] Turn Auto-Detect back on and confirm the chevron, the badges, the spinner, and the type filters all return
 
+### Smart Install Blocks a Non-WordPress Repo
+
+- [ ] With Smart Install on, install a repo that is not a WordPress project (e.g. `wintercms/winter`): the modal shows the "Not Recognised as a WordPress Project" badge and the Smart Install explanation, and nothing else — no Branch picker, no Directory Name field, no Install button
+- [ ] Only Cancel remains, and closing and reopening the modal behaves the same
+- [ ] Network tab shows no `branches` and no `check-slug` call for that repo, since neither answer could be used
+- [ ] Turn Smart Install off, reopen: Branch, Directory Name, the "Install As" selector, and Install all come back, and the badge note changes to say it can still be installed
+- [ ] Repeat both states through Import from URL with the same repo URL, which renders its own copy of that form
+- [ ] A repo that *is* a plugin or theme is unaffected in either state: all fields present, Install enabled
+
 ### Detection Yields to the Rate Limit
 
 - [ ] `wp transient set gitwire_gh_rl_anon 5`, then load the Add Repository tab: cards show a "Detection Paused" badge instead of a spinner, and a notice above the grid explains the provider is low on requests

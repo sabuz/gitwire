@@ -70,6 +70,9 @@ export function InstallForm( {
 	const askForType =
 		! autoDetectType || ( 'unknown' === detection?.type && ! smartInstall );
 
+	// Nothing here can be installed, so the fields deciding how are noise.
+	const blockedBySmartInstall = smartInstall && 'unknown' === detection?.type;
+
 	const setInstallingState = ( val ) => {
 		setInstalling( val );
 		onInstallingChange?.( val );
@@ -91,9 +94,12 @@ export function InstallForm( {
 	}, [ allBranches, branchFilter, branch, repo.default_branch ] );
 
 	useEffect( () => {
-		api.getBranches( repo.owner, repo.name, provider, connectionId )
-			.then( ( b ) => setAllBranches( b ) )
-			.catch( () => {} );
+		// A detection handed in already blocked means no branch will ever be picked.
+		if ( ! blockedBySmartInstall ) {
+			api.getBranches( repo.owner, repo.name, provider, connectionId )
+				.then( ( b ) => setAllBranches( b ) )
+				.catch( () => {} );
+		}
 
 		// With detection off the type is the installer's to choose, so asking a provider
 		// for one would spend a call on an answer that gets ignored.
@@ -129,7 +135,7 @@ export function InstallForm( {
 		setSlugChecking( true );
 		setReplace( false );
 		clearTimeout( debounceRef.current );
-		if ( ! slug ) {
+		if ( ! slug || blockedBySmartInstall ) {
 			setSlugConflict( false );
 			setSlugChecking( false );
 			return;
@@ -155,7 +161,7 @@ export function InstallForm( {
 			cancelled = true;
 			clearTimeout( debounceRef.current );
 		};
-	}, [ slug, type ] );
+	}, [ slug, type, blockedBySmartInstall ] );
 
 	// Nothing resolves the detection when it is switched off, so waiting on one here
 	// would leave the Install button disabled for good.
@@ -230,53 +236,61 @@ export function InstallForm( {
 				</div>
 			) }
 
-			<div style={ { marginTop: 16 } }>
-				<ComboboxControl
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-					disabled={ installing }
-					label={ __( 'Branch', 'gitwire' ) }
-					options={ branchOptions }
-					value={ branch }
-					onChange={ ( val ) => val && setBranch( val ) }
-					onFilterValueChange={ setBranchFilter }
-				/>
-			</div>
-
-			<div
-				className={ slugConflict ? 'gitwire-input-error' : undefined }
-				style={ { marginTop: 16 } }
-			>
-				<TextControl
-					__nextHasNoMarginBottom
-					disabled={ installing }
-					label={ __( 'Directory Name', 'gitwire' ) }
-					value={ slug }
-					onChange={ ( val ) => setSlug( normalizeSlug( val ) ) }
-				/>
-				{ slugConflict && (
-					<>
-						<p
-							className="gitwire-detect-note gitwire-detect-blocked"
-							style={ { margin: '8px 0' } }
-						>
-							{ __(
-								'A directory with this name already exists.',
-								'gitwire'
-							) }
-						</p>
-						<CheckboxControl
+			{ ! blockedBySmartInstall && (
+				<>
+					<div style={ { marginTop: 16 } }>
+						<ComboboxControl
+							__next40pxDefaultSize
 							__nextHasNoMarginBottom
-							checked={ replace }
-							label={ __(
-								'Replace existing installation',
-								'gitwire'
-							) }
-							onChange={ setReplace }
+							disabled={ installing }
+							label={ __( 'Branch', 'gitwire' ) }
+							options={ branchOptions }
+							value={ branch }
+							onChange={ ( val ) => val && setBranch( val ) }
+							onFilterValueChange={ setBranchFilter }
 						/>
-					</>
-				) }
-			</div>
+					</div>
+
+					<div
+						className={
+							slugConflict ? 'gitwire-input-error' : undefined
+						}
+						style={ { marginTop: 16 } }
+					>
+						<TextControl
+							__nextHasNoMarginBottom
+							disabled={ installing }
+							label={ __( 'Directory Name', 'gitwire' ) }
+							value={ slug }
+							onChange={ ( val ) =>
+								setSlug( normalizeSlug( val ) )
+							}
+						/>
+						{ slugConflict && (
+							<>
+								<p
+									className="gitwire-detect-note gitwire-detect-blocked"
+									style={ { margin: '8px 0' } }
+								>
+									{ __(
+										'A directory with this name already exists.',
+										'gitwire'
+									) }
+								</p>
+								<CheckboxControl
+									__nextHasNoMarginBottom
+									checked={ replace }
+									label={ __(
+										'Replace existing installation',
+										'gitwire'
+									) }
+									onChange={ setReplace }
+								/>
+							</>
+						) }
+					</div>
+				</>
+			) }
 
 			<Flex gap={ 3 } justify="flex-end" style={ { marginTop: 20 } }>
 				{ ! installing && onBack && (
@@ -284,17 +298,19 @@ export function InstallForm( {
 						{ backLabel || __( 'Cancel', 'gitwire' ) }
 					</Button>
 				) }
-				<Button
-					disabled={ ! canInstall || installing }
-					isBusy={ installing || slugChecking }
-					variant="primary"
-					onClick={ handleInstall }
-				>
-					<InstallButtonLabel
-						installing={ installing }
-						slugChecking={ slugChecking }
-					/>
-				</Button>
+				{ ! blockedBySmartInstall && (
+					<Button
+						disabled={ ! canInstall || installing }
+						isBusy={ installing || slugChecking }
+						variant="primary"
+						onClick={ handleInstall }
+					>
+						<InstallButtonLabel
+							installing={ installing }
+							slugChecking={ slugChecking }
+						/>
+					</Button>
+				) }
 			</Flex>
 		</>
 	);

@@ -105,6 +105,11 @@ export default function ImportFromUrl( {
 			setAllBranches( [] );
 			setBranchFilter( '' );
 
+			// Blocked here means no branch will ever be picked, so skip the round trip.
+			if ( smartInstall && 'unknown' === info.detection?.type ) {
+				return;
+			}
+
 			api.getBranches(
 				info.owner,
 				info.repo,
@@ -122,7 +127,7 @@ export default function ImportFromUrl( {
 				} )
 				.catch( () => {} );
 		},
-		[ autoDetectType ]
+		[ autoDetectType, smartInstall ]
 	);
 
 	const handleUrlChange = ( val ) => {
@@ -234,7 +239,12 @@ export default function ImportFromUrl( {
 
 	// Debounced slug conflict check — only active while showing the install form.
 	useEffect( () => {
-		if ( step !== 'resolved' || ! slug || ! resolved ) {
+		if (
+			step !== 'resolved' ||
+			! slug ||
+			! resolved ||
+			blockedBySmartInstall
+		) {
 			setSlugConflict( false );
 			setSlugChecking( false );
 			return;
@@ -331,6 +341,9 @@ export default function ImportFromUrl( {
 	 */
 	const askForType =
 		! autoDetectType || ( 'unknown' === detection?.type && ! smartInstall );
+
+	// Nothing here can be installed, so the fields deciding how are noise.
+	const blockedBySmartInstall = smartInstall && 'unknown' === detection?.type;
 
 	const canInstall =
 		!! slug &&
@@ -477,57 +490,65 @@ export default function ImportFromUrl( {
 						</div>
 					) }
 
-					<div style={ { marginTop: 16 } }>
-						<ComboboxControl
-							__next40pxDefaultSize
-							__nextHasNoMarginBottom
-							disabled={ isInstalling }
-							label={ __( 'Branch', 'gitwire' ) }
-							options={ branchOptions }
-							value={ branch }
-							onChange={ ( val ) => val && setBranch( val ) }
-							onFilterValueChange={ setBranchFilter }
-						/>
-					</div>
-
-					<div
-						className={
-							slugConflict ? 'gitwire-input-error' : undefined
-						}
-						style={ { marginTop: 16 } }
-					>
-						<TextControl
-							__nextHasNoMarginBottom
-							disabled={ isInstalling }
-							label={ __( 'Directory Name', 'gitwire' ) }
-							value={ slug }
-							onChange={ ( val ) =>
-								setSlug( normalizeSlug( val ) )
-							}
-						/>
-						{ slugConflict && (
-							<>
-								<p
-									className="gitwire-detect-note gitwire-detect-blocked"
-									style={ { margin: '8px 0' } }
-								>
-									{ __(
-										'A directory with this name already exists.',
-										'gitwire'
-									) }
-								</p>
-								<CheckboxControl
+					{ ! blockedBySmartInstall && (
+						<>
+							<div style={ { marginTop: 16 } }>
+								<ComboboxControl
+									__next40pxDefaultSize
 									__nextHasNoMarginBottom
-									checked={ replace }
-									label={ __(
-										'Replace existing installation',
-										'gitwire'
-									) }
-									onChange={ setReplace }
+									disabled={ isInstalling }
+									label={ __( 'Branch', 'gitwire' ) }
+									options={ branchOptions }
+									value={ branch }
+									onChange={ ( val ) =>
+										val && setBranch( val )
+									}
+									onFilterValueChange={ setBranchFilter }
 								/>
-							</>
-						) }
-					</div>
+							</div>
+
+							<div
+								className={
+									slugConflict
+										? 'gitwire-input-error'
+										: undefined
+								}
+								style={ { marginTop: 16 } }
+							>
+								<TextControl
+									__nextHasNoMarginBottom
+									disabled={ isInstalling }
+									label={ __( 'Directory Name', 'gitwire' ) }
+									value={ slug }
+									onChange={ ( val ) =>
+										setSlug( normalizeSlug( val ) )
+									}
+								/>
+								{ slugConflict && (
+									<>
+										<p
+											className="gitwire-detect-note gitwire-detect-blocked"
+											style={ { margin: '8px 0' } }
+										>
+											{ __(
+												'A directory with this name already exists.',
+												'gitwire'
+											) }
+										</p>
+										<CheckboxControl
+											__nextHasNoMarginBottom
+											checked={ replace }
+											label={ __(
+												'Replace existing installation',
+												'gitwire'
+											) }
+											onChange={ setReplace }
+										/>
+									</>
+								) }
+							</div>
+						</>
+					) }
 
 					<Flex
 						gap={ 3 }
@@ -544,14 +565,19 @@ export default function ImportFromUrl( {
 						>
 							{ __( 'Cancel', 'gitwire' ) }
 						</Button>
-						<Button
-							disabled={ ! canInstall || isInstalling }
-							isBusy={ isInstalling || slugChecking }
-							variant="primary"
-							onClick={ handleInstall }
-						>
-							{ installButtonLabel( isInstalling, slugChecking ) }
-						</Button>
+						{ ! blockedBySmartInstall && (
+							<Button
+								disabled={ ! canInstall || isInstalling }
+								isBusy={ isInstalling || slugChecking }
+								variant="primary"
+								onClick={ handleInstall }
+							>
+								{ installButtonLabel(
+									isInstalling,
+									slugChecking
+								) }
+							</Button>
+						) }
 					</Flex>
 				</div>
 			) }
