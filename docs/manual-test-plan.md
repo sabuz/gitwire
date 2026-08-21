@@ -223,7 +223,10 @@
 - [ ] "Refresh Repositories" itself stays enabled in that state and renders with normal rounded corners, not the squared-off edge it uses when paired with the chevron
 - [ ] With Auto-Detect off, repo cards show no type badge and no "Detecting…" spinner, since nothing will ever resolve it
 - [ ] Cards for already-installed repos still show their Plugin/Theme badge in that state, since it comes from the install record rather than detection
-- [ ] Turn Auto-Detect back on and confirm the chevron, the badges, and the spinner all return
+- [ ] With Auto-Detect off, the Filter popover lists only the source options, with the Plugin / Block Theme / Classic Theme / Unknown group gone
+- [ ] Set a type filter first, then turn Auto-Detect off: the list is not silently filtered by it, and the filter dot and Clear Filters label ignore it
+- [ ] With Auto-Detect off and only one provider connected, the Filter button and the divider beside it are gone entirely rather than opening an empty popover
+- [ ] Turn Auto-Detect back on and confirm the chevron, the badges, the spinner, and the type filters all return
 
 ### Background Type Pre-Detection
 
