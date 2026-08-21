@@ -179,24 +179,18 @@ class Repositories {
 	 * Fetches repositories from the provider API and stores them in the cache table.
 	 *
 	 * @since 1.0.0
-	 * @param string   $provider      Provider key.
-	 * @param int      $page          Page number.
-	 * @param string   $connection_id Connection ID to use for credentials.
-	 * @param int|null $limit       Cap on rows to store from this page; null for all.
-	 * @param string   $stamp       Cycle marker written to updated_at; empty for now.
+	 * @param string $provider      Provider key.
+	 * @param int    $page          Page number.
+	 * @param string $connection_id Connection ID to use for credentials.
+	 * @param string $stamp         Cycle marker written to updated_at; empty for now.
 	 * @return array<string, mixed>|\WP_Error Stored payload on success.
 	 */
-	public static function fetch_repositories( string $provider, int $page, string $connection_id, ?int $limit = null, string $stamp = '' ): array|\WP_Error {
+	public static function fetch_repositories( string $provider, int $page, string $connection_id, string $stamp = '' ): array|\WP_Error {
 		$cache_id = '' !== $connection_id ? $connection_id : 'public:' . $provider;
 		$payload  = REST_Repositories::build_repositories( $provider, $page, $connection_id );
 
 		if ( is_wp_error( $payload ) ) {
 			return $payload;
-		}
-
-		// Trim before the write, not after: the cap is meant to bound what we store.
-		if ( null !== $limit ) {
-			$payload['repositories'] = array_slice( $payload['repositories'] ?? [], 0, max( 0, $limit ) );
 		}
 
 		Repository::instance()->upsert_batch( $cache_id, $payload['repositories'] ?? [], $provider, $stamp );
@@ -213,19 +207,17 @@ class Repositories {
 	 * mid-sweep, and its stale rows are left alone until the sweep actually finishes.
 	 *
 	 * Shared by the cron event and the Browse tab's manual refresh, so both walk every
-	 * page and both honour max_repos_per_source. Fetching only page one and pruning
-	 * anyway is what used to truncate large connections down to a single page.
+	 * page. Fetching only page one and pruning anyway is what used to truncate large
+	 * connections down to a single page.
 	 *
 	 * @since 1.0.0
 	 * @return array<int, array<string, mixed>> One entry per connection that failed,
 	 *                                          each with connection_id, provider, and message.
 	 */
 	public static function refresh_repositories(): array {
-		$errors      = [];
-		$max_setting = Settings::get_public()['max_repos_per_source'] ?? 'unlimited';
-		$max         = 'unlimited' === $max_setting ? PHP_INT_MAX : (int) $max_setting;
-		$state       = self::get_refresh_state();
-		$started     = time();
+		$errors  = [];
+		$state   = self::get_refresh_state();
+		$started = time();
 
 		/**
 		 * Filters how long one refresh tick may spend sweeping repository pages.
@@ -249,7 +241,6 @@ class Repositories {
 
 			$cursor      = $state[ $id ] ?? [];
 			$page        = max( 1, (int) ( $cursor['page'] ?? 1 ) );
-			$stored      = (int) ( $cursor['stored'] ?? 0 );
 			$cycle_start = (string) ( $cursor['cycle_start'] ?? '' );
 
 			if ( '' === $cycle_start ) {
@@ -265,7 +256,7 @@ class Repositories {
 					break;
 				}
 
-				$result = self::fetch_repositories( $provider, $page, $id, $max - $stored, $cycle_start );
+				$result = self::fetch_repositories( $provider, $page, $id, $cycle_start );
 				if ( is_wp_error( $result ) ) {
 					$conn_err = $result;
 					$errors[] = [
@@ -276,17 +267,15 @@ class Repositories {
 					break;
 				}
 
-				$stored += count( $result['repositories'] ?? [] );
 				++$page;
 
-				$has_more = ( $result['has_more'] ?? false ) && $stored < $max;
+				$has_more = (bool) ( $result['has_more'] ?? false );
 			} while ( $has_more );
 
 			if ( $exhausted ) {
 				// Park the cursor and stop; the next tick resumes this connection mid-sweep.
 				$state[ $id ] = [
 					'page'        => $page,
-					'stored'      => $stored,
 					'cycle_start' => $cycle_start,
 				];
 				self::save_refresh_state( $state );

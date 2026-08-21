@@ -49,12 +49,6 @@ class SettingsTest extends TestCase {
 		$this->assertSame( [ 'acme/widgets', 'acme/tools' ], $merged['excluded_repos'] );
 	}
 
-	public function test_merge_save_restricts_max_repos_per_source(): void {
-		$this->assertSame( 250, Settings::merge_save( [ 'max_repos_per_source' => 250 ] )['max_repos_per_source'] );
-		$this->assertSame( 'unlimited', Settings::merge_save( [ 'max_repos_per_source' => 'unlimited' ] )['max_repos_per_source'] );
-		$this->assertSame( 'unlimited', Settings::merge_save( [ 'max_repos_per_source' => 999 ] )['max_repos_per_source'] );
-	}
-
 	public function test_merge_save_restricts_log_level(): void {
 		$this->assertSame( 'error', Settings::merge_save( [ 'log_level' => 'error' ] )['log_level'] );
 		$this->assertSame( 'activity', Settings::merge_save( [ 'log_level' => 'verbose' ] )['log_level'] );
@@ -322,8 +316,8 @@ class SettingsTest extends TestCase {
 	}
 
 	public function test_numeric_enum_values_survive_a_json_round_trip(): void {
-		$this->assertSame( 250, Settings::merge_save( [ 'max_repos_per_source' => '250' ] )['max_repos_per_source'] );
 		$this->assertSame( 15, Settings::merge_save( [ 'log_retention_days' => '15' ] )['log_retention_days'] );
+		$this->assertSame( 30, Settings::merge_save( [ 'log_retention_days' => '30' ] )['log_retention_days'] );
 	}
 
 	/**

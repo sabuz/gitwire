@@ -694,7 +694,7 @@ class REST_Repositories {
 	 * upserted under a cycle stamp instead, and only the ones the provider no longer
 	 * returns are pruned once that connection has answered every page. The page sweep
 	 * is the same one cron runs, so a connection larger than one API page is not
-	 * truncated to its first page, and max_repos_per_source applies here too.
+	 * truncated to its first page.
 	 *
 	 * 'repos' only relists. Rows already in the cache keep their stored type, since
 	 * upsert_batch() never touches the type columns, so a repo the provider just added

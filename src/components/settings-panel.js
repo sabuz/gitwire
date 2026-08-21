@@ -236,9 +236,6 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const [ excludedRepos, setExcludedRepos ] = useState(
 		settings.excluded_repos ?? []
 	);
-	const [ maxReposPerSource, setMaxReposPerSource ] = useState(
-		String( settings.max_repos_per_source ?? 'unlimited' )
-	);
 	const [ repositoryRefreshFrequency, setRepositoryRefreshFrequency ] =
 		useState( settings.repository_refresh_frequency ?? 'daily' );
 	const [
@@ -342,15 +339,6 @@ function BrowseDetectionCard( { settings, onSave } ) {
 		setExcludedRepos( valid );
 		save( { excluded_repos: valid }, () =>
 			setExcludedRepos( excludedRepos )
-		).catch( () => {} );
-	};
-
-	const handleMaxReposPerSourceChange = ( newVal ) => {
-		setMaxReposPerSource( newVal );
-		const parsed =
-			'unlimited' === newVal ? 'unlimited' : parseInt( newVal, 10 );
-		save( { max_repos_per_source: parsed }, () =>
-			setMaxReposPerSource( maxReposPerSource )
 		).catch( () => {} );
 	};
 
@@ -572,28 +560,6 @@ function BrowseDetectionCard( { settings, onSave } ) {
 						disabled={ ! detectionActive }
 						label={ __( 'Never', 'gitwire' ) }
 						value="never"
-					/>
-				</ToggleGroupControl>
-
-				<Spacer marginTop={ 4 } />
-
-				<ToggleGroupControl
-					__nextHasNoMarginBottom
-					isBlock
-					label={ __( 'Max per Source', 'gitwire' ) }
-					help={ __(
-						'Cap how many repositories are fetched from each connection, on both the scheduled refresh and the Refresh button.',
-						'gitwire'
-					) }
-					value={ maxReposPerSource }
-					onChange={ handleMaxReposPerSourceChange }
-				>
-					<ToggleGroupControlOption label="100" value="100" />
-					<ToggleGroupControlOption label="250" value="250" />
-					<ToggleGroupControlOption label="500" value="500" />
-					<ToggleGroupControlOption
-						label={ __( 'No Limit', 'gitwire' ) }
-						value="unlimited"
 					/>
 				</ToggleGroupControl>
 			</CardBody>

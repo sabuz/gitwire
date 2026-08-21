@@ -16,7 +16,7 @@ _None currently open._
 A connection with more than 100 repositories loses everything past the first 100 when the Browse tab's Refresh button is used. The missing repos come back on the next scheduled refresh, so it reads as an intermittent disappearance.
 
 **Root cause:**
-`REST_Repositories::clear_cache()` fetched page one per connection and then called `remove_stale_since()` anyway. Rows on later pages still carried an `updated_at` from before the cycle stamp, so the prune deleted them — the same shape as the bug its own docblock claimed to have fixed, moved from the whole list to its tail. The endpoint also ignored `max_repos_per_source`, which the cron sweep honoured.
+`REST_Repositories::clear_cache()` fetched page one per connection and then called `remove_stale_since()` anyway. Rows on later pages still carried an `updated_at` from before the cycle stamp, so the prune deleted them — the same shape as the bug its own docblock claimed to have fixed, moved from the whole list to its tail. The endpoint also ignored the per-source cap the cron sweep honoured, since removed as a setting.
 
 **Fix:**
 `Repositories::refresh_repositories()` became the single sweep both paths run: it walks every page, honours the cap, prunes only once a connection has answered its last page, and parks a resume cursor when the time budget runs out. `clear_cache()` now calls it and maps its per-connection errors straight into the response.
@@ -106,7 +106,9 @@ The "Repositories per Page" and "Max per Source" settings exist in plugin settin
 "Repositories per Page" was already applied correctly end to end (`Repositories::get_repositories()` → `Repository::get_paginated()` → SQL `LIMIT`/`OFFSET`, JS "Load More" reads the offset from `has_more`). "Max per Source" was the actual bug: `refresh_repositories()` stopped requesting *new* pages once the running total passed the cap, but every page already fetched was stored in full. The provider API's page size is a fixed 100, which doesn't evenly divide 250 (one of the three preset cap values), so a cap of 250 let 300 repos land in the cache before the loop noticed.
 
 **Fix:**
-Slice each page to the remaining budget before storing it, so a cap that does not divide the provider's fixed 100-row page size still lands exactly on the cap. gitwire `a7e5309`. The stale cleanup this originally leaned on (`remove_stale()` against a `fetched_full_names` list) has since been replaced by `remove_stale_since()`, which prunes on a per-cycle `updated_at` stamp so a sweep can span several cron ticks.
+Slice each page to the remaining budget before storing it, so a cap that does not divide the provider's fixed 100-row page size still lands exactly on the cap. gitwire `a7e5309`.
+
+**Superseded:** "Max per Source" has since been removed as a setting. A thousand repositories is ten API requests, 0.2% of GitHub's hourly budget, and the sweep is already bounded by `gitwire_refresh_time_budget` and its resume cursor — so the cap was solving a cost problem that did not exist. The stale cleanup this fix leaned on (`remove_stale()` against a `fetched_full_names` list) was also replaced by `remove_stale_since()`, which prunes on a per-cycle `updated_at` stamp so a sweep can span several cron ticks.
 
 ---
 

@@ -75,11 +75,6 @@ class Settings {
 				'type'    => 'repo_list',
 				'default' => [],
 			],
-			'max_repos_per_source'              => [
-				'type'    => 'enum',
-				'default' => 'unlimited',
-				'values'  => [ 'unlimited', 100, 250, 500 ],
-			],
 			'repository_refresh_frequency'      => [
 				'type'    => 'enum',
 				'default' => 'daily',

@@ -189,7 +189,7 @@
 
 ### Settings Save Failures
 
-- [ ] Block `POST /gitwire/v1/settings` in devtools, then change Repositories per Page, Excluded Repositories, and Max per Source in turn: each reverts to its previous value and shows an error toast, rather than displaying a value the server never accepted
+- [ ] Block `POST /gitwire/v1/settings` in devtools, then change Repositories per Page and Excluded Repositories in turn: each reverts to its previous value and shows an error toast, rather than displaying a value the server never accepted
 - [ ] Changing Repository Refresh Frequency does **not** empty the Browse tab: the cached list stays on screen and only `wp cron event list` shows the new recurrence
 
 ### Repositories per Page
@@ -199,16 +199,6 @@
 - [ ] Click "Load More" — confirm the next 10 repos append correctly (offset = 10)
 - [ ] Change to 50 — refresh the page, confirm first page shows up to 50 repos
 - [ ] `has_more` flag drives "Load More" visibility: present when total cached rows exceed per-page value, absent when all rows fit on one page
-
-### Max per Source
-
-- [ ] Set "Max per Source" to 100 in Settings > Browse & Detection
-- [ ] Trigger a cron refresh (WP-CLI: `wp cron event run gitwire_refresh_repositories`)
-- [ ] Confirm total repos shown for a single connection does not exceed 100
-- [ ] Set to 250 — trigger refresh — confirm cap rises to 250
-- [ ] Set to "No limit" — trigger refresh — confirm all repos are fetched and shown
-- [ ] Repeat with the Browse tab's "Refresh Repositories" button instead of cron and confirm the same cap applies, since both run the same sweep
-- [ ] Confirm that `max_repos_per_source` does not affect the initial single-page cache warm (only a full sweep is capped)
 
 ### Repository Activity Dates
 
