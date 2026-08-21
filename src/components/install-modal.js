@@ -25,6 +25,7 @@ import DetectionBadge from './detection-badge';
  * @param {string}      props.provider             Git provider.
  * @param {string}      [props.connectionId]       Connection ID used to fetch this repo.
  * @param {boolean}     props.smartInstall         Whether smart install is enabled.
+ * @param {boolean}     [props.autoDetectType]     Whether type detection runs at all.
  * @param {Object|null} props.detection            Pre-fetched detection result, if any.
  * @param {Function}    props.onInstalled          Callback fired after a successful install.
  * @param {Function}    [props.onBack]             Optional cancel/back button callback.
@@ -37,6 +38,7 @@ export function InstallForm( {
 	provider = 'github',
 	connectionId = '',
 	smartInstall,
+	autoDetectType = true,
 	detection: initialDetection = null,
 	onInstalled,
 	onBack,
@@ -60,6 +62,13 @@ export function InstallForm( {
 	const [ replace, setReplace ] = useState( false );
 	const [ installing, setInstalling ] = useState( false );
 	const debounceRef = useRef( null );
+
+	/*
+	 * Either detection is off, so the choice was always the installer's, or it ran and
+	 * came back unrecognised with nothing left to enforce.
+	 */
+	const askForType =
+		! autoDetectType || ( 'unknown' === detection?.type && ! smartInstall );
 
 	const setInstallingState = ( val ) => {
 		setInstalling( val );
@@ -86,7 +95,9 @@ export function InstallForm( {
 			.then( ( b ) => setAllBranches( b ) )
 			.catch( () => {} );
 
-		if ( ! initialDetection ) {
+		// With detection off the type is the installer's to choose, so asking a provider
+		// for one would spend a call on an answer that gets ignored.
+		if ( ! initialDetection && autoDetectType ) {
 			api.detectRepo(
 				repo.owner,
 				repo.name,
@@ -146,18 +157,24 @@ export function InstallForm( {
 		};
 	}, [ slug, type ] );
 
+	// Nothing resolves the detection when it is switched off, so waiting on one here
+	// would leave the Install button disabled for good.
+	const detectionSettled = ! autoDetectType || !! detection;
+
 	const canInstall =
 		!! slug &&
 		! slugChecking &&
-		detection &&
-		( detection.type !== 'unknown' || ! smartInstall ) &&
+		detectionSettled &&
+		( ! detection || detection.type !== 'unknown' || ! smartInstall ) &&
 		( ! slugConflict || replace );
 
 	const handleInstall = async () => {
 		setInstallingState( true );
 		try {
 			const installType =
-				detection?.type !== 'unknown' ? detection.type : type;
+				detection && 'unknown' !== detection.type
+					? detection.type
+					: type;
 			const finalSlug = finalizeSlug( slug );
 
 			const check = await api.checkSlug( finalSlug, installType );
@@ -186,12 +203,14 @@ export function InstallForm( {
 
 	return (
 		<>
-			<DetectionBadge
-				detection={ detection }
-				smartInstall={ smartInstall }
-			/>
+			{ autoDetectType && (
+				<DetectionBadge
+					detection={ detection }
+					smartInstall={ smartInstall }
+				/>
+			) }
 
-			{ detection?.type === 'unknown' && ! smartInstall && (
+			{ askForType && (
 				<div style={ { marginTop: 16 } }>
 					<SelectControl
 						__next40pxDefaultSize
@@ -284,14 +303,15 @@ export function InstallForm( {
 /**
  * Install modal — wraps InstallForm in a WordPress Modal.
  *
- * @param {Object}      props                Component props.
- * @param {Object}      props.repo           Repository data object.
- * @param {boolean}     props.smartInstall   Whether smart install is enabled.
- * @param {string}      [props.connectionId] Connection ID used to fetch this repo.
- * @param {Function}    props.onClose        Callback fired when the modal is closed.
- * @param {Function}    props.onInstalled    Callback fired after a successful install.
- * @param {string}      props.provider       Git provider: 'github' or 'gitlab'.
- * @param {Object|null} props.detection      Pre-fetched detection result, if any.
+ * @param {Object}      props                  Component props.
+ * @param {Object}      props.repo             Repository data object.
+ * @param {boolean}     props.smartInstall     Whether smart install is enabled.
+ * @param {boolean}     [props.autoDetectType] Whether type detection runs at all.
+ * @param {string}      [props.connectionId]   Connection ID used to fetch this repo.
+ * @param {Function}    props.onClose          Callback fired when the modal is closed.
+ * @param {Function}    props.onInstalled      Callback fired after a successful install.
+ * @param {string}      props.provider         Git provider: 'github' or 'gitlab'.
+ * @param {Object|null} props.detection        Pre-fetched detection result, if any.
  * @return {JSX.Element} The rendered install modal.
  */
 export default function InstallModal( {
@@ -299,6 +319,7 @@ export default function InstallModal( {
 	provider = 'github',
 	connectionId = '',
 	smartInstall,
+	autoDetectType = true,
 	onClose,
 	onInstalled,
 	detection = null,
@@ -322,6 +343,7 @@ export default function InstallModal( {
 			onRequestClose={ installing ? undefined : onClose }
 		>
 			<InstallForm
+				autoDetectType={ autoDetectType }
 				connectionId={ connectionId }
 				detection={ detection }
 				provider={ provider }

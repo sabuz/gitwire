@@ -23,6 +23,23 @@ A connection with more than 100 repositories loses everything past the first 100
 
 ---
 
+### Install modal detected and preselected the type with Auto-Detect off
+
+**Status:** fixed
+**Affects:** free
+**Reported:** 2026-08-22
+
+**Symptoms:**
+With Auto-Detect Repository Type switched off, browse cards correctly showed no type badge, but clicking Install still showed a detection badge and silently preselected plugin or theme. The toggle's own help text promises the opposite: "When off, Gitwire asks whether to install as plugin or theme at install time."
+
+**Root cause:**
+`InstallForm` was never given the setting — no caller passed it and the component did not accept it. Its mount effect called `api.detectRepo()` whenever no detection was handed in, then overwrote the selected type from the result. The "Install As" selector was gated on `detection?.type === 'unknown'`, so a successful detection kept it hidden and the user was never asked. `import-from-url.js` carried its own copy of the same badge-and-selector logic with the same gap, and its `installType` fell through to `undefined` when detection was null.
+
+**Fix:**
+Both forms take `autoDetectType`. The detect call is skipped in the install modal (the answer would only be discarded), the badge is not rendered, and "Install As" is shown whenever detection is off — not only on an unknown result. Import from URL still makes its resolve and connect round trips, since those prove the repo is reachable and drive the private-repo path, but stops using the result to type or to badge.
+
+---
+
 ### Repository activity dates shifted by the viewer's timezone
 
 **Status:** fixed

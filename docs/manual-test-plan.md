@@ -229,6 +229,10 @@
 - [ ] With Auto-Detect off, the Filter popover lists only the source options, with the Plugin / Block Theme / Classic Theme / Unknown group gone
 - [ ] Set a type filter first, then turn Auto-Detect off: the list is not silently filtered by it, and the filter dot and Clear Filters label ignore it
 - [ ] With Auto-Detect off and only one provider connected, the Filter button and the divider beside it are gone entirely rather than opening an empty popover
+- [ ] With Auto-Detect off, clicking Install opens the modal with no detection badge, no "Detecting project type…" spinner, and an "Install As" dropdown defaulting to Plugin — and the network tab shows no `/detect` call, since the answer would only be discarded
+- [ ] Installing a known theme repo in that state as "Theme" lands in Themes, not Plugins: the dropdown choice is what ships, not a detected type
+- [ ] Import from URL behaves the same with Auto-Detect off — no badge, "Install As" shown — while still routing a private repo to the connect step, since that resolve call proves reachability rather than type
+- [ ] Turn Smart Install on (which forces Auto-Detect on) and confirm the badge and the automatic type selection both come back
 - [ ] Turn Auto-Detect back on and confirm the chevron, the badges, the spinner, and the type filters all return
 
 ### Background Type Pre-Detection

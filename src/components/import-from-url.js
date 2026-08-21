@@ -75,40 +75,55 @@ export default function ImportFromUrl( {
 	const debounceRef = useRef( null );
 
 	const smartInstall = settings?.smart_install !== false;
+	const autoDetectType = settings?.auto_detect_type !== false;
 
-	const initInstallForm = useCallback( ( info ) => {
-		const defaultBranch = info.branch || 'main';
-		setBranch( defaultBranch );
-		setDetection( info.detection );
-		setType(
-			[ 'plugin', 'theme', 'block-theme', 'classic-theme' ].includes(
-				info.detection?.type
+	const initInstallForm = useCallback(
+		( info ) => {
+			const defaultBranch = info.branch || 'main';
+			setBranch( defaultBranch );
+			/*
+			 * Resolve and connect still detect, since that round trip is what proves the
+			 * repo is reachable at all. With detection off the answer just isn't used to
+			 * pick a type or shown as a badge.
+			 */
+			setDetection( autoDetectType ? info.detection : null );
+			setType(
+				autoDetectType &&
+					[
+						'plugin',
+						'theme',
+						'block-theme',
+						'classic-theme',
+					].includes( info.detection?.type )
+					? info.detection.type
+					: 'plugin'
+			);
+			setSlug( normalizeSlug( info.repo ) );
+			setSlugConflict( false );
+			setSlugChecking( false );
+			setReplace( false );
+			setAllBranches( [] );
+			setBranchFilter( '' );
+
+			api.getBranches(
+				info.owner,
+				info.repo,
+				info.provider,
+				info.connection_id || ''
 			)
-				? info.detection.type
-				: 'plugin'
-		);
-		setSlug( normalizeSlug( info.repo ) );
-		setSlugConflict( false );
-		setSlugChecking( false );
-		setReplace( false );
-		setAllBranches( [] );
-		setBranchFilter( '' );
-
-		api.getBranches(
-			info.owner,
-			info.repo,
-			info.provider,
-			info.connection_id || ''
-		)
-			.then( ( b ) => {
-				setAllBranches( b );
-				// if the hardcoded fallback branch doesn't exist, use the repo's real default
-				setBranch( ( current ) =>
-					b.length > 0 && ! b.includes( current ) ? b[ 0 ] : current
-				);
-			} )
-			.catch( () => {} );
-	}, [] );
+				.then( ( b ) => {
+					setAllBranches( b );
+					// if the hardcoded fallback branch doesn't exist, use the repo's real default
+					setBranch( ( current ) =>
+						b.length > 0 && ! b.includes( current )
+							? b[ 0 ]
+							: current
+					);
+				} )
+				.catch( () => {} );
+		},
+		[ autoDetectType ]
+	);
 
 	const handleUrlChange = ( val ) => {
 		setUrl( val );
@@ -242,7 +257,9 @@ export default function ImportFromUrl( {
 		setStep( 'installing' );
 		try {
 			const installType =
-				detection?.type !== 'unknown' ? detection?.type : type;
+				detection && 'unknown' !== detection.type
+					? detection.type
+					: type;
 			const finalSlug = finalizeSlug( slug );
 
 			const check = await api.checkSlug( finalSlug, installType );
@@ -293,11 +310,18 @@ export default function ImportFromUrl( {
 		return top.map( ( b ) => ( { label: b, value: b } ) );
 	}, [ allBranches, branchFilter, branch ] );
 
+	/*
+	 * Either detection is off, so the choice was always the installer's, or it ran and
+	 * came back unrecognised with nothing left to enforce.
+	 */
+	const askForType =
+		! autoDetectType || ( 'unknown' === detection?.type && ! smartInstall );
+
 	const canInstall =
 		!! slug &&
 		! slugChecking &&
-		detection &&
-		( detection.type !== 'unknown' || ! smartInstall ) &&
+		( ! autoDetectType || !! detection ) &&
+		( ! detection || detection.type !== 'unknown' || ! smartInstall ) &&
 		( ! slugConflict || replace );
 
 	const isInstalling = step === 'installing';
@@ -408,12 +432,14 @@ export default function ImportFromUrl( {
 			{ /* Inline install form (public path or post-connection verify) */ }
 			{ showInstallForm && resolved && (
 				<div className="gitwire-import-url__install-form">
-					<DetectionBadge
-						detection={ detection }
-						smartInstall={ smartInstall }
-					/>
+					{ autoDetectType && (
+						<DetectionBadge
+							detection={ detection }
+							smartInstall={ smartInstall }
+						/>
+					) }
 
-					{ detection?.type === 'unknown' && ! smartInstall && (
+					{ askForType && (
 						<div style={ { marginTop: 16 } }>
 							<SelectControl
 								__next40pxDefaultSize

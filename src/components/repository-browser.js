@@ -773,6 +773,7 @@ export default function RepositoryBrowser( {
 
 			{ ! onInstallRequest && modal && (
 				<InstallModal
+					autoDetectType={ autoDetectType }
 					connectionId={ modal.connection_id }
 					detection={ detections[ detectionKey( modal ) ] }
 					provider={ modal.provider }
