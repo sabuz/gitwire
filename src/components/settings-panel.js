@@ -593,8 +593,8 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 	const [ showRepoLabel, setShowRepoLabel ] = useState(
 		settings.show_repo_label !== false
 	);
-	const [ blockOnFatal, setBlockOnFatal ] = useState(
-		settings.block_on_fatal !== false
+	const [ blockCommitOnFatal, setBlockCommitOnFatal ] = useState(
+		settings.block_commit_on_fatal !== false
 	);
 	const [ updateCheckInterval, setUpdateCheckInterval ] = useState(
 		settings.update_check_interval ?? 'halfhourly'
@@ -610,10 +610,10 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 		).catch( () => {} );
 	};
 
-	const handleBlockOnFatalChange = ( newVal ) => {
-		setBlockOnFatal( newVal );
-		save( { block_on_fatal: newVal }, () =>
-			setBlockOnFatal( ! newVal )
+	const handleBlockCommitOnFatalChange = ( newVal ) => {
+		setBlockCommitOnFatal( newVal );
+		save( { block_commit_on_fatal: newVal }, () =>
+			setBlockCommitOnFatal( ! newVal )
 		).catch( () => {} );
 	};
 
@@ -647,9 +647,9 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 
 				<ToggleControl
 					__nextHasNoMarginBottom
-					checked={ blockOnFatal }
+					checked={ blockCommitOnFatal }
 					help={
-						blockOnFatal
+						blockCommitOnFatal
 							? __(
 									'A fatal commit is blocked permanently until a new commit is detected on the branch.',
 									'gitwire'
@@ -660,7 +660,7 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 							  )
 					}
 					label={ __( 'Block Commit on Fatal Error', 'gitwire' ) }
-					onChange={ handleBlockOnFatalChange }
+					onChange={ handleBlockCommitOnFatalChange }
 				/>
 
 				<Spacer marginTop={ 4 } />

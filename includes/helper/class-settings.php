@@ -102,7 +102,7 @@ class Settings {
 				'type'    => 'bool',
 				'default' => true,
 			],
-			'block_on_fatal'                    => [
+			'block_commit_on_fatal'             => [
 				'type'    => 'bool',
 				'default' => true,
 			],
