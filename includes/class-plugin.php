@@ -239,7 +239,9 @@ final class Plugin {
 	 *
 	 * When the frequency is 'never', the event is removed and types are only re-detected
 	 * by a manual "Refresh Repositories & Types" or "Refresh Types Only" from the Browse
-	 * tab. Safe to call on every boot, since it only reschedules when the stored interval
+	 * tab. Turning type detection off entirely removes it too, without touching the
+	 * stored frequency, so the old cadence comes back when detection is re-enabled.
+	 * Safe to call on every boot, since it only reschedules when the stored interval
 	 * differs.
 	 *
 	 * @since 1.0.0
@@ -248,7 +250,7 @@ final class Plugin {
 	public function schedule_repository_types_cron(): void {
 		$freq = Settings::get_repository_type_refresh_frequency();
 
-		if ( 'never' === $freq ) {
+		if ( 'never' === $freq || ! Settings::is_type_detection_enabled() ) {
 			wp_clear_scheduled_hook( 'gitwire_refresh_repository_types' );
 			return;
 		}

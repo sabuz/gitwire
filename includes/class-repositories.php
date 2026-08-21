@@ -353,10 +353,17 @@ class Repositories {
 	/**
 	 * Scheduled cron callback for the repository type re-detection event.
 	 *
+	 * Checks the detection setting rather than trusting the schedule, so an event left
+	 * behind from before detection was turned off doesn't keep spending API calls.
+	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function scheduled_type_refresh(): void {
+		if ( ! Settings::is_type_detection_enabled() ) {
+			return;
+		}
+
 		self::cron_refresh_repository_types();
 	}
 

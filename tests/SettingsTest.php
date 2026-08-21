@@ -254,6 +254,31 @@ class SettingsTest extends TestCase {
 		$this->assertSame( 'weekly', Settings::get_repository_type_refresh_frequency() );
 	}
 
+	public function test_type_detection_stays_enabled_for_smart_install_alone(): void {
+		gitwire_test_set_option(
+			'gitwire_settings',
+			[
+				'auto_detect_type' => false,
+				'smart_install'    => true,
+			]
+		);
+
+		// Smart Install refuses to install an undetected repo, so it needs detection alive.
+		$this->assertTrue( Settings::is_type_detection_enabled() );
+	}
+
+	public function test_type_detection_is_disabled_only_when_both_switches_are_off(): void {
+		gitwire_test_set_option(
+			'gitwire_settings',
+			[
+				'auto_detect_type' => false,
+				'smart_install'    => false,
+			]
+		);
+
+		$this->assertFalse( Settings::is_type_detection_enabled() );
+	}
+
 	public function test_an_invalid_value_falls_back_to_the_default_not_the_loosest_option(): void {
 		// log_retention_days used to fall back to 30, the most permissive choice.
 		$merged = Settings::merge_save( [ 'log_retention_days' => 999 ] );

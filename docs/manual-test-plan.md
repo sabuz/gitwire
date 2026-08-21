@@ -214,9 +214,11 @@
 
 ### Type Settings Follow Auto-Detect
 
-- [ ] Turn off Smart Install, then Auto-Detect Repository Type: confirm "Repository Type Refresh Frequency" greys out and snaps to "Never", alongside Background Type Pre-Detection and Shallow Detection switching off
-- [ ] Confirm `gitwire_refresh_repository_types` disappears from `wp cron event list`, so the greyed-out control matches what actually runs
-- [ ] Turn Auto-Detect back on: the control re-enables still reading "Never" (it does not silently resume the old frequency), and can be set again
+- [ ] Set Repository Type Refresh Frequency to Daily, then turn off Smart Install followed by Auto-Detect Repository Type: the control greys out but keeps reading Daily, alongside Background Type Pre-Detection and Shallow Detection switching off
+- [ ] Confirm `gitwire_refresh_repository_types` disappears from `wp cron event list`, so the greyed-out control isn't quietly still running
+- [ ] Run `wp cron event run gitwire_refresh_repository_types` by hand in that state and confirm no repos are typed, since the callback rechecks the setting rather than trusting the schedule
+- [ ] Turn Auto-Detect back on: the control re-enables still reading Daily, and `gitwire_refresh_repository_types` returns to the cron list on that same recurrence without needing to be set again
+- [ ] Repeat with Smart Install as the switch being toggled instead of Auto-Detect, since either one keeps detection alive
 - [ ] With Auto-Detect off, the Add Repository tab's chevron next to "Refresh Repositories" is disabled, so stored types can't be dropped with nothing left to rebuild them
 - [ ] "Refresh Repositories" itself stays enabled in that state, since relisting doesn't touch types
 

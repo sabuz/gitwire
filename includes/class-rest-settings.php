@@ -75,6 +75,7 @@ class REST_Settings {
 		$prev_settings        = Settings::get_public();
 		$prev_freq            = $prev_settings['repositories_refresh_frequency'] ?? 'daily';
 		$prev_type_freq       = $prev_settings['repository_type_refresh_frequency'] ?? 'weekly';
+		$prev_detection       = Settings::is_type_detection_enabled();
 		$prev_update_interval = $prev_settings['update_check_interval'] ?? 'halfhourly';
 		$merged               = Settings::merge_save( $incoming );
 		update_option( 'gitwire_settings', $merged );
@@ -90,7 +91,11 @@ class REST_Settings {
 			Plugin::instance()->schedule_repos_cron();
 		}
 
-		if ( ( $merged['repository_type_refresh_frequency'] ?? 'weekly' ) !== $prev_type_freq ) {
+		// Toggling detection off or on schedules the same event, so it has to be
+		// checked alongside the frequency itself.
+		if ( ( $merged['repository_type_refresh_frequency'] ?? 'weekly' ) !== $prev_type_freq
+			|| Settings::is_type_detection_enabled() !== $prev_detection
+		) {
 			Plugin::instance()->schedule_repository_types_cron();
 		}
 

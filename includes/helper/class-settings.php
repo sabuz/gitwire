@@ -273,6 +273,21 @@ class Settings {
 	}
 
 	/**
+	 * Returns whether repository type detection is wanted at all.
+	 *
+	 * Smart Install cannot work without a detected type, so it keeps detection alive
+	 * even when auto_detect_type is off on its own.
+	 *
+	 * @since 1.0.0
+	 * @return bool
+	 */
+	public static function is_type_detection_enabled(): bool {
+		$settings = self::get_public();
+
+		return ! empty( $settings['auto_detect_type'] ) || ! empty( $settings['smart_install'] );
+	}
+
+	/**
 	 * Returns the configured repository type re-detection frequency.
 	 *
 	 * @since 1.0.0
