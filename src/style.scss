@@ -95,6 +95,24 @@ body.gitwire-admin-page {
 	}
 }
 
+// Locked-down site notice ──────────────────
+
+.gitwire-locked-notice {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 8px;
+	align-items: baseline;
+	margin-bottom: 24px;
+	padding: 12px 16px;
+	border: 1px solid #dba617;
+	border-left-width: 4px;
+	border-radius: 2px;
+	background-color: #fcf9e8;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #1d2327;
+}
+
 // Navigation ──────────────────
 
 .gitwire-nav-tab {

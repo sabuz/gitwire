@@ -339,6 +339,7 @@ class Admin {
 			'window.gitwire = ' . wp_json_encode(
 				[
 					'nonce'                => wp_create_nonce( 'wp_rest' ),
+					'file_mods_allowed'    => Installer::file_mods_allowed(),
 					'public_connections'   => Public_Connections::all(),
 					'connections_metadata' => Connection_Meta::get_connection_cache(),
 					'disconnected_url'     => GITWIRE_URL . 'assets/images/disconnected.svg',

@@ -41,6 +41,35 @@ class Installer {
 	}
 
 	/**
+	 * Returns whether this site permits writing to the plugins and themes directories.
+	 *
+	 * Wraps the same switch core consults before offering its own install and update
+	 * screens, so a site that sets DISALLOW_FILE_MODS gets the same answer from
+	 * Gitwire that it gets from WordPress.
+	 *
+	 * @since 1.0.0
+	 * @return bool
+	 */
+	public static function file_mods_allowed(): bool {
+		return wp_is_file_mod_allowed( 'gitwire_modify_installs' );
+	}
+
+	/**
+	 * The refusal returned by every path that would write to disk when file
+	 * modifications are switched off.
+	 *
+	 * @since 1.0.0
+	 * @return \WP_Error
+	 */
+	private static function file_mods_error(): \WP_Error {
+		return new \WP_Error(
+			'gitwire_file_mods_disabled',
+			__( 'This site does not allow plugin and theme files to be changed, so Gitwire cannot install, update, or remove anything. Remove the DISALLOW_FILE_MODS setting to re-enable it.', 'gitwire' ),
+			[ 'status' => 403 ]
+		);
+	}
+
+	/**
 	 * Converts a raw DB row into the PHP record shape used throughout the plugin.
 	 *
 	 * Adds owner and repo (derived from full_name) so callers never need to split.
@@ -374,6 +403,10 @@ class Installer {
 			return new \WP_Error( 'gitwire_not_found', 'Repository is not installed.' );
 		}
 
+		if ( ! self::file_mods_allowed() ) {
+			return self::file_mods_error();
+		}
+
 		$path = $rec['install_path'];
 		if ( is_dir( $path ) ) {
 			self::init_fs();
@@ -694,6 +727,15 @@ class Installer {
 				self::set_remote_head( $provider, $full_name, $remote_sha );
 				$records[ $key ]['remote_head'] = $remote_sha;
 			}
+		}
+
+		/*
+		 * Refreshing remote heads above is still worth doing, so the UI can show what
+		 * is behind. Applying is not: bail once here rather than letting every repo
+		 * fail its own write and write a log line for it every tick.
+		 */
+		if ( ! self::file_mods_allowed() ) {
+			return;
 		}
 
 		// Second pass: auto-update repos that have it enabled and have a pending commit.
@@ -1137,6 +1179,15 @@ class Installer {
 		?string $connection_id = null
 	): array|\WP_Error {
 		$full_name = $owner . '/' . $repo;
+
+		/*
+		 * The REST capability gate covers requests, but cron auto-updates run with no
+		 * current user, so the site-level switch has to be re-checked at the point of
+		 * the write rather than only at the edge.
+		 */
+		if ( ! self::file_mods_allowed() ) {
+			return self::file_mods_error();
+		}
 
 		if ( ! self::acquire_install_lock( $provider, $full_name ) ) {
 			return new \WP_Error( 'gitwire_locked', 'Another install is already in progress for this repository.', [ 'status' => 409 ] );

@@ -408,6 +408,19 @@ export default function App( { initialData } ) {
 			</div>
 
 			<div className="gitwire-page-content">
+				{ false === initialData.file_mods_allowed && (
+					<div className="gitwire-locked-notice" role="status">
+						<strong>
+							{ __( 'File changes are disabled', 'gitwire' ) }
+						</strong>
+						<span>
+							{ __(
+								'This site sets DISALLOW_FILE_MODS, so nothing can be installed, updated, or removed. Browsing, activation, and logs still work.',
+								'gitwire'
+							) }
+						</span>
+					</div>
+				) }
 				{ activeTab === 'settings' && (
 					<SettingsPanel
 						publicConnections={ publicConnections }

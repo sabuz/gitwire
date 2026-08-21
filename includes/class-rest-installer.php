@@ -161,7 +161,7 @@ class REST_Installer {
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'install' ],
-				'permission_callback' => [ REST::class, 'can_manage' ],
+				'permission_callback' => [ REST::class, 'can_install' ],
 				'args'                => [
 					'owner'         => [
 						'required'          => true,
@@ -258,7 +258,7 @@ class REST_Installer {
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'switch_branch' ],
-				'permission_callback' => [ REST::class, 'can_manage' ],
+				'permission_callback' => [ REST::class, 'can_write_installed' ],
 				'args'                => [
 					'provider'      => $provider_arg,
 					'branch'        => [
@@ -281,7 +281,7 @@ class REST_Installer {
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'activate_installed' ],
-				'permission_callback' => [ REST::class, 'can_manage' ],
+				'permission_callback' => [ REST::class, 'can_activate' ],
 				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
@@ -292,7 +292,7 @@ class REST_Installer {
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'deactivate_installed' ],
-				'permission_callback' => [ REST::class, 'can_manage' ],
+				'permission_callback' => [ REST::class, 'can_activate' ],
 				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
@@ -314,7 +314,7 @@ class REST_Installer {
 			[
 				'methods'             => 'DELETE',
 				'callback'            => [ self::class, 'remove_installed' ],
-				'permission_callback' => [ REST::class, 'can_manage' ],
+				'permission_callback' => [ REST::class, 'can_delete_installed' ],
 				'args'                => [ 'provider' => $provider_arg ],
 			]
 		);
@@ -336,7 +336,7 @@ class REST_Installer {
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'save_auto_update' ],
-				'permission_callback' => [ REST::class, 'can_manage' ],
+				'permission_callback' => [ REST::class, 'can_toggle_auto_update' ],
 				'args'                => [
 					'provider'    => $provider_arg,
 					'auto_update' => [

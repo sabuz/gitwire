@@ -112,6 +112,18 @@ if ( ! function_exists( 'sanitize_text_field' ) ) {
 	}
 }
 
+if ( ! function_exists( 'sanitize_title' ) ) {
+	/**
+	 * @param string $title Title to sanitize into a slug.
+	 * @return string
+	 */
+	function sanitize_title( string $title ): string {
+		$title = strtolower( trim( $title ) );
+		$title = (string) preg_replace( '/[^a-z0-9_\-]+/', '-', $title );
+		return trim( $title, '-' );
+	}
+}
+
 if ( ! function_exists( 'wp_strip_all_tags' ) ) {
 	/**
 	 * @param string $text Text to strip.
@@ -343,6 +355,22 @@ if ( ! function_exists( 'apply_filters' ) ) {
 			$value = call_user_func( $callback, $value, ...$args );
 		}
 		return $value;
+	}
+}
+
+if ( ! function_exists( 'wp_is_file_mod_allowed' ) ) {
+	/**
+	 * Mirrors core: the constant, then the filter that can override it.
+	 *
+	 * @param string $context Usage context.
+	 * @return bool
+	 */
+	function wp_is_file_mod_allowed( string $context ): bool {
+		return (bool) apply_filters(
+			'file_mod_allowed',
+			! defined( 'DISALLOW_FILE_MODS' ) || ! DISALLOW_FILE_MODS,
+			$context
+		);
 	}
 }
 
