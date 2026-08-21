@@ -65,9 +65,10 @@ class Settings {
 				'type'    => 'bool',
 				'default' => true,
 			],
+			// Page size is the detection bill: an unauthenticated GitHub gets 60 an hour.
 			'repos_per_page'                    => [
 				'type'    => 'int',
-				'default' => 50,
+				'default' => 20,
 				'min'     => 10,
 				'max'     => 100,
 			],

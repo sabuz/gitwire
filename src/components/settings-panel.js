@@ -231,7 +231,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 		settings.auto_detect_type !== false
 	);
 	const [ reposPerPage, setReposPerPage ] = useState(
-		settings.repos_per_page ?? 50
+		settings.repos_per_page ?? 20
 	);
 	const [ excludedRepos, setExcludedRepos ] = useState(
 		settings.excluded_repos ?? []

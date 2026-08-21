@@ -48,7 +48,7 @@ class Repositories {
 				'connection_ids' => $connection_ids,
 				'offset'         => $offset,
 				'search'         => $search,
-				'per_page'       => (int) ( $settings['repos_per_page'] ?? 50 ),
+				'per_page'       => (int) ( $settings['repos_per_page'] ?? 20 ),
 				'excluded'       => (array) ( $settings['excluded_repos'] ?? [] ),
 			]
 		);

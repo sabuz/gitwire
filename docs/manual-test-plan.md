@@ -198,6 +198,7 @@
 
 ### Repositories per Page
 
+- [ ] Fresh install defaults to 20, low enough that one Browse page can be type-detected inside an unauthenticated GitHub connection's hourly allowance
 - [ ] Set "Repositories per Page" to 10 in Settings > Browse & Detection
 - [ ] Go to Add Repository tab — confirm first page shows exactly 10 repos (assuming cache has 10+)
 - [ ] Click "Load More" — confirm the next 10 repos append correctly (offset = 10)

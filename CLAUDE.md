@@ -5,7 +5,7 @@ WordPress plugin that installs GitHub/GitLab repositories as plugins or themes d
 ## Stack
 
 - **PHP** — WordPress plugin, PSR-4 via `autoload.php`, namespace `Gitwire\`
-- **JS/React** — `@wordpress/scripts` (webpack), TypeScript checked, components in `src/`
+- **JS/React** — `@wordpress/scripts` (webpack), plain JS with JSDoc, components in `src/`
 - **Standards** — WordPress Coding Standards (WPCS) for PHP, `@wordpress/eslint-plugin` for JS
 
 ## Commands
@@ -16,8 +16,7 @@ npm run start          # dev build with watch
 npm run lint           # JS + SCSS + PHP
 npm run lint:php:fix   # auto-fix PHP
 npm run lint:js:fix    # auto-fix JS
-npm run type-check     # tsc --noEmit
-npm run pre-pr-check   # lint + type-check + build (run before pushing)
+npm run pre-pr-check   # lint + PHPStan + build (run before pushing)
 composer phpunit       # PHP tests
 ```
 
@@ -67,7 +66,7 @@ WPCS notes: a block comment needs a blank line above it, and a `//` comment has 
 
 If a comment wants four or more lines, it wants a doc instead. Cut it down or move it out.
 
-## Repo detection logic (class-repo-detector.php)
+## Repo detection logic (class-repository-detector.php)
 
 Detection priority — highest confidence first:
 
@@ -84,6 +83,6 @@ Detection priority — highest confidence first:
 
 ## Architecture notes
 
-- `Repo_Detector::detect()` is provider-agnostic — takes callables for fetching contents so GitHub and GitLab share the same logic
+- `Repository_Detector::detect()` is provider-agnostic — takes callables for fetching contents so GitHub and GitLab share the same logic
 - `class-installer.php` handles download, extract, backup, and WP hooks for cleanup on plugin/theme deletion
 - REST endpoints in `class-rest.php`, provider abstraction via `interface-git-provider.php`

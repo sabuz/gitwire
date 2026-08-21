@@ -34,6 +34,14 @@ class SettingsTest extends TestCase {
 		$this->assertSame( 50, Settings::merge_save( [ 'repos_per_page' => 50 ] )['repos_per_page'] );
 	}
 
+	public function test_repos_per_page_defaults_low_enough_to_type_a_page(): void {
+		/*
+		 * The page size is the detection bill: 20 repos against an unauthenticated
+		 * GitHub connection's 60 requests an hour, not 50.
+		 */
+		$this->assertSame( 20, Settings::defaults()['repos_per_page'] );
+	}
+
 	public function test_merge_save_rejects_excluded_repos_that_are_not_owner_slash_name(): void {
 		$merged = Settings::merge_save(
 			[
