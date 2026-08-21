@@ -1,6 +1,6 @@
 <?php
 /**
- * Installer — downloads and extracts GitHub repositories as plugins or themes.
+ * Installer: downloads and extracts GitHub repositories as plugins or themes.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -495,7 +495,7 @@ class Installer {
 					array_filter( Connection_Resolver::all(), static fn( $c ) => ( $c['provider'] ?? '' ) === $provider )
 				);
 				if ( 0 === count( $provider_conns ) ) {
-					// No connection system (or none left) — try the public path.
+					// No connection system (or none left), so try the public path.
 					$connection_id = null;
 				} elseif ( 1 !== count( $provider_conns ) ) {
 					return new \WP_Error(
@@ -857,7 +857,7 @@ class Installer {
 				$rl_key   = 'gitwire_gh_rl_' . ( $connection_id ?? 'anon' );
 				$rl_value = get_transient( $rl_key );
 				if ( false !== $rl_value && (int) $rl_value < 5 ) {
-					Logger::log( sprintf( 'Auto-update skipped for %s — GitHub rate limit low (%d remaining)', $rec['full_name'] ?? '', (int) $rl_value ), 'error' );
+					Logger::log( sprintf( 'Auto-update skipped for %s: GitHub rate limit low (%d remaining)', $rec['full_name'] ?? '', (int) $rl_value ), 'error' );
 					continue;
 				}
 			}
@@ -915,7 +915,7 @@ class Installer {
 			}
 
 			if ( is_wp_error( $result ) ) {
-				Logger::log( 'Auto-update failed: ' . $full_name . ' — ' . $result->get_error_message(), 'error' );
+				Logger::log( 'Auto-update failed: ' . $full_name . ': ' . $result->get_error_message(), 'error' );
 			} else {
 				Logger::log( 'Auto-updated: ' . $full_name . ' to ' . substr( $remote_head, 0, 7 ) );
 			}
@@ -1906,7 +1906,7 @@ class Installer {
 			}
 		}
 
-		// Restore backup (backup may be in temp dir — use move_dir_safe for cross-filesystem support).
+		// Restore backup (backup may be in temp dir, so use move_dir_safe for cross-filesystem support).
 		if ( ! self::move_dir_safe( $backup_path, $install_path ) ) {
 			if ( $failed_path && is_dir( $failed_path ) && ! is_dir( $install_path ) ) {
 				// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename

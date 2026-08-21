@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin page template — renders the React app root element.
+ * Admin page template: renders the React app root element.
  *
  * @package Gitwire
  */

@@ -1,6 +1,6 @@
 <?php
 /**
- * Profile cache manager — reads and writes connection profile columns.
+ * Profile cache manager: reads and writes connection profile columns.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -220,7 +220,7 @@ class Connection_Meta {
 	private static function fetch_gitlab_profile( string $username, string $host_url = '' ): ?array {
 		$base = rtrim( $host_url ? $host_url : 'https://gitlab.com', '/' );
 
-		// Re-validate at request time — DNS can rebind between save and the next cron tick.
+		// Re-validate at request time, since DNS can rebind between save and the next cron tick.
 		if ( $host_url && ! Settings::is_allowed_gitlab_url( $base ) ) {
 			return null;
 		}

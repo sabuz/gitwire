@@ -15,7 +15,7 @@ if ( window.gitwire?.nonce ) {
 	apiFetch.use( apiFetch.createNonceMiddleware( window.gitwire.nonce ) );
 }
 
-// shared singletons — the Pro bundle reuses these instead of re-declaring them
+// shared singletons, reused by the Pro bundle instead of re-declaring them
 if ( window.gitwire ) {
 	window.gitwire.toast = toast;
 	window.gitwire.ui = {

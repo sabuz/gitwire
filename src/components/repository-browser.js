@@ -110,7 +110,7 @@ function lookupInstalled( installed, repo ) {
 }
 
 /**
- * Browse panel — lists GitHub and GitLab repositories with detection and install actions.
+ * Browse panel: lists GitHub and GitLab repositories with detection and install actions.
  *
  * @param {Object}   props                    Component props.
  * @param {Array}    props.connections        Connection records array.
@@ -168,7 +168,7 @@ export default function RepositoryBrowser( {
 	const smartInstall = settings?.smart_install !== false;
 	/*
 	 * The one flag for "types exist" anywhere in the UI. The server folds Smart Install
-	 * into it on read, so Smart Install does not need checking separately here — and
+	 * into it on read, so Smart Install does not need checking separately here, and
 	 * with detection off, nothing would re-type a repo whose detection was dropped.
 	 */
 	const autoDetectType = settings?.auto_detect_type !== false;

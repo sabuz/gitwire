@@ -10,8 +10,8 @@ import * as api from '../../api';
  * Modal body rendered by DataViews for the delete action.
  *
  * Offers two choices:
- *   - "Unlink from Gitwire" — removes the tracking record only, files stay on disk.
- *   - "Delete files"        — removes the record AND deletes files from the server.
+ *   - "Unlink from Gitwire" removes the tracking record only, files stay on disk.
+ *   - "Delete files" removes the record AND deletes files from the server.
  *
  * @param {Object}   props            Component props supplied by DataViews.
  * @param {Array}    props.items      Selected items.

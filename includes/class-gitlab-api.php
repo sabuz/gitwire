@@ -1,6 +1,6 @@
 <?php
 /**
- * GitLab API client — wraps the GitLab REST API v4.
+ * GitLab API client: wraps the GitLab REST API v4.
  *
  * @package Gitwire
  * @since 1.0.0

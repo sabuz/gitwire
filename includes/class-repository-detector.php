@@ -149,7 +149,7 @@ class Repository_Detector {
 			$files[ $lc ] = $item;
 		}
 
-		// theme.json alone isn't enough — plugins ship it too; style.css + Theme Name is the real gate.
+		// theme.json alone isn't enough since plugins ship it too; style.css + Theme Name is the real gate.
 		if ( isset( $files['style.css'] ) ) {
 			$css = $get_file_content( 'style.css', $branch );
 			if ( ! is_wp_error( $css ) && self::has_header( $css, 'Theme Name' ) ) {

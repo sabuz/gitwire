@@ -1,6 +1,6 @@
 <?php
 /**
- * Activity logger — appends timestamped entries to a protected file in uploads.
+ * Activity logger: appends timestamped entries to a protected file in uploads.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -177,7 +177,7 @@ class Logger {
 
 	/**
 	 * Removes entries older than the configured retention window.
-	 * Called from the maintenance cron — not triggered on every write.
+	 * Called from the maintenance cron, not triggered on every write.
 	 *
 	 * @since 1.0.0
 	 * @return void

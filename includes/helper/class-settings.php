@@ -1,6 +1,6 @@
 <?php
 /**
- * Settings helpers — smart_install and token masking.
+ * Settings helpers: smart_install and token masking.
  *
  * @package Gitwire
  * @since 1.0.0

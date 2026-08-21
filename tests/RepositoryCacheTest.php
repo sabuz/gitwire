@@ -177,7 +177,7 @@ class RepositoryCacheTest extends TestCase {
 	public function test_activity_dates_leave_as_iso8601_utc(): void {
 		/*
 		 * The column is written with gmdate(), and JS reads the bare 'Y-m-d H:i:s' form
-		 * as local time — every relative timestamp came out shifted by the viewer's offset.
+		 * as local time, so every relative timestamp came out shifted by the viewer's offset.
 		 */
 		$this->assertSame( '2026-08-01T09:30:00Z', $this->read_row()['last_activity_at'] );
 	}

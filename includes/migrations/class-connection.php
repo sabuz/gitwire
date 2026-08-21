@@ -25,7 +25,7 @@ class Connection extends Migration_Base {
 	 * Creates or upgrades the connections table.
 	 *
 	 * Pro-only columns (credentials, scope, email) are managed entirely by the Pro plugin
-	 * via its activation/deactivation hooks — this migration does not touch them.
+	 * via its activation/deactivation hooks, and this migration does not touch them.
 	 *
 	 * @since 1.0.0
 	 * @param string $from Previously stored plugin version; use for version_compare guards on future schema changes.

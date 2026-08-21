@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Central entry point for plugin schema management.
  *
- * Instantiate from Plugin::__construct() — not boot()/plugins_loaded — so the
+ * Instantiate from Plugin::__construct(), not boot()/plugins_loaded, so the
  * activation hook registers before the main plugin file finishes loading.
  *
  * uninstall.php exists and takes precedence; do NOT add register_uninstall_hook().
@@ -109,7 +109,7 @@ class Database_Manager {
 	 * Fires on WP_Upgrader completion; migrates only when this plugin updated.
 	 *
 	 * Handles both single-plugin ('plugin' key) and bulk ('plugins' key) upgrader
-	 * payloads — the WP core upgrader uses different keys depending on context.
+	 * payloads, since the WP core upgrader uses different keys depending on context.
 	 *
 	 * @since 1.0.0
 	 * @param mixed                $upgrader  WP_Upgrader instance (unused).

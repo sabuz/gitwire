@@ -315,7 +315,7 @@ class REST_Repositories {
 	/**
 	 * Fetches and normalizes a paginated repository list from the Git provider API.
 	 *
-	 * Does not embed installed status — callers merge that at response time via merge_installed().
+	 * Does not embed installed status; callers merge that at response time via merge_installed().
 	 *
 	 * @since 1.0.0
 	 * @param string $provider      Provider key: github, gitlab, or bitbucket.
@@ -341,7 +341,7 @@ class REST_Repositories {
 			$api = $has_auth
 				? Provider_Factory::make( 'bitbucket', $connection_id )
 				: new Bitbucket_API( '', '' );
-			// Authenticated: empty string — get_repos auto-discovers workspaces via /user/workspaces.
+			// Authenticated: empty string, since get_repos auto-discovers workspaces via /user/workspaces.
 			$result = $api->get_repos( $workspace, $page );
 
 			if ( is_wp_error( $result ) ) {
@@ -665,7 +665,7 @@ class REST_Repositories {
 			$result = self::detect_type_for_repo( $provider, $owner, $repo, $branch, $connection_id );
 
 			if ( is_wp_error( $result ) ) {
-				Logger::log( sprintf( 'Detection failed — %s: %s', $key, $result->get_error_message() ), 'error' );
+				Logger::log( sprintf( 'Detection failed for %s: %s', $key, $result->get_error_message() ), 'error' );
 				$error_code = $result->get_error_code();
 
 				/*
@@ -875,7 +875,7 @@ class REST_Repositories {
 	 *
 	 * Treating every failure as "not found or no access" turned a rate limit into an
 	 * accusation that the user cannot see their own public repository. Only 404 and 401
-	 * say anything about visibility — GitHub answers 404 for a private repo precisely so
+	 * say anything about visibility. GitHub answers 404 for a private repo precisely so
 	 * an anonymous caller cannot tell it apart from a missing one. A 403 is the hourly
 	 * limit, and a 5xx or a transport failure is the provider's problem.
 	 *

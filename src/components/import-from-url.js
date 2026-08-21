@@ -40,7 +40,7 @@ function installButtonLabel( installing, slugChecking ) {
 }
 
 /**
- * Full Import from URL flow — URL input → Check → install form (inline, no modal).
+ * Full Import from URL flow: URL input → Check → install form (inline, no modal).
  *
  * @param {Object}   props                  Component props.
  * @param {Object}   props.settings         Plugin settings.
@@ -237,7 +237,7 @@ export default function ImportFromUrl( {
 		[ resolved, initInstallForm, installed ]
 	);
 
-	// Debounced slug conflict check — only active while showing the install form.
+	// Debounced slug conflict check, only active while showing the install form.
 	useEffect( () => {
 		if (
 			step !== 'resolved' ||
@@ -368,7 +368,7 @@ export default function ImportFromUrl( {
 
 	return (
 		<div className="gitwire-import-url">
-			{ /* URL input row — always shown unless actively installing */ }
+			{ /* URL input row, always shown unless actively installing */ }
 			{ ! isInstalling && (
 				<Flex
 					gap={ 3 }

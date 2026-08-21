@@ -35,7 +35,7 @@ class Connection_Resolver {
 	 * Returns all stored connection records, with public rows suppressed when a Pro
 	 * row exists for the same provider + identifier.
 	 *
-	 * Suppression is resolver-only — the DB is never modified. When Pro is removed its
+	 * Suppression is resolver-only, and the DB is never modified. When Pro is removed its
 	 * rows are deleted and the public rows reappear automatically.
 	 *
 	 * @since 1.0.0
@@ -189,7 +189,7 @@ class Connection_Resolver {
 	 *
 	 * Tries a Pro connection first. A public row still gets stored (and still
 	 * browses fine) when a Pro connection exists for the same identifier, per
-	 * all()'s shadowing — but checking public first here meant every default
+	 * all()'s shadowing, but checking public first here meant every default
 	 * lookup for that provider silently used the weaker, unauthenticated
 	 * credentials instead of the one meant to shadow it.
 	 *

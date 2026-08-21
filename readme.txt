@@ -187,11 +187,11 @@ It is a file in your uploads directory whose name is derived from your site's ow
 
 == Screenshots ==
 
-1. Repositories — every plugin and theme Gitwire manages, with its branch, current commit, and status.
-2. Add Repository — browse repositories from your connected accounts, or import from a URL.
-3. Install form — automatic type detection, branch selection, and directory name.
-4. Settings — connect GitHub, GitLab, and Bitbucket accounts and tune detection and updates.
-5. Logs — a timestamped record of installs, updates, and rollbacks.
+1. Repositories: every plugin and theme Gitwire manages, with its branch, current commit, and status.
+2. Add Repository: browse repositories from your connected accounts, or import from a URL.
+3. Install form: automatic type detection, branch selection, and directory name.
+4. Settings: connect GitHub, GitLab, and Bitbucket accounts and tune detection and updates.
+5. Logs: a timestamped record of installs, updates, and rollbacks.
 
 == Changelog ==
 

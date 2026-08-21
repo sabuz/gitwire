@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Concrete models expose public domain methods (find, all, delete_by_id, etc.)
  * that delegate to these protected base methods. NULL values in $where arrays
- * are not supported — use custom SQL in the concrete model for IS NULL conditions.
+ * are not supported; use custom SQL in the concrete model for IS NULL conditions.
  *
  * @phpstan-consistent-constructor
  */

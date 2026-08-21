@@ -434,7 +434,7 @@ class REST_Installer {
 		$result    = Installer::$method( $owner, $repo, $branch, $slug, $provider, $replace, $connection_id );
 
 		if ( is_wp_error( $result ) ) {
-			Logger::log( sprintf( '[%s] %s failed — %s/%s: %s', $provider, $is_update ? 'Update' : 'Install', $owner, $repo, $result->get_error_message() ), 'error' );
+			Logger::log( sprintf( '[%s] %s failed for %s/%s: %s', $provider, $is_update ? 'Update' : 'Install', $owner, $repo, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 
@@ -576,7 +576,7 @@ class REST_Installer {
 				$rec['provider'] = 'github';
 			}
 
-			// Without Pro there are no connections to reconnect to — updates fall back to public.
+			// Without Pro there are no connections to reconnect to, so updates fall back to public.
 			$conn_id = $rec['connection_id'] ?? null;
 			if ( $conn_id && ! empty( $all_connections ) && ! isset( $all_connections[ $conn_id ] ) ) {
 				$rec['needs_reconnect'] = true;
@@ -657,11 +657,11 @@ class REST_Installer {
 		try {
 			$result = Installer::activate( $provider, $full_name );
 		} catch ( \Throwable $e ) {
-			// guard was armed before activation — clean up before returning.
+			// guard was armed before activation, so clean up before returning.
 			Error_Handler::abort_pending_guard();
 			Logger::log(
 				sprintf(
-					'[%s] Activation failed — %s/%s: %s: %s in %s on line %d',
+					'[%s] Activation failed for %s/%s: %s: %s in %s on line %d',
 					$provider,
 					$owner,
 					$repo,
@@ -680,7 +680,7 @@ class REST_Installer {
 		}
 
 		if ( is_wp_error( $result ) ) {
-			Logger::log( sprintf( '[%s] Activation failed — %s/%s: %s', $provider, $owner, $repo, $result->get_error_message() ), 'error' );
+			Logger::log( sprintf( '[%s] Activation failed for %s/%s: %s', $provider, $owner, $repo, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 
@@ -752,7 +752,7 @@ class REST_Installer {
 
 		if ( is_wp_error( $result ) ) {
 			$action = $is_pull ? 'Pull' : 'Switch branch';
-			Logger::log( sprintf( '[%s] %s failed — %s/%s: %s', $provider, $action, $owner, $repo, $result->get_error_message() ), 'error' );
+			Logger::log( sprintf( '[%s] %s failed for %s/%s: %s', $provider, $action, $owner, $repo, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 

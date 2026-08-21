@@ -1,6 +1,6 @@
 <?php
 /**
- * GitHub API client — wraps the GitHub REST API v3.
+ * GitHub API client: wraps the GitHub REST API v3.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -85,7 +85,7 @@ class GitHub_API implements Git_Provider_Interface {
 			$result['avatar_url'] = $user['avatar_url'] ?? '';
 		}
 
-		// Rate limit — always fetch so we always have the numbers.
+		// Rate limit: always fetch so we always have the numbers.
 		$rate = $this->get( '/rate_limit' );
 		if ( ! is_wp_error( $rate ) ) {
 			$result['rate_limit']     = $rate['rate']['limit'] ?? 60;
@@ -211,7 +211,7 @@ class GitHub_API implements Git_Provider_Interface {
 			$api_url,
 			[
 				'headers'     => $this->headers(),
-				'redirection' => 0,   // Do NOT follow — we want the Location header.
+				'redirection' => 0,   // Do NOT follow, we want the Location header.
 				'timeout'     => 15,
 			]
 		);

@@ -14,7 +14,7 @@ import {
 import { persistSetting } from '../save-setting';
 
 /**
- * Tools panel — data management and advanced operations.
+ * Tools panel: data management and advanced operations.
  *
  * @param {Object}   props          Component props.
  * @param {Object}   props.settings Saved plugin settings.

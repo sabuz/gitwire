@@ -125,7 +125,7 @@ class Installation extends Model_Base {
 	 *   remote_head may have been set by the maintenance cron; auto_update is a user preference.
 	 *
 	 * @since 1.0.0
-	 * @param array<string, mixed> $data Row data. Do not pass `id` — it is AUTO_INCREMENT.
+	 * @param array<string, mixed> $data Row data. Do not pass `id`, it is AUTO_INCREMENT.
 	 * @return bool
 	 */
 	public function upsert( array $data ): bool {

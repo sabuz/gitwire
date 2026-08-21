@@ -1,6 +1,6 @@
 <?php
 /**
- * REST API router — registers all routes and shared utilities.
+ * REST API router: registers all routes and shared utilities.
  *
  * @package Gitwire
  * @since 1.0.0

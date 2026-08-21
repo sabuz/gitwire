@@ -1,6 +1,6 @@
 <?php
 /**
- * Bitbucket API client — wraps the Bitbucket Cloud REST API v2.
+ * Bitbucket API client: wraps the Bitbucket Cloud REST API v2.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -77,7 +77,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 		}
 
 		/*
-		 * /user requires the account scope — some API tokens lack it.
+		 * /user requires the account scope, and some API tokens lack it.
 		 * Prefer a workspace-specific lookup (needs only read:workspace:bitbucket),
 		 * then fall back to listing all workspaces (needs account scope).
 		 */
@@ -272,7 +272,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 *
 	 * The archive URL 302s to an S3-backed CDN on a different host. WP_Http replays
 	 * the full header set on a redirect, so following it would hand the Basic auth
-	 * credentials to Amazon — resolve the Location ourselves and fetch it unauthenticated.
+	 * credentials to Amazon, so resolve the Location ourselves and fetch it unauthenticated.
 	 *
 	 * @since 1.0.0
 	 * @param string $owner  Repository workspace slug.
@@ -462,7 +462,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 			if ( 403 === $code && str_contains( $message, 'privilege scopes' ) ) {
 				$message = 'Your API token lacks Bitbucket access. When creating the token at id.atlassian.com, choose Scopes → Bitbucket → Read (or use a Classic API token).';
 			}
-			Logger::log( sprintf( '[bitbucket] HTTP %d on %s%s — %s', $code, $this->base, $endpoint, $message ), 'error' );
+			Logger::log( sprintf( '[bitbucket] HTTP %d on %s%s: %s', $code, $this->base, $endpoint, $message ), 'error' );
 			return new \WP_Error( 'gitwire_api_error', $message, [ 'status' => $code ] );
 		}
 

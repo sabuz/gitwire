@@ -33,7 +33,7 @@ import { relativeTimeFromUnix } from '../relative-time';
 import { persistSetting } from '../save-setting';
 
 /**
- * Settings panel — connections, Browse & Detection, Installed & Updates, Logging.
+ * Settings panel: connections, Browse & Detection, Installed & Updates, Logging.
  *
  * @param {Object}   props                     Component props.
  * @param {Array}    props.publicConnections   Current public connections list.

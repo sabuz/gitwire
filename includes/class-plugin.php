@@ -215,7 +215,7 @@ final class Plugin {
 	/**
 	 * Schedules or reschedules the repository list cache cron to match the current frequency setting.
 	 *
-	 * Safe to call on every boot — only reschedules when the stored interval differs.
+	 * Safe to call on every boot, since it only reschedules when the stored interval differs.
 	 *
 	 * @since 1.0.0
 	 * @return void
@@ -262,7 +262,7 @@ final class Plugin {
 	 * Schedules or reschedules the auto-update cron to match the update_check_interval setting.
 	 *
 	 * When update_check_interval is 'never', the event is removed entirely.
-	 * Safe to call on every boot — only reschedules when the stored interval differs.
+	 * Safe to call on every boot, since it only reschedules when the stored interval differs.
 	 *
 	 * @since 1.0.0
 	 * @return void

@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin class — registers menus, enqueues assets, and renders the admin page.
+ * Admin class: registers menus, enqueues assets, and renders the admin page.
  *
  * @package Gitwire
  * @since 1.0.0
@@ -319,7 +319,7 @@ class Admin {
 		if ( $pending_msg ) {
 			delete_option( 'gitwire_pending_message' );
 		}
-		// Boot data uses only DB records — orphan detection runs via REST on app init.
+		// Boot data uses only DB records; orphan detection runs via REST on app init.
 		$installed = REST_Installer::annotate_installed( Installer::get_installed() );
 
 		// Derive initial tab from path param or setup status.

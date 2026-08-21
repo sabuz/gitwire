@@ -17,7 +17,7 @@ import { normalizeSlug, finalizeSlug } from '../slug';
 import DetectionBadge from './detection-badge';
 
 /**
- * Inline install form — branch picker, slug, detection badge, Install button.
+ * Inline install form: branch picker, slug, detection badge, Install button.
  * Renders without any Modal wrapper so it can be embedded inside a parent modal.
  *
  * @param {Object}      props                      Component props.
@@ -317,7 +317,7 @@ export function InstallForm( {
 }
 
 /**
- * Install modal — wraps InstallForm in a WordPress Modal.
+ * Install modal: wraps InstallForm in a WordPress Modal.
  *
  * @param {Object}      props                  Component props.
  * @param {Object}      props.repo             Repository data object.

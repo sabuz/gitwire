@@ -216,7 +216,7 @@ class Error_Handler {
 		self::$exception_file         = $e->getFile();
 		self::$exception_line         = $e->getLine();
 
-		// scrape requests need WP's own error markers — don't let debug plugins intercept.
+		// scrape requests need WP's own error markers, so debug plugins must not intercept.
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! empty( $_REQUEST['wp_scrape_key'] ) ) {
 			throw $e;
@@ -232,7 +232,7 @@ class Error_Handler {
 	}
 
 	/**
-	 * Shutdown callback — checks for a fatal error and rolls back if needed.
+	 * Shutdown callback: checks for a fatal error and rolls back if needed.
 	 *
 	 * @since 1.0.0
 	 * @return void

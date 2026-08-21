@@ -128,7 +128,7 @@ class Repository extends Model_Base {
 				if ( ! $has_any ) {
 					return null;
 				}
-				// Table has rows but filters matched nothing — fall through to return empty list.
+				// Table has rows but filters matched nothing, so fall through to return empty list.
 			} else {
 				return null;
 			}
@@ -164,7 +164,7 @@ class Repository extends Model_Base {
 	 * Converts a stored UTC datetime to ISO-8601 for the client.
 	 *
 	 * The column is written with gmdate(), but 'Y-m-d H:i:s' is not a format JavaScript
-	 * parses as UTC — Date() reads the space-separated form as local time, shifting every
+	 * parses as UTC. Date() reads the space-separated form as local time, shifting every
 	 * relative timestamp by the viewer's offset. The epoch sentinel written for repos
 	 * whose provider gave no usable date becomes an empty string, so the UI can leave it
 	 * out rather than render "56y ago".

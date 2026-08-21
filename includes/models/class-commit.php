@@ -45,7 +45,7 @@ class Commit extends Model_Base {
 	 * @since 1.0.0
 	 * @param int    $installation_id Primary key of gitwire_installations.
 	 * @param string $branch          Branch name.
-	 * @return array<string, mixed>|null Raw row — caller decodes the `data` JSON field.
+	 * @return array<string, mixed>|null Raw row; caller decodes the `data` JSON field.
 	 */
 	public function find( int $installation_id, string $branch ): ?array {
 		return $this->get_row(
