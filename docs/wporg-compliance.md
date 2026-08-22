@@ -109,10 +109,9 @@ runtime to dodge the grep. That is evasion and it is worse than the finding.
 > Gitwire's own installation table, and return it. There is no remote call, no alternative update
 > source, and no code path that puts an update into the transient.
 >
-> We also ship the non-invasive half of the fix: the Repositories screen warns when a managed
-> install has no `Update URI` header, since that header is the mechanism WordPress added in 5.8 for
-> a plugin to claim its slug. We cannot add that header ourselves, because it belongs in the user's
-> repository and the next pull would overwrite it, which is why the filter exists as well.
+> The alternative, the `Update URI` header WordPress added in 5.8 for a plugin to claim its slug,
+> is not something we can apply: it belongs in the user's own repository, and the next pull from
+> Git would overwrite anything we wrote there. That is why the filter does the work instead.
 >
 > If suppression is not acceptable, we will remove the filter. Please confirm which you prefer.
 
@@ -120,8 +119,12 @@ runtime to dodge the grep. That is evasion and it is worse than the finding.
 
 Remove the four `add_filter` calls and the six methods in `includes/class-installer.php`, delete
 `tests/InstallerUpdateSuppressionTest.php`, and drop `ignore-codes` from the workflow. Commit
-`546407b` did exactly that and can be reapplied. The `Update URI` warning stays either way, and the
-residual risk goes back to being the user's to manage. Tracked in issue #84.
+`546407b` did exactly that and can be reapplied.
+
+With the filter gone there is no protection left in the plugin, so the fallback is to tell users to
+add an `Update URI` header to their own repositories. Gitwire shipped a warning for that briefly
+and it was removed once the filter came back; `97bcf21` is the commit to revive if it is needed.
+Tracked in issue #84.
 
 ## Review Red Flags to Avoid
 

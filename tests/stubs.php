@@ -21,8 +21,6 @@ $GLOBALS['gitwire_test_options'] = [];
 
 require_once __DIR__ . '/class-wp-error.php';
 require_once __DIR__ . '/class-fake-wpdb.php';
-require_once __DIR__ . '/class-fake-theme.php';
-require_once __DIR__ . '/theme-stubs.php';
 require_once __DIR__ . '/dns-stubs.php';
 
 /**
@@ -36,8 +34,6 @@ function gitwire_test_reset_options(): void {
 	$GLOBALS['gitwire_test_is_admin']   = false;
 	$GLOBALS['gitwire_test_doing_cron'] = false;
 	$GLOBALS['gitwire_dns_calls']       = [];
-	$GLOBALS['gitwire_test_plugins']    = [];
-	$GLOBALS['gitwire_test_themes']     = [];
 	\Gitwire\Settings::invalidate_cache();
 }
 
@@ -377,15 +373,6 @@ if ( ! function_exists( 'apply_filters' ) ) {
 			$value = call_user_func( $callback, $value, ...$args );
 		}
 		return $value;
-	}
-}
-
-if ( ! function_exists( 'get_plugins' ) ) {
-	/**
-	 * @return array<string, array<string, mixed>>
-	 */
-	function get_plugins(): array {
-		return (array) ( $GLOBALS['gitwire_test_plugins'] ?? [] );
 	}
 }
 

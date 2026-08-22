@@ -21,8 +21,6 @@ parameters:
 		- tests/class-fake-wpdb.php
 		# This file shadows DNS functions inside the Gitwire namespace.
 		- tests/dns-stubs.php
-		# This file shadows wp_get_theme() and narrows WP_Theme to the test double.
-		- tests/theme-stubs.php
 	# Read symbols such as test helpers and sandbox constants without analysing bodies.
 	scanFiles:
 		- tests/bootstrap.php

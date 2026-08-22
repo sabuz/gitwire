@@ -163,18 +163,6 @@ Not on push. Gitwire polls on a schedule you set. Updates can be pulled manually
 
 No. Auto-update is off for every repository until you turn it on individually.
 
-= Could WordPress.org overwrite a plugin I installed from Git? =
-
-It can, if the directory name matches a plugin or theme in the WordPress.org directory. WordPress asks WordPress.org about every installed slug, and it will offer that project's release for a matching name, which would replace your code. With auto-updates on it happens without asking.
-
-The fix is a one-line header in your plugin's main file, or your theme's `style.css`:
-
-`Update URI: https://github.com/you/your-plugin`
-
-Any value that is not a wordpress.org address claims the slug, and `false` works too if you would rather not name a URL. WordPress added the header for exactly this.
-
-Gitwire shows a **No Update URI** warning on the Repositories screen for anything it manages that is missing it, so you can see at a glance which installs are exposed.
-
 = Will an update overwrite changes I made on the server? =
 
 Yes. An update replaces the installed directory with the branch archive. Do not edit Gitwire-installed files on the server; commit and push instead.
