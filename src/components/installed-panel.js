@@ -160,6 +160,18 @@ export default function InstalledPanel( {
 								{ __( 'Connection Required', 'gitwire' ) }
 							</span>
 						) }
+						{ item.update_uri_missing && (
+							<Tooltip
+								text={ __(
+									'WordPress.org can offer an update for anything sharing this directory name, and accepting it would replace your code. Add an "Update URI" header to the main file to claim the slug.',
+									'gitwire'
+								) }
+							>
+								<span className="gitwire-badge gitwire-badge--warning is-no-update-uri">
+									{ __( 'No Update URI', 'gitwire' ) }
+								</span>
+							</Tooltip>
+						) }
 						{ item.update_available &&
 							( hasKnownFatalUpdate( item ) ? (
 								<Tooltip text={ knownFatalTooltip( item ) }>

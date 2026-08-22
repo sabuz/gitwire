@@ -534,6 +534,40 @@ class REST_Installer {
 	}
 
 	/**
+	 * Returns whether an installation is missing the header that keeps WordPress.org
+	 * from updating over it.
+	 *
+	 * Core sends every installed slug to api.wordpress.org, which answers with a
+	 * release for anything that matches. A repository living at a directory name
+	 * some directory-hosted project also uses gets that project's zip, and with
+	 * auto-updates on it lands without a word. Declaring an Update URI that is not
+	 * wordpress.org is what tells the API to leave the slug alone, which is the
+	 * reason the header exists.
+	 *
+	 * Only the header is read. Whether the slug actually collides is a question for
+	 * api.wordpress.org, and the answer would not change the advice.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed>                $rec     Installed record.
+	 * @param array<string, array<string, mixed>> $plugins get_plugins() output.
+	 * @return bool
+	 */
+	private static function lacks_update_uri( array $rec, array $plugins ): bool {
+		if ( 'plugin' === ( $rec['type'] ?? '' ) ) {
+			$data = $plugins[ $rec['basename'] ?? '' ] ?? null;
+			return is_array( $data ) && '' === trim( (string) ( $data['UpdateURI'] ?? '' ) );
+		}
+
+		if ( ! Repository_Detector::is_theme( (string) ( $rec['type'] ?? '' ) ) || ! function_exists( 'wp_get_theme' ) ) {
+			return false;
+		}
+
+		$theme = wp_get_theme( (string) ( $rec['name'] ?? '' ) );
+
+		return $theme->exists() && '' === trim( (string) $theme->get( 'UpdateURI' ) );
+	}
+
+	/**
 	 * Annotates installed records with live active state and update availability.
 	 *
 	 * @since 1.0.0
@@ -546,6 +580,7 @@ class REST_Installer {
 		}
 
 		$active_theme  = get_stylesheet();
+		$installed_pl  = function_exists( 'get_plugins' ) ? get_plugins() : [];
 		$pending       = self::get_running_task();
 		$pending_guard = is_array( $pending )
 			&& in_array( $pending['context'] ?? '', [ 'activation', 'update' ], true );
@@ -571,6 +606,8 @@ class REST_Installer {
 			} else {
 				$rec['active'] = ( $rec['name'] ?? '' ) === $active_theme;
 			}
+
+			$rec['update_uri_missing'] = self::lacks_update_uri( $rec, $installed_pl );
 
 			if (
 				$pending_guard
