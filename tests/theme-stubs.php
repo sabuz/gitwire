@@ -1,49 +1,14 @@
 <?php
 /**
- * Minimal WP_Theme double, and the wp_get_theme() that returns it.
+ * wp_get_theme() stub returning the Fake_Theme double.
  *
- * Excluded from PHPStan on purpose. Analysed, this wp_get_theme() shadows the
- * real one project-wide and narrows its return type to this double, so every
- * WP_Theme method the installer calls reads as undefined. The dns-stubs.php
- * header explains the same trap.
+ * PHPStan excludes this file. Analysed, this declaration shadows the real
+ * wp_get_theme() project-wide and narrows WP_Theme to the double, which makes
+ * every theme method the installer calls read as undefined. The class itself is
+ * safe to analyse and lives in class-fake-theme.php.
  *
  * @package Gitwire
  */
-
-/**
- * Answers only what the code under test asks a theme for.
- */
-class Fake_Theme {
-
-	/**
-	 * Theme slug.
-	 *
-	 * @var string
-	 */
-	private string $stylesheet;
-
-	/**
-	 * @param string $stylesheet Theme slug.
-	 */
-	public function __construct( string $stylesheet ) {
-		$this->stylesheet = $stylesheet;
-	}
-
-	/**
-	 * @return bool
-	 */
-	public function exists(): bool {
-		return isset( $GLOBALS['gitwire_test_themes'][ $this->stylesheet ] );
-	}
-
-	/**
-	 * @param string $header Header name.
-	 * @return string
-	 */
-	public function get( string $header ): string {
-		return (string) ( $GLOBALS['gitwire_test_themes'][ $this->stylesheet ][ $header ] ?? '' );
-	}
-}
 
 if ( ! function_exists( 'wp_get_theme' ) ) {
 	/**

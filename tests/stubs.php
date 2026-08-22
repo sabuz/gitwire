@@ -21,6 +21,7 @@ $GLOBALS['gitwire_test_options'] = [];
 
 require_once __DIR__ . '/class-wp-error.php';
 require_once __DIR__ . '/class-fake-wpdb.php';
+require_once __DIR__ . '/class-fake-theme.php';
 require_once __DIR__ . '/theme-stubs.php';
 require_once __DIR__ . '/dns-stubs.php';
 
