@@ -54,7 +54,7 @@ final class Plugin {
 
 		Error_Handler::register();
 
-		// must be constructed here so register_activation_hook() fires before the file finishes loading.
+		// Construct this here so register_activation_hook() runs before the file finishes loading.
 		Database_Manager::instance();
 
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] ); // phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
@@ -181,10 +181,8 @@ final class Plugin {
 		}
 
 		/*
-		 * Fixed cadence, not a setting: this is opportunistic work bounded by its own
-		 * rate-limit guard, not a freshness sweep, so it doesn't belong on either
-		 * refresh frequency. The Background Type Pre-Detection toggle gates whether it
-		 * does anything on a given tick.
+		 * This task uses a fixed cadence and its own rate limit. The Background Type
+		 * Pre-Detection setting controls whether it runs on each scheduled tick.
 		 */
 		if ( ! wp_next_scheduled( 'gitwire_background_type_detection' ) ) {
 			wp_schedule_event( time(), 'halfhourly', 'gitwire_background_type_detection' );
@@ -293,9 +291,8 @@ final class Plugin {
 	 */
 	public function deactivate(): void {
 		/*
-		 * The repository and detection caches deliberately survive. Deactivating to
-		 * troubleshoot should not cost a full re-fetch of every repo on every
-		 * connection when the plugin comes back.
+		 * Keep the repository and detection caches so troubleshooting does not cause
+		 * a full refresh when the plugin is activated again.
 		 */
 		wp_clear_scheduled_hook( 'gitwire_maintenance' );
 		wp_clear_scheduled_hook( 'gitwire_trim_logs' );

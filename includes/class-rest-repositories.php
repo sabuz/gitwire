@@ -27,11 +27,9 @@ class REST_Repositories {
 	/**
 	 * Requests held back from detection for user-initiated work.
 	 *
-	 * Detection is speculative: nobody asked for the badge on a repo they are only
-	 * scrolling past. Installing, listing branches, and resolving a pasted URL are not,
-	 * and on an unauthenticated GitHub connection the whole hourly allowance is 60, so
-	 * a single browse page can spend it before any of those get a turn. The background
-	 * job yields at a higher floor still, since it is not even on screen.
+	 * Detection is optional work. Installing, listing branches, and resolving a pasted
+	 * URL take priority, so browse detection leaves part of the provider quota available
+	 * for those actions.
 	 *
 	 * @var int
 	 */
@@ -119,10 +117,8 @@ class REST_Repositories {
 		);
 
 		/*
-		 * The owner segment is greedy because a GitLab subgroup path is itself
-		 * multi-segment, and WP url-decodes %2F back to a slash before matching, so
-		 * an encoded owner cannot survive as one segment. The fixed suffix is what
-		 * keeps the split unambiguous: the last segment before it is always the repo.
+		 * GitLab subgroup paths may contain slashes, so the owner segment is greedy.
+		 * The fixed suffix keeps the repository name separate from the owner path.
 		 */
 		register_rest_route(
 			$namespace,
@@ -239,7 +235,7 @@ class REST_Repositories {
 		$connection_errors   = [];
 		$connection_warnings = [];
 
-		// Fetch any connections not yet represented in the cache table.
+		// Fetch connections that are not yet represented in the cache.
 		foreach ( $uncached as $conn ) {
 			$provider = $conn['provider'];
 			$result   = Repositories::fetch_repositories( $provider, 1, $conn['id'] );
@@ -251,7 +247,7 @@ class REST_Repositories {
 				];
 			} elseif ( 'gitlab' === $provider && empty( $result['repositories'] ) ) {
 				$creds = Connection_Resolver::get_credentials( $conn['id'] );
-				// public (no-token) connection returned 0 repos; private/group repos need a PAT.
+				// A public connection found no repositories; private and group projects need a token.
 				if ( empty( $creds['token'] ) ) {
 					$connection_warnings[] = [
 						'connection_id' => $conn['id'],
@@ -262,7 +258,7 @@ class REST_Repositories {
 			}
 		}
 
-		// Narrow the DB query to the requested connections; uncached fetch above always runs for all.
+		// Limit the database query to the requested connections after fetching all uncached connections.
 		$query_ids = ! empty( $filter_ids )
 			? array_values( array_intersect( $connection_ids, $filter_ids ) )
 			: $connection_ids;
@@ -347,7 +343,7 @@ class REST_Repositories {
 			$api = $has_auth
 				? Provider_Factory::make( 'bitbucket', $connection_id )
 				: new Bitbucket_API( '', '' );
-			// Authenticated: empty string, since get_repos auto-discovers workspaces via /user/workspaces.
+			// Authenticated requests discover workspaces through /user/workspaces.
 			$result = $api->get_repos( $workspace, $page );
 
 			if ( is_wp_error( $result ) ) {
@@ -553,9 +549,8 @@ class REST_Repositories {
 			}
 
 			/*
-			 * Answered as unknown but deliberately not cached, same as detect_batch():
-			 * a rate-limit 403 or a network blip would otherwise pin the repo as
-			 * unknown until someone clears the cache.
+			 * Do not cache unknown results from rate limits or network failures. Caching
+			 * them would hide a valid repository until the cache is cleared.
 			 */
 			return [
 				'type'       => 'unknown',
@@ -613,7 +608,7 @@ class REST_Repositories {
 				continue;
 			}
 
-			// Cache hits below are free, so only stop once a live lookup is needed.
+			// Stop only when a live lookup is needed; cached results are free.
 			$out_of_time = ( time() - $started ) >= $budget;
 
 			$owner         = sanitize_text_field( $entry['owner'] ?? '' );
@@ -639,9 +634,8 @@ class REST_Repositories {
 			}
 
 			/*
-			 * Skipped rows are named rather than dropped. Leaving them out of the
-			 * response is what left browse cards spinning on a detection that was
-			 * never coming.
+			 * Return skipped rows as paused so the client can stop waiting for a result
+			 * that will not arrive in this request.
 			 */
 			if ( $out_of_time ) {
 				$paused[] = $key;
@@ -675,8 +669,8 @@ class REST_Repositories {
 				$error_code = $result->get_error_code();
 
 				/*
-				 * Deliberately not cached. A rate-limit 403 or a network blip would
-				 * otherwise pin the repo as 'unknown' until someone clears the cache.
+				 * Do not cache unknown results from rate limits or network failures. Caching
+				 * them would hide a valid repository until the cache is cleared.
 				 */
 				$result          = [
 					'type'       => 'unknown',
@@ -720,7 +714,7 @@ class REST_Repositories {
 		if ( 'github' === $provider ) {
 			$remaining = get_transient( 'gitwire_gh_rl_' . $conn_key );
 
-			// No reading yet is not evidence of a low budget.
+			// No reading yet does not indicate a low request budget.
 			return false === $remaining || (int) $remaining >= self::DETECTION_RESERVE;
 		}
 
@@ -743,7 +737,7 @@ class REST_Repositories {
 	private static function enrich_with_detections( array $payload ): array {
 		$payload['repositories'] = array_map(
 			static function ( $repo ) {
-				// type_meta is embedded by get_repositories() directly from the cache table row.
+				// get_repositories() reads type_meta directly from the cache row.
 				if ( isset( $repo['type_meta'] ) ) {
 					$repo['detection'] = array_merge( $repo['type_meta'], [ 'type' => $repo['type'] ?? '' ] );
 					unset( $repo['type_meta'] );
@@ -840,8 +834,8 @@ class REST_Repositories {
 	/**
 	 * Parses a repository URL and attempts an anonymous type detection.
 	 *
-	 * Returns provider/owner/repo/branch, whether the repo is publicly readable,
-	 * and the detection result when public.
+	 * Returns the provider, owner, repository, and branch, along with public access
+	 * status and the detection result when the repository is public.
 	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
@@ -879,11 +873,9 @@ class REST_Repositories {
 	/**
 	 * Describes why a resolve attempt failed, separating access from everything else.
 	 *
-	 * Treating every failure as "not found or no access" turned a rate limit into an
-	 * accusation that the user cannot see their own public repository. Only 404 and 401
-	 * say anything about visibility. GitHub answers 404 for a private repo precisely so
-	 * an anonymous caller cannot tell it apart from a missing one. A 403 is the hourly
-	 * limit, and a 5xx or a transport failure is the provider's problem.
+	 * Only 404 and 401 indicate an access problem. GitHub uses 404 for private
+	 * repositories so anonymous callers cannot distinguish them from missing ones.
+	 * Rate limits and transport failures are provider errors instead.
 	 *
 	 * @since 1.0.0
 	 * @param \WP_Error $err Failure from the detection call.
@@ -971,7 +963,7 @@ class REST_Repositories {
 			];
 		}
 
-		// GitLab.com or self-hosted GitLab.
+		// Support GitLab.com and self-hosted GitLab URLs.
 		$is_gitlab_com = 'gitlab.com' === $host;
 		$custom_url    = '';
 		$custom_host   = '';
@@ -996,7 +988,7 @@ class REST_Repositories {
 		$is_custom_gitlab = '' !== $custom_host;
 
 		if ( $is_gitlab_com || $is_custom_gitlab ) {
-			// Strip /-/tree/branch or /tree/branch.
+			// Remove /-/tree/branch and /tree/branch URL segments.
 			$branch = '';
 			if ( preg_match( '#^(.+)/-/tree/(.+)$#', $path, $m ) ) {
 				$path   = rtrim( $m[1], '/' );

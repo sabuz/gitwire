@@ -125,7 +125,7 @@ class REST_Connections {
 
 		if ( '' !== $id ) {
 			Connection_Meta::write_public_metadata( $id, $provider, $valid['identifier'], $valid['gitlab_url'] );
-			// Pre-warm the repo cache so the user sees repos immediately on first browse.
+			// Warm the repository cache so the first browse loads immediately.
 			Repositories::fetch_repositories( $provider, 1, $id );
 		}
 

@@ -286,7 +286,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 
 		$headers = $this->headers();
 
-		// HEAD so a direct-serve response never costs us the whole archive twice.
+		// Use HEAD first to avoid downloading an archive that can be served directly.
 		$probe = wp_remote_head(
 			$url,
 			[
@@ -311,7 +311,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 
 		$response = $this->stream_to( $url, $headers, $tmp_file );
 
-		// HEAD and GET can disagree; catch a redirect the probe did not see.
+		// Revalidate redirects because HEAD and GET may resolve differently.
 		if ( ! is_wp_error( $response )
 			&& in_array( (int) wp_remote_retrieve_response_code( $response ), [ 301, 302, 307, 308 ], true )
 		) {
@@ -321,7 +321,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 				@unlink( $tmp_file );
 				return new \WP_Error( 'gitwire_no_location', __( 'Bitbucket did not return a download URL.', 'gitwire' ) );
 			}
-			// the redirect target is chosen by the remote, so it gets the same host check the base URL got.
+			// Validate the redirect target with the same host checks as the base URL.
 			if ( ! Settings::is_safe_remote_url( $location ) ) {
 				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 				@unlink( $tmp_file );
@@ -428,6 +428,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 		];
 		if ( $this->email && $this->api_token ) {
 			// Atlassian API tokens use Basic auth with email:token.
+
 			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 			$h['Authorization'] = 'Basic ' . base64_encode( $this->email . ':' . $this->api_token );
 		}
@@ -464,7 +465,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 			if ( ! is_string( $message ) ) {
 				$message = $fallback;
 			}
-			// Scope errors mean the API token was created without Bitbucket access.
+			// Scope errors indicate that the API token lacks Bitbucket access.
 			if ( 403 === $code && str_contains( $message, 'privilege scopes' ) ) {
 				$message = 'Your API token lacks Bitbucket access. When creating the token at id.atlassian.com, choose Scopes → Bitbucket → Read (or use a Classic API token).';
 			}

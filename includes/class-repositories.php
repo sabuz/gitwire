@@ -17,9 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Data layer for the gitwire_repositories table.
  *
- * One row per repo per connection. Cron owns freshness; reads return whatever is in
- * the table regardless of age. updated_at is a cron-cycle marker used only for
- * stale-row cleanup after each refresh.
+ * One row per repository and connection. Cron controls freshness; reads return the
+ * stored data regardless of age. updated_at marks the current refresh cycle and is
+ * used only to remove stale rows after a refresh.
  */
 class Repositories {
 
@@ -68,8 +68,8 @@ class Repositories {
 	/**
 	 * Returns a cached detection result.
 	 *
-	 * Detections are stored per repository, not per branch: the browse cache holds one
-	 * row per repo and every read path only ever asks about its default branch.
+	 * Detection results are stored per repository, not per branch. The browse cache keeps
+	 * one row per repository, and reads use its default branch.
 	 *
 	 * @since 1.0.0
 	 * @param string $provider Provider key.
@@ -111,7 +111,7 @@ class Repositories {
 	public static function clear_repositories( ?string $connection_id = null ): void {
 		Repository::instance()->clear( $connection_id ?? '' );
 
-		// Drop any parked cursor too, or a deleted connection resumes from nowhere.
+		// Clear the parked cursor so a deleted connection cannot resume from it.
 		$state = self::get_refresh_state();
 		if ( null === $connection_id ) {
 			$state = [];
@@ -130,7 +130,7 @@ class Repositories {
 	public static function clear_repository_types(): void {
 		Repository::instance()->clear_types();
 
-		// One-time cleanup of legacy gitwire_repo_type_* options from sites that ran an older build.
+		// Remove legacy gitwire_repo_type_* options created by older releases.
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
@@ -273,7 +273,7 @@ class Repositories {
 			} while ( $has_more );
 
 			if ( $exhausted ) {
-				// Park the cursor and stop; the next tick resumes this connection mid-sweep.
+				// Save the cursor so the next scheduled run resumes this connection.
 				$state[ $id ] = [
 					'page'        => $page,
 					'cycle_start' => $cycle_start,
@@ -283,8 +283,8 @@ class Repositories {
 			}
 
 			/*
-			 * Only prune once a sweep has actually seen every page. Doing it after a
-			 * partial sweep would delete every repo the run never reached.
+			 * Prune only after the sweep has seen every page. A partial sweep must not
+			 * delete repositories that it has not reached.
 			 */
 			if ( ! $conn_err ) {
 				Repository::instance()->remove_stale_since( $id, $cycle_start );
@@ -324,11 +324,10 @@ class Repositories {
 	}
 
 	/**
-	 * Scheduled cron callback: refreshes repo lists only.
+	 * Scheduled callback that refreshes repository lists only.
 	 *
-	 * All type detection, re-detecting known types and typing the untyped, runs on its
-	 * own schedule (gitwire_refresh_repository_types) instead, since Repository Refresh
-	 * Frequency and Repository Type Refresh Frequency are independent settings.
+	 * Type detection runs on its own schedule because Repository Refresh Frequency and
+	 * Repository Type Refresh Frequency are independent settings.
 	 *
 	 * @since 1.0.0
 	 * @return void
@@ -340,8 +339,8 @@ class Repositories {
 	/**
 	 * Scheduled cron callback for the repository type re-detection event.
 	 *
-	 * Checks the detection setting rather than trusting the schedule, so an event left
-	 * behind from before detection was turned off doesn't keep spending API calls.
+	 * Checks the detection setting instead of trusting the schedule. An event left over
+	 * from before detection was disabled must not continue spending API calls.
 	 *
 	 * @since 1.0.0
 	 * @return void
@@ -355,12 +354,11 @@ class Repositories {
 	}
 
 	/**
-	 * Scheduled cron callback: types cache rows that have no detection yet.
+	 * Scheduled callback that detects types for cache rows without a result.
 	 *
-	 * Runs on its own fixed cadence, independent of both refresh frequencies, since it
-	 * is opportunistic work (typing repos nobody has checked yet) rather than a
-	 * freshness sweep, and the rate-limit guard inside already keeps it from competing
-	 * with real API usage.
+	 * Runs on a fixed cadence, independent of both refresh frequencies. It detects types
+	 * for repositories that have no result yet, and its rate-limit guard protects normal
+	 * API requests.
 	 *
 	 * @since 1.0.0
 	 * @return void
@@ -386,7 +384,7 @@ class Repositories {
 				continue;
 			}
 
-			// Keyed so two installs of the same repo are only detected once.
+			// Key results by repository so multiple installs are detected only once.
 			$targets[ $provider . ':' . $owner . '/' . $repo ] = [
 				'provider'      => $provider,
 				'owner'         => $owner,

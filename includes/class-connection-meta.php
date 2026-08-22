@@ -220,7 +220,7 @@ class Connection_Meta {
 	private static function fetch_gitlab_profile( string $username, string $host_url = '' ): ?array {
 		$base = rtrim( $host_url ? $host_url : 'https://gitlab.com', '/' );
 
-		// Re-validate at request time, since DNS can rebind between save and the next cron tick.
+		// Revalidate at request time because DNS can change after the setting is saved.
 		if ( $host_url && ! Settings::is_allowed_gitlab_url( $base ) ) {
 			return null;
 		}
@@ -263,7 +263,7 @@ class Connection_Meta {
 	 */
 	public static function get_public_github_rate( string $id, string $username, string $avatar_url = '' ): ?array {
 		$cached = self::get_public_connections_metadata( $id );
-		// rate_limit = 0 means the row was just inserted with no real data; always fetch.
+		// A zero rate limit indicates a new row; always fetch fresh data.
 		if ( null !== $cached && ( $cached['rate_limit'] ?? 0 ) > 0 && ( time() - ( $cached['updated_at'] ?? 0 ) ) < 900 ) {
 			return $cached;
 		}

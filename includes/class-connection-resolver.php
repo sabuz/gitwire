@@ -44,7 +44,7 @@ class Connection_Resolver {
 	public static function all(): array {
 		$rows = Connection::instance()->all();
 
-		// Build a set of provider:identifier pairs covered by a Pro (credentialed) row.
+		// Record provider and identifier pairs covered by Pro credentials.
 		$private_keys = [];
 		foreach ( $rows as $row ) {
 			if ( ! empty( $row['credentials'] ) ) {
@@ -52,7 +52,7 @@ class Connection_Resolver {
 			}
 		}
 
-		// Drop public rows shadowed by a Pro row with the same provider + identifier.
+		// Remove public rows covered by Pro credentials for the same provider and identifier.
 		if ( ! empty( $private_keys ) ) {
 			$rows = array_values(
 				array_filter(

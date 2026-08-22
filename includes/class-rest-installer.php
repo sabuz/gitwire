@@ -132,7 +132,7 @@ class REST_Installer {
 			return;
 		}
 
-		// One fetch serves both: the newest entry is the head we were about to ask for.
+		// Use one fetch because its newest entry provides the requested head commit.
 		Installer::set_head( $provider, $owner . '/' . $repo, $commits[0]['sha'] );
 		self::save_cached_commits( $record['id'], $branch, $commits );
 	}
@@ -363,7 +363,7 @@ class REST_Installer {
 			if ( null !== $scope_error ) {
 				return $scope_error;
 			}
-			// Unknown ids (public sources, stale connections) install via the public path.
+			// Unknown or stale connection IDs use the public installation path.
 			if ( ! Connection_Resolver::find( $connection_id ) ) {
 				$connection_id = null;
 			}
@@ -560,7 +560,7 @@ class REST_Installer {
 				$rec['provider'] = 'github';
 			}
 
-			// Without Pro there are no connections to reconnect to, so updates fall back to public.
+			// Without Pro connections, updates use the public installation path.
 			$conn_id = $rec['connection_id'] ?? null;
 			if ( $conn_id && ! empty( $all_connections ) && ! isset( $all_connections[ $conn_id ] ) ) {
 				$rec['needs_reconnect'] = true;
@@ -646,7 +646,7 @@ class REST_Installer {
 		try {
 			$result = Installer::activate( $provider, $full_name );
 		} catch ( \Throwable $e ) {
-			// guard was armed before activation, so clean up before returning.
+			// The guard was armed before activation, so clean up before returning.
 			Error_Handler::abort_pending_guard();
 			Logger::log(
 				sprintf(
@@ -760,7 +760,7 @@ class REST_Installer {
 		self::store_head( $owner, $repo, $branch, $provider, $stored_conn_id );
 
 		if ( ! $is_pull ) {
-			// remote_head was for the previous branch; wipe it so sync_installed re-resolves.
+			// Clear the previous branch's remote head so sync_installed() resolves it again.
 			Installer::set_remote_head( $provider, $full_name, '' );
 		}
 

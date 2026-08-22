@@ -7,7 +7,7 @@ import ImportFromUrl from './import-from-url';
 const RepositoryBrowser = lazy( () => import( './repository-browser' ) );
 
 /**
- * Add Repository tab: repository browser with an Import from URL modal action.
+ * Add Repository tab with a repository browser and Import from URL action.
  *
  * @param {Object}   props                Component props.
  * @param {Array}    props.connections    Browse source records array.

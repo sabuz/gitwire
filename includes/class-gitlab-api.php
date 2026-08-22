@@ -100,13 +100,13 @@ class GitLab_API implements Git_Provider_Interface {
 			];
 		}
 
-		// /user requires read_user or api scope; try project listing to verify the token is valid.
+		// The /user endpoint requires read_user or api scope, so verify the token through project listing.
 		$projects = $this->get( '/projects?membership=true&per_page=1' );
 		if ( is_wp_error( $projects ) ) {
 			$projects = $this->get( '/projects?per_page=1' );
 		}
 		if ( is_wp_error( $projects ) ) {
-			// fine-grained tokens: group listing works when global read_api is absent.
+			// Fine-grained tokens may support group listing without the global read_api scope.
 			$projects = $this->get( '/groups?per_page=1' );
 		}
 		if ( is_wp_error( $projects ) ) {
@@ -348,7 +348,7 @@ class GitLab_API implements Git_Provider_Interface {
 				@unlink( $tmp_file );
 				return new \WP_Error( 'gitwire_no_location', __( 'GitLab did not return a download URL.', 'gitwire' ) );
 			}
-			// the redirect target is chosen by the remote, so it gets the same host check the base URL got.
+			// Validate the redirect target with the same host checks as the base URL.
 			if ( ! Settings::is_safe_remote_url( $location ) ) {
 				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
 				@unlink( $tmp_file );
@@ -434,7 +434,7 @@ class GitLab_API implements Git_Provider_Interface {
 			[
 				'headers'            => $this->headers(),
 				'timeout'            => 15,
-				// WP re-validates the host it is about to connect to, not the one we resolved.
+				// WordPress validates the host it connects to, not the host resolved above.
 				'reject_unsafe_urls' => true,
 			]
 		);
@@ -474,9 +474,8 @@ class GitLab_API implements Git_Provider_Interface {
 		}
 
 		/*
-		 * detect_type() alone can make seven calls per repository, so resolving on
-		 * every one of them meant two synchronous DNS lookups each. Same answer
-		 * within a request, so cache it.
+		 * Cache host validation for the request to avoid repeated synchronous DNS
+		 * lookups during repository detection.
 		 */
 		if ( array_key_exists( $host, self::$host_checked ) ) {
 			return self::$host_checked[ $host ]
@@ -560,7 +559,7 @@ class GitLab_API implements Git_Provider_Interface {
 			[
 				'headers'            => $this->headers(),
 				'timeout'            => 15,
-				// WP re-validates the host it is about to connect to, not the one we resolved.
+				// WordPress validates the host it connects to, not the host resolved above.
 				'reject_unsafe_urls' => true,
 			]
 		);
@@ -584,9 +583,8 @@ class GitLab_API implements Git_Provider_Interface {
 			];
 
 			/*
-			 * Unlike GitHub's fixed hourly shape, GitLab's limit varies per instance
-			 * (2,000/min on GitLab.com, admin-configurable on self-managed), so the
-			 * cache carries both numbers rather than a bare remaining count.
+			 * GitLab rate limits vary by instance, so cache both the limit and the
+			 * remaining request count.
 			 */
 			$conn_key = '' !== $this->connection_id ? $this->connection_id : 'anon';
 			$ttl      = min( max( 1, $reset - time() ), HOUR_IN_SECONDS );

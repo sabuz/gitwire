@@ -144,7 +144,7 @@ class REST {
 	public static function can_write_installed( \WP_REST_Request $request ): bool {
 		$record = self::record_for( $request );
 
-		// Nothing to write to; let the handler answer 404 rather than 403.
+		// Return 404 when the request has no writable resource.
 		if ( ! $record ) {
 			return self::can_write_plugins() || self::can_write_themes();
 		}

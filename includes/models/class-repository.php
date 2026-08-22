@@ -128,7 +128,7 @@ class Repository extends Model_Base {
 				if ( ! $has_any ) {
 					return null;
 				}
-				// Table has rows but filters matched nothing, so fall through to return empty list.
+				// Existing rows with no matches mean the filtered result is empty.
 			} else {
 				return null;
 			}
@@ -147,7 +147,7 @@ class Repository extends Model_Base {
 						$row['type_meta'] = json_decode( $row['type_meta'], true );
 					}
 
-					// wpdb hands back tinyint as "0"/"1", and "0" is truthy once it reaches JS.
+					// WordPress returns tinyint values as strings, and "0" is truthy in JavaScript.
 					$row['private']          = (bool) ( $row['private'] ?? false );
 					$row['last_activity_at'] = self::to_iso8601( (string) ( $row['last_activity_at'] ?? '' ) );
 
@@ -163,11 +163,9 @@ class Repository extends Model_Base {
 	/**
 	 * Converts a stored UTC datetime to ISO-8601 for the client.
 	 *
-	 * The column is written with gmdate(), but 'Y-m-d H:i:s' is not a format JavaScript
-	 * parses as UTC. Date() reads the space-separated form as local time, shifting every
-	 * relative timestamp by the viewer's offset. The epoch sentinel written for repos
-	 * whose provider gave no usable date becomes an empty string, so the UI can leave it
-	 * out rather than render "56y ago".
+	 * Convert the stored UTC value to a format JavaScript parses as UTC. The epoch
+	 * sentinel used when a provider has no date becomes an empty string so the UI does
+	 * not display it as an old timestamp.
 	 *
 	 * @since 1.0.0
 	 * @param string $stored Datetime as stored, in UTC.
@@ -189,8 +187,8 @@ class Repository extends Model_Base {
 	 *
 	 * @since 1.0.0
 	 * @param string                           $connection_id Connection ID.
-	 * @param array<int, array<string, mixed>> $repos Array of repo payloads from the provider API.
-	 * @param string                           $provider      Provider key; overrides per-repo 'provider' when set.
+	 * @param array<int, array<string, mixed>> $repos Array of repository payloads from the provider API.
+	 * @param string                           $provider      Provider key; overrides each repository's provider when set.
 	 * @param string                           $stamp         Cycle marker for updated_at; empty uses the current time.
 	 * @return bool False when nothing was written.
 	 */
@@ -232,9 +230,8 @@ class Repository extends Model_Base {
 		}
 
 		/*
-		 * Chunked rather than one row per query: autocommit turns every INSERT into
-		 * its own transaction, so a per-row loop costs one durability flush per repo.
-		 * 100 keeps the statement well under a 4 MB max_allowed_packet.
+		 * Insert rows in batches because autocommit creates a transaction for each
+		 * statement. A batch of 100 stays well below max_allowed_packet.
 		 */
 		foreach ( array_chunk( $rows, 100 ) as $chunk ) {
 			$tuples = implode( ', ', array_fill( 0, count( $chunk ), '(%s, %s, %s, %s, %s, %d, %s, %s, %s, %s)' ) );
@@ -284,7 +281,7 @@ class Repository extends Model_Base {
 	}
 
 	/**
-	 * Returns the type detection result for a provider/repo pair, or null.
+	 * Returns the type detection result for a provider and repository, or null.
 	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider.
@@ -304,7 +301,7 @@ class Repository extends Model_Base {
 	}
 
 	/**
-	 * Stores a type detection result for a provider/repo pair.
+	 * Stores a type detection result for a provider and repository.
 	 *
 	 * Updates all connection rows that share the full_name, then upserts a
 	 * connection-agnostic fallback when no real browse-cache row exists yet (URL import path).
@@ -321,8 +318,10 @@ class Repository extends Model_Base {
 		$table     = $this->table_name();
 		$meta_json = $meta ? wp_json_encode( $meta ) : null;
 
-		// Update existing rows for this repo across all connection_ids. Scoped by provider
-		// to match get_type(): the same owner/name can exist on two hosts as two repos.
+		/*
+		 * Update all connection-specific rows for this repository. Include the provider
+		 * because the same owner and name may exist on multiple hosts.
+		 */
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->update(
 			$this->table_name(),
@@ -339,6 +338,7 @@ class Repository extends Model_Base {
 		);
 
 		// Upsert a connection-agnostic fallback when no real connection row exists (URL import path).
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$has_real = (bool) $wpdb->get_var( $wpdb->prepare( "SELECT 1 FROM `{$table}` WHERE provider = %s AND full_name = %s AND connection_id != '' LIMIT 1", $provider, $full_name ) );
 
@@ -396,10 +396,12 @@ class Repository extends Model_Base {
 		$table = $this->table_name();
 
 		// Reset type columns on all connection-specific rows.
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET type = '', type_meta = NULL WHERE connection_id != %s", '' ) );
 
 		// Remove URL-import fallback rows written by set_type() (connection_id = '').
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->delete( $this->table_name(), [ 'connection_id' => '' ], [ '%s' ] );
 
@@ -449,11 +451,9 @@ class Repository extends Model_Base {
 	/**
 	 * Deletes rows for a connection that this refresh cycle did not touch.
 	 *
-	 * Only safe once a sweep has walked every page: anything still carrying an
-	 * updated_at from before the cycle began is a repo the provider no longer
-	 * returns. Using the cycle stamp rather than a full_name list keeps this to one
-	 * bound parameter instead of one per repository, and lets a sweep that spans
-	 * several cron ticks finish correctly.
+	 * Run this only after a sweep has visited every page. A row with an older updated_at
+	 * value is no longer returned by the provider. The cycle stamp uses one parameter
+	 * and also supports sweeps that span several cron ticks.
 	 *
 	 * @since 1.0.0
 	 * @param string $connection_id Connection ID.

@@ -72,7 +72,7 @@ class Logger {
 		if ( ! Settings::is_logging_enabled() ) {
 			return;
 		}
-		// 'error' minimum level silences non-error entries.
+		// The error level excludes non-error entries.
 		if ( 'error' === Settings::get_log_level() && 'error' !== $level ) {
 			return;
 		}

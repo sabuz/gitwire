@@ -17,13 +17,13 @@ import { normalizeSlug, finalizeSlug } from '../slug';
 import DetectionBadge from './detection-badge';
 
 /**
- * Inline install form: branch picker, slug, detection badge, Install button.
- * Renders without any Modal wrapper so it can be embedded inside a parent modal.
+ * Inline install form with branch, slug, detection, and install controls.
+ * Renders without a modal wrapper so it can be embedded in another modal.
  *
  * @param {Object}      props                      Component props.
  * @param {Object}      props.repo                 Repository data object.
  * @param {string}      props.provider             Git provider.
- * @param {string}      [props.connectionId]       Connection ID used to fetch this repo.
+ * @param {string}      [props.connectionId]       Connection ID used to fetch this repository.
  * @param {boolean}     props.smartInstall         Whether smart install is enabled.
  * @param {boolean}     [props.autoDetectType]     Whether type detection runs at all.
  * @param {Object|null} props.detection            Pre-fetched detection result, if any.
@@ -70,7 +70,7 @@ export function InstallForm( {
 	const askForType =
 		! autoDetectType || ( 'unknown' === detection?.type && ! smartInstall );
 
-	// Nothing here can be installed, so the fields deciding how are noise.
+	// Hide installation options when Smart Install blocks the repository.
 	const blockedBySmartInstall = smartInstall && 'unknown' === detection?.type;
 
 	const setInstallingState = ( val ) => {
@@ -94,15 +94,17 @@ export function InstallForm( {
 	}, [ allBranches, branchFilter, branch, repo.default_branch ] );
 
 	useEffect( () => {
-		// A detection handed in already blocked means no branch will ever be picked.
+		// Skip branch loading when the detection result blocks installation.
 		if ( ! blockedBySmartInstall ) {
 			api.getBranches( repo.owner, repo.name, provider, connectionId )
 				.then( ( b ) => setAllBranches( b ) )
 				.catch( () => {} );
 		}
 
-		// With detection off the type is the installer's to choose, so asking a provider
-		// for one would spend a call on an answer that gets ignored.
+		/*
+		 * Request detection only when auto-detection is enabled and no result was
+		 * provided.
+		 */
 		if ( ! initialDetection && autoDetectType ) {
 			api.detectRepo(
 				repo.owner,
@@ -130,7 +132,7 @@ export function InstallForm( {
 		}
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Debounced slug conflict check.
+	// Check for slug conflicts after the user stops typing.
 	useEffect( () => {
 		setSlugChecking( true );
 		setReplace( false );
@@ -163,8 +165,7 @@ export function InstallForm( {
 		};
 	}, [ slug, type, blockedBySmartInstall ] );
 
-	// Nothing resolves the detection when it is switched off, so waiting on one here
-	// would leave the Install button disabled for good.
+	// Treat detection as settled when auto-detection is disabled.
 	const detectionSettled = ! autoDetectType || !! detection;
 
 	const canInstall =
@@ -323,7 +324,7 @@ export function InstallForm( {
  * @param {Object}      props.repo             Repository data object.
  * @param {boolean}     props.smartInstall     Whether smart install is enabled.
  * @param {boolean}     [props.autoDetectType] Whether type detection runs at all.
- * @param {string}      [props.connectionId]   Connection ID used to fetch this repo.
+ * @param {string}      [props.connectionId]   Connection ID used to fetch this repository.
  * @param {Function}    props.onClose          Callback fired when the modal is closed.
  * @param {Function}    props.onInstalled      Callback fired after a successful install.
  * @param {string}      props.provider         Git provider: 'github' or 'gitlab'.

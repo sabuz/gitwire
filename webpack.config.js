@@ -1,10 +1,8 @@
 /**
  * Extends the @wordpress/scripts webpack config.
  *
- * wp-scripts sets Terser's extractComments to false, which strips the license
- * banners out of the bundle. One bundled dependency (sonner) is MIT, and MIT
- * requires its notice to travel with the code, so comment extraction is turned
- * back on and the emitted build/index.js.LICENSE.txt ships with the plugin.
+ * Enable license-comment extraction for bundled dependencies. The sonner
+ * dependency is MIT-licensed and requires its notice to ship with the bundle.
  */
 const defaultConfig = require( '@wordpress/scripts/config/webpack.config' );
 

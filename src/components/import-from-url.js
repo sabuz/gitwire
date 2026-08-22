@@ -40,7 +40,7 @@ function installButtonLabel( installing, slugChecking ) {
 }
 
 /**
- * Full Import from URL flow: URL input → Check → install form (inline, no modal).
+ * Full Import from URL flow: URL input, check, and inline install form.
  *
  * @param {Object}   props                  Component props.
  * @param {Object}   props.settings         Plugin settings.
@@ -56,12 +56,12 @@ export default function ImportFromUrl( {
 	onGoToSettings,
 } ) {
 	const [ url, setUrl ] = useState( '' );
-	// step: idle | checking | error | resolved | private | verifying-conn | installing
+	/* Install states: idle, checking, error, resolved, private, verifying connection, or installing. */
 	const [ step, setStep ] = useState( 'idle' );
 	const [ checkError, setCheckError ] = useState( null );
 	const [ resolved, setResolved ] = useState( null );
 
-	// Install-form state (populated once resolve succeeds or connection verified).
+	// Install-form state populated after repository resolution or connection verification.
 	const [ allBranches, setAllBranches ] = useState( [] );
 	const [ branch, setBranch ] = useState( 'main' );
 	const [ branchFilter, setBranchFilter ] = useState( '' );
@@ -82,9 +82,9 @@ export default function ImportFromUrl( {
 			const defaultBranch = info.branch || 'main';
 			setBranch( defaultBranch );
 			/*
-			 * Resolve and connect still detect, since that round trip is what proves the
-			 * repo is reachable at all. With detection off the answer just isn't used to
-			 * pick a type or shown as a badge.
+			 * Resolve and connection verification still perform detection because they
+			 * confirm repository access. When auto-detection is disabled, the result is
+			 * not used for type selection or display.
 			 */
 			setDetection( autoDetectType ? info.detection : null );
 			setType(
@@ -105,7 +105,7 @@ export default function ImportFromUrl( {
 			setAllBranches( [] );
 			setBranchFilter( '' );
 
-			// Blocked here means no branch will ever be picked, so skip the round trip.
+			// Skip branch loading when Smart Install blocks the repository.
 			if ( smartInstall && 'unknown' === info.detection?.type ) {
 				return;
 			}
@@ -118,7 +118,7 @@ export default function ImportFromUrl( {
 			)
 				.then( ( b ) => {
 					setAllBranches( b );
-					// if the hardcoded fallback branch doesn't exist, use the repo's real default
+					// Use the repository default when the fallback branch is unavailable.
 					setBranch( ( current ) =>
 						b.length > 0 && ! b.includes( current )
 							? b[ 0 ]
@@ -168,7 +168,7 @@ export default function ImportFromUrl( {
 				} );
 				setStep( 'resolved' );
 			} else if ( result.error && ! result.error.is_access ) {
-				// A rate limit or a provider outage says nothing about access.
+				// Treat rate limits and provider outages separately from access errors.
 				setCheckError( result.error.message );
 				setStep( 'error' );
 			} else {
@@ -220,8 +220,10 @@ export default function ImportFromUrl( {
 				} );
 				setStep( 'resolved' );
 			} catch ( e ) {
-				// Same split as the resolve above: only 401/404 mean this connection
-				// cannot see the repo and another one might.
+				/*
+				 * Only 401 and 404 indicate that this connection cannot access the
+				 * repository.
+				 */
 				const status = e?.data?.status ?? 0;
 				if ( 401 !== status && 404 !== status ) {
 					setCheckError(
@@ -237,7 +239,7 @@ export default function ImportFromUrl( {
 		[ resolved, initInstallForm, installed ]
 	);
 
-	// Debounced slug conflict check, only active while showing the install form.
+	// Check for slug conflicts only while the install form is visible.
 	useEffect( () => {
 		if (
 			step !== 'resolved' ||
@@ -336,13 +338,12 @@ export default function ImportFromUrl( {
 	}, [ allBranches, branchFilter, branch ] );
 
 	/*
-	 * Either detection is off, so the choice was always the installer's, or it ran and
-	 * came back unrecognised with nothing left to enforce.
+	 * Ask for a type when detection is disabled or Smart Install allows unknown types.
 	 */
 	const askForType =
 		! autoDetectType || ( 'unknown' === detection?.type && ! smartInstall );
 
-	// Nothing here can be installed, so the fields deciding how are noise.
+	// Hide installation options when Smart Install blocks the repository.
 	const blockedBySmartInstall = smartInstall && 'unknown' === detection?.type;
 
 	const canInstall =
@@ -357,7 +358,7 @@ export default function ImportFromUrl( {
 	const isBusy =
 		step === 'checking' || step === 'verifying-conn' || isInstalling;
 
-	// Pro renders a connection picker here; free shows a passive notice
+	// Pro renders a connection picker; the free version renders an informational notice.
 	const privatePicker = resolved
 		? applyFilters( 'gitwire.importUrl.privatePicker', null, {
 				resolved,
@@ -368,7 +369,7 @@ export default function ImportFromUrl( {
 
 	return (
 		<div className="gitwire-import-url">
-			{ /* URL input row, always shown unless actively installing */ }
+			{ /* URL input row. */ }
 			{ ! isInstalling && (
 				<Flex
 					gap={ 3 }
@@ -419,7 +420,7 @@ export default function ImportFromUrl( {
 				</p>
 			) }
 
-			{ /* Private / not-found state */ }
+			{ /* Private or not-found state. */ }
 			{ ( step === 'private' || step === 'verifying-conn' ) &&
 				resolved && (
 					<>
@@ -457,7 +458,7 @@ export default function ImportFromUrl( {
 					</>
 				) }
 
-			{ /* Inline install form (public path or post-connection verify) */ }
+			{ /* Inline install form. */ }
 			{ showInstallForm && resolved && (
 				<div className="gitwire-import-url__install-form">
 					{ autoDetectType && (

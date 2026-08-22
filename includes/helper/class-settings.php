@@ -65,7 +65,7 @@ class Settings {
 				'type'    => 'bool',
 				'default' => true,
 			],
-			// Page size is the detection bill: an unauthenticated GitHub gets 60 an hour.
+			// Page size determines the number of detection requests; unauthenticated GitHub allows 60 per hour.
 			'repos_per_page'                    => [
 				'type'    => 'int',
 				'default' => 20,
@@ -155,10 +155,8 @@ class Settings {
 		}
 
 		/*
-		 * Smart Install cannot decide anything without a detected type, so it implies
-		 * detection. Enforced on read rather than on save so the browse UI, the cron
-		 * gate, and the settings toggle can never disagree about a stored pair that
-		 * says otherwise.
+		 * Smart Install requires type detection. Enforce this on read so the UI, cron
+		 * processing, and saved settings remain consistent.
 		 */
 		if ( ! empty( $out['smart_install'] ) ) {
 			$out['auto_detect_type'] = true;
@@ -208,8 +206,10 @@ class Settings {
 				return max( (int) $rule['min'], min( (int) $rule['max'], (int) $value ) );
 
 			case 'enum':
-				// Numeric options arrive as strings from JSON; compare loosely then
-				// return the canonical value from the allow-list.
+				/*
+				 * JSON supplies numeric options as strings. Compare loosely, then return
+				 * the canonical value from the allow-list.
+				 */
 				foreach ( $rule['values'] as $allowed ) {
 					if ( is_int( $allowed ) && (string) $allowed === (string) $value ) {
 						return $allowed;
@@ -380,7 +380,7 @@ class Settings {
 			}
 		}
 
-		// Resolve IPv6 (gethostbyname only covers A records).
+		// Resolve IPv6 because gethostbyname() only covers A records.
 		if ( function_exists( 'dns_get_record' ) ) {
 			$aaaa = dns_get_record( $host, DNS_AAAA );
 			if ( is_array( $aaaa ) ) {
@@ -426,19 +426,19 @@ class Settings {
 	public static function is_safe_ip( string $ip ): bool {
 		$ip = strtolower( trim( $ip ) );
 
-		// IPv6 loopback and unspecified.
+		// Reject IPv6 loopback and unspecified addresses.
 		if ( in_array( $ip, [ '::1', '::' ], true ) ) {
 			return false;
 		}
 
 		/*
-		 * Unwrap IPv4-mapped and IPv4-compatible IPv6 before anything else. PHP's
-		 * range flags only learned to see through the wrapper in 8.5, so on 8.0, the
-		 * supported floor, ::ffff:127.0.0.1 validated as a public address. Unwrapping
-		 * the packed bytes rather than the text form covers every spelling of the same
-		 * address: ::ffff:7f00:1 and 0:0:0:0:0:ffff:127.0.0.1 are both 127.0.0.1.
+		 * Normalize IPv4-mapped and IPv4-compatible IPv6 addresses before applying
+		 * range checks. Older supported PHP versions do not reliably classify these
+		 * forms as private or loopback addresses.
 		 */
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- a malformed address is a plain false return here, not a condition worth warning about.
+		// A malformed address returns false and does not require a warning.
+
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		$packed = @inet_pton( $ip );
 
 		if ( false !== $packed && 16 === strlen( $packed ) ) {
@@ -449,12 +449,12 @@ class Settings {
 			}
 		}
 
-		// 127.0.0.0/8 loopback range, not covered by FILTER_FLAG_NO_RES_RANGE.
+		// Reject the 127.0.0.0/8 loopback range, which the filter does not cover.
 		if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) && str_starts_with( $ip, '127.' ) ) {
 			return false;
 		}
 
-		// Cloud metadata service IPs (link-local IPv4 and AWS IPv6).
+		// Reject cloud metadata service addresses.
 		if ( in_array( $ip, [ '169.254.169.254', 'fd00:ec2::254' ], true ) ) {
 			return false;
 		}

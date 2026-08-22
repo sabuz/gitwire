@@ -96,8 +96,9 @@ class REST_Settings {
 			Plugin::instance()->schedule_repos_cron();
 		}
 
-		// Toggling detection off or on schedules the same event, so it has to be
-		// checked alongside the frequency itself.
+		/*
+		 * Check detection changes with the frequency because both use the same event.
+		 */
 		if ( ( $merged['repository_type_refresh_frequency'] ?? 'weekly' ) !== $prev_type_freq
 			|| Settings::is_type_detection_enabled() !== $prev_detection
 		) {

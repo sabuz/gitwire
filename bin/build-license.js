@@ -2,15 +2,9 @@
 /**
  * Regenerates the third-party section of license.txt.
  *
- * WordPress core keeps its own third-party notices inside license.txt rather
- * than in a separate file, so this follows that shape: one licence file, with
- * the GPL text above and the bundled notices below a marker. Only the part
- * below the marker is generated; everything above it is edited by hand.
- *
- * The notices are read from the webpack module list, not from package.json.
- * Most of what needs attributing arrives transitively: @wordpress/dataviews is
- * not on the externals list wp-scripts resolves against, so it and its whole
- * tree are compiled into the bundle.
+ * WordPress keeps third-party notices in license.txt below a marker. Only that
+ * section is generated; the GPL text above it is edited by hand. Notices come
+ * from the webpack module list so transitive bundled dependencies are included.
  *
  * Run with `npm run licenses` after changing dependencies.
  */
@@ -25,7 +19,7 @@ const LICENSE = path.join( ROOT, 'license.txt' );
 const MARKER =
 	'This program incorporates work covered by the following copyright and\npermission notices:';
 
-// Licences that waive the notice requirement; listed but not quoted in full.
+// Licenses that waive the notice requirement and need no full text.
 const NO_NOTICE_REQUIRED = [ '0BSD', 'CC0-1.0', 'Unlicense' ];
 
 function bundledPackages() {
@@ -51,8 +45,8 @@ function licenceText( pkgDir ) {
 }
 
 /**
- * Reconstructs the MIT notice for a package that declares MIT but ships no
- * licence file. Several of the change-case family do exactly that.
+ * Reconstructs the MIT notice for packages that declare an MIT license but do
+ * not include a license file.
  *
  * @param {Object} meta Parsed package.json.
  * @return {string|null} Licence text, or null when the author is unknown.

@@ -9,9 +9,8 @@ use Gitwire\Installer;
 use PHPUnit\Framework\TestCase;
 
 /**
- * A GitLab subgroup makes full_name three or more segments. Splitting it at the
- * first slash produced an owner and a repo that overlapped, so every caller that
- * rebuilt the pair addressed a project that does not exist.
+ * GitLab subgroup paths can contain multiple segments, so repository names must be
+ * split at the last slash to keep the owner and repository unambiguous.
  *
  * @covers Gitwire\Installer
  */

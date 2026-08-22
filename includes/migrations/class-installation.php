@@ -63,7 +63,7 @@ class Installation extends Migration_Base {
 			return false;
 		}
 
-		// rename plugin_file → basename on pre-1.0 installs (dbDelta cannot rename columns).
+		// Rename plugin_file to basename on pre-1.0 installs because dbDelta cannot rename columns.
 		if ( $this->column_exists( self::TABLE, 'plugin_file' ) && ! $this->column_exists( self::TABLE, 'basename' ) ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			if ( false === $wpdb->query( "ALTER TABLE `{$table}` CHANGE `plugin_file` `basename` VARCHAR(512) DEFAULT NULL" ) ) {

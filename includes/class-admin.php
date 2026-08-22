@@ -46,23 +46,18 @@ class Admin {
 	 * @return void
 	 */
 	public static function init(): void {
-		// Plugins/themes are network-shared resources, so the menu lives in Network
-		// Admin on multisite. Only a Super Admin can reach it there, not every
-		// site's own Administrator (see required_cap() below).
+		// Register the menu in Network Admin on multisite because plugins and themes are shared.
 		add_action( is_multisite() ? 'network_admin_menu' : 'admin_menu', [ self::class, 'add_menu' ] );
 		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue' ] );
 		add_filter( 'admin_body_class', [ self::class, 'body_class' ] );
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
 		add_action( 'admin_head', [ self::class, 'hide_footer_text' ], 999 );
 
-		// Native list repo labels.
+		// Add labels to native plugin and theme lists.
 		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
 		add_filter( 'wp_prepare_themes_for_js', [ self::class, 'label_managed_themes' ] );
 
-		// Repositories and Settings links in the plugins list table. Gitwire is only
-		// site-activated on the main site, so its row still appears on that site's
-		// own Plugins page as well as (for multisite) Network Admin's; each fires a
-		// differently named filter for the same row.
+		// Add action links on both the site Plugins screen and Network Admin.
 		$link_filter = is_multisite() ? 'network_admin_plugin_action_links_' : 'plugin_action_links_';
 		add_filter( $link_filter . GITWIRE_BASENAME, [ self::class, 'add_plugin_action_links' ] );
 	}
@@ -287,7 +282,7 @@ class Admin {
 			'version'      => GITWIRE_VERSION,
 		];
 
-		// wp-scripts outputs styles imported in JS to style-index.css.
+		// wp-scripts writes styles imported by JavaScript to style-index.css.
 		$css_file = file_exists( GITWIRE_DIR . 'build/index.css' )
 			? GITWIRE_URL . 'build/index.css'
 			: GITWIRE_URL . 'build/style-index.css';
@@ -299,7 +294,7 @@ class Admin {
 			$asset['version']
 		);
 
-		// wp-scripts emits style-index-rtl.css alongside the LTR build.
+		// wp-scripts writes style-index-rtl.css beside the left-to-right build.
 		wp_style_add_data( 'gitwire-app', 'rtl', 'replace' );
 
 		wp_enqueue_script(
@@ -319,7 +314,7 @@ class Admin {
 		if ( $pending_msg ) {
 			delete_option( 'gitwire_pending_message' );
 		}
-		// Boot data uses only DB records; orphan detection runs via REST on app init.
+		// Boot data uses database records; REST detects orphans when the app starts.
 		$installed = REST_Installer::annotate_installed( Installer::get_installed() );
 
 		// Derive initial tab from path param or setup status.

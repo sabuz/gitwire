@@ -147,9 +147,11 @@ class Theme_Scraper {
 		$cookies = self::get_loopback_cookies();
 		$headers = self::get_loopback_headers();
 
-		// Keeps the PHP process alive until every loopback request has come back.
+		// Keep the PHP process alive until all loopback requests return.
 		if ( function_exists( 'set_time_limit' ) ) {
-			// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Core does the same in its own loopback scrape, see wp_edit_theme_plugin_file().
+			// Core uses the same function for its loopback scrape.
+
+			// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
 			set_time_limit( 5 * MINUTE_IN_SECONDS );
 		}
 
@@ -161,7 +163,9 @@ class Theme_Scraper {
 
 		$admin_url = $urls[0] ?? admin_url( 'themes.php' );
 
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core filter, documented in wp-includes/class-wp-http-streams.php.
+		// This is a WordPress core filter.
+
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 		$sslverify = apply_filters( 'https_local_ssl_verify', false, $admin_url );
 
 		$parsed = self::scrape_url_with_fallbacks(
@@ -221,7 +225,9 @@ class Theme_Scraper {
 		}
 
 		$user_id = get_current_user_id();
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core filter.
+		// This is a WordPress core filter.
+
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 		$expiration = time() + (int) apply_filters( 'auth_cookie_expiration', 2 * DAY_IN_SECONDS, $user_id, false );
 
 		$cookies[ AUTH_COOKIE ]      = wp_generate_auth_cookie( $user_id, $expiration, 'auth' );
@@ -250,7 +256,8 @@ class Theme_Scraper {
 		];
 
 		if ( isset( $_SERVER['PHP_AUTH_USER'] ) && isset( $_SERVER['PHP_AUTH_PW'] ) ) {
-			// Strip CR/LF/null to prevent HTTP header injection before encoding.
+			// Remove CR, LF, and null bytes before encoding the header.
+
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$user = str_replace( [ "\r", "\n", "\0" ], '', wp_unslash( $_SERVER['PHP_AUTH_USER'] ) );
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized

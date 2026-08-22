@@ -135,8 +135,7 @@ class LoggerTest extends TestCase {
 
 		$entries = $this->entries();
 
-		// The injected line has no timestamp prefix, so the parser drops it rather
-		// than turning it into a fake entry.
+		// Ignore injected lines without timestamps instead of treating them as entries.
 		$this->assertSame( 'clean entry', $entries[0]['message'] );
 		$this->assertSame( 'line one', $entries[1]['message'] );
 		$this->assertCount( 2, $entries );

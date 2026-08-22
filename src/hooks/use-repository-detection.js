@@ -24,9 +24,8 @@ function detectionsReducer( state, action ) {
 }
 
 /*
- * Paused repositories are kept out of the detections map on purpose. A placeholder in
- * there would read as a real result everywhere downstream, and the install modal would
- * take it as a reason not to detect the one repo the user actually asked about.
+ * Do not store paused repositories in the detection map. A placeholder would appear as
+ * a valid result and could prevent on-demand detection.
  */
 function pausedReducer( state, action ) {
 	switch ( action.type ) {
@@ -93,9 +92,8 @@ export function useRepositoryDetection() {
 
 				if ( response.paused?.length ) {
 					/*
-					 * Every chunk still queued would be turned away on the same
-					 * grounds, so they are marked here rather than asked for and
-					 * left to sit on a spinner.
+					 * Mark the remaining queued repositories as paused because the same
+					 * rate-limit condition applies to them.
 					 */
 					const remaining = toDetect
 						.slice( i + BATCH_SIZE )

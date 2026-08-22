@@ -299,8 +299,7 @@ class RepositoryDetectorTest extends TestCase {
 		$this->assertSame( 'block-theme', $cached['type'] );
 
 		/*
-		 * Same key files still present, but the repo gained a plugin bootstrap. The
-		 * old check passed on key_files alone and kept returning block-theme.
+		 * A plugin bootstrap changes the result even when the key files are unchanged.
 		 */
 		$result = Repository_Detector::detect(
 			'my-repo',

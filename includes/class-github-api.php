@@ -62,7 +62,7 @@ class GitHub_API implements Git_Provider_Interface {
 		$result = [];
 
 		if ( $this->token ) {
-			// Authenticated: fetch the authed user's profile.
+			// Fetch the authenticated user's profile.
 			$user = $this->get( '/user' );
 			if ( is_wp_error( $user ) ) {
 				return $user;
@@ -71,7 +71,7 @@ class GitHub_API implements Git_Provider_Interface {
 			$result['name']       = $user['name'] ?? '';
 			$result['avatar_url'] = $user['avatar_url'] ?? '';
 		} elseif ( $username ) {
-			// Username-only: fetch the public profile so we can show the avatar/name.
+			// Fetch the public profile for the avatar and display name.
 			$user = $this->get( '/users/' . rawurlencode( $username ) );
 			if ( is_wp_error( $user ) ) {
 				$status = (int) ( $user->get_error_data()['status'] ?? 0 );
@@ -85,7 +85,7 @@ class GitHub_API implements Git_Provider_Interface {
 			$result['avatar_url'] = $user['avatar_url'] ?? '';
 		}
 
-		// Rate limit: always fetch so we always have the numbers.
+		// Always fetch the rate limit so the connection has current values.
 		$rate = $this->get( '/rate_limit' );
 		if ( ! is_wp_error( $rate ) ) {
 			$result['rate_limit']     = $rate['rate']['limit'] ?? 60;
@@ -225,7 +225,7 @@ class GitHub_API implements Git_Provider_Interface {
 		if ( in_array( $code, [ 301, 302, 307, 308 ], true ) ) {
 			$download_url = wp_remote_retrieve_header( $response, 'location' );
 		} elseif ( 200 === $code ) {
-			// Rare: API served the file directly.
+			// The API served the file directly.
 			$download_url = $api_url;
 		} else {
 			$body = json_decode( wp_remote_retrieve_body( $response ), true );
@@ -251,7 +251,7 @@ class GitHub_API implements Git_Provider_Interface {
 			return new \WP_Error( 'gitwire_archive_too_large', __( 'Repository ZIP exceeds the 256 MB size limit.', 'gitwire' ) );
 		}
 
-		// Stream to disk via WordPress (handles large repos safely).
+		// Stream the archive through WordPress to avoid holding it in memory.
 		$tmp = download_url( $download_url, 300 );
 
 		if ( is_wp_error( $tmp ) ) {

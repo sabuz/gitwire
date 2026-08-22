@@ -420,7 +420,7 @@ export default function InstalledPanel( {
 }
 
 /**
- * Modal body for enabling auto-update on an installed repository.
+ * Modal body for enabling automatic updates on an installed repository.
  *
  * @param {Object}   props                     Props supplied by DataViews.
  * @param {Array}    props.items               Selected items.

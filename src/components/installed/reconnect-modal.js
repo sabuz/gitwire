@@ -7,8 +7,7 @@ import { Button, Flex, Modal, Spinner } from '@wordpress/components';
 import * as api from '../../api';
 
 /**
- * Modal shown when a repo's stored connection is gone and the user needs to
- * select which account to reconnect with before pulling.
+ * Modal for selecting a replacement connection when the stored connection is unavailable.
  *
  * @param {Object}   props             Component props.
  * @param {Object}   props.item        Installed repository record.

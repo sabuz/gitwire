@@ -216,7 +216,8 @@ class Error_Handler {
 		self::$exception_file         = $e->getFile();
 		self::$exception_line         = $e->getLine();
 
-		// scrape requests need WP's own error markers, so debug plugins must not intercept.
+		// Scrape requests need WordPress error markers, so debug plugins must not intercept them.
+
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! empty( $_REQUEST['wp_scrape_key'] ) ) {
 			throw $e;
@@ -251,7 +252,7 @@ class Error_Handler {
 		$fatal_types = [ E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR ];
 		$is_fatal    = $error && in_array( $error['type'], $fatal_types, true );
 
-		// debug plugins (e.g. QM) call exit() before error_get_last() is populated, so check the flag too.
+		// Debug plugins may call exit() before error_get_last() is populated, so check the flag too.
 		if ( ! $is_fatal && ! self::$had_uncaught_exception ) {
 			return;
 		}
@@ -772,18 +773,17 @@ class Error_Handler {
 				[ '%s' ]
 			);
 
-			// both are autoloaded, so the write is invisible until alloptions is dropped.
+			// Both options are autoloaded, so the write remains hidden until alloptions is refreshed.
 			self::flush_option_cache( $option_name );
 		}
 	}
 
 	/**
-	 * Stores a flag so the plugin is deactivated via WP APIs on the next admin_init.
+	 * Stores a flag so WordPress deactivates the plugin on the next admin_init.
 	 *
-	 * Calling deactivate_plugins() from a shutdown handler is unreliable and
-	 * requires serializing active_plugins by hand, which can corrupt the option
-	 * if encoding or multisite nuances differ. Deferring to admin_init lets WP
-	 * core's deactivate_plugins() handle those details safely.
+	 * Calling deactivate_plugins() from a shutdown handler is unreliable and requires
+	 * serializing active_plugins by hand. Deferring to admin_init lets WordPress core
+	 * handle the option safely.
 	 *
 	 * @since 1.0.0
 	 * @param string $plugin_file Plugin file relative to wp-content/plugins.

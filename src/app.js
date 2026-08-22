@@ -145,9 +145,10 @@ export default function App( { initialData } ) {
 	);
 	const [ sourcesVersion, setSourcesVersion ] = useState( 0 );
 
-	// Free supplies public connections as the base; Pro merges its private
-	// connections on top via the filter. sourcesVersion triggers a recompute
-	// when Pro fires gitwire.sourcesChanged after its own connection changes.
+	/*
+	 * Public connections provide the base list; Pro adds private connections through
+	 * the filter. Recompute the list when Pro changes its connections.
+	 */
 	const connections = useMemo(
 		() =>
 			applyFilters(
@@ -181,7 +182,7 @@ export default function App( { initialData } ) {
 		const tab = sessionStorage.getItem( 'gitwire_goto_tab' );
 		if ( tab ) {
 			sessionStorage.removeItem( 'gitwire_goto_tab' );
-			// Migrate old tab names from previous sessions.
+			// Migrate tab names saved by earlier versions.
 			const legacyMap = {
 				installed: 'repositories',
 				browse: 'add-repository',
@@ -204,7 +205,7 @@ export default function App( { initialData } ) {
 		const PATH_TO_TAB = {
 			'': 'repositories',
 			'add-repository': 'add-repository',
-			browse: 'add-repository', // back-compat
+			browse: 'add-repository', // Backward compatibility.
 			settings: 'settings',
 			logs: 'logs',
 			tools: 'tools',
@@ -340,7 +341,7 @@ export default function App( { initialData } ) {
 	const tabs = settings?.enable_logging
 		? BASE_TABS
 		: BASE_TABS.filter( ( t ) => t.name !== 'logs' );
-	// Pro registers this filter to add its own header dropdown; its presence means Pro is active.
+	// Pro adds header actions through this filter.
 	const headerActions = applyFilters( 'gitwire.header.actions', null );
 	const panelFallback = (
 		<div className="gitwire-page-loading">

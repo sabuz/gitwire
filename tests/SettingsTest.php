@@ -149,8 +149,7 @@ class SettingsTest extends TestCase {
 			'private 172.16/12'      => [ 'https://172.16.0.1' ],
 			'cloud metadata'         => [ 'https://169.254.169.254' ],
 			'no scheme'              => [ 'gitlab.example.com' ],
-			// Bracketed IPv6 literals used to slip past every check: parse_url keeps
-			// the brackets and filter_var rejects that form, so nothing matched.
+			// Reject bracketed IPv6 literals before validating the address.
 			'bracketed v6 mapped'    => [ 'https://[::ffff:127.0.0.1]' ],
 			'bracketed v6 ula'       => [ 'https://[fd00::1]' ],
 			'bracketed v6 linklocal' => [ 'https://[fe80::1]' ],
@@ -180,8 +179,7 @@ class SettingsTest extends TestCase {
 	 * @param string $ip IPv4-mapped or IPv4-compatible IPv6 address.
 	 */
 	public function test_is_safe_ip_sees_through_ipv4_mapped_ipv6( string $ip ): void {
-		// PHP's range flags only handle the wrapper from 8.5. The floor is 8.1, where
-		// filter_var() called ::ffff:127.0.0.1 a public address.
+		// Verify that mapped IPv6 addresses are checked as their IPv4 addresses.
 		$this->assertFalse( Settings::is_safe_ip( $ip ) );
 	}
 
@@ -195,9 +193,7 @@ class SettingsTest extends TestCase {
 			'mapped private 192' => [ '::ffff:192.168.1.1' ],
 			'mapped metadata'    => [ '::ffff:169.254.169.254' ],
 			'compat loopback'    => [ '::127.0.0.1' ],
-			// the same addresses spelled in hex or fully expanded: the dotted form is
-			// only one of several spellings, and the range flags see through none of
-			// them before 8.5.
+			// Cover hexadecimal and fully expanded IPv6 spellings.
 			'hex loopback'       => [ '::ffff:7f00:1' ],
 			'hex metadata'       => [ '::ffff:a9fe:a9fe' ],
 			'hex private 192'    => [ '::ffff:c0a8:101' ],
@@ -223,7 +219,7 @@ class SettingsTest extends TestCase {
 	public function test_every_schema_key_appears_in_get_public_and_merge_save(): void {
 		$keys = array_keys( Settings::schema() );
 
-		// The three copies of this list are what drifted apart in #48 and #49.
+		// Keep the accepted values consistent across all validation paths.
 		$this->assertSame( $keys, array_keys( Settings::get_public() ) );
 		$this->assertSame( $keys, array_keys( Settings::merge_save( [] ) ) );
 		$this->assertSame( $keys, array_keys( Settings::defaults() ) );
@@ -252,7 +248,7 @@ class SettingsTest extends TestCase {
 	public function test_repository_type_refresh_frequency_rejects_an_unknown_recurrence(): void {
 		gitwire_test_set_option( 'gitwire_settings', [ 'repository_type_refresh_frequency' => 'hourly' ] );
 
-		// Hourly is a real WP recurrence but not an offered value: type detection is too expensive for it.
+		// Hourly is supported by WordPress but is not offered for type detection.
 		$this->assertSame( 'weekly', Settings::get_repository_type_refresh_frequency() );
 	}
 
@@ -265,7 +261,7 @@ class SettingsTest extends TestCase {
 			]
 		);
 
-		// Smart Install refuses to install an undetected repo, so it needs detection alive.
+		// Smart Install requires type detection to remain enabled.
 		$this->assertTrue( Settings::is_type_detection_enabled() );
 	}
 
@@ -291,8 +287,8 @@ class SettingsTest extends TestCase {
 		);
 
 		/*
-		 * The browse UI reads auto_detect_type directly. Left disagreeing with
-		 * is_type_detection_enabled(), it hid every badge while the server kept detecting.
+		 * Keep the public setting aligned with is_type_detection_enabled() so the UI
+		 * shows detection results when the server continues detecting.
 		 */
 		$this->assertTrue( Settings::get_public()['auto_detect_type'] );
 	}
@@ -310,7 +306,7 @@ class SettingsTest extends TestCase {
 	}
 
 	public function test_an_invalid_value_falls_back_to_the_default_not_the_loosest_option(): void {
-		// log_retention_days used to fall back to 30, the most permissive choice.
+		// Invalid retention values must use the schema default.
 		$merged = Settings::merge_save( [ 'log_retention_days' => 999 ] );
 
 		$this->assertSame( 7, $merged['log_retention_days'] );
@@ -319,7 +315,7 @@ class SettingsTest extends TestCase {
 	public function test_log_retention_is_never_zero(): void {
 		gitwire_test_set_option( 'gitwire_settings', [ 'log_retention_days' => 0 ] );
 
-		// A zero window would make trim_old_entries() delete everything before today.
+		// A zero retention window would remove all entries.
 		$this->assertSame( 7, Settings::get_log_retention_days() );
 	}
 
@@ -341,8 +337,7 @@ class SettingsTest extends TestCase {
 	}
 
 	public function test_is_safe_remote_url_rejects_empty(): void {
-		// Unlike is_allowed_gitlab_url(), empty is not "use the default" here -- it is
-		// a redirect target that names nothing, which must never be fetched.
+		// An empty redirect target is invalid and must never be fetched.
 		$this->assertFalse( Settings::is_safe_remote_url( '' ) );
 	}
 }

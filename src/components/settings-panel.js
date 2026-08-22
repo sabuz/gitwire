@@ -63,7 +63,7 @@ export default function SettingsPanel( {
 	const handleEnableLoggingChange = ( newVal ) => {
 		setEnableLogging( newVal );
 		setSavingLog( true );
-		// Reload on success so the WP admin sidebar reflects the updated Logs menu.
+		// Reload after saving so the WordPress admin sidebar reflects the Logs menu.
 		const p = api
 			.saveSettings( { enable_logging: newVal } )
 			.then( () => window.location.reload() )
@@ -106,7 +106,7 @@ export default function SettingsPanel( {
 		persistSetting( { log_level: newVal }, onSave ).catch( () => {} );
 	};
 
-	// Pro replaces the public connections card with its token connections UI.
+	// Pro replaces this public-connections section with its token-based UI.
 	const accountsSection = applyFilters(
 		'gitwire.settings.accountsSection',
 		<PublicConnectionsCard
@@ -255,9 +255,8 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const wantsSuggestions = excludedRepoInput.trim().length >= 2;
 
 	/*
-	 * Deferred until the field is actually in use: /repos fetches live from any
-	 * connection with no cached rows yet, so loading it on mount made opening
-	 * Settings wait on provider API calls it never needed.
+	 * Load repository suggestions only after the field is used. Loading them on mount
+	 * would trigger unnecessary provider requests when opening Settings.
 	 */
 	useEffect( () => {
 		if ( ! wantsSuggestions || suggestionsRequestedRef.current ) {
@@ -540,7 +539,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					value={ repositoryTypeRefreshFrequency }
 					onChange={ handleRepositoryTypeRefreshFrequencyChange }
 				>
-					{ /* ToggleGroupControl drops its own disabled prop onto a wrapper div, so it has to go on each option. */ }
+					{ /* ToggleGroupControl applies disabled to its wrapper, so disable each option. */ }
 					<ToggleGroupControlOption
 						disabled={ ! detectionActive }
 						label={ __( 'Twice Daily', 'gitwire' ) }

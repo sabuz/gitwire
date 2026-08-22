@@ -80,11 +80,8 @@ class Installer {
 	 */
 	private static function hydrate_record( array $row ): array {
 		/*
-		 * Split on the last slash, not the first. A GitLab subgroup makes full_name
-		 * three or more segments, and splitting at the front gave an owner and a repo
-		 * that overlapped: acme/team/widget came back as owner acme/team and repo
-		 * team/widget, so owner . '/' . repo addressed a project that does not exist.
-		 * Every caller that rebuilds the pair, get_record() included, missed.
+		 * Split repository names at the last slash because GitLab subgroup paths may
+		 * contain multiple segments.
 		 */
 		$full  = (string) ( $row['full_name'] ?? '' );
 		$slash = strrpos( $full, '/' );
@@ -280,7 +277,7 @@ class Installer {
 			return $value;
 		}
 
-		// Cloned first: an object cache can hand the same instance to the next reader.
+		// Clone first because the object cache may return the same instance to another reader.
 		$value = clone $value;
 
 		foreach ( [ 'response', 'no_update' ] as $key ) {
@@ -423,8 +420,7 @@ class Installer {
 			'provider'  => $rec['provider'] ?? 'github',
 		];
 
-		// Nothing drains this until someone opens a Gitwire screen, so a bulk delete
-		// would otherwise grow the option without limit.
+		// Clear this option during bulk deletes because it is only drained on Gitwire screens.
 		if ( count( $pending ) > 50 ) {
 			$pending = array_slice( $pending, -50 );
 		}
@@ -526,7 +522,7 @@ class Installer {
 					array_filter( Connection_Resolver::all(), static fn( $c ) => ( $c['provider'] ?? '' ) === $provider )
 				);
 				if ( 0 === count( $provider_conns ) ) {
-					// No connection system (or none left), so try the public path.
+					// Use the public path when no connection is available.
 					$connection_id = null;
 				} elseif ( 1 !== count( $provider_conns ) ) {
 					return new \WP_Error(
@@ -871,7 +867,7 @@ class Installer {
 	public static function run_auto_updates(): void {
 		$records = self::get_installed();
 
-		// First pass: refresh remote_head for every installed repo.
+		// Refresh the remote head for every installed repository first.
 		foreach ( $records as $key => $rec ) {
 			$owner    = $rec['owner'] ?? '';
 			$repo     = $rec['repo'] ?? '';
@@ -913,7 +909,7 @@ class Installer {
 			return;
 		}
 
-		// Second pass: auto-update repos that have it enabled and have a pending commit.
+		// Then update repositories with auto-update enabled and a pending commit.
 		foreach ( $records as $rec ) {
 			if ( 'disabled' === ( $rec['auto_update'] ?? 'disabled' ) ) {
 				continue;
@@ -1024,7 +1020,7 @@ class Installer {
 	public static function get_known_fatal_remote_head( string $provider, string $full_name, string $branch ): ?string {
 		$value = get_transient( self::known_fatal_head_key( $provider, $full_name, $branch ) );
 
-		// Entries written before the location was recorded are still a bare SHA string.
+		// Older entries store the location as a bare SHA string.
 		if ( is_array( $value ) ) {
 			$value = $value['sha'] ?? '';
 		}
@@ -1061,7 +1057,7 @@ class Installer {
 			return '';
 		}
 
-		// Absolute paths expose the server layout, so report relative to wp-content.
+		// Report paths relative to wp-content so the server layout remains private.
 		if ( defined( 'WP_CONTENT_DIR' ) && 0 === strpos( $file, WP_CONTENT_DIR ) ) {
 			$file = ltrim( substr( $file, strlen( WP_CONTENT_DIR ) ), '/\\' );
 		}
@@ -1307,7 +1303,7 @@ class Installer {
 			)
 		);
 
-		// Evict any other record that claimed the same directory (replace-install).
+		// Remove any other record that claims the same directory during replacement.
 		$evicted  = [];
 		$new_path = untrailingslashit( $record['install_path'] ?? '' );
 		if ( $new_path ) {
@@ -1391,7 +1387,8 @@ class Installer {
 		$key    = 'gitwire_lock_' . md5( $provider . ':' . $full_name );
 		$cutoff = time() - 10 * MINUTE_IN_SECONDS;
 
-		// Remove locks left behind by crashed processes (older than 10 minutes).
+		// Remove locks older than 10 minutes that crashed processes left behind.
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			$wpdb->prepare(
@@ -1502,7 +1499,7 @@ class Installer {
 			}
 		}
 
-		// Download.
+		// Download the repository archive.
 		$zip_file = $api->download_zip( $owner, $repo, $branch );
 		if ( is_wp_error( $zip_file ) ) {
 			return $zip_file;
@@ -1550,7 +1547,7 @@ class Installer {
 			}
 		}
 
-		// Backup existing installation (for fatal-error rollback).
+		// Back up the existing installation for fatal-error rollback.
 		$backup_path = null;
 		if ( is_dir( $install_path ) ) {
 			$backup_path = self::get_backup_base_dir() . DIRECTORY_SEPARATOR . basename( $install_path ) . '--gitwire-bak-' . time();
@@ -1560,7 +1557,7 @@ class Installer {
 			}
 		}
 
-		// Register pending-update so the error handler can roll back.
+		// Register the pending update so the error handler can roll it back.
 		$pending = [
 			'started_at'        => time(),
 			'full_name'         => $full_name,
@@ -1576,12 +1573,12 @@ class Installer {
 			update_option( 'gitwire_running_task', $pending, false );
 		}
 
-		// Extract.
+		// Extract the archive.
 		$extracted = self::extract_zip( $zip_file, $install_path );
 		wp_delete_file( $zip_file );
 
 		if ( is_wp_error( $extracted ) ) {
-			// Restore backup immediately (no fatal error needed).
+			// Restore the backup immediately because no fatal error is needed.
 			self::restore_backup( $install_path, $backup_path );
 			if ( ! $sync_theme_guard ) {
 				delete_option( 'gitwire_running_task' );
@@ -1593,7 +1590,7 @@ class Installer {
 			self::refresh_theme_runtime( $install_path, $slug );
 		}
 
-		// Detect main plugin file.
+		// Detect the main plugin file.
 		if ( 'plugin' === $type ) {
 			$plugin_file            = self::find_plugin_file( $install_path, $slug );
 			$pending['plugin_file'] = $plugin_file;
@@ -1602,7 +1599,7 @@ class Installer {
 			}
 		}
 
-		// Save record.
+		// Save the installation record.
 		$html_url = Repository::instance()->get_html_url( $provider, $full_name );
 
 		$record = [
@@ -1834,9 +1831,10 @@ class Installer {
 	private static function extract_zip( string $zip_path, string $destination ): bool|\WP_Error {
 		global $wp_filesystem;
 
-		// Unzip to a temp directory first. The name is unguessable rather than uniqid()'s
-		// timestamp, so a local user on shared hosting cannot pre-create the path we are
-		// about to extract into.
+		/*
+		 * Extract into a random temporary directory so a local user cannot predict or
+		 * pre-create the destination on shared hosting.
+		 */
 		$tmp_dir = get_temp_dir() . 'gitwire-extract-' . wp_generate_password( 20, false );
 
 		$result = unzip_file( $zip_path, $tmp_dir );
@@ -1860,7 +1858,7 @@ class Installer {
 
 		$extracted_folder = $subdirs[0];
 
-		// Move to final destination.
+		// Move the extracted files to the final destination.
 		if ( ! $wp_filesystem->move( $extracted_folder, $destination, true ) ) {
 			$wp_filesystem->delete( $tmp_dir, true );
 			return new \WP_Error( 'gitwire_move_failed', __( 'Could not move extracted files to destination.', 'gitwire' ) );
@@ -1889,7 +1887,7 @@ class Installer {
 			return null;
 		}
 
-		// Try the most common convention first: slug/slug.php.
+		// Check the common slug/slug.php convention first.
 		$candidate = $slug . '/' . $slug . '.php';
 		if ( file_exists( WP_PLUGIN_DIR . '/' . $candidate ) ) {
 			$data = get_plugin_data( WP_PLUGIN_DIR . '/' . $candidate, false, false );
@@ -1898,7 +1896,7 @@ class Installer {
 			}
 		}
 
-		// Scan all PHP files directly in the plugin directory for a Plugin Name header.
+		// Scan top-level PHP files for a Plugin Name header.
 		$files = glob( trailingslashit( $plugin_dir ) . '*.php' );
 		if ( ! $files ) {
 			return null;
@@ -1926,7 +1924,7 @@ class Installer {
 			return false;
 		}
 
-		// Move broken install aside on same filesystem as install_path (fast rename).
+		// Move the broken install aside on the same filesystem for a fast rename.
 		$failed_path = null;
 		if ( is_dir( $install_path ) ) {
 			$failed_path = $install_path . '--gitwire-failed-' . time();
@@ -1937,7 +1935,7 @@ class Installer {
 			}
 		}
 
-		// Restore backup (backup may be in temp dir, so use move_dir_safe for cross-filesystem support).
+		// Restore the backup with move_dir_safe() because it may be on another filesystem.
 		if ( ! self::move_dir_safe( $backup_path, $install_path ) ) {
 			if ( $failed_path && is_dir( $failed_path ) && ! is_dir( $install_path ) ) {
 				// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
@@ -1969,7 +1967,7 @@ class Installer {
 
 		$parents = [
 			self::get_backup_base_dir(),
-			// Earlier builds stored backups next to the install, then in the system temp dir.
+			// Check backup locations used by earlier releases.
 			dirname( $install_path ),
 			trailingslashit( sys_get_temp_dir() ) . 'gitwire-backups',
 		];
@@ -2210,7 +2208,7 @@ class Installer {
 	public static function purge_orphaned_backups(): void {
 		$parents = [
 			self::get_backup_base_dir(),
-			// Earlier builds stored backups next to the install, then in the system temp dir.
+			// Check backup locations used by earlier releases.
 			WP_PLUGIN_DIR,
 			get_theme_root(),
 			trailingslashit( sys_get_temp_dir() ) . 'gitwire-backups',
@@ -2223,7 +2221,7 @@ class Installer {
 					continue;
 				}
 				foreach ( $matches as $dir ) {
-					// A symlinked stray in a world-writable temp dir would delete its target.
+					// Do not delete symlinks in a world-writable temporary directory.
 					if ( is_link( $dir ) ) {
 						wp_delete_file( $dir );
 						continue;
@@ -2258,7 +2256,7 @@ class Installer {
 	 * @return void
 	 */
 	public static function rmdir_recursive( string $dir ): void {
-		// is_dir() follows symlinks, so recursing into one would delete its target.
+		// is_dir() follows symlinks, so do not recurse into them.
 		if ( is_link( $dir ) ) {
 			wp_delete_file( $dir );
 			return;
@@ -2321,7 +2319,7 @@ class Installer {
 		if ( rename( $src, $dst ) ) {
 			return true;
 		}
-		// Cross-filesystem fallback: copy every file then remove the source.
+		// On another filesystem, copy each file and remove the source afterward.
 		if ( ! self::copy_recursive( $src, $dst ) ) {
 			return false;
 		}

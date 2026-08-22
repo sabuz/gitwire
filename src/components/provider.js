@@ -18,8 +18,8 @@ export function providerLabel( provider ) {
  * @param {Object} props           Component props.
  * @param {string} props.provider  Provider key.
  * @param {number} [props.size]    Icon size in px.
- * @param {string} [props.variant] 'brand' for provider colors, else currentColor.
- * @return {JSX.Element} The provider mark (defaults to GitHub for unknown keys).
+ * @param {string} [props.variant] 'brand' for provider colors; 'inherit' for currentColor.
+ * @return {JSX.Element} The provider mark. Unknown provider keys use GitHub.
  */
 export function ProviderIcon( { provider, size = 13, variant = 'inherit' } ) {
 	if ( 'gitlab' === provider ) {

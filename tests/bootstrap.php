@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', dirname( __DIR__ ) . '/' );
 }
 
-// A per-process sandbox so a failed run never leaks into the next one.
+// Use a separate sandbox for each test process.
 define( 'GITWIRE_TESTS_TMP', sys_get_temp_dir() . '/gitwire-tests-' . getmypid() );
 
 define( 'WP_CONTENT_DIR', GITWIRE_TESTS_TMP . '/wp-content' );

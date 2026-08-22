@@ -1,7 +1,7 @@
 /**
  * @param {Object} props           Component props.
  * @param {number} [props.size]    Icon width/height in px.
- * @param {string} [props.variant] 'brand' uses provider colors; default inherits currentColor.
+ * @param {string} [props.variant] 'brand' uses provider colors; 'inherit' uses currentColor.
  * @return {JSX.Element} GitHub mark.
  */
 export function GitHubIcon( { size = 13, variant = 'inherit' } ) {
@@ -24,7 +24,7 @@ export function GitHubIcon( { size = 13, variant = 'inherit' } ) {
 /**
  * @param {Object} props           Component props.
  * @param {number} [props.size]    Icon width/height in px.
- * @param {string} [props.variant] 'brand' uses provider colors; default inherits currentColor.
+ * @param {string} [props.variant] 'brand' uses provider colors; 'inherit' uses currentColor.
  * @return {JSX.Element} Bitbucket mark.
  */
 export function BitbucketIcon( { size = 13, variant = 'inherit' } ) {
@@ -47,7 +47,7 @@ export function BitbucketIcon( { size = 13, variant = 'inherit' } ) {
 /**
  * @param {Object} props           Component props.
  * @param {number} [props.size]    Icon width/height in px.
- * @param {string} [props.variant] 'brand' uses provider colors; default inherits currentColor.
+ * @param {string} [props.variant] 'brand' uses provider colors; 'inherit' uses currentColor.
  * @return {JSX.Element} GitLab mark.
  */
 export function GitLabIcon( { size = 13, variant = 'inherit' } ) {

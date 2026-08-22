@@ -110,14 +110,14 @@ function lookupInstalled( installed, repo ) {
 }
 
 /**
- * Browse panel: lists GitHub and GitLab repositories with detection and install actions.
+ * Browse panel listing supported provider repositories with detection and install actions.
  *
  * @param {Object}   props                    Component props.
  * @param {Array}    props.connections        Connection records array.
  * @param {Object}   props.settings           Plugin settings.
  * @param {Object}   props.installed          Map of installed repositories.
  * @param {Function} [props.onPostInstall]    Standalone mode: called after install completes.
- * @param {Function} [props.onInstallRequest] Modal mode: called with (repo, detection) instead of opening InstallModal.
+ * @param {Function} [props.onInstallRequest] Modal mode callback with the repository and detection result.
  * @param {Function} [props.onGoToSettings]   Navigates to the Settings tab.
  * @param {Function} [props.onOpenUrlImport]  Opens the Import from URL modal.
  * @return {JSX.Element} The rendered browse panel.
@@ -162,17 +162,16 @@ export default function RepositoryBrowser( {
 	const searchTimerRef = useRef( null );
 	const isFirstSearchRef = useRef( true );
 	const isFirstSourceRef = useRef( true );
-	// Ref kept in sync each render so the search debounce closure always reads the latest value.
+	// Keep the source-filter ref current so the search debounce uses the latest filters.
 	const activeSourceFiltersRef = useRef( activeSourceFilters );
 	activeSourceFiltersRef.current = activeSourceFilters;
 	const smartInstall = settings?.smart_install !== false;
 	/*
-	 * The one flag for "types exist" anywhere in the UI. The server folds Smart Install
-	 * into it on read, so Smart Install does not need checking separately here, and
-	 * with detection off, nothing would re-type a repo whose detection was dropped.
+	 * This flag controls whether type-related controls appear in the UI. The server
+	 * already accounts for Smart Install when returning this setting.
 	 */
 	const autoDetectType = settings?.auto_detect_type !== false;
-	// With detection off and a single provider there is nothing left to filter on.
+	// Hide type filters when detection is off and only one provider is available.
 	const hasAnyFilters = autoDetectType || showSourceBadge;
 
 	const loadRepos = useCallback(
@@ -254,7 +253,7 @@ export default function RepositoryBrowser( {
 		loadRepos( 0, false, '' );
 	}, [ connIds ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Keep the current list on screen until the refetch lands, so a failure leaves it intact.
+	// Keep the current list visible until the refetch completes so failures preserve it.
 	const handleRefresh = useCallback(
 		async ( mode = 'repos' ) => {
 			setLoading( true );
@@ -287,7 +286,7 @@ export default function RepositoryBrowser( {
 		loadRepos( repositories.length, true, search, activeSourceFilters );
 	};
 
-	// Debounced server reload when search term changes (skips initial mount).
+	// Reload the server results after the search term changes, except on initial mount.
 	useEffect( () => {
 		if ( isFirstSearchRef.current ) {
 			isFirstSearchRef.current = false;
@@ -300,7 +299,7 @@ export default function RepositoryBrowser( {
 		return () => clearTimeout( searchTimerRef.current );
 	}, [ search ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Reload when source filter changes (skips initial mount).
+	// Reload the results when source filters change, except on initial mount.
 	useEffect( () => {
 		if ( isFirstSourceRef.current ) {
 			isFirstSourceRef.current = false;
@@ -327,8 +326,7 @@ export default function RepositoryBrowser( {
 		);
 	};
 
-	// Type filters are hidden with detection off, so they must not count toward the
-	// dot or the Clear Filters label either.
+	// Exclude hidden type filters from the active-filter count and Clear Filters label.
 	const activeFilterCount =
 		( autoDetectType ? activeTypeFilters.length : 0 ) +
 		activeSourceFilters.length;
@@ -379,8 +377,7 @@ export default function RepositoryBrowser( {
 	};
 
 	const matchesType = ( r ) => {
-		// A filter left set before detection was switched off would otherwise keep
-		// filtering the list with no visible control to clear it.
+		// Ignore type filters when detection is disabled because their controls are hidden.
 		if ( ! autoDetectType || activeTypeFilters.length === 0 ) {
 			return true;
 		}
@@ -822,7 +819,7 @@ const RepoCard = memo( function ( {
 	const detecting =
 		autoDetectType && ! detection && ! detectionPaused && ! isInstalled;
 
-	// Guard both directions: a stringified tinyint makes "0" truthy and 0 falsy.
+	// Handle both boolean and string values because "0" is truthy in JavaScript.
 	const isPrivate =
 		repo.private === true || repo.private === 1 || repo.private === '1';
 
@@ -972,7 +969,7 @@ function TypeBadge( { detection, installed, autoDetectType, paused } ) {
 			</span>
 		);
 	}
-	// Nothing is detecting with auto-detect off, so the spinner below would never resolve.
+	// Treat detection as complete when auto-detection is disabled.
 	if ( ! autoDetectType ) {
 		return null;
 	}

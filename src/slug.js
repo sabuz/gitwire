@@ -1,7 +1,7 @@
 /**
  * @param {string} value Raw user input.
- * @return {string} Slug-safe value. Leading/trailing separators are kept so the
- *                  user can type them mid-edit; call finalizeSlug before submit.
+ * @return {string} Slug-safe value. Leading and trailing separators are preserved
+ *                  during editing; call finalizeSlug before submission.
  */
 export function normalizeSlug( value ) {
 	return value
