@@ -68,14 +68,3 @@ jobs:
         with:
           build-dir: './dist/gitwire'
           ignore-warnings: true
-          # Plugin Check reports plugin_updater_detected for the
-          # site_transient_update_plugins filter in class-installer.php. The filter
-          # removes Gitwire-managed installs from WordPress.org update results so
-          # those updates cannot overwrite code tracked in Git. Plugin Check matches
-          # the string and does not distinguish removal from registration.
-          #
-          # Ignore this check in CI so it does not obscure unrelated regressions. Do
-          # not suppress it for review: Plugin Check will report it in the submitted
-          # ZIP. See issue #84 and docs/wporg-compliance.md for the rationale. Remove
-          # the filter and this ignore if the reviewer does not accept it.
-          ignore-codes: plugin_updater_detected

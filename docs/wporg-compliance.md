@@ -73,57 +73,27 @@ None of these exist yet. Without them the directory listing falls back to a gene
 
 ---
 
-## Known Plugin Check failure: expect a question about it
+## Update behavior
 
-Plugin Check raises one **error** against the submitted zip, and it is deliberate:
+Gitwire Free is updated through WordPress.org. Gitwire's separate `gitwire_update_check` cron
+checks repositories that were explicitly installed through Gitwire and applies updates through the
+configured GitHub, GitLab, or Bitbucket provider when repository auto-update is enabled.
 
-```
-Plugin Updater detected. These are not permitted in WordPress.org hosted plugins.
-Detected: site_transient_update_plugins
-```
+Gitwire does not intercept WordPress core plugin or theme update results, change core auto-update
+decisions, or provide a replacement updater for WordPress.org-hosted plugins. This keeps the Free
+plugin compliant with Plugin Check and leaves WordPress core responsible for directory-hosted
+updates.
 
-It comes from `Plugin_Updater_Check::look_for_plugin_updaters()`, which greps PHP for
-`#site_transient_update_plugins#`. It is a string match, so it cannot see what the code does
-with the transient.
+`Update URI` is not a redirect from WordPress.org to GitHub. It is metadata that a plugin or theme
+author places in the repository's own source to identify an externally hosted project. Gitwire does
+not add or inject that header into repositories it installs; updates would overwrite such a local
+modification anyway. Authors of externally hosted repositories should add the header to their own
+plugin main file or theme `style.css` when appropriate.
 
-Our CI ignores this one code so a permanently red pipeline does not mask real regressions
-(`.github/workflows/code-check.yml`). That changes nothing about the submission: Plugin Check run
-by the reviewer will still flag it. Do not try to hide it, and do not build the filter name at
-runtime to dodge the grep. That is evasion and it is worse than the finding.
+For repositories without that header, WordPress core may still identify a matching directory-hosted
+project by slug. Gitwire does not alter that core behavior, so repository owners should choose a
+non-colliding directory name or declare the repository's `Update URI` in its own source.
 
-### The explanation to give
-
-> Gitwire installs plugins and themes from a user's own Git repository, at their explicit request.
-> It does not update itself from anywhere except WordPress.org, and it bundles no updater library.
->
-> The flagged code does the opposite of what the check is looking for. It **removes** entries from
-> `site_transient_update_plugins`; it never adds one. The reason is data loss: WordPress asks
-> api.wordpress.org about every installed directory name, and if a user's repository happens to
-> live at a directory name a directory-hosted plugin also uses, WordPress offers that unrelated
-> project's release and, with auto-updates on, installs it over the user's own code without asking.
-> The filter removes only the rows Gitwire itself installed and tracks, which are never
-> WordPress.org plugins.
->
-> The relevant code is `Installer::suppress_plugin_updates()` and `suppress_theme_updates()` in
-> `includes/class-installer.php`. Both take the transient, drop the entries matching directories in
-> Gitwire's own installation table, and return it. There is no remote call, no alternative update
-> source, and no code path that puts an update into the transient.
->
-> The alternative, the `Update URI` header WordPress added in 5.8 for a plugin to claim its slug,
-> is not something we can apply: it belongs in the user's own repository, and the next pull from
-> Git would overwrite anything we wrote there. That is why the filter does the work instead.
->
-> If suppression is not acceptable, we will remove the filter. Please confirm which you prefer.
-
-### If the reviewer says no
-
-Remove the four `add_filter` calls and the six methods in `includes/class-installer.php`, delete
-`tests/InstallerUpdateSuppressionTest.php`, and drop `ignore-codes` from the workflow. Commit
-`546407b` did exactly that and can be reapplied.
-
-With the filter gone there is no protection left in the plugin, so the fallback is to tell users to
-add an `Update URI` header to their own repositories. Gitwire shipped a warning for that briefly
-and it was removed once the filter came back; `97bcf21` is the commit to revive if it is needed.
 Tracked in issue #84.
 
 ## Review Red Flags to Avoid
