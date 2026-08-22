@@ -56,6 +56,7 @@ final class Plugin {
 
 		// Construct this here so register_activation_hook() runs before the file finishes loading.
 		Database_Manager::instance();
+		Update_Guard::init();
 
 		add_filter( 'cron_schedules', [ $this, 'register_cron_schedules' ] ); // phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 		add_action( 'gitwire_maintenance', [ $this, 'run_maintenance' ] );

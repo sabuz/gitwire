@@ -39,6 +39,7 @@ $gitwire_class_map = [
 	'Gitwire\Theme_Scraper'           => 'includes/class-theme-scraper.php',
 	'Gitwire\Git_Provider_Interface'  => 'includes/interface-git-provider.php',
 	'Gitwire\Installer'               => 'includes/class-installer.php',
+	'Gitwire\Update_Guard'            => 'includes/class-update-guard.php',
 	'Gitwire\Plugin'                  => 'includes/class-plugin.php',
 	'Gitwire\Public_Connections'      => 'includes/class-public-connections.php',
 	'Gitwire\Provider_Factory'        => 'includes/class-provider-factory.php',

@@ -79,10 +79,11 @@ Gitwire Free is updated through WordPress.org. Gitwire's separate `gitwire_updat
 checks repositories that were explicitly installed through Gitwire and applies updates through the
 configured GitHub, GitLab, or Bitbucket provider when repository auto-update is enabled.
 
-Gitwire does not intercept WordPress core plugin or theme update results, change core auto-update
-decisions, or provide a replacement updater for WordPress.org-hosted plugins. This keeps the Free
-plugin compliant with Plugin Check and leaves WordPress core responsible for directory-hosted
-updates.
+Gitwire does not alter WordPress core plugin or theme update results or provide a replacement
+updater for WordPress.org-hosted plugins. It protects installations explicitly tracked by Gitwire at
+WordPress's native upgrader boundary: `upgrader_pre_download` rejects the package before it is
+downloaded, and `upgrader_pre_install` rejects it again before files can replace the installation.
+Untracked plugins and themes remain under core's normal update control.
 
 `Update URI` is not a redirect from WordPress.org to GitHub. It is metadata that a plugin or theme
 author places in the repository's own source to identify an externally hosted project. Gitwire does
@@ -91,7 +92,8 @@ modification anyway. Authors of externally hosted repositories should add the he
 plugin main file or theme `style.css` when appropriate.
 
 For repositories without that header, WordPress core may still identify a matching directory-hosted
-project by slug. Gitwire does not alter that core behavior, so repository owners should choose a
+project by slug. Gitwire leaves that update offer visible, but blocks the native upgrade when the
+plugin or theme is present in Gitwire's installation table. Repository owners should still choose a
 non-colliding directory name or declare the repository's `Update URI` in its own source.
 
 Tracked in issue #84.

@@ -163,6 +163,10 @@ Not on push. Gitwire polls on a schedule you set. Updates can be pulled manually
 
 No. Auto-update is off for every repository until you turn it on individually.
 
+= Can WordPress update a repository managed by Gitwire? =
+
+No. Gitwire blocks native WordPress plugin and theme upgrades for repositories it tracks. Update those repositories from the Gitwire **Repositories** screen instead. The native update offer may remain visible, but WordPress will not replace the tracked files.
+
 = Will an update overwrite changes I made on the server? =
 
 Yes. An update replaces the installed directory with the branch archive. Do not edit Gitwire-installed files on the server; commit and push instead.
