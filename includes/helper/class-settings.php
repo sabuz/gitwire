@@ -433,8 +433,10 @@ class Settings {
 
 		/*
 		 * Normalize IPv4-mapped and IPv4-compatible IPv6 addresses before applying
-		 * range checks. Older supported PHP versions do not reliably classify these
-		 * forms as private or loopback addresses.
+		 * range checks. PHP range flags handle these wrappers only from PHP 8.5; the
+		 * supported older versions may classify private or loopback forms as public.
+		 * Use packed bytes instead of text so every spelling of the same address is
+		 * covered, including ::ffff:7f00:1 and 0:0:0:0:0:ffff:127.0.0.1.
 		 */
 		// A malformed address returns false and does not require a warning.
 

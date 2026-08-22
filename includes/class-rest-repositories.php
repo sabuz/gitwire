@@ -27,9 +27,9 @@ class REST_Repositories {
 	/**
 	 * Requests held back from detection for user-initiated work.
 	 *
-	 * Detection is optional work. Installing, listing branches, and resolving a pasted
-	 * URL take priority, so browse detection leaves part of the provider quota available
-	 * for those actions.
+	 * Detection is optional work. An unauthenticated GitHub connection allows 60
+	 * requests per hour, and one browse page can use that quota. Keep this reserve
+	 * available for installing, listing branches, and resolving pasted URLs.
 	 *
 	 * @var int
 	 */
@@ -117,8 +117,9 @@ class REST_Repositories {
 		);
 
 		/*
-		 * GitLab subgroup paths may contain slashes, so the owner segment is greedy.
-		 * The fixed suffix keeps the repository name separate from the owner path.
+		 * GitLab subgroup paths may contain slashes. WordPress decodes %2F before route
+		 * matching, so encoding the owner cannot keep it as one segment. The fixed suffix
+		 * keeps the repository name separate from the owner path.
 		 */
 		register_rest_route(
 			$namespace,

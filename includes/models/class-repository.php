@@ -163,8 +163,9 @@ class Repository extends Model_Base {
 	/**
 	 * Converts a stored UTC datetime to ISO-8601 for the client.
 	 *
-	 * Convert the stored UTC value to a format JavaScript parses as UTC. The epoch
-	 * sentinel used when a provider has no date becomes an empty string so the UI does
+	 * Convert the stored UTC value to a format JavaScript parses as UTC. JavaScript
+	 * treats the space-separated value as local time, which shifts relative timestamps
+	 * by the viewer's offset. The epoch sentinel becomes an empty string so the UI does
 	 * not display it as an old timestamp.
 	 *
 	 * @since 1.0.0
