@@ -73,6 +73,56 @@ None of these exist yet. Without them the directory listing falls back to a gene
 
 ---
 
+## Known Plugin Check failure: expect a question about it
+
+Plugin Check raises one **error** against the submitted zip, and it is deliberate:
+
+```
+Plugin Updater detected. These are not permitted in WordPress.org hosted plugins.
+Detected: site_transient_update_plugins
+```
+
+It comes from `Plugin_Updater_Check::look_for_plugin_updaters()`, which greps PHP for
+`#site_transient_update_plugins#`. It is a string match, so it cannot see what the code does
+with the transient.
+
+Our CI ignores this one code so a permanently red pipeline does not mask real regressions
+(`.github/workflows/code-check.yml`). That changes nothing about the submission: Plugin Check run
+by the reviewer will still flag it. Do not try to hide it, and do not build the filter name at
+runtime to dodge the grep. That is evasion and it is worse than the finding.
+
+### The explanation to give
+
+> Gitwire installs plugins and themes from a user's own Git repository, at their explicit request.
+> It does not update itself from anywhere except WordPress.org, and it bundles no updater library.
+>
+> The flagged code does the opposite of what the check is looking for. It **removes** entries from
+> `site_transient_update_plugins`; it never adds one. The reason is data loss: WordPress asks
+> api.wordpress.org about every installed directory name, and if a user's repository happens to
+> live at a directory name a directory-hosted plugin also uses, WordPress offers that unrelated
+> project's release and, with auto-updates on, installs it over the user's own code without asking.
+> The filter removes only the rows Gitwire itself installed and tracks, which are never
+> WordPress.org plugins.
+>
+> The relevant code is `Installer::suppress_plugin_updates()` and `suppress_theme_updates()` in
+> `includes/class-installer.php`. Both take the transient, drop the entries matching directories in
+> Gitwire's own installation table, and return it. There is no remote call, no alternative update
+> source, and no code path that puts an update into the transient.
+>
+> We also ship the non-invasive half of the fix: the Repositories screen warns when a managed
+> install has no `Update URI` header, since that header is the mechanism WordPress added in 5.8 for
+> a plugin to claim its slug. We cannot add that header ourselves, because it belongs in the user's
+> repository and the next pull would overwrite it, which is why the filter exists as well.
+>
+> If suppression is not acceptable, we will remove the filter. Please confirm which you prefer.
+
+### If the reviewer says no
+
+Remove the four `add_filter` calls and the six methods in `includes/class-installer.php`, delete
+`tests/InstallerUpdateSuppressionTest.php`, and drop `ignore-codes` from the workflow. Commit
+`546407b` did exactly that and can be reapplied. The `Update URI` warning stays either way, and the
+residual risk goes back to being the user's to manage. Tracked in issue #84.
+
 ## Review Red Flags to Avoid
 
 Based on common WordPress.org rejection reasons:
