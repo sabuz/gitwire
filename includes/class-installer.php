@@ -420,7 +420,7 @@ class Installer {
 			'provider'  => $rec['provider'] ?? 'github',
 		];
 
-		// Clear this option during bulk deletes because it is only drained on Gitwire screens.
+		// Keep the queue bounded because it is drained only on Gitwire screens.
 		if ( count( $pending ) > 50 ) {
 			$pending = array_slice( $pending, -50 );
 		}
@@ -1020,7 +1020,7 @@ class Installer {
 	public static function get_known_fatal_remote_head( string $provider, string $full_name, string $branch ): ?string {
 		$value = get_transient( self::known_fatal_head_key( $provider, $full_name, $branch ) );
 
-		// Older entries store the location as a bare SHA string.
+		// Older entries store only the remote SHA instead of a structured value.
 		if ( is_array( $value ) ) {
 			$value = $value['sha'] ?? '';
 		}

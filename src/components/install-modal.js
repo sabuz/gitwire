@@ -165,7 +165,7 @@ export function InstallForm( {
 		};
 	}, [ slug, type, blockedBySmartInstall ] );
 
-	// Treat detection as settled when auto-detection is disabled.
+	// Treat type detection as settled when automatic type detection is disabled.
 	const detectionSettled = ! autoDetectType || !! detection;
 
 	const canInstall =

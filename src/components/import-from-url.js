@@ -61,7 +61,7 @@ export default function ImportFromUrl( {
 	const [ checkError, setCheckError ] = useState( null );
 	const [ resolved, setResolved ] = useState( null );
 
-	// Install-form state populated after repository resolution or connection verification.
+	// State used by the install form after resolving a repository or verifying access.
 	const [ allBranches, setAllBranches ] = useState( [] );
 	const [ branch, setBranch ] = useState( 'main' );
 	const [ branchFilter, setBranchFilter ] = useState( '' );
@@ -118,7 +118,7 @@ export default function ImportFromUrl( {
 			)
 				.then( ( b ) => {
 					setAllBranches( b );
-					// Use the repository default when the fallback branch is unavailable.
+					// Use the first available branch when the current branch is unavailable.
 					setBranch( ( current ) =>
 						b.length > 0 && ! b.includes( current )
 							? b[ 0 ]
@@ -338,7 +338,8 @@ export default function ImportFromUrl( {
 	}, [ allBranches, branchFilter, branch ] );
 
 	/*
-	 * Ask for a type when detection is disabled or Smart Install allows unknown types.
+	 * Ask for a type when automatic type detection is disabled or Smart Install
+	 * allows unknown types.
 	 */
 	const askForType =
 		! autoDetectType || ( 'unknown' === detection?.type && ! smartInstall );

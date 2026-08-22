@@ -171,7 +171,7 @@ export default function RepositoryBrowser( {
 	 * already accounts for Smart Install when returning this setting.
 	 */
 	const autoDetectType = settings?.auto_detect_type !== false;
-	// Hide type filters when detection is off and only one provider is available.
+	// Show type filters only when type detection is enabled; source filters remain independent.
 	const hasAnyFilters = autoDetectType || showSourceBadge;
 
 	const loadRepos = useCallback(
@@ -377,7 +377,7 @@ export default function RepositoryBrowser( {
 	};
 
 	const matchesType = ( r ) => {
-		// Ignore type filters when detection is disabled because their controls are hidden.
+		// Ignore type filters when automatic type detection is disabled because those controls are hidden.
 		if ( ! autoDetectType || activeTypeFilters.length === 0 ) {
 			return true;
 		}

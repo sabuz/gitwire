@@ -534,18 +534,15 @@ class REST_Installer {
 	}
 
 	/**
-	 * Returns whether an installation is missing the header that keeps WordPress.org
-	 * from updating over it.
+	 * Returns whether an installation lacks the header that prevents a WordPress.org update.
 	 *
-	 * Core sends every installed slug to api.wordpress.org, which answers with a
-	 * release for anything that matches. A repository living at a directory name
-	 * some directory-hosted project also uses gets that project's zip, and with
-	 * auto-updates on it lands without a word. Declaring an Update URI that is not
-	 * wordpress.org is what tells the API to leave the slug alone, which is the
-	 * reason the header exists.
+	 * WordPress checks installed plugin and theme slugs against update sources. A
+	 * matching directory slug can receive an update unless an Update URI header
+	 * claims it for another source. A missing header can therefore allow an update
+	 * to replace files tracked by Gitwire.
 	 *
-	 * Only the header is read. Whether the slug actually collides is a question for
-	 * api.wordpress.org, and the answer would not change the advice.
+	 * Only the local header is read. Whether a slug currently collides is decided by
+	 * WordPress.org and does not change the warning.
 	 *
 	 * @since 1.0.0
 	 * @param array<string, mixed>                $rec     Installed record.

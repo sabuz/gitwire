@@ -539,7 +539,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					value={ repositoryTypeRefreshFrequency }
 					onChange={ handleRepositoryTypeRefreshFrequencyChange }
 				>
-					{ /* ToggleGroupControl applies disabled to its wrapper, so disable each option. */ }
+					{ /* ToggleGroupControl disables only its wrapper, so disable each option explicitly. */ }
 					<ToggleGroupControlOption
 						disabled={ ! detectionActive }
 						label={ __( 'Twice Daily', 'gitwire' ) }

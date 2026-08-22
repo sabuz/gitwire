@@ -14,16 +14,16 @@ parameters:
 		- uninstall.php
 	excludePaths:
 		- vendor/*
-		# both redeclare WP functions that the WordPress stub package already defines
+		# These files redeclare WordPress functions already defined by the stub package.
 		- tests/bootstrap.php
 		- tests/stubs.php
 		- tests/class-wp-error.php
 		- tests/class-fake-wpdb.php
-		# shadows dns_get_record() and gethostbyname() inside the Gitwire namespace
+		# This file shadows DNS functions inside the Gitwire namespace.
 		- tests/dns-stubs.php
-		# shadows wp_get_theme(), narrowing WP_Theme to the test double
+		# This file shadows wp_get_theme() and narrows WP_Theme to the test double.
 		- tests/theme-stubs.php
-	# read for symbols (test helpers, sandbox constants) without analysing the bodies
+	# Read symbols such as test helpers and sandbox constants without analysing bodies.
 	scanFiles:
 		- tests/bootstrap.php
 		- tests/stubs.php

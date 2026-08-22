@@ -9,10 +9,10 @@ use Gitwire\REST_Installer;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Verified against api.wordpress.org: a plugin at a directory-hosted slug with no
- * Update URI header is offered that project's release, and the same request with
- * the header set to anything off wordpress.org is not. Missing header means the
- * install can be replaced, so the record carries a flag for the UI to warn on.
+ * A plugin at a directory-hosted slug without an Update URI header may receive a
+ * WordPress.org update, while a non-WordPress.org value prevents that update. A
+ * missing header can therefore replace the installation, so the record carries a
+ * flag for the UI to display a warning.
  *
  * @covers Gitwire\REST_Installer
  */
@@ -74,8 +74,8 @@ class UpdateUriDetectionTest extends TestCase {
 	}
 
 	/**
-	 * "false" is the documented way to claim a slug without naming a host, and
-	 * api.wordpress.org honours it the same as any other non-wordpress.org value.
+	 * The literal `false` claims a slug without naming a host, like any other
+	 * non-WordPress.org value.
 	 *
 	 * @return void
 	 */

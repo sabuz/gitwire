@@ -40,7 +40,7 @@ class GitLab_API implements Git_Provider_Interface {
 	private string $connection_id;
 
 	/**
-	 * Instance used when no self-hosted URL is configured.
+	 * Host used when no self-hosted URL is configured.
 	 *
 	 * @var string
 	 */
@@ -481,11 +481,10 @@ class GitLab_API implements Git_Provider_Interface {
 		}
 
 		/*
-		 * gitlab.com is hardcoded here, not something a user can point elsewhere, so
-		 * there is no SSRF to guard against and no reason to resolve it. The resolve
-		 * below is a blocking dns_get_record() with no timeout available, and a stalled
-		 * AAAA lookup against gitlab.com was hitting max_execution_time and taking the
-		 * whole request down with it. Self-hosted hosts still get the full check.
+		 * GitLab.com is hardcoded here, so users cannot direct it to an internal address.
+		 * Skip DNS resolution because dns_get_record() is blocking and has no timeout.
+		 * A stalled AAAA lookup can exceed max_execution_time. Self-hosted hosts still
+		 * receive the full check.
 		 */
 		if ( self::DEFAULT_HOST === $host ) {
 			return true;

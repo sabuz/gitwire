@@ -111,7 +111,7 @@ class Repositories {
 	public static function clear_repositories( ?string $connection_id = null ): void {
 		Repository::instance()->clear( $connection_id ?? '' );
 
-		// Clear the parked cursor so a deleted connection cannot resume from it.
+		// Remove the parked cursor so a deleted connection cannot resume from it.
 		$state = self::get_refresh_state();
 		if ( null === $connection_id ) {
 			$state = [];
@@ -130,7 +130,7 @@ class Repositories {
 	public static function clear_repository_types(): void {
 		Repository::instance()->clear_types();
 
-		// Remove legacy gitwire_repo_type_* options created by older releases.
+		// Remove legacy repository-type options left by older releases.
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(

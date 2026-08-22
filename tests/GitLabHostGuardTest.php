@@ -9,13 +9,11 @@ use Gitwire\GitLab_API;
 use PHPUnit\Framework\TestCase;
 
 /**
- * dns_get_record() takes no timeout argument and blocks on the system resolver.
- * A stalled AAAA lookup for gitlab.com was reaching max_execution_time and
- * killing the request, from inside the guard meant to make requests safer.
+ * dns_get_record() has no timeout and blocks on the system resolver. A stalled
+ * AAAA lookup for gitlab.com can exceed max_execution_time while the guard runs.
  *
- * The lookups are recorded by tests/dns-stubs.php, which shadows the two
- * resolver functions inside the Gitwire namespace, so these assert whether a
- * lookup happened at all rather than how long one took.
+ * tests/dns-stubs.php records resolver calls through namespaced functions. The tests
+ * can therefore verify whether a lookup occurs without relying on network timing.
  *
  * @covers Gitwire\GitLab_API
  */
@@ -24,9 +22,9 @@ class GitLabHostGuardTest extends TestCase {
 	protected function setUp(): void {
 		gitwire_test_reset_options();
 
-		// The guard memoises per host for the life of the request.
+		// The guard caches results per host for the request.
 		$cache = new ReflectionProperty( GitLab_API::class, 'host_checked' );
-		// Required on the PHP 8.0 floor, a deprecated no-op from 8.1 onwards.
+		// Required only on PHP 8.0; reflection members are accessible by default from PHP 8.1.
 		if ( PHP_VERSION_ID < 80100 ) {
 			$cache->setAccessible( true );
 		}

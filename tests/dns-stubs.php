@@ -1,13 +1,13 @@
 <?php
 /**
- * Deterministic DNS for the unit suite.
+ * Provides deterministic DNS stubs for the test suite.
  *
- * GitLab_API calls these unqualified from inside namespace Gitwire, so PHP
- * resolves them here before the global ones. That keeps the suite off the
- * network and lets a test assert whether a lookup happened at all.
+ * GitLab_API calls these functions from the Gitwire namespace, so PHP resolves
+ * these definitions before the global functions. This keeps tests off the network
+ * and allows them to verify whether a lookup occurs.
  *
- * Excluded from PHPStan on purpose: analysing it would make these shadow the
- * real functions across the whole project and narrow their return types.
+ * PHPStan excludes this file because these definitions would shadow the global
+ * functions across the project and narrow their return types.
  *
  * @package Gitwire
  */
