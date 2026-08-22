@@ -110,7 +110,7 @@ When the activity log is enabled, Gitwire records the WordPress username of whoe
 
 == Third-Party Libraries ==
 
-Gitwire is licensed GPL-2.0-or-later, and all of its own PHP, JavaScript, and SCSS is original work.
+Gitwire is licensed GPL-2.0-or-later, and all of its own PHP, JavaScript, and SCSS is original work. The full license text ships with the plugin in `LICENSE`.
 
 Most of the WordPress packages the admin screens use (`@wordpress/components`, `@wordpress/element`, `@wordpress/api-fetch`, and others) are loaded from WordPress core at runtime and are not bundled. The remainder, including `@wordpress/dataviews` and its dependency tree, is compiled into `build/index.js`. That comes to 43 third-party packages, licensed MIT or 0BSD, all compatible with the GPL.
 

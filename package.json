@@ -54,7 +54,7 @@
 		"licenses": "node bin/third-party-licenses.js",
 		"packages-update": "wp-scripts packages-update",
 		"plugin-zip": "bash bin/plugin-zip.sh",
-		"pre-pr-check": "npm run lint && npm run lint:phpstan && npm run build",
+		"pre-pr-check": "npm run lint && npm run lint:phpstan && npm run check-licenses && npm run build",
 		"start": "wp-scripts start",
 		"test:e2e": "wp-scripts test-e2e",
 		"test:unit": "wp-scripts test-unit-js"
