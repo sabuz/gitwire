@@ -19,6 +19,8 @@ parameters:
 		- tests/stubs.php
 		- tests/class-wp-error.php
 		- tests/class-fake-wpdb.php
+		# shadows dns_get_record() and gethostbyname() inside the Gitwire namespace
+		- tests/dns-stubs.php
 	# read for symbols (test helpers, sandbox constants) without analysing the bodies
 	scanFiles:
 		- tests/bootstrap.php

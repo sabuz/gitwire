@@ -21,6 +21,7 @@ $GLOBALS['gitwire_test_options'] = [];
 
 require_once __DIR__ . '/class-wp-error.php';
 require_once __DIR__ . '/class-fake-wpdb.php';
+require_once __DIR__ . '/dns-stubs.php';
 
 /**
  * Resets all stub state between tests.
@@ -32,6 +33,7 @@ function gitwire_test_reset_options(): void {
 	$GLOBALS['gitwire_test_actions']    = [];
 	$GLOBALS['gitwire_test_is_admin']   = false;
 	$GLOBALS['gitwire_test_doing_cron'] = false;
+	$GLOBALS['gitwire_dns_calls']       = [];
 	\Gitwire\Settings::invalidate_cache();
 }
 

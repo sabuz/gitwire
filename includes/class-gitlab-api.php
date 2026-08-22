@@ -40,6 +40,13 @@ class GitLab_API implements Git_Provider_Interface {
 	private string $connection_id;
 
 	/**
+	 * Instance used when no self-hosted URL is configured.
+	 *
+	 * @var string
+	 */
+	private const DEFAULT_HOST = 'gitlab.com';
+
+	/**
 	 * Per-request cache of host safety checks, keyed by hostname.
 	 *
 	 * @var array<string, bool>
@@ -67,7 +74,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 */
 	public function __construct( string $token = '', string $base_url = '', string $connection_id = '' ) {
 		$this->token         = $token;
-		$this->base          = rtrim( $base_url ? $base_url : 'https://gitlab.com', '/' ) . '/api/v4';
+		$this->base          = rtrim( $base_url ? $base_url : 'https://' . self::DEFAULT_HOST, '/' ) . '/api/v4';
 		$this->connection_id = $connection_id;
 	}
 
@@ -471,6 +478,17 @@ class GitLab_API implements Git_Provider_Interface {
 		$host = Settings::normalize_host( $host );
 		if ( '' === $host || 'localhost' === $host ) {
 			return new \WP_Error( 'gitwire_ssrf', __( 'GitLab URL resolves to a disallowed address.', 'gitwire' ) );
+		}
+
+		/*
+		 * gitlab.com is hardcoded here, not something a user can point elsewhere, so
+		 * there is no SSRF to guard against and no reason to resolve it. The resolve
+		 * below is a blocking dns_get_record() with no timeout available, and a stalled
+		 * AAAA lookup against gitlab.com was hitting max_execution_time and taking the
+		 * whole request down with it. Self-hosted hosts still get the full check.
+		 */
+		if ( self::DEFAULT_HOST === $host ) {
+			return true;
 		}
 
 		/*
