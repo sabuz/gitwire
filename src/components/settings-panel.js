@@ -720,8 +720,7 @@ function PublicConnectionsCard( { connections, onChange } ) {
 			.forEach( ( conn ) => refreshRate( conn.id ) );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// The count only matters once the user is actually looking at it, so refresh
-	// on open rather than polling in the background while the card is collapsed.
+	// The count only matters once the user is actually looking at it.
 	const handleSelect = useCallback(
 		( id ) => {
 			setSelectedId( id );
