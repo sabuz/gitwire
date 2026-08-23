@@ -810,6 +810,12 @@ class Installer {
 	/**
 	 * Stores the installed HEAD commit SHA for a repository record.
 	 *
+	 * $sha comes from the branch's own latest commit, fetched right after a
+	 * successful install or pull, so it is also the current remote HEAD: there
+	 * is nothing pending against it yet. remote_head is updated to match so a
+	 * stale "update available" (or "known fatal") badge from before the pull
+	 * does not linger just because this was the call that resolved the SHA.
+	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string $full_name Repository full name (owner/repository).
@@ -818,6 +824,7 @@ class Installer {
 	 */
 	public static function set_head( string $provider, string $full_name, string $sha ): void {
 		Installation::instance()->update_head( $provider, $full_name, $sha );
+		Installation::instance()->update_remote_head( $provider, $full_name, $sha );
 		self::invalidate_installed_cache();
 	}
 
