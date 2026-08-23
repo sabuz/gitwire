@@ -645,22 +645,24 @@ class REST_Installer {
 		} catch ( \Throwable $e ) {
 			// The guard was armed before activation, so clean up before returning.
 			Error_Handler::abort_pending_guard();
+			$detail = sprintf(
+				'%s: %s in %s on line %d',
+				get_class( $e ),
+				$e->getMessage(),
+				str_replace( ABSPATH, '', $e->getFile() ),
+				$e->getLine()
+			);
 			Logger::log(
-				sprintf(
-					'[%s] Activation failed for %s/%s: %s: %s in %s on line %d',
-					$provider,
-					$owner,
-					$repo,
-					get_class( $e ),
-					$e->getMessage(),
-					$e->getFile(),
-					$e->getLine()
-				),
+				sprintf( '[%s] Activation failed for %s/%s: %s', $provider, $owner, $repo, $detail ),
 				'error'
 			);
 			return new \WP_Error(
 				'gitwire_activation_fatal',
-				__( 'Plugin could not be activated because it triggered a fatal error.', 'gitwire' ),
+				sprintf(
+					/* translators: %s: PHP error detail */
+					__( 'Plugin could not be activated because it triggered a fatal error: %s', 'gitwire' ),
+					$detail
+				),
 				[ 'status' => 500 ]
 			);
 		}
