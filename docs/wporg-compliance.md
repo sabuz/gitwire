@@ -96,7 +96,7 @@ project by slug. Gitwire leaves that update offer visible, but blocks the native
 plugin or theme is present in Gitwire's installation table. Repository owners should still choose a
 non-colliding directory name or declare the repository's `Update URI` in its own source.
 
-Tracked in issue #84.
+Issue #84 has the history, including the two approaches tried and abandoned before this one.
 
 ## Review Red Flags to Avoid
 
