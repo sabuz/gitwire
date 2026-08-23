@@ -375,12 +375,10 @@ class REST_Installer {
 			$api      = self::make_api( $provider, $connection_id );
 			$detected = $api->detect_type( $owner, $repo, $branch );
 
+			// The provider's own message already says what actually happened (rate limit, auth,
+			// timeout); replacing it with a generic one hid that and pointed at Smart Install instead.
 			if ( is_wp_error( $detected ) ) {
-				return new \WP_Error(
-					'detect_failed',
-					__( 'Could not verify repository type. Disable Smart Install or retry.', 'gitwire' ),
-					[ 'status' => 400 ]
-				);
+				return $detected;
 			}
 
 			$detected_type = $detected['type'] ?? 'unknown';
