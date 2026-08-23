@@ -106,6 +106,58 @@
 
 ---
 
+## Update and Capability Tests
+
+Added for the pre-submission changes. None of this is covered by the unit suite,
+which cannot define constants mid-run or drive the WordPress upgrader.
+
+### File modifications disabled
+
+Set `define( 'DISALLOW_FILE_MODS', true );` in `wp-config.php`.
+
+- [ ] The Repositories screen shows the "File changes are disabled" banner
+- [ ] Install from Browse fails with a message naming the setting, and writes nothing
+- [ ] Pull latest and Switch branch fail the same way
+- [ ] Delete fails the same way
+- [ ] Activating and deactivating an already-installed plugin still works, matching core
+- [ ] Turning auto-update **off** still works; turning it **on** is refused
+- [ ] With auto-update armed beforehand, the scheduled run applies nothing and does not spam the log
+
+### Capabilities
+
+Grant a role `manage_options` without `install_plugins` (User Switching plus a role editor).
+
+- [ ] That user reaches the Gitwire screens but cannot install, update, or delete
+- [ ] A Super Admin on multisite can; a site Administrator on a subsite cannot reach Gitwire at all
+
+### WordPress.org update collisions
+
+Install a repository into a directory name that a directory-hosted plugin also uses, for example
+`wp-super-cache`, on a site that does not already have that plugin.
+
+- [ ] WordPress lists an update for it on the Plugins screen; this is expected and deliberate
+- [ ] Clicking Update fails with "This plugin is managed by Gitwire", and the files are untouched
+- [ ] The same through **wp plugin update**
+- [ ] With plugin auto-updates on, the scheduled run does not replace the files
+- [ ] No "some updates did not complete" email arrives when the blocked item is the only failure
+- [ ] An email **does** arrive if another plugin genuinely failed in the same run
+- [ ] Repeat for a theme
+
+### GitLab subgroups
+
+Import `https://gitlab.com/<group>/<subgroup>/<project>` from a URL.
+
+- [ ] It resolves, detects, and installs
+- [ ] Pull latest, Switch branch, Activate, Deactivate, View commits, Remove and Untrack all work
+- [ ] Auto-update picks it up rather than silently doing nothing
+
+### GitLab responsiveness
+
+- [ ] Browsing a gitlab.com connection returns promptly and logs no `max_execution_time` fatal
+- [ ] A self-hosted GitLab connection still rejects a URL resolving to a private or loopback address
+
+---
+
 ## Role Tests (switch via User Switching)
 
 ### Administrator
