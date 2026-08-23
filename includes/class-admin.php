@@ -228,10 +228,14 @@ class Admin {
 	 * Returns the sidebar icon as a data URI, cached across requests.
 	 *
 	 * The hook runs on every admin page load, so reading and encoding the file
-	 * each time is pure overhead. The asset is a flat white glyph rather than
-	 * the full brand mark: WordPress paints a menu icon as a background at 60
-	 * percent opacity against the dark sidebar, so a dark tile with gradient
-	 * fills would all but disappear there.
+	 * each time is pure overhead.
+	 *
+	 * The asset is the full brand mark, tile included. A data URI lands in
+	 * #adminmenu div.wp-menu-image.svg, which only sets background-size: 20px
+	 * auto, so it renders at full colour and full opacity. The 0.6 opacity that
+	 * dims the other menu icons is on .wp-menu-image img, a selector this never
+	 * matches. Anything relying on WordPress to recolour or dim it would be
+	 * relying on a rule that does not apply here.
 	 *
 	 * @since 1.0.0
 	 * @return string
