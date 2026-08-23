@@ -52,6 +52,8 @@ class Admin {
 		add_filter( 'admin_body_class', [ self::class, 'body_class' ] );
 		add_action( 'admin_head', [ self::class, 'hide_admin_notices' ], 999 );
 		add_action( 'admin_head', [ self::class, 'hide_footer_text' ], 999 );
+		// The sidebar renders on every screen, not just ours, so this can't be gated to is_gitwire_screen().
+		add_action( 'admin_head', [ self::class, 'print_menu_icon_styles' ] );
 
 		// Add labels to native plugin and theme lists.
 		add_filter( 'all_plugins', [ self::class, 'label_managed_plugins' ] );
@@ -237,13 +239,14 @@ class Admin {
 	 * out on the screen.
 	 *
 	 * findElements() only looks at background-image, so a URL is skipped
-	 * entirely: WordPress emits an <img> and the icon is never touched. It then
-	 * behaves like every other image icon, dimmed to 0.6 and full strength on
-	 * hover or when current, which is what dashicons do anyway.
+	 * entirely: WordPress emits an <img> and the icon is never touched by that
+	 * script. Core's own CSS still applies to it, and it centres and dims a
+	 * generic image icon on assumptions this artwork doesn't meet, which
+	 * print_menu_icon_styles() corrects.
 	 *
-	 * Baking the right colour in instead is not possible here. It would need the
-	 * scheme's icon colours, and register_admin_color_schemes() runs on
-	 * admin_init, after admin_menu has already registered this.
+	 * Baking a colour-scheme-aware fill in instead is not possible here. It
+	 * would need the scheme's icon colours, and register_admin_color_schemes()
+	 * runs on admin_init, after admin_menu has already registered this.
 	 *
 	 * The version query busts the browser cache when the artwork changes. No
 	 * transient: there is nothing left to read or encode.
@@ -257,6 +260,34 @@ class Admin {
 		}
 
 		return GITWIRE_URL . 'assets/images/menu-icon.svg?ver=' . GITWIRE_VERSION;
+	}
+
+	/**
+	 * Corrects core's generic image-icon treatment for our menu item.
+	 *
+	 * #adminmenu .wp-menu-image img carries `padding: 9px 0 0` with no matching
+	 * bottom value, in a 34px-tall box. That only centres a 16px icon; anything
+	 * else sits off-centre. It also carries `opacity: .6`, which the background-
+	 * image path this replaced never had, since that path painted an already-
+	 * dim colour at full strength instead of dimming a bright one. Both need
+	 * overriding for a plain 20x20 <img> to look like the rest of the menu.
+	 *
+	 * Runs on every admin screen, network admin included, because the sidebar
+	 * does; it can't be gated to is_gitwire_screen().
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function print_menu_icon_styles(): void {
+		?>
+		<style>
+			#adminmenu #toplevel_page_gitwire .wp-menu-image img,
+			#adminmenu #toplevel_page_gitwire-network .wp-menu-image img {
+				padding: 7px 0 0;
+				opacity: 1;
+			}
+		</style>
+		<?php
 	}
 
 	/**
