@@ -110,7 +110,9 @@ class REST_Installer {
 	/**
 	 * Stores the head SHA and the commit list for a branch after an install or pull.
 	 *
-	 * Fire-and-forget: failures are ignored, the next sync re-resolves.
+	 * The install or pull itself already succeeded by the time this runs, so a
+	 * failure here never undoes it; the caller surfaces the reason as a warning
+	 * on an otherwise successful response instead of failing the whole request.
 	 *
 	 * @since 1.0.0
 	 * @param string      $owner         Repository owner.
@@ -118,23 +120,28 @@ class REST_Installer {
 	 * @param string      $branch        Branch name.
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string|null $connection_id Connection ID used for the install.
-	 * @return void
+	 * @return string Empty on success, the reason the commit list is unavailable otherwise.
 	 */
-	private static function store_head( string $owner, string $repository, string $branch, string $provider, ?string $connection_id = null ): void {
+	private static function store_head( string $owner, string $repository, string $branch, string $provider, ?string $connection_id = null ): string {
 		$record = Installer::get_record( $provider, $owner . '/' . $repository );
 		if ( ! $record ) {
-			return;
+			return '';
 		}
 
 		$api     = self::make_api( $provider, $connection_id );
 		$commits = $api->get_commits( $owner, $repository, $branch );
-		if ( is_wp_error( $commits ) || empty( $commits ) ) {
-			return;
+		if ( is_wp_error( $commits ) ) {
+			return $commits->get_error_message();
+		}
+		if ( empty( $commits ) ) {
+			return '';
 		}
 
 		// Use one fetch because its newest entry provides the requested head commit.
 		Installer::set_head( $provider, $owner . '/' . $repository, $commits[0]['sha'] );
 		self::save_cached_commits( $record['id'], $branch, $commits );
+
+		return '';
 	}
 
 	/**
@@ -421,7 +428,20 @@ class REST_Installer {
 
 		unset( $result['_evicted'] );
 
-		self::store_head( $owner, $repository, $branch, $provider, $connection_id );
+		$head_error = self::store_head( $owner, $repository, $branch, $provider, $connection_id );
+		if ( '' !== $head_error ) {
+			$result['warning'] = $is_update
+				? sprintf(
+					/* translators: %s: reason the commit list could not be fetched */
+					__( 'Updated, but the commit list could not be loaded: %s', 'gitwire' ),
+					$head_error
+				)
+				: sprintf(
+					/* translators: %s: reason the commit list could not be fetched */
+					__( 'Installed, but the commit list could not be loaded: %s', 'gitwire' ),
+					$head_error
+				);
+		}
 
 		if ( $is_update ) {
 			Logger::log( sprintf( '[%s] Updated %s/%s (%s) on branch %s', $provider, $owner, $repository, $type, $branch ) );
@@ -756,7 +776,20 @@ class REST_Installer {
 		}
 
 		$stored_conn_id = $override_id ?? ( $existing_record['connection_id'] ?? null );
-		self::store_head( $owner, $repository, $branch, $provider, $stored_conn_id );
+		$head_error     = self::store_head( $owner, $repository, $branch, $provider, $stored_conn_id );
+		if ( '' !== $head_error ) {
+			$result['warning'] = $is_pull
+				? sprintf(
+					/* translators: %s: reason the commit list could not be fetched */
+					__( 'Pulled, but the commit list could not be loaded: %s', 'gitwire' ),
+					$head_error
+				)
+				: sprintf(
+					/* translators: %s: reason the commit list could not be fetched */
+					__( 'Switched branch, but the commit list could not be loaded: %s', 'gitwire' ),
+					$head_error
+				);
+		}
 
 		if ( ! $is_pull ) {
 			// Clear the previous branch's remote head so sync_installed() resolves it again.

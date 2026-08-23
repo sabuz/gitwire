@@ -73,7 +73,7 @@ export default function InstalledPanel( {
 	}, [] );
 
 	const handleBranchSwitched = useCallback(
-		( newBranch ) => {
+		( newBranch, warning ) => {
 			if ( branchModalItem ) {
 				clearCommitsCache( branchModalItem );
 			}
@@ -84,6 +84,9 @@ export default function InstalledPanel( {
 					newBranch
 				)
 			);
+			if ( warning ) {
+				toast.warning( warning );
+			}
 			onRefresh();
 		},
 		[ branchModalItem, onRefresh ]

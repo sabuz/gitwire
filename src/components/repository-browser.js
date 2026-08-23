@@ -154,6 +154,12 @@ export default function RepositoryBrowser( {
 	const { detections, paused, runBatch, seedFromRepositories, reset } =
 		useRepositoryDetection();
 
+	const pausedProviders = useMemo( () => {
+		const seen = new Set();
+		paused.keys.forEach( ( key ) => seen.add( key.split( ':' )[ 0 ] ) );
+		return [ ...seen ].map( ( provider ) => providerLabel( provider ) );
+	}, [ paused.keys ] );
+
 	const [ repositories, setRepositories ] = useState( [] );
 	const [ hasMore, setHasMore ] = useState( false );
 	const [ loading, setLoading ] = useState( false );
@@ -725,9 +731,13 @@ export default function RepositoryBrowser( {
 			{ paused.reason && (
 				<p className="gitwire-browse-notice">
 					{ 'rate_limit' === paused.reason
-						? __(
-								'Type detection paused: this provider has few API requests left this hour. Everything is still installable, and detection resumes once the limit resets.',
-								'gitwire'
+						? sprintf(
+								/* translators: %s: comma-separated provider names (e.g. GitHub, GitLab) */
+								__(
+									'Type detection paused: %s has few API requests left this hour. Everything is still installable, and detection resumes once the limit resets.',
+									'gitwire'
+								),
+								pausedProviders.join( ', ' )
 						  )
 						: __(
 								'Type detection stopped early to keep the page responsive. Refresh to carry on where it left off.',

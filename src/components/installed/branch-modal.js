@@ -12,7 +12,7 @@ import * as api from '../../api';
  * @param {Object}   props            Component props.
  * @param {Object}   props.item       Installed repository record.
  * @param {Function} props.onClose    Callback to close the modal.
- * @param {Function} props.onSwitched Callback fired with the new branch name on success.
+ * @param {Function} props.onSwitched Callback fired with the new branch name, and an optional warning, on success.
  * @param {Function} props.onRefresh  Refreshes installed data after verify failures.
  * @return {JSX.Element|null} The rendered modal.
  */
@@ -73,8 +73,8 @@ export default function BranchModal( {
 		}
 		setSwitching( true );
 		try {
-			await api.switchBranch( item.id, selectedBranch );
-			onSwitched( selectedBranch );
+			const result = await api.switchBranch( item.id, selectedBranch );
+			onSwitched( selectedBranch, result?.warning );
 			onClose();
 		} catch ( e ) {
 			toast.error(

@@ -34,7 +34,7 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 	const handlePull = useCallback( async () => {
 		setPulling( true );
 		try {
-			await api.switchBranch( item.id, item.branch );
+			const result = await api.switchBranch( item.id, item.branch );
 			toast.success(
 				sprintf(
 					/* translators: %s: repository full name */
@@ -42,6 +42,9 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 					item.full_name
 				)
 			);
+			if ( result?.warning ) {
+				toast.warning( result.warning );
+			}
 			onRefresh();
 		} catch ( e ) {
 			clearCommitsCache( item );

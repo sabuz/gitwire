@@ -311,6 +311,12 @@ export default function App( { initialData } ) {
 					variant: 'success',
 				} );
 			}
+			if ( result.warning ) {
+				queuePendingToast( {
+					message: result.warning,
+					variant: 'warning',
+				} );
+			}
 			handleGoToTab( 'repositories' );
 			refreshInstalled();
 		},
