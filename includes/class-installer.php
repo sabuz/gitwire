@@ -1124,6 +1124,11 @@ class Installer {
 	/**
 	 * Persists an installed record while preserving metadata such as head.
 	 *
+	 * $head_sha is the remote HEAD as of the moment this install/pull ran, so
+	 * remote_head is set to the same value: nothing is pending immediately
+	 * after a successful pull, which also clears a stale "known fatal" badge
+	 * left over from before the branch moved past that commit.
+	 *
 	 * @since 1.0.0
 	 * @param string               $record_key Installed record key.
 	 * @param array<string, mixed> $record     New record payload.
@@ -1135,7 +1140,8 @@ class Installer {
 		$full_name = $record['full_name'] ?? '';
 
 		if ( $head_sha ) {
-			$record['head'] = $head_sha;
+			$record['head']        = $head_sha;
+			$record['remote_head'] = $head_sha;
 		}
 
 		Installation::instance()->upsert(
