@@ -356,6 +356,14 @@ class GitHub_API implements Git_Provider_Interface {
 		}
 
 		if ( $code >= 400 ) {
+			if ( '0' === (string) $remaining_raw ) {
+				$message = $this->token
+					? __( "GitHub's hourly rate limit for this account has been reached. It resets automatically within the hour.", 'gitwire' )
+					: __( "GitHub's hourly rate limit for unauthenticated requests has been reached. It resets automatically within the hour. Gitwire Pro adds authenticated connections with a much higher limit.", 'gitwire' );
+
+				return new \WP_Error( 'gitwire_rate_limited', $message, [ 'status' => $code ] );
+			}
+
 			return new \WP_Error(
 				'gitwire_api_error',
 				/* translators: %d: HTTP status code */
