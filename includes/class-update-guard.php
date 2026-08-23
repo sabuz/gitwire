@@ -43,6 +43,62 @@ final class Update_Guard {
 			10,
 			2
 		);
+		add_filter(
+			'auto_plugin_update_send_email',
+			[ self::class, 'filter_update_email' ],
+			10,
+			2
+		);
+		add_filter(
+			'auto_theme_update_send_email',
+			[ self::class, 'filter_update_email' ],
+			10,
+			2
+		);
+	}
+
+	/**
+	 * Drops the background update email when it would report nothing but our own refusals.
+	 *
+	 * A blocked update is a failed update as far as the automatic updater is
+	 * concerned, so it lands in update_results and core mails the site owner about
+	 * it on every run. Nothing went wrong and there is nothing to act on.
+	 *
+	 * Core's filter is one boolean for every result of that type, so this only
+	 * declines when every entry is a refusal of ours. A batch holding a real
+	 * success or a real failure still sends, carrying our entry with it, because
+	 * silencing that mail would hide someone else's broken update.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $enabled Whether core intends to send the email.
+	 * @param mixed $results Update results for one type.
+	 * @return mixed
+	 */
+	public static function filter_update_email( $enabled, $results ) {
+		if ( true !== $enabled || ! is_array( $results ) || ! $results ) {
+			return $enabled;
+		}
+
+		foreach ( $results as $result ) {
+			if ( ! self::is_blocked_result( $result ) ) {
+				return $enabled;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Returns whether one update result is an update this guard refused.
+	 *
+	 * @since 1.0.0
+	 * @param mixed $result Entry from the automatic updater's results.
+	 * @return bool
+	 */
+	private static function is_blocked_result( $result ): bool {
+		$outcome = is_object( $result ) && isset( $result->result ) ? $result->result : null;
+
+		return is_wp_error( $outcome ) && self::ERROR_CODE === $outcome->get_error_code();
 	}
 
 	/**

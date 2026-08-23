@@ -47,10 +47,17 @@ class UpdateGuardTest extends TestCase {
 		Update_Guard::init();
 		$actions = gitwire_test_actions();
 
+		/*
+		 * Pinned deliberately. Nothing here may touch the update transients, which is
+		 * what the directory prohibits and what Plugin Check greps for, so a hook added
+		 * without thinking should fail this.
+		 */
 		$this->assertSame(
 			[
 				'upgrader_pre_download',
 				'upgrader_pre_install',
+				'auto_plugin_update_send_email',
+				'auto_theme_update_send_email',
 			],
 			array_keys( $actions )
 		);
@@ -221,6 +228,67 @@ class UpdateGuardTest extends TestCase {
 				]
 			)
 		);
+	}
+
+	/**
+	 * Builds one entry in the shape WP_Automatic_Updater records per item.
+	 *
+	 * @param mixed $outcome Value of the result property.
+	 * @return object
+	 */
+	private function updateResult( $outcome ): object {
+		return (object) [
+			'item'     => null,
+			'result'   => $outcome,
+			'name'     => 'Something',
+			'messages' => [],
+		];
+	}
+
+	public function test_email_is_dropped_when_every_result_is_a_block(): void {
+		$results = [
+			$this->updateResult( new WP_Error( Update_Guard::ERROR_CODE, 'Managed.' ) ),
+			$this->updateResult( new WP_Error( Update_Guard::ERROR_CODE, 'Managed.' ) ),
+		];
+
+		$this->assertFalse( Update_Guard::filter_update_email( true, $results ) );
+	}
+
+	/**
+	 * Silencing a batch that also carries someone else's broken update would hide
+	 * a real failure, so the mail has to go out.
+	 *
+	 * @return void
+	 */
+	public function test_email_is_kept_when_another_update_genuinely_failed(): void {
+		$results = [
+			$this->updateResult( new WP_Error( Update_Guard::ERROR_CODE, 'Managed.' ) ),
+			$this->updateResult( new WP_Error( 'download_failed', 'Could not download.' ) ),
+		];
+
+		$this->assertTrue( Update_Guard::filter_update_email( true, $results ) );
+	}
+
+	public function test_email_is_kept_when_another_update_succeeded(): void {
+		$results = [
+			$this->updateResult( new WP_Error( Update_Guard::ERROR_CODE, 'Managed.' ) ),
+			$this->updateResult( true ),
+		];
+
+		$this->assertTrue( Update_Guard::filter_update_email( true, $results ) );
+	}
+
+	public function test_email_already_disabled_stays_disabled(): void {
+		$results = [ $this->updateResult( new WP_Error( Update_Guard::ERROR_CODE, 'Managed.' ) ) ];
+
+		$this->assertFalse( Update_Guard::filter_update_email( false, $results ) );
+	}
+
+	public function test_unusable_results_are_left_alone(): void {
+		$this->assertTrue( Update_Guard::filter_update_email( true, [] ) );
+		$this->assertTrue( Update_Guard::filter_update_email( true, 'not an array' ) );
+		$this->assertTrue( Update_Guard::filter_update_email( true, [ 'not an object' ] ) );
+		$this->assertTrue( Update_Guard::filter_update_email( true, [ (object) [] ] ) );
 	}
 
 	/**
