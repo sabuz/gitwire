@@ -494,6 +494,19 @@ class Theme_Scraper {
 	}
 
 	/**
+	 * Strips the stack trace PHP embeds in error_get_last() for an uncaught throwable.
+	 *
+	 * @since 1.0.0
+	 * @param string $message Raw fatal message from the sandbox.
+	 * @return string
+	 */
+	private static function trim_fatal_message( string $message ): string {
+		$trace_pos = strpos( $message, 'Stack trace:' );
+
+		return false === $trace_pos ? $message : rtrim( substr( $message, 0, $trace_pos ) );
+	}
+
+	/**
 	 * Converts a scrape failure payload into a REST-friendly WP_Error.
 	 *
 	 * @since 1.0.0
@@ -507,7 +520,7 @@ class Theme_Scraper {
 		$is_plugin = 'plugin' === $subject;
 
 		if ( self::is_php_fatal_result( $result ) ) {
-			$detail = $result['message'];
+			$detail = self::trim_fatal_message( $result['message'] );
 			if ( 'activation' === $context ) {
 				$message = $is_plugin
 					? __( 'Plugin could not be activated because it triggered a fatal error.', 'gitwire' )
