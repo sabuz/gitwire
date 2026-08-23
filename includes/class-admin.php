@@ -86,7 +86,7 @@ class Admin {
 	 * @param string $path Admin-relative path, e.g. 'admin.php'.
 	 * @return string
 	 */
-	private static function admin_url_for( string $path ): string {
+	private static function build_admin_url( string $path ): string {
 		return is_multisite() ? network_admin_url( $path ) : admin_url( $path );
 	}
 
@@ -374,7 +374,7 @@ class Admin {
 					'connections_metadata' => Connection_Meta::get_connection_cache(),
 					'disconnected_url'     => GITWIRE_URL . 'assets/images/disconnected.svg',
 					'not_found_url'        => GITWIRE_URL . 'assets/images/not-found.svg',
-					'themes_url'           => self::admin_url_for( 'themes.php' ),
+					'themes_url'           => self::build_admin_url( 'themes.php' ),
 					'initial_tab'          => $initial_tab,
 					'settings'             => $settings,
 					'installed'            => $installed ? $installed : (object) [],
@@ -416,13 +416,13 @@ class Admin {
 	 * @return array<string, string>
 	 */
 	public static function add_plugin_action_links( array $actions ): array {
-		$repositories_url = add_query_arg( 'page', 'gitwire', self::admin_url_for( 'admin.php' ) );
+		$repositories_url = add_query_arg( 'page', 'gitwire', self::build_admin_url( 'admin.php' ) );
 		$settings_url     = add_query_arg(
 			[
 				'page' => 'gitwire',
 				'path' => 'settings',
 			],
-			self::admin_url_for( 'admin.php' )
+			self::build_admin_url( 'admin.php' )
 		);
 
 		return array_merge(

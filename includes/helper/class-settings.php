@@ -48,7 +48,7 @@ class Settings {
 	/**
 	 * Every setting, its default, and how an incoming value is validated.
 	 *
-	 * Single source of truth: get_public(), merge_save(), and the activation
+	 * Single source of truth: get_public(), merge_with_current(), and the activation
 	 * defaults all read this. Keeping three hand-maintained copies is how the
 	 * accepted values and the usable values drifted apart (#48, #49).
 	 *
@@ -172,7 +172,7 @@ class Settings {
 	 * @param array<string, mixed> $incoming Request body fields.
 	 * @return array<string, mixed> Full settings array to persist.
 	 */
-	public static function merge_save( array $incoming ): array {
+	public static function merge_with_current( array $incoming ): array {
 		$current = self::get_public();
 		$out     = [];
 

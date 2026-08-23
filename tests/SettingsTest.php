@@ -9,7 +9,7 @@ use Gitwire\Settings;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Covers merge_save()'s allow-lists and the SSRF host checks.
+ * Covers merge_with_current()'s allow-lists and the SSRF host checks.
  *
  * @covers Gitwire\Settings
  */
@@ -22,16 +22,16 @@ class SettingsTest extends TestCase {
 	public function test_merge_save_keeps_stored_values_for_keys_not_sent(): void {
 		gitwire_test_set_option( 'gitwire_settings', [ 'log_level' => 'error' ] );
 
-		$merged = Settings::merge_save( [ 'smart_install' => false ] );
+		$merged = Settings::merge_with_current( [ 'smart_install' => false ] );
 
 		$this->assertFalse( $merged['smart_install'] );
 		$this->assertSame( 'error', $merged['log_level'] );
 	}
 
 	public function test_merge_save_clamps_repos_per_page(): void {
-		$this->assertSame( 100, Settings::merge_save( [ 'repos_per_page' => 5000 ] )['repos_per_page'] );
-		$this->assertSame( 10, Settings::merge_save( [ 'repos_per_page' => 1 ] )['repos_per_page'] );
-		$this->assertSame( 50, Settings::merge_save( [ 'repos_per_page' => 50 ] )['repos_per_page'] );
+		$this->assertSame( 100, Settings::merge_with_current( [ 'repos_per_page' => 5000 ] )['repos_per_page'] );
+		$this->assertSame( 10, Settings::merge_with_current( [ 'repos_per_page' => 1 ] )['repos_per_page'] );
+		$this->assertSame( 50, Settings::merge_with_current( [ 'repos_per_page' => 50 ] )['repos_per_page'] );
 	}
 
 	public function test_repos_per_page_defaults_low_enough_to_type_a_page(): void {
@@ -43,7 +43,7 @@ class SettingsTest extends TestCase {
 	}
 
 	public function test_merge_save_rejects_excluded_repos_that_are_not_owner_slash_name(): void {
-		$merged = Settings::merge_save(
+		$merged = Settings::merge_with_current(
 			[
 				'excluded_repos' => [
 					'acme/widgets',
@@ -58,8 +58,8 @@ class SettingsTest extends TestCase {
 	}
 
 	public function test_merge_save_restricts_log_level(): void {
-		$this->assertSame( 'error', Settings::merge_save( [ 'log_level' => 'error' ] )['log_level'] );
-		$this->assertSame( 'activity', Settings::merge_save( [ 'log_level' => 'verbose' ] )['log_level'] );
+		$this->assertSame( 'error', Settings::merge_with_current( [ 'log_level' => 'error' ] )['log_level'] );
+		$this->assertSame( 'activity', Settings::merge_with_current( [ 'log_level' => 'verbose' ] )['log_level'] );
 	}
 
 	/**
@@ -72,7 +72,7 @@ class SettingsTest extends TestCase {
 	 * @param string $interval Interval to save.
 	 */
 	public function test_merge_save_accepts_every_real_update_check_interval( string $interval ): void {
-		$this->assertSame( $interval, Settings::merge_save( [ 'update_check_interval' => $interval ] )['update_check_interval'] );
+		$this->assertSame( $interval, Settings::merge_with_current( [ 'update_check_interval' => $interval ] )['update_check_interval'] );
 	}
 
 	/**
@@ -91,7 +91,7 @@ class SettingsTest extends TestCase {
 	}
 
 	public function test_merge_save_falls_back_for_an_unknown_update_check_interval(): void {
-		$this->assertSame( 'halfhourly', Settings::merge_save( [ 'update_check_interval' => 'yearly' ] )['update_check_interval'] );
+		$this->assertSame( 'halfhourly', Settings::merge_with_current( [ 'update_check_interval' => 'yearly' ] )['update_check_interval'] );
 	}
 
 	public function test_repository_refresh_frequency_accepts_only_real_recurrences(): void {
@@ -221,13 +221,13 @@ class SettingsTest extends TestCase {
 
 		// Keep the accepted values consistent across all validation paths.
 		$this->assertSame( $keys, array_keys( Settings::get_public() ) );
-		$this->assertSame( $keys, array_keys( Settings::merge_save( [] ) ) );
+		$this->assertSame( $keys, array_keys( Settings::merge_with_current( [] ) ) );
 		$this->assertSame( $keys, array_keys( Settings::defaults() ) );
 	}
 
 	public function test_refresh_frequency_accepts_every_value_the_getter_allows(): void {
 		foreach ( Settings::schema()['repository_refresh_frequency']['values'] as $value ) {
-			$merged = Settings::merge_save( [ 'repository_refresh_frequency' => $value ] );
+			$merged = Settings::merge_with_current( [ 'repository_refresh_frequency' => $value ] );
 			$this->assertSame( $value, $merged['repository_refresh_frequency'] );
 
 			gitwire_test_set_option( 'gitwire_settings', $merged );
@@ -237,7 +237,7 @@ class SettingsTest extends TestCase {
 
 	public function test_repository_type_refresh_frequency_accepts_every_value_the_getter_allows(): void {
 		foreach ( Settings::schema()['repository_type_refresh_frequency']['values'] as $value ) {
-			$merged = Settings::merge_save( [ 'repository_type_refresh_frequency' => $value ] );
+			$merged = Settings::merge_with_current( [ 'repository_type_refresh_frequency' => $value ] );
 			$this->assertSame( $value, $merged['repository_type_refresh_frequency'] );
 
 			gitwire_test_set_option( 'gitwire_settings', $merged );
@@ -307,7 +307,7 @@ class SettingsTest extends TestCase {
 
 	public function test_an_invalid_value_falls_back_to_the_default_not_the_loosest_option(): void {
 		// Invalid retention values must use the schema default.
-		$merged = Settings::merge_save( [ 'log_retention_days' => 999 ] );
+		$merged = Settings::merge_with_current( [ 'log_retention_days' => 999 ] );
 
 		$this->assertSame( 7, $merged['log_retention_days'] );
 	}
@@ -320,8 +320,8 @@ class SettingsTest extends TestCase {
 	}
 
 	public function test_numeric_enum_values_survive_a_json_round_trip(): void {
-		$this->assertSame( 15, Settings::merge_save( [ 'log_retention_days' => '15' ] )['log_retention_days'] );
-		$this->assertSame( 30, Settings::merge_save( [ 'log_retention_days' => '30' ] )['log_retention_days'] );
+		$this->assertSame( 15, Settings::merge_with_current( [ 'log_retention_days' => '15' ] )['log_retention_days'] );
+		$this->assertSame( 30, Settings::merge_with_current( [ 'log_retention_days' => '30' ] )['log_retention_days'] );
 	}
 
 	/**

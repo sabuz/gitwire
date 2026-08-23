@@ -142,7 +142,7 @@ class REST {
 	 * @return bool
 	 */
 	public static function can_write_installed( \WP_REST_Request $request ): bool {
-		$record = self::record_for( $request );
+		$record = self::get_record_for_request( $request );
 
 		// Return 404 when the request has no writable resource.
 		if ( ! $record ) {
@@ -187,7 +187,7 @@ class REST {
 			return false;
 		}
 
-		$record = self::record_for( $request );
+		$record = self::get_record_for_request( $request );
 
 		if ( ! $record ) {
 			return current_user_can( 'delete_plugins' ) || current_user_can( 'delete_themes' );
@@ -215,7 +215,7 @@ class REST {
 			return false;
 		}
 
-		$record = self::record_for( $request );
+		$record = self::get_record_for_request( $request );
 
 		if ( ! $record ) {
 			return current_user_can( 'activate_plugins' ) || current_user_can( 'switch_themes' );
@@ -237,7 +237,7 @@ class REST {
 	 * @param \WP_REST_Request $request Incoming request.
 	 * @return array<string, mixed>|null
 	 */
-	private static function record_for( \WP_REST_Request $request ): ?array {
+	private static function get_record_for_request( \WP_REST_Request $request ): ?array {
 		return Installer::get_record_by_id( (int) $request->get_param( 'id' ) );
 	}
 

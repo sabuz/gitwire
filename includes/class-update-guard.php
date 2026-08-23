@@ -116,17 +116,17 @@ final class Update_Guard {
 			return $reply;
 		}
 
-		$type = self::target_type( $hook_extra );
+		$type = self::resolve_target_type( $hook_extra );
 		if ( null === $type ) {
 			return $reply;
 		}
 
-		$identity = self::target_identity( $type, $hook_extra );
+		$identity = self::resolve_target_identity( $type, $hook_extra );
 		if ( '' === $identity || ! self::is_managed( $type, $identity ) ) {
 			return $reply;
 		}
 
-		return self::blocked_error( $type );
+		return self::build_blocked_error( $type );
 	}
 
 	/**
@@ -142,17 +142,17 @@ final class Update_Guard {
 			return $response;
 		}
 
-		$type = self::target_type( $hook_extra );
+		$type = self::resolve_target_type( $hook_extra );
 		if ( null === $type ) {
 			return $response;
 		}
 
-		$identity = self::target_identity( $type, $hook_extra );
+		$identity = self::resolve_target_identity( $type, $hook_extra );
 		if ( '' === $identity || ! self::is_managed( $type, $identity ) ) {
 			return $response;
 		}
 
-		return self::blocked_error( $type );
+		return self::build_blocked_error( $type );
 	}
 
 	/**
@@ -162,7 +162,7 @@ final class Update_Guard {
 	 * @param mixed $hook_extra Arguments identifying the upgrade target.
 	 * @return string|null
 	 */
-	private static function target_type( $hook_extra ): ?string {
+	private static function resolve_target_type( $hook_extra ): ?string {
 		if ( ! is_array( $hook_extra ) ) {
 			return null;
 		}
@@ -188,7 +188,7 @@ final class Update_Guard {
 	 * @param array<string,mixed> $hook_extra Arguments identifying the target.
 	 * @return string
 	 */
-	private static function target_identity( string $type, array $hook_extra ): string {
+	private static function resolve_target_identity( string $type, array $hook_extra ): string {
 		$key = 'plugin' === $type ? 'plugin' : 'theme';
 		return trim( (string) ( $hook_extra[ $key ] ?? '' ) );
 	}
@@ -266,7 +266,7 @@ final class Update_Guard {
 	 * @param string $type Upgrade target type.
 	 * @return \WP_Error
 	 */
-	private static function blocked_error( string $type ): \WP_Error {
+	private static function build_blocked_error( string $type ): \WP_Error {
 		$label = 'plugin' === $type
 			? __( 'plugin', 'gitwire' )
 			: __( 'theme', 'gitwire' );

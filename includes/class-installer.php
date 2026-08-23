@@ -894,7 +894,7 @@ class Installer {
 	 * @param array<string, mixed> $scrape Scrape failure payload from the sandbox.
 	 * @return string Empty when the payload carries no file.
 	 */
-	private static function fatal_location_from_scrape( array $scrape ): string {
+	private static function format_fatal_location( array $scrape ): string {
 		$file = (string) ( $scrape['file'] ?? '' );
 		$line = (int) ( $scrape['line'] ?? 0 );
 
@@ -991,7 +991,7 @@ class Installer {
 			return $scrape;
 		}
 
-		$location = self::fatal_location_from_scrape( $data['scrape'] );
+		$location = self::format_fatal_location( $data['scrape'] );
 		self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha, $location );
 
 		return new \WP_Error(
@@ -1062,7 +1062,7 @@ class Installer {
 
 		$sha = self::resolve_remote_head_for_record( $rec, $provider, $full_name, $branch );
 		if ( $sha ) {
-			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha, self::fatal_location_from_scrape( $data['scrape'] ) );
+			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha, self::format_fatal_location( $data['scrape'] ) );
 		}
 	}
 
@@ -1085,7 +1085,7 @@ class Installer {
 		$data = $error->get_error_data();
 		$sha  = self::resolve_remote_head_for_record( $rec, $provider, $full_name, $branch );
 		if ( $sha ) {
-			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha, self::fatal_location_from_scrape( is_array( $data ) ? $data : [] ) );
+			self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $sha, self::format_fatal_location( is_array( $data ) ? $data : [] ) );
 		}
 	}
 

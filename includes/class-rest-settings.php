@@ -77,7 +77,7 @@ class REST_Settings {
 		$prev_type_freq       = $prev_settings['repository_type_refresh_frequency'] ?? 'weekly';
 		$prev_detection       = Settings::is_type_detection_enabled();
 		$prev_update_interval = $prev_settings['update_check_interval'] ?? 'halfhourly';
-		$merged               = Settings::merge_save( $incoming );
+		$merged               = Settings::merge_with_current( $incoming );
 		update_option( 'gitwire_settings', $merged );
 		Settings::invalidate_cache();
 
