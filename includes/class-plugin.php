@@ -34,6 +34,7 @@ final class Plugin {
 	/**
 	 * Returns the singleton instance.
 	 *
+	 * @since 1.0.0
 	 * @param string|null $file Main plugin file path.
 	 * @return self
 	 */
@@ -47,6 +48,7 @@ final class Plugin {
 	/**
 	 * Constructor.
 	 *
+	 * @since 1.0.0
 	 * @param string $file Main plugin file path.
 	 */
 	private function __construct( string $file ) {
@@ -77,6 +79,7 @@ final class Plugin {
 	/**
 	 * Registers custom cron intervals.
 	 *
+	 * @since 1.0.0
 	 * @param array<string, array<string, mixed>> $schedules Cron schedules.
 	 * @return array<string, array<string, mixed>>
 	 */
@@ -95,6 +98,7 @@ final class Plugin {
 	/**
 	 * Cron handler that syncs installed records.
 	 *
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function run_maintenance(): void {
@@ -116,6 +120,7 @@ final class Plugin {
 	/**
 	 * Boots plugin services on plugins_loaded.
 	 *
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function boot(): void {
@@ -201,6 +206,7 @@ final class Plugin {
 	/**
 	 * Runs on plugin activation.
 	 *
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function activate(): void {
@@ -288,6 +294,7 @@ final class Plugin {
 	/**
 	 * Runs on plugin deactivation.
 	 *
+	 * @since 1.0.0
 	 * @return void
 	 */
 	public function deactivate(): void {

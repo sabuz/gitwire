@@ -69,6 +69,7 @@ final class Constants {
 	/**
 	 * Constructor.
 	 *
+	 * @since 1.0.0
 	 * @param string $file Main plugin file path.
 	 */
 	private function __construct( string $file ) {
@@ -106,6 +107,7 @@ final class Constants {
 	/**
 	 * Returns the singleton instance.
 	 *
+	 * @since 1.0.0
 	 * @param string $file Main plugin file path.
 	 * @return self
 	 */

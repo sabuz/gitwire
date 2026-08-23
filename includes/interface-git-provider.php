@@ -20,6 +20,7 @@ interface Git_Provider_Interface {
 	/**
 	 * Tests API connectivity.
 	 *
+	 * @since 1.0.0
 	 * @param string $owner Optional owner context for the provider.
 	 * @return array<string, mixed>|\WP_Error
 	 */
@@ -28,6 +29,7 @@ interface Git_Provider_Interface {
 	/**
 	 * Returns a paginated repository list.
 	 *
+	 * @since 1.0.0
 	 * @param string $username GitHub username or GitLab namespace context.
 	 * @param int    $page     Page number.
 	 * @return array<string, mixed>|\WP_Error
@@ -37,6 +39,7 @@ interface Git_Provider_Interface {
 	/**
 	 * Returns branch names for a repository.
 	 *
+	 * @since 1.0.0
 	 * @param string $owner Repository owner.
 	 * @param string $repo  Repository name.
 	 * @return array<int, mixed>|\WP_Error
@@ -46,6 +49,7 @@ interface Git_Provider_Interface {
 	/**
 	 * Detects whether a repository is a plugin or theme.
 	 *
+	 * @since 1.0.0
 	 * @param string            $owner         Repository owner.
 	 * @param string            $repo          Repository name.
 	 * @param string            $branch        Branch ref.
@@ -57,6 +61,7 @@ interface Git_Provider_Interface {
 	/**
 	 * Returns recent commits for a branch.
 	 *
+	 * @since 1.0.0
 	 * @param string $owner    Repository owner.
 	 * @param string $repo     Repository name.
 	 * @param string $branch   Branch ref.

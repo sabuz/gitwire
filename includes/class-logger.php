@@ -50,6 +50,8 @@ class Logger {
 	 * Lives in uploads rather than the system temp dir: /tmp is shared with every
 	 * other account on the box, and PrivateTmp/tmpwatch wipe it out from under us.
 	 * The filename is salt-derived and the directory is blocked from web access.
+	 *
+	 * @since 1.0.0
 	 */
 	private function __construct() {
 		$uploads        = function_exists( 'wp_upload_dir' ) ? wp_upload_dir( null, false ) : [];
