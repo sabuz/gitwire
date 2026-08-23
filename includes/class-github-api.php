@@ -228,12 +228,11 @@ class GitHub_API implements Git_Provider_Interface {
 			// The API served the file directly.
 			$download_url = $api_url;
 		} else {
-			$body = json_decode( wp_remote_retrieve_body( $response ), true );
-			return new \WP_Error(
-				'gitwire_api_error',
+			return $this->error_from_response(
+				$response,
+				$code,
 				/* translators: %d: HTTP status code */
-				$body['message'] ?? sprintf( __( 'GitHub API returned HTTP %d', 'gitwire' ), $code ),
-				[ 'status' => $code ]
+				sprintf( __( 'GitHub API returned HTTP %d', 'gitwire' ), $code )
 			);
 		}
 
@@ -356,22 +355,40 @@ class GitHub_API implements Git_Provider_Interface {
 		}
 
 		if ( $code >= 400 ) {
-			if ( '0' === (string) $remaining_raw ) {
-				$message = $this->token
-					? __( "GitHub's hourly rate limit for this account has been reached. It resets automatically within the hour.", 'gitwire' )
-					: __( "GitHub's hourly rate limit for unauthenticated requests has been reached. It resets automatically within the hour. Gitwire Pro adds authenticated connections with a much higher limit.", 'gitwire' );
-
-				return new \WP_Error( 'gitwire_rate_limited', $message, [ 'status' => $code ] );
-			}
-
-			return new \WP_Error(
-				'gitwire_api_error',
+			return $this->error_from_response(
+				$response,
+				$code,
 				/* translators: %d: HTTP status code */
-				$body['message'] ?? sprintf( __( 'GitHub API error (HTTP %d)', 'gitwire' ), $code ),
-				[ 'status' => $code ]
+				sprintf( __( 'GitHub API error (HTTP %d)', 'gitwire' ), $code )
 			);
 		}
 
 		return is_array( $body ) ? $body : [];
+	}
+
+	/**
+	 * Builds a WP_Error from a failed response, replacing GitHub's own rate-limit
+	 * wording with our own when the quota is what actually failed the request.
+	 *
+	 * @since 1.0.0
+	 * @param array<string, mixed> $response         Raw response from wp_remote_get()/wp_remote_post().
+	 * @param int                  $code              HTTP status code.
+	 * @param string               $generic_fallback  Message to use when the body carries none and it is not a rate limit.
+	 * @return \WP_Error
+	 */
+	private function error_from_response( array $response, int $code, string $generic_fallback ): \WP_Error {
+		$remaining = wp_remote_retrieve_header( $response, 'x-ratelimit-remaining' );
+
+		if ( '0' === (string) $remaining ) {
+			$message = $this->token
+				? __( "GitHub's hourly rate limit for this account has been reached. It resets automatically within the hour.", 'gitwire' )
+				: __( "GitHub's hourly rate limit for unauthenticated requests has been reached. It resets automatically within the hour. Gitwire Pro adds authenticated connections with a much higher limit.", 'gitwire' );
+
+			return new \WP_Error( 'gitwire_rate_limited', $message, [ 'status' => $code ] );
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		return new \WP_Error( 'gitwire_api_error', $body['message'] ?? $generic_fallback, [ 'status' => $code ] );
 	}
 }
