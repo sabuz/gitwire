@@ -66,6 +66,12 @@ class REST_Connections {
 				'methods'             => 'GET',
 				'callback'            => [ self::class, 'get_public_connection_rate_limit' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
+				'args'                => [
+					'force' => [
+						'type'    => 'boolean',
+						'default' => false,
+					],
+				],
 			]
 		);
 
@@ -174,7 +180,12 @@ class REST_Connections {
 			return new \WP_REST_Response( null, 204 );
 		}
 
-		$payload = Connection_Meta::get_public_github_rate( $id, $conn['identifier'] ?? '', $conn['avatar_url'] ?? '' );
+		$payload = Connection_Meta::get_public_github_rate(
+			$id,
+			$conn['identifier'] ?? '',
+			$conn['avatar_url'] ?? '',
+			(bool) $req->get_param( 'force' )
+		);
 
 		if ( null === $payload ) {
 			return new \WP_REST_Response( null, 204 );

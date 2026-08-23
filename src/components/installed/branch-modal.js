@@ -27,6 +27,7 @@ export default function BranchModal( {
 	const [ branchFilter, setBranchFilter ] = useState( '' );
 	const [ selectedBranch, setSelectedBranch ] = useState( '' );
 	const [ switching, setSwitching ] = useState( false );
+	const [ loadError, setLoadError ] = useState( null );
 
 	useEffect( () => {
 		if ( ! item ) {
@@ -35,6 +36,7 @@ export default function BranchModal( {
 		setSelectedBranch( item.branch || '' );
 		setBranchFilter( '' );
 		setAllBranches( [] );
+		setLoadError( null );
 		api.getBranches(
 			owner,
 			repository,
@@ -42,7 +44,12 @@ export default function BranchModal( {
 			item.connection_id ?? ''
 		)
 			.then( setAllBranches )
-			.catch( () => setAllBranches( [] ) );
+			.catch( ( e ) =>
+				setLoadError(
+					e?.message ||
+						__( 'Could not load the branch list.', 'gitwire' )
+				)
+			);
 	}, [ item, owner, repository ] );
 
 	const branchOptions = useMemo( () => {
@@ -99,6 +106,21 @@ export default function BranchModal( {
 			}
 			onRequestClose={ onClose }
 		>
+			{ loadError && (
+				<p
+					className="gitwire-detect-note gitwire-detect-blocked"
+					style={ { margin: '0 0 12px' } }
+				>
+					{ sprintf(
+						/* translators: %s: reason the branch list could not be fetched */
+						__(
+							"Couldn't load the branch list: %s Only the current branch is shown below.",
+							'gitwire'
+						),
+						loadError
+					) }
+				</p>
+			) }
 			<ComboboxControl
 				__next40pxDefaultSize
 				__nextHasNoMarginBottom

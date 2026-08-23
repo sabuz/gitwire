@@ -695,8 +695,8 @@ function PublicConnectionsCard( { connections, onChange } ) {
 		() => window.gitwire?.connections_metadata ?? {}
 	);
 
-	const refreshRate = useCallback( ( id ) => {
-		api.getPublicConnectionRateLimit( id )
+	const refreshRate = useCallback( ( id, force = false ) => {
+		api.getPublicConnectionRateLimit( id, force )
 			.then( ( data ) => {
 				if ( data ) {
 					setRateCache( ( prev ) => ( {
@@ -710,23 +710,23 @@ function PublicConnectionsCard( { connections, onChange } ) {
 
 	useEffect( () => {
 		const now = Math.floor( Date.now() / 1000 );
-		const fifteenMin = 15 * 60;
+		const fiveMin = 5 * 60;
 		connections
 			.filter( ( c ) => 'github' === c.provider )
 			.filter( ( c ) => {
 				const checkedAt = rateCache[ c.id ]?.updated_at;
-				return ! checkedAt || now - checkedAt > fifteenMin;
+				return ! checkedAt || now - checkedAt > fiveMin;
 			} )
 			.forEach( ( conn ) => refreshRate( conn.id ) );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// The count only matters once the user is actually looking at it.
+	// force=true: the user is looking at this number right now, and it costs nothing to ask fresh.
 	const handleSelect = useCallback(
 		( id ) => {
 			setSelectedId( id );
 			const conn = connections.find( ( c ) => c.id === id );
 			if ( conn && 'github' === conn.provider ) {
-				refreshRate( id );
+				refreshRate( id, true );
 			}
 		},
 		[ connections, refreshRate ]
