@@ -230,16 +230,20 @@ class Admin {
 	 * The hook runs on every admin page load, so reading and encoding the file
 	 * each time is pure overhead.
 	 *
-	 * The asset is the brand mark inverted: the tile carries the light gradient
-	 * and the glyph is knocked out of it with a mask, so the sidebar shows
-	 * through the glyph. The Figma source is the other way round, a dark tile
-	 * with a light glyph, which reads as a near-black square against the
-	 * sidebar it is sitting on.
+	 * The asset has to be one path with one fill, and it is not a style choice.
+	 * wp-admin/js/svg-painter.js decodes the data URI on ready and runs
+	 * `xml.replace( /fill="(.+?)"/g, ... )` over it, so every fill in the file
+	 * becomes the same colour scheme value. A gradient reference is destroyed, and
+	 * a two-tone mask goes uniformly opaque and stops masking. Either way the
+	 * icon is briefly correct, then collapses to a solid shape a moment later.
 	 *
-	 * Nothing recolours it. A data URI lands in #adminmenu
-	 * div.wp-menu-image.svg, which sets background-size and nothing else, so it
-	 * renders at full colour and full opacity. The 0.6 opacity that dims the
-	 * other menu icons is on .wp-menu-image img, a selector this never matches.
+	 * So the tile and the glyph cannot be two fills. They are one path, and the
+	 * glyph is a fill-rule="evenodd" hole in the tile: the sidebar shows through
+	 * it whatever colour the scheme paints. The two circle centres are a third
+	 * nesting level, so they come back filled, which is what the mark wants.
+	 *
+	 * The stored fill is the default scheme's base so the frame before the
+	 * repaint already matches. Do not add defs, gradients, or masks here.
 	 *
 	 * @since 1.0.0
 	 * @return string
