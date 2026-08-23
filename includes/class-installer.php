@@ -364,11 +364,10 @@ class Installer {
 			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ) );
 		}
 
-		$rec       = $installed[ $key ];
-		$owner     = $rec['owner'];
-		$repo      = $rec['repo'];
-		$method    = Repository_Detector::is_theme( $rec['type'] ) ? 'install_theme' : 'install_plugin';
-		$was_stale = false;
+		$rec    = $installed[ $key ];
+		$owner  = $rec['owner'];
+		$repo   = $rec['repo'];
+		$method = Repository_Detector::is_theme( $rec['type'] ) ? 'install_theme' : 'install_plugin';
 		if ( null !== $override_connection_id ) {
 			$connection_id = $override_connection_id;
 		} else {
@@ -388,7 +387,6 @@ class Installer {
 					);
 				} else {
 					$connection_id = $provider_conns[0]['id'];
-					$was_stale     = true;
 				}
 			}
 		}
@@ -401,17 +399,8 @@ class Installer {
 			);
 		}
 
-		$result = self::$method( $owner, $repo, $new_branch, $rec['name'], $provider, false, $connection_id );
-
-		if ( $was_stale && is_wp_error( $result ) ) {
-			return new \WP_Error(
-				'gitwire_no_connection',
-				__( 'The connection used to install this repository no longer exists. Use the Reconnect action to select an account.', 'gitwire' ),
-				[ 'status' => 400 ]
-			);
-		}
-
-		return $result;
+		// $connection_id resolved above, so a failure past this point is never about it existing.
+		return self::$method( $owner, $repo, $new_branch, $rec['name'], $provider, false, $connection_id );
 	}
 
 	/**
