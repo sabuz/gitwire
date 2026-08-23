@@ -252,23 +252,19 @@ class Connection_Meta {
 	/**
 	 * Returns cached-or-fresh GitHub rate data for a public connection.
 	 *
-	 * Returns cached data when it was refreshed within the last 5 minutes;
-	 * otherwise fetches live from the GitHub API and updates the cache. $force
-	 * skips that check: GitHub's own rate_limit endpoint does not count against
-	 * the quota it reports, so there is no cost to always fetching live when
-	 * the caller knows a human is looking at the result right now.
+	 * Returns cached data when it was refreshed within the last 15 minutes;
+	 * otherwise fetches live from the GitHub API and updates the cache.
 	 *
 	 * @since 1.0.0
 	 * @param string $id         Public connection ID.
 	 * @param string $username   GitHub username.
 	 * @param string $avatar_url Stored avatar URL.
-	 * @param bool   $force      Bypass the cache and fetch live regardless of age.
 	 * @return array<string, mixed>|null Null when the GitHub request fails.
 	 */
-	public static function get_public_github_rate( string $id, string $username, string $avatar_url = '', bool $force = false ): ?array {
+	public static function get_public_github_rate( string $id, string $username, string $avatar_url = '' ): ?array {
 		$cached = self::get_public_connections_metadata( $id );
 		// A zero rate limit indicates a new row; always fetch fresh data.
-		if ( ! $force && null !== $cached && ( $cached['rate_limit'] ?? 0 ) > 0 && ( time() - ( $cached['updated_at'] ?? 0 ) ) < 300 ) {
+		if ( null !== $cached && ( $cached['rate_limit'] ?? 0 ) > 0 && ( time() - ( $cached['updated_at'] ?? 0 ) ) < 900 ) {
 			return $cached;
 		}
 

@@ -11,11 +11,11 @@ export const deletePublicConnection = ( id ) =>
 		path: `${ BASE }/public-connections/${ encodeURIComponent( id ) }`,
 		method: 'DELETE',
 	} );
-export const getPublicConnectionRateLimit = ( id, force = false ) =>
+export const getPublicConnectionRateLimit = ( id ) =>
 	apiFetch( {
 		path: `${ BASE }/public-connections/${ encodeURIComponent(
 			id
-		) }/rate-limit?force=${ force ? '1' : '0' }`,
+		) }/rate-limit`,
 	} );
 
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
