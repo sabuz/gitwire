@@ -375,8 +375,7 @@ class REST_Installer {
 			$api      = self::make_api( $provider, $connection_id );
 			$detected = $api->detect_type( $owner, $repo, $branch );
 
-			// The provider's own message already says what actually happened (rate limit, auth,
-			// timeout); replacing it with a generic one hid that and pointed at Smart Install instead.
+			// The provider's own message already explains what happened; a generic one hid it.
 			if ( is_wp_error( $detected ) ) {
 				return $detected;
 			}
