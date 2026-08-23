@@ -230,12 +230,16 @@ class Admin {
 	 * The hook runs on every admin page load, so reading and encoding the file
 	 * each time is pure overhead.
 	 *
-	 * The asset is the full brand mark, tile included. A data URI lands in
-	 * #adminmenu div.wp-menu-image.svg, which only sets background-size: 20px
-	 * auto, so it renders at full colour and full opacity. The 0.6 opacity that
-	 * dims the other menu icons is on .wp-menu-image img, a selector this never
-	 * matches. Anything relying on WordPress to recolour or dim it would be
-	 * relying on a rule that does not apply here.
+	 * The asset is the brand mark inverted: the tile carries the light gradient
+	 * and the glyph is knocked out of it with a mask, so the sidebar shows
+	 * through the glyph. The Figma source is the other way round, a dark tile
+	 * with a light glyph, which reads as a near-black square against the
+	 * sidebar it is sitting on.
+	 *
+	 * Nothing recolours it. A data URI lands in #adminmenu
+	 * div.wp-menu-image.svg, which sets background-size and nothing else, so it
+	 * renders at full colour and full opacity. The 0.6 opacity that dims the
+	 * other menu icons is on .wp-menu-image img, a selector this never matches.
 	 *
 	 * @since 1.0.0
 	 * @return string
