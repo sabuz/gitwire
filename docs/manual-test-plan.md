@@ -8,7 +8,7 @@
 
 ---
 
-## Installation Tests
+## Plugin Activation Tests
 
 ### Fresh Install
 
@@ -65,7 +65,7 @@
 
 ---
 
-## Installation Tests
+## Repository Installation Tests
 
 ### Install Plugin from GitHub
 
