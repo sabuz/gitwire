@@ -81,6 +81,15 @@ Detection priority, highest confidence first:
 
 **`theme.json` alone does not indicate a block theme**, since plugins ship it for block styling. It only promotes to block after theme identity is confirmed via `style.css` + `Theme Name:`.
 
+## Free/Pro boundary
+
+Pro is a separate repo. These rules constrain what happens in this one.
+
+- Pro only adds capabilities. It never restricts or gates a Free feature.
+- Pro owns its own columns (`credentials`, `scope`, `email`) and adds them with `ALTER TABLE`. The Free `CREATE TABLE` never mentions them.
+- Free must work with Pro absent, deactivated, or on an incompatible version. Every Pro integration point is a filter Free calls with a working default.
+- No upsell that breaks WordPress.org rules: no persistent admin notices, no checkout links in settings. Inline contextual links at the point the Free limit is reached are fine.
+
 ## Architecture notes
 
 - `Repository_Detector::detect()` is provider-agnostic and takes callables for fetching contents so GitHub and GitLab share the same logic

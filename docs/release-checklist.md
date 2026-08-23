@@ -8,7 +8,7 @@ Use this for every release of both Free and Pro.
 
 ### Code quality
 
-- [ ] `npm run pre-pr-check` passes (lint + type-check + build)
+- [ ] `npm run pre-pr-check` passes (lint, PHPStan, licence check, build)
 - [ ] `composer phpunit` passes
 - [ ] Zero PHPCS errors (`npm run lint:php`)
 - [ ] Zero JS lint errors (`npm run lint:js`)
