@@ -225,55 +225,38 @@ class Admin {
 	}
 
 	/**
-	 * Returns the sidebar icon as a data URI, cached across requests.
+	 * Returns the sidebar icon as a plain file URL.
 	 *
-	 * The hook runs on every admin page load, so reading and encoding the file
-	 * each time is pure overhead.
+	 * A URL rather than a base64 data URI, and that is the whole point.
+	 * wp-admin/js/svg-painter.js collects menu icons whose background-image is a
+	 * data URI, rewrites every fill in them to one colour scheme value, and
+	 * writes the result back. On the plugin's own screens it repaints with the
+	 * scheme's `current` colour, which differs from whatever is baked into the
+	 * file, so the background is swapped after load and the icon visibly blinks.
+	 * Dashicons are font glyphs and never do this, which makes ours the odd one
+	 * out on the screen.
 	 *
-	 * The asset has to be one path with one fill, and it is not a style choice.
-	 * wp-admin/js/svg-painter.js decodes the data URI on ready and runs
-	 * `xml.replace( /fill="(.+?)"/g, ... )` over it, so every fill in the file
-	 * becomes the same colour scheme value. A gradient reference is destroyed, and
-	 * a two-tone mask goes uniformly opaque and stops masking. Either way the
-	 * icon is briefly correct, then collapses to a solid shape a moment later.
+	 * findElements() only looks at background-image, so a URL is skipped
+	 * entirely: WordPress emits an <img> and the icon is never touched. It then
+	 * behaves like every other image icon, dimmed to 0.6 and full strength on
+	 * hover or when current, which is what dashicons do anyway.
 	 *
-	 * So the tile and the glyph cannot be two fills. They are one path, and the
-	 * glyph is a fill-rule="evenodd" hole in the tile: the sidebar shows through
-	 * it whatever colour the scheme paints. The two circle centres are a third
-	 * nesting level, so they come back filled, which is what the mark wants.
+	 * Baking the right colour in instead is not possible here. It would need the
+	 * scheme's icon colours, and register_admin_color_schemes() runs on
+	 * admin_init, after admin_menu has already registered this.
 	 *
-	 * The stored fill is the default scheme's base so the frame before the
-	 * repaint already matches. Do not add defs, gradients, or masks here.
+	 * The version query busts the browser cache when the artwork changes. No
+	 * transient: there is nothing left to read or encode.
 	 *
 	 * @since 1.0.0
 	 * @return string
 	 */
 	private static function menu_icon(): string {
-		$icon_path = GITWIRE_DIR . 'assets/images/menu-icon.svg';
-		if ( ! file_exists( $icon_path ) ) {
+		if ( ! file_exists( GITWIRE_DIR . 'assets/images/menu-icon.svg' ) ) {
 			return 'none';
 		}
 
-		/*
-		 * Keyed on the file's own mtime rather than the plugin version: the
-		 * version does not change between builds, so an edited icon would
-		 * otherwise stay stale until the transient expired.
-		 */
-		$cache_key = 'gitwire_menu_icon_' . filemtime( $icon_path );
-		$cached    = get_transient( $cache_key );
-		if ( is_string( $cached ) && '' !== $cached ) {
-			return $cached;
-		}
-
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$svg = (string) file_get_contents( $icon_path );
-
-		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
-		$icon = 'data:image/svg+xml;base64,' . base64_encode( $svg );
-
-		set_transient( $cache_key, $icon, WEEK_IN_SECONDS );
-
-		return $icon;
+		return GITWIRE_URL . 'assets/images/menu-icon.svg?ver=' . GITWIRE_VERSION;
 	}
 
 	/**
