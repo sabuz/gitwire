@@ -523,8 +523,16 @@ class Theme_Scraper {
 			$detail = self::trim_fatal_message( $result['message'] );
 			if ( 'activation' === $context ) {
 				$message = $is_plugin
-					? __( 'Plugin could not be activated because it triggered a fatal error.', 'gitwire' )
-					: __( 'Theme could not be activated because it triggered a fatal error.', 'gitwire' );
+					? sprintf(
+						/* translators: %s: PHP error detail */
+						__( 'Plugin could not be activated because it triggered a fatal error: %s', 'gitwire' ),
+						$detail
+					)
+					: sprintf(
+						/* translators: %s: PHP error detail */
+						__( 'Theme could not be activated because it triggered a fatal error: %s', 'gitwire' ),
+						$detail
+					);
 			} else {
 				$message = $is_plugin
 					? sprintf(
