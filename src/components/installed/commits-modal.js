@@ -20,7 +20,7 @@ export default function CommitsModal( { item, onClose } ) {
 		? ( item.provider ?? 'github' ) + ':' + item.full_name
 		: '';
 	const [ commits, setCommits ] = useState( null );
-	const [ fetchError, setFetchError ] = useState( false );
+	const [ fetchError, setFetchError ] = useState( null );
 
 	useEffect( () => {
 		if ( ! item || ! cacheKey ) {
@@ -29,11 +29,11 @@ export default function CommitsModal( { item, onClose } ) {
 		const cached = commitsCache.get( cacheKey );
 		if ( cached && Date.now() < cached.expiresAt ) {
 			setCommits( cached.data );
-			setFetchError( false );
+			setFetchError( null );
 			return;
 		}
 		setCommits( null );
-		setFetchError( false );
+		setFetchError( null );
 		let cancelled = false;
 		api.getCommits( item.id )
 			.then( ( data ) => {
@@ -46,9 +46,11 @@ export default function CommitsModal( { item, onClose } ) {
 				} );
 				setCommits( data );
 			} )
-			.catch( () => {
+			.catch( ( e ) => {
 				if ( ! cancelled ) {
-					setFetchError( true );
+					setFetchError(
+						e?.message || __( 'Could not load commits.', 'gitwire' )
+					);
 					setCommits( [] );
 				}
 			} );
@@ -84,9 +86,7 @@ export default function CommitsModal( { item, onClose } ) {
 			) }
 			{ commits !== null && commits.length === 0 && (
 				<p style={ { color: '#57606a', fontSize: 13 } }>
-					{ fetchError
-						? __( 'Could not load commits.', 'gitwire' )
-						: __( 'No commits found.', 'gitwire' ) }
+					{ fetchError || __( 'No commits found.', 'gitwire' ) }
 				</p>
 			) }
 			{ commits !== null && commits.length > 0 && (

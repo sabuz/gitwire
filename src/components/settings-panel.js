@@ -695,6 +695,19 @@ function PublicConnectionsCard( { connections, onChange } ) {
 		() => window.gitwire?.connections_metadata ?? {}
 	);
 
+	const refreshRate = useCallback( ( id ) => {
+		api.getPublicConnectionRateLimit( id )
+			.then( ( data ) => {
+				if ( data ) {
+					setRateCache( ( prev ) => ( {
+						...prev,
+						[ id ]: data,
+					} ) );
+				}
+			} )
+			.catch( () => {} );
+	}, [] );
+
 	useEffect( () => {
 		const now = Math.floor( Date.now() / 1000 );
 		const fifteenMin = 15 * 60;
@@ -704,19 +717,21 @@ function PublicConnectionsCard( { connections, onChange } ) {
 				const checkedAt = rateCache[ c.id ]?.updated_at;
 				return ! checkedAt || now - checkedAt > fifteenMin;
 			} )
-			.forEach( ( conn ) => {
-				api.getPublicConnectionRateLimit( conn.id )
-					.then( ( data ) => {
-						if ( data ) {
-							setRateCache( ( prev ) => ( {
-								...prev,
-								[ conn.id ]: data,
-							} ) );
-						}
-					} )
-					.catch( () => {} );
-			} );
+			.forEach( ( conn ) => refreshRate( conn.id ) );
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// The count only matters once the user is actually looking at it, so refresh
+	// on open rather than polling in the background while the card is collapsed.
+	const handleSelect = useCallback(
+		( id ) => {
+			setSelectedId( id );
+			const conn = connections.find( ( c ) => c.id === id );
+			if ( conn && 'github' === conn.provider ) {
+				refreshRate( id );
+			}
+		},
+		[ connections, refreshRate ]
+	);
 
 	const handleCreated = useCallback(
 		( conn, metadata ) => {
@@ -768,7 +783,7 @@ function PublicConnectionsCard( { connections, onChange } ) {
 			connections={ connections }
 			rateCache={ rateCache }
 			onCreated={ handleCreated }
-			onSelect={ setSelectedId }
+			onSelect={ handleSelect }
 		/>
 	);
 }
