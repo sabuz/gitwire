@@ -286,6 +286,15 @@ class Admin {
 				padding: 7px 0 0;
 				opacity: 1;
 			}
+
+			#adminmenu #toplevel_page_gitwire:hover .wp-menu-image img,
+			#adminmenu #toplevel_page_gitwire.current .wp-menu-image img,
+			#adminmenu #toplevel_page_gitwire.wp-has-current-submenu .wp-menu-image img,
+			#adminmenu #toplevel_page_gitwire-network:hover .wp-menu-image img,
+			#adminmenu #toplevel_page_gitwire-network.current .wp-menu-image img,
+			#adminmenu #toplevel_page_gitwire-network.wp-has-current-submenu .wp-menu-image img {
+				filter: brightness(0) invert(1);
+			}
 		</style>
 		<?php
 	}
