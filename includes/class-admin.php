@@ -446,7 +446,7 @@ class Admin {
 		if ( 'plugins.php' !== $pagenow ) {
 			return $all_plugins;
 		}
-		if ( ! ( Settings::get_raw()['show_repo_label'] ?? true ) ) {
+		if ( ! ( Settings::get_raw()['show_repository_label'] ?? true ) ) {
 			return $all_plugins;
 		}
 
@@ -469,7 +469,7 @@ class Admin {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function label_managed_themes( array $prepared ): array {
-		if ( ! ( Settings::get_raw()['show_repo_label'] ?? true ) ) {
+		if ( ! ( Settings::get_raw()['show_repository_label'] ?? true ) ) {
 			return $prepared;
 		}
 

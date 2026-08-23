@@ -71,7 +71,7 @@ class Installation extends Migration_Base {
 			}
 		}
 
-		return $this->ensure_repo_key( $table );
+		return $this->ensure_repository_key( $table );
 	}
 
 	/**
@@ -85,12 +85,12 @@ class Installation extends Migration_Base {
 	 * @param string $table Fully-prefixed table name.
 	 * @return bool
 	 */
-	private function ensure_repo_key( string $table ): bool {
+	private function ensure_repository_key( string $table ): bool {
 		global $wpdb;
 
 		$wanted = [ 'provider', 'full_name' ];
 
-		if ( $this->index_columns( self::TABLE, 'repo' ) === $wanted ) {
+		if ( $this->index_columns( self::TABLE, 'repository' ) === $wanted ) {
 			return true;
 		}
 
@@ -104,17 +104,17 @@ class Installation extends Migration_Base {
 			return false;
 		}
 
-		if ( $this->index_exists( self::TABLE, 'repo' ) ) {
+		if ( $this->index_exists( self::TABLE, 'repository' ) ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-			if ( false === $wpdb->query( "ALTER TABLE `{$table}` DROP KEY `repo`" ) ) {
+			if ( false === $wpdb->query( "ALTER TABLE `{$table}` DROP KEY `repository`" ) ) {
 				return false;
 			}
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-		$wpdb->query( "ALTER TABLE `{$table}` ADD UNIQUE KEY `repo` (`provider`, `full_name`)" );
+		$wpdb->query( "ALTER TABLE `{$table}` ADD UNIQUE KEY `repository` (`provider`, `full_name`)" );
 
-		return $this->index_columns( self::TABLE, 'repo' ) === $wanted;
+		return $this->index_columns( self::TABLE, 'repository' ) === $wanted;
 	}
 
 	/**

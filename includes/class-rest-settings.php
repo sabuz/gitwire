@@ -93,7 +93,7 @@ class REST_Settings {
 		 * derived from this setting.
 		 */
 		if ( ( $merged['repository_refresh_frequency'] ?? 'daily' ) !== $prev_freq ) {
-			Plugin::instance()->schedule_repos_cron();
+			Plugin::instance()->schedule_repositories_cron();
 		}
 
 		/*

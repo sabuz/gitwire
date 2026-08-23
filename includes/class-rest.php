@@ -229,7 +229,7 @@ class REST {
 	/**
 	 * Resolves the installation a route's id param points at.
 	 *
-	 * The id is a primary key rather than a composed owner/repo pair, so nothing
+	 * The id is a primary key rather than a composed owner/repository pair, so nothing
 	 * here depends on how a full_name splits, and the route pattern does not have
 	 * to survive a slash inside a GitLab subgroup path.
 	 *

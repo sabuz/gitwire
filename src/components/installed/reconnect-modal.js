@@ -31,9 +31,9 @@ export default function ReconnectModal( {
 
 	useEffect( () => {
 		providerConns.forEach( ( conn ) => {
-			api.detectRepo(
+			api.detectRepository(
 				item.owner,
-				item.repo,
+				item.repository,
 				item.branch || 'HEAD',
 				item.provider ?? 'github',
 				conn.id

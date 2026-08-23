@@ -56,7 +56,7 @@ export default function InstalledPanel( {
 	settings,
 	onRefresh,
 	onGoToSettings,
-	onOpenAddRepo,
+	onOpenAddRepository,
 } ) {
 	const entries = Object.values( installed );
 	const [ view, setView ] = useState( DEFAULT_VIEW );
@@ -375,7 +375,10 @@ export default function InstalledPanel( {
 						'gitwire'
 					) }
 				</p>
-				<Button variant="primary" onClick={ () => onOpenAddRepo() }>
+				<Button
+					variant="primary"
+					onClick={ () => onOpenAddRepository() }
+				>
 					{ __( 'Add Repository', 'gitwire' ) }
 				</Button>
 			</div>

@@ -98,7 +98,7 @@ export default function ImportFromUrl( {
 					? info.detection.type
 					: 'plugin'
 			);
-			setSlug( normalizeSlug( info.repo ) );
+			setSlug( normalizeSlug( info.repository ) );
 			setSlugConflict( false );
 			setSlugChecking( false );
 			setReplace( false );
@@ -112,7 +112,7 @@ export default function ImportFromUrl( {
 
 			api.getBranches(
 				info.owner,
-				info.repo,
+				info.repository,
 				info.provider,
 				info.connection_id || ''
 			)
@@ -148,9 +148,9 @@ export default function ImportFromUrl( {
 		setCheckError( null );
 		setResolved( null );
 		try {
-			const result = await api.resolveRepo( trimmed );
+			const result = await api.resolveRepository( trimmed );
 			setResolved( result );
-			const installedKey = `${ result.provider }:${ result.owner }/${ result.repo }`;
+			const installedKey = `${ result.provider }:${ result.owner }/${ result.repository }`;
 			if ( installed?.[ installedKey ] ) {
 				setCheckError(
 					__( 'This repository is already installed.', 'gitwire' )
@@ -162,7 +162,7 @@ export default function ImportFromUrl( {
 				initInstallForm( {
 					provider: result.provider,
 					owner: result.owner,
-					repo: result.repo,
+					repository: result.repository,
 					branch: result.branch || 'main',
 					detection: result.detection,
 				} );
@@ -192,14 +192,14 @@ export default function ImportFromUrl( {
 			setStep( 'verifying-conn' );
 			try {
 				const detectBranch = resolved.branch || 'HEAD';
-				const d = await api.detectRepo(
+				const d = await api.detectRepository(
 					resolved.owner,
-					resolved.repo,
+					resolved.repository,
 					detectBranch,
 					resolved.provider,
 					selectedConnId
 				);
-				const installedKey = `${ resolved.provider }:${ resolved.owner }/${ resolved.repo }`;
+				const installedKey = `${ resolved.provider }:${ resolved.owner }/${ resolved.repository }`;
 				if ( installed?.[ installedKey ] ) {
 					setCheckError(
 						__( 'This repository is already installed.', 'gitwire' )
@@ -213,7 +213,7 @@ export default function ImportFromUrl( {
 				initInstallForm( {
 					provider: resolved.provider,
 					owner: resolved.owner,
-					repo: resolved.repo,
+					repository: resolved.repository,
 					branch: resolved.branch || 'main',
 					detection: d,
 					connection_id: selectedConnId,
@@ -298,7 +298,7 @@ export default function ImportFromUrl( {
 
 			const result = await api.install( {
 				owner: resolved.owner,
-				repo: resolved.repo,
+				repository: resolved.repository,
 				branch,
 				type: installType,
 				provider: resolved.provider,
@@ -307,7 +307,10 @@ export default function ImportFromUrl( {
 				force_type: true,
 				connection_id: connId || undefined,
 			} );
-			onPostInstall( result, `${ resolved.owner }/${ resolved.repo }` );
+			onPostInstall(
+				result,
+				`${ resolved.owner }/${ resolved.repository }`
+			);
 		} catch ( e ) {
 			toast.error( e.message || __( 'Installation failed.', 'gitwire' ) );
 			setStep( 'resolved' );
@@ -383,7 +386,7 @@ export default function ImportFromUrl( {
 							className="gitwire-import-url__input"
 							disabled={ isBusy }
 							label={ __( 'Repository URL', 'gitwire' ) }
-							placeholder="https://github.com/owner/repo"
+							placeholder="https://github.com/owner/repository"
 							type="url"
 							value={ url }
 							onChange={ handleUrlChange }

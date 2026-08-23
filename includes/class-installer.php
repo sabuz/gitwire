@@ -72,7 +72,7 @@ class Installer {
 	/**
 	 * Converts a raw DB row into the PHP record shape used throughout the plugin.
 	 *
-	 * Adds owner and repo (derived from full_name) so callers never need to split.
+	 * Adds owner and repository (derived from full_name) so callers never need to split.
 	 *
 	 * @since 1.0.0
 	 * @param array<string, mixed> $row Raw row from gitwire_installations.
@@ -91,7 +91,7 @@ class Installer {
 			[
 				'id'          => (int) ( $row['id'] ?? 0 ),
 				'owner'       => false !== $slash ? substr( $full, 0, $slash ) : $full,
-				'repo'        => false !== $slash ? substr( $full, $slash + 1 ) : '',
+				'repository'  => false !== $slash ? substr( $full, $slash + 1 ) : '',
 				'updated_at'  => $row['updated_at'] ?? '',
 				'auto_update' => $row['auto_update'] ?? 'disabled',
 			]
@@ -141,9 +141,9 @@ class Installer {
 	 * @return void
 	 */
 	public static function delete_record( string $provider, string $full_name ): void {
-		$row             = Installation::instance()->find_by_repo( $provider, $full_name );
+		$row             = Installation::instance()->find_by_repository( $provider, $full_name );
 		$installation_id = $row ? (int) ( $row['id'] ?? 0 ) : 0;
-		Installation::instance()->delete_by_repo( $provider, $full_name );
+		Installation::instance()->delete_by_repository( $provider, $full_name );
 		if ( $installation_id ) {
 			self::delete_commits( $installation_id );
 		}
@@ -289,9 +289,9 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string      $owner         Git owner or organisation.
-	 * @param string      $repo          Repository name.
+	 * @param string      $repository    Repository name.
 	 * @param string      $branch        Branch, tag, or SHA.
-	 * @param string      $slug          Desired directory slug (defaults to sanitised repo name).
+	 * @param string      $slug          Desired directory slug (defaults to sanitised repository name).
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
@@ -299,7 +299,7 @@ class Installer {
 	 */
 	public static function install_plugin(
 		string $owner,
-		string $repo,
+		string $repository,
 		string $branch,
 		string $slug = '',
 		string $provider = 'github',
@@ -307,12 +307,12 @@ class Installer {
 		?string $connection_id = null
 	): array|\WP_Error {
 		if ( ! $slug ) {
-			$slug = sanitize_title( $repo );
+			$slug = sanitize_title( $repository );
 		}
 
 		$destination = WP_PLUGIN_DIR . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'plugin', $provider, $replace, $connection_id );
+		return self::run( $owner, $repository, $branch, $slug, $destination, 'plugin', $provider, $replace, $connection_id );
 	}
 
 	/**
@@ -320,9 +320,9 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string      $owner         Git owner or organisation.
-	 * @param string      $repo          Repository name.
+	 * @param string      $repository    Repository name.
 	 * @param string      $branch        Branch, tag, or SHA.
-	 * @param string      $slug          Desired directory slug (defaults to sanitised repo name).
+	 * @param string      $slug          Desired directory slug (defaults to sanitised repository name).
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param bool        $replace       Whether to overwrite an existing directory instead of auto-renaming.
 	 * @param string|null $connection_id Optional connection ID to use for authenticated requests.
@@ -330,7 +330,7 @@ class Installer {
 	 */
 	public static function install_theme(
 		string $owner,
-		string $repo,
+		string $repository,
 		string $branch,
 		string $slug = '',
 		string $provider = 'github',
@@ -338,21 +338,21 @@ class Installer {
 		?string $connection_id = null
 	): array|\WP_Error {
 		if ( ! $slug ) {
-			$slug = sanitize_title( $repo );
+			$slug = sanitize_title( $repository );
 		}
 
 		$destination = get_theme_root() . '/' . $slug;
 
-		return self::run( $owner, $repo, $branch, $slug, $destination, 'theme', $provider, $replace, $connection_id );
+		return self::run( $owner, $repository, $branch, $slug, $destination, 'theme', $provider, $replace, $connection_id );
 	}
 
 	/**
 	 * Switches the active branch for an already-installed repository.
 	 *
 	 * @since 1.0.0
-	 * @param string      $provider              Git provider: 'github', 'gitlab', or 'bitbucket'.
-	 * @param string      $full_name             Repository full name (owner/repo).
-	 * @param string      $new_branch            Branch to switch to.
+	 * @param string      $provider               Git provider: 'github', 'gitlab', or 'bitbucket'.
+	 * @param string      $full_name              Repository full name (owner/repository).
+	 * @param string      $new_branch             Branch to switch to.
 	 * @param string|null $override_connection_id Bypass stored connection and use this ID instead.
 	 * @return array<string, mixed>|\WP_Error Updated record on success, WP_Error on failure.
 	 */
@@ -364,10 +364,10 @@ class Installer {
 			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ) );
 		}
 
-		$rec    = $installed[ $key ];
-		$owner  = $rec['owner'];
-		$repo   = $rec['repo'];
-		$method = Repository_Detector::is_theme( $rec['type'] ) ? 'install_theme' : 'install_plugin';
+		$rec        = $installed[ $key ];
+		$owner      = $rec['owner'];
+		$repository = $rec['repository'];
+		$method     = Repository_Detector::is_theme( $rec['type'] ) ? 'install_theme' : 'install_plugin';
 		if ( null !== $override_connection_id ) {
 			$connection_id = $override_connection_id;
 		} else {
@@ -400,7 +400,7 @@ class Installer {
 		}
 
 		// $connection_id resolved above, so a failure past this point is never about it existing.
-		return self::$method( $owner, $repo, $new_branch, $rec['name'], $provider, false, $connection_id );
+		return self::$method( $owner, $repository, $new_branch, $rec['name'], $provider, false, $connection_id );
 	}
 
 	/**
@@ -409,7 +409,7 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
-	 * @param string $full_name Repository full name (owner/repo).
+	 * @param string $full_name Repository full name (owner/repository).
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
 	public static function remove( string $provider, string $full_name ): bool|\WP_Error {
@@ -440,7 +440,7 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider key.
-	 * @param string $full_name Repository full name (owner/repo).
+	 * @param string $full_name Repository full name (owner/repository).
 	 * @return true|\WP_Error True on success, WP_Error when not found.
 	 */
 	public static function untrack( string $provider, string $full_name ): bool|\WP_Error {
@@ -458,7 +458,7 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
-	 * @param string $full_name Repository full name (owner/repo).
+	 * @param string $full_name Repository full name (owner/repository).
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
 	public static function activate( string $provider, string $full_name ): bool|\WP_Error {
@@ -610,7 +610,7 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
-	 * @param string $full_name Repository full name (owner/repo).
+	 * @param string $full_name Repository full name (owner/repository).
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
 	public static function deactivate( string $provider, string $full_name ): bool|\WP_Error {
@@ -656,11 +656,11 @@ class Installer {
 	 * Re-scans the install directory for the plugin entry file when the stored path is missing.
 	 *
 	 * @since 1.0.0
-	 * @param string      $provider    Git provider.
-	 * @param string      $full_name   Repository full name.
+	 * @param string      $provider     Git provider.
+	 * @param string      $full_name    Repository full name.
 	 * @param string      $install_path Absolute installation path.
-	 * @param string      $slug        Plugin slug.
-	 * @param string|null $plugin_file Stored plugin file (may be empty or stale).
+	 * @param string      $slug         Plugin slug.
+	 * @param string|null $plugin_file  Stored plugin file (may be empty or stale).
 	 * @return string|null Healed plugin file path, or null when not found.
 	 */
 	private static function heal_plugin_file( string $provider, string $full_name, string $install_path, string $slug, ?string $plugin_file ): ?string {
@@ -704,7 +704,7 @@ class Installer {
 	}
 
 	/**
-	 * Refreshes remote_head for all installed repos, then auto-updates those with auto_update enabled.
+	 * Refreshes remote_head for all installed repositories, then auto-updates those with auto_update enabled.
 	 *
 	 * @since 1.0.0
 	 * @return void
@@ -714,12 +714,12 @@ class Installer {
 
 		// Refresh the remote head for every installed repository first.
 		foreach ( $records as $key => $rec ) {
-			$owner    = $rec['owner'] ?? '';
-			$repo     = $rec['repo'] ?? '';
-			$branch   = (string) ( $rec['branch'] ?? 'main' );
-			$provider = (string) ( $rec['provider'] ?? 'github' );
+			$owner      = $rec['owner'] ?? '';
+			$repository = $rec['repository'] ?? '';
+			$branch     = (string) ( $rec['branch'] ?? 'main' );
+			$provider   = (string) ( $rec['provider'] ?? 'github' );
 
-			if ( ! $owner || ! $repo ) {
+			if ( ! $owner || ! $repository ) {
 				continue;
 			}
 
@@ -735,7 +735,7 @@ class Installer {
 			}
 
 			$api           = Provider_Factory::make( $provider, $connection_id );
-			$remote_sha    = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+			$remote_sha    = self::fetch_remote_head_sha( $api, $owner, $repository, $branch );
 			$stored_remote = (string) ( $rec['remote_head'] ?? '' );
 
 			if ( $remote_sha && $remote_sha !== $stored_remote ) {
@@ -747,7 +747,7 @@ class Installer {
 
 		/*
 		 * Refreshing remote heads above is still worth doing, so the UI can show what
-		 * is behind. Applying is not: bail once here rather than letting every repo
+		 * is behind. Applying is not: bail once here rather than letting every repository
 		 * fail its own write and write a log line for it every tick.
 		 */
 		if ( ! self::file_mods_allowed() ) {
@@ -768,7 +768,7 @@ class Installer {
 			}
 
 			$owner         = $rec['owner'] ?? '';
-			$repo          = $rec['repo'] ?? '';
+			$repository    = $rec['repository'] ?? '';
 			$branch        = (string) ( $rec['branch'] ?? 'main' );
 			$provider      = (string) ( $rec['provider'] ?? 'github' );
 			$slug          = (string) ( $rec['name'] ?? '' );
@@ -776,14 +776,14 @@ class Installer {
 			$type          = (string) ( $rec['type'] ?? 'plugin' );
 			$full_name     = (string) ( $rec['full_name'] ?? '' );
 
-			if ( ! $owner || ! $repo ) {
+			if ( ! $owner || ! $repository ) {
 				continue;
 			}
 
 			if ( Repository_Detector::is_theme( $type ) ) {
-				$result = self::install_theme( $owner, $repo, $branch, $slug, $provider, true, $connection_id );
+				$result = self::install_theme( $owner, $repository, $branch, $slug, $provider, true, $connection_id );
 			} else {
-				$result = self::install_plugin( $owner, $repo, $branch, $slug, $provider, true, $connection_id );
+				$result = self::install_plugin( $owner, $repository, $branch, $slug, $provider, true, $connection_id );
 			}
 
 			if ( is_wp_error( $result ) ) {
@@ -799,7 +799,7 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
-	 * @param string $full_name Repository full name (owner/repo).
+	 * @param string $full_name Repository full name (owner/repository).
 	 * @return array<string, mixed>|null Record array, or null if not found.
 	 */
 	public static function get_record( string $provider, string $full_name ): ?array {
@@ -812,7 +812,7 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider: 'github', 'gitlab', or 'bitbucket'.
-	 * @param string $full_name Repository full name (owner/repo).
+	 * @param string $full_name Repository full name (owner/repository).
 	 * @param string $sha       Full commit SHA.
 	 * @return void
 	 */
@@ -825,14 +825,14 @@ class Installer {
 	 * Fetches the latest remote commit SHA for a branch.
 	 *
 	 * @since 1.0.0
-	 * @param Git_Provider_Interface $api    Provider API client.
-	 * @param string                 $owner  Repository owner.
-	 * @param string                 $repo   Repository name.
-	 * @param string                 $branch Branch name.
+	 * @param Git_Provider_Interface $api        Provider API client.
+	 * @param string                 $owner      Repository owner.
+	 * @param string                 $repository Repository name.
+	 * @param string                 $branch     Branch name.
 	 * @return string|null Full 40-char SHA or null when unavailable.
 	 */
-	public static function fetch_remote_head_sha( Git_Provider_Interface $api, string $owner, string $repo, string $branch ): ?string {
-		$commits = $api->get_commits( $owner, $repo, $branch, 1 );
+	public static function fetch_remote_head_sha( Git_Provider_Interface $api, string $owner, string $repository, string $branch ): ?string {
+		$commits = $api->get_commits( $owner, $repository, $branch, 1 );
 		if ( is_wp_error( $commits ) || empty( $commits[0]['sha'] ) ) {
 			return null;
 		}
@@ -914,9 +914,9 @@ class Installer {
 	 * Returns whether a remote SHA matches the known-fatal cache entry.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider  Git provider.
-	 * @param string $full_name Repository full name.
-	 * @param string $branch    Branch name.
+	 * @param string $provider   Git provider.
+	 * @param string $full_name  Repository full name.
+	 * @param string $branch     Branch name.
 	 * @param string $remote_sha Remote commit SHA.
 	 * @return bool
 	 */
@@ -1173,7 +1173,7 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string      $owner         Git owner or organisation.
-	 * @param string      $repo          Repository name.
+	 * @param string      $repository    Repository name.
 	 * @param string      $branch        Branch, tag, or SHA.
 	 * @param string      $slug          Directory slug for the installation.
 	 * @param string      $install_path  Absolute filesystem path for the installation.
@@ -1185,7 +1185,7 @@ class Installer {
 	 */
 	private static function run(
 		string $owner,
-		string $repo,
+		string $repository,
 		string $branch,
 		string $slug,
 		string $install_path,
@@ -1194,7 +1194,7 @@ class Installer {
 		bool $replace = false,
 		?string $connection_id = null
 	): array|\WP_Error {
-		$full_name = $owner . '/' . $repo;
+		$full_name = $owner . '/' . $repository;
 
 		/*
 		 * The REST capability gate covers requests, but cron auto-updates run with no
@@ -1210,7 +1210,7 @@ class Installer {
 		}
 
 		try {
-			return self::execute_run( $owner, $repo, $branch, $slug, $install_path, $type, $provider, $replace, $connection_id );
+			return self::execute_run( $owner, $repository, $branch, $slug, $install_path, $type, $provider, $replace, $connection_id );
 		} finally {
 			self::release_install_lock( $provider, $full_name );
 		}
@@ -1273,7 +1273,7 @@ class Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string      $owner         Git owner or organisation.
-	 * @param string      $repo          Repository name.
+	 * @param string      $repository    Repository name.
 	 * @param string      $branch        Branch, tag, or SHA.
 	 * @param string      $slug          Directory slug for the installation.
 	 * @param string      $install_path  Absolute filesystem path for the installation.
@@ -1285,7 +1285,7 @@ class Installer {
 	 */
 	private static function execute_run(
 		string $owner,
-		string $repo,
+		string $repository,
 		string $branch,
 		string $slug,
 		string $install_path,
@@ -1296,7 +1296,7 @@ class Installer {
 	): array|\WP_Error {
 		self::init_fs();
 
-		$full_name = $owner . '/' . $repo;
+		$full_name = $owner . '/' . $repository;
 		$api       = Provider_Factory::make( $provider, $connection_id );
 
 		/*
@@ -1335,7 +1335,7 @@ class Installer {
 			&& self::is_active_install( $type, $slug, $all_installed[ $current_key ]['basename'] ?? null )
 		) {
 			$known = self::get_known_fatal_remote_head( $provider, $full_name, $branch );
-			if ( $known && self::fetch_remote_head_sha( $api, $owner, $repo, $branch ) === $known ) {
+			if ( $known && self::fetch_remote_head_sha( $api, $owner, $repository, $branch ) === $known ) {
 				return new \WP_Error(
 					'gitwire_known_fatal_head',
 					self::known_fatal_head_message( $type, $known, self::get_known_fatal_location( $provider, $full_name, $branch ) ),
@@ -1345,7 +1345,7 @@ class Installer {
 		}
 
 		// Download the repository archive.
-		$zip_file = $api->download_zip( $owner, $repo, $branch );
+		$zip_file = $api->download_zip( $owner, $repository, $branch );
 		if ( is_wp_error( $zip_file ) ) {
 			return $zip_file;
 		}
@@ -1381,7 +1381,7 @@ class Installer {
 				delete_option( 'gitwire_running_task' );
 			}
 
-			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repository, $branch );
 			if ( $remote_sha && self::matches_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha ) ) {
 				wp_delete_file( $zip_file );
 				return new \WP_Error(
@@ -1449,7 +1449,7 @@ class Installer {
 
 		$record = [
 			'name'          => $slug,
-			'repo'          => $repo,
+			'repository'    => $repository,
 			'owner'         => $owner,
 			'full_name'     => $full_name,
 			'branch'        => $branch,
@@ -1478,7 +1478,7 @@ class Installer {
 			$record = self::save_installed_record(
 				$record_key,
 				$record,
-				$remote_sha ?? self::fetch_remote_head_sha( $api, $owner, $repo, $branch )
+				$remote_sha ?? self::fetch_remote_head_sha( $api, $owner, $repository, $branch )
 			);
 
 			$pending['context'] = 'update';
@@ -1492,7 +1492,7 @@ class Installer {
 				self::restore_backup( $install_path, $backup_path );
 				delete_option( 'gitwire_running_task' );
 				if ( ! $remote_sha ) {
-					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repository, $branch );
 				}
 				if ( $remote_sha && self::is_activation_fatal_error( $activated ) ) {
 					self::mark_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha );
@@ -1512,7 +1512,7 @@ class Installer {
 				delete_option( 'gitwire_running_task' );
 
 				if ( ! $remote_sha ) {
-					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repo, $branch );
+					$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repository, $branch );
 				}
 
 				return self::update_fatal_error( $scrape, $type, $remote_sha, $provider, $full_name, $branch );
@@ -1556,7 +1556,7 @@ class Installer {
 		$record = self::save_installed_record(
 			$record_key,
 			$record,
-			self::fetch_remote_head_sha( $api, $owner, $repo, $branch )
+			self::fetch_remote_head_sha( $api, $owner, $repository, $branch )
 		);
 		if ( Repository_Detector::is_theme( $type ) ) {
 			self::clear_guard_feedback();

@@ -198,7 +198,7 @@ final class Plugin {
 			wp_schedule_event( time(), 'hourly', 'gitwire_trim_logs' );
 		}
 
-		$this->schedule_repos_cron();
+		$this->schedule_repositories_cron();
 		$this->schedule_repository_types_cron();
 		$this->schedule_update_check_cron();
 	}
@@ -225,7 +225,7 @@ final class Plugin {
 	 * @since 1.0.0
 	 * @return void
 	 */
-	public function schedule_repos_cron(): void {
+	public function schedule_repositories_cron(): void {
 		$freq    = Settings::get_repository_refresh_frequency();
 		$current = wp_get_schedule( 'gitwire_refresh_repositories' );
 		if ( $current === $freq ) {

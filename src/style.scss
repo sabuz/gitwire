@@ -521,9 +521,9 @@ body.gitwire-admin-page {
 	}
 }
 
-// Repo cards ──────────────────
+// Repository cards ──────────────────
 
-.gitwire-repo {
+.gitwire-repository {
 
 	&-grid {
 		display: grid;
@@ -828,7 +828,7 @@ body.gitwire-admin-page {
 
 // Import from URL ─────────────────
 
-.gitwire-add-repo-page {
+.gitwire-add-repository-page {
 	min-height: 200px;
 }
 

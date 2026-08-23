@@ -19,7 +19,7 @@ class SettingsTest extends TestCase {
 		gitwire_test_reset_options();
 	}
 
-	public function test_merge_save_keeps_stored_values_for_keys_not_sent(): void {
+	public function test_merge_with_current_keeps_stored_values_for_keys_not_sent(): void {
 		gitwire_test_set_option( 'gitwire_settings', [ 'log_level' => 'error' ] );
 
 		$merged = Settings::merge_with_current( [ 'smart_install' => false ] );
@@ -28,24 +28,24 @@ class SettingsTest extends TestCase {
 		$this->assertSame( 'error', $merged['log_level'] );
 	}
 
-	public function test_merge_save_clamps_repos_per_page(): void {
-		$this->assertSame( 100, Settings::merge_with_current( [ 'repos_per_page' => 5000 ] )['repos_per_page'] );
-		$this->assertSame( 10, Settings::merge_with_current( [ 'repos_per_page' => 1 ] )['repos_per_page'] );
-		$this->assertSame( 50, Settings::merge_with_current( [ 'repos_per_page' => 50 ] )['repos_per_page'] );
+	public function test_merge_with_current_clamps_repositories_per_page(): void {
+		$this->assertSame( 100, Settings::merge_with_current( [ 'repositories_per_page' => 5000 ] )['repositories_per_page'] );
+		$this->assertSame( 10, Settings::merge_with_current( [ 'repositories_per_page' => 1 ] )['repositories_per_page'] );
+		$this->assertSame( 50, Settings::merge_with_current( [ 'repositories_per_page' => 50 ] )['repositories_per_page'] );
 	}
 
-	public function test_repos_per_page_defaults_low_enough_to_type_a_page(): void {
+	public function test_repositories_per_page_defaults_low_enough_to_type_a_page(): void {
 		/*
-		 * The page size is the detection bill: 20 repos against an unauthenticated
+		 * The page size is the detection bill: 20 repositories against an unauthenticated
 		 * GitHub connection's 60 requests an hour, not 50.
 		 */
-		$this->assertSame( 20, Settings::defaults()['repos_per_page'] );
+		$this->assertSame( 20, Settings::defaults()['repositories_per_page'] );
 	}
 
-	public function test_merge_save_rejects_excluded_repos_that_are_not_owner_slash_name(): void {
+	public function test_merge_with_current_rejects_excluded_repositories_that_are_not_owner_slash_name(): void {
 		$merged = Settings::merge_with_current(
 			[
-				'excluded_repos' => [
+				'excluded_repositories' => [
 					'acme/widgets',
 					'not-a-repo',
 					'../../etc/passwd',
@@ -54,10 +54,10 @@ class SettingsTest extends TestCase {
 			]
 		);
 
-		$this->assertSame( [ 'acme/widgets', 'acme/tools' ], $merged['excluded_repos'] );
+		$this->assertSame( [ 'acme/widgets', 'acme/tools' ], $merged['excluded_repositories'] );
 	}
 
-	public function test_merge_save_restricts_log_level(): void {
+	public function test_merge_with_current_restricts_log_level(): void {
 		$this->assertSame( 'error', Settings::merge_with_current( [ 'log_level' => 'error' ] )['log_level'] );
 		$this->assertSame( 'activity', Settings::merge_with_current( [ 'log_level' => 'verbose' ] )['log_level'] );
 	}
@@ -71,7 +71,7 @@ class SettingsTest extends TestCase {
 	 * @dataProvider update_check_intervals
 	 * @param string $interval Interval to save.
 	 */
-	public function test_merge_save_accepts_every_real_update_check_interval( string $interval ): void {
+	public function test_merge_with_current_accepts_every_real_update_check_interval( string $interval ): void {
 		$this->assertSame( $interval, Settings::merge_with_current( [ 'update_check_interval' => $interval ] )['update_check_interval'] );
 	}
 
@@ -90,7 +90,7 @@ class SettingsTest extends TestCase {
 		];
 	}
 
-	public function test_merge_save_falls_back_for_an_unknown_update_check_interval(): void {
+	public function test_merge_with_current_falls_back_for_an_unknown_update_check_interval(): void {
 		$this->assertSame( 'halfhourly', Settings::merge_with_current( [ 'update_check_interval' => 'yearly' ] )['update_check_interval'] );
 	}
 

@@ -108,7 +108,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * @param int    $page     Page number for paginated results.
 	 * @return array{repositories: array<int, mixed>, has_more: bool}|\WP_Error
 	 */
-	public function get_repos( string $username, int $page = 1 ): array|\WP_Error {
+	public function get_repositories( string $username, int $page = 1 ): array|\WP_Error {
 		$slugs = $username ? [ $username ] : $this->get_workspace_slugs();
 		if ( is_wp_error( $slugs ) ) {
 			return $slugs;
@@ -179,13 +179,13 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * Returns all branches for a repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner Repository workspace slug.
-	 * @param string $repo  Repository slug.
+	 * @param string $owner      Repository workspace slug.
+	 * @param string $repository Repository slug.
 	 * @return array<int, mixed>|\WP_Error Branch list on success, WP_Error on failure.
 	 */
-	public function get_branches( string $owner, string $repo ): array|\WP_Error {
+	public function get_branches( string $owner, string $repository ): array|\WP_Error {
 		$result = $this->get(
-			'/repositories/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+			'/repositories/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository )
 			. '/refs/branches?pagelen=100'
 		);
 
@@ -201,18 +201,18 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 *
 	 * @since 1.0.0
 	 * @param string            $owner         Repository workspace slug.
-	 * @param string            $repo          Repository slug.
+	 * @param string            $repository    Repository slug.
 	 * @param string            $branch        Branch ref.
 	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
+	public function detect_type( string $owner, string $repository, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
 		return Repository_Detector::detect(
-			$repo,
+			$repository,
 			$branch,
-			function ( $ref ) use ( $owner, $repo ) {
+			function ( $ref ) use ( $owner, $repository ) {
 				$result = $this->get(
-					'/repositories/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+					'/repositories/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository )
 					. '/src/' . rawurlencode( $ref ) . '/?pagelen=100'
 				);
 				if ( is_wp_error( $result ) ) {
@@ -229,7 +229,7 @@ class Bitbucket_API implements Git_Provider_Interface {
 					$result['values'] ?? []
 				);
 			},
-			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref ),
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repository, $path, $ref ),
 			$cached_result
 		);
 	}
@@ -238,15 +238,15 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * Returns the last N commits for a branch, normalised to a flat array.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner    Repository workspace slug.
-	 * @param string $repo     Repository slug.
-	 * @param string $branch   Branch, tag, or SHA.
-	 * @param int    $per_page Number of commits to return.
+	 * @param string $owner      Repository workspace slug.
+	 * @param string $repository Repository slug.
+	 * @param string $branch     Branch, tag, or SHA.
+	 * @param int    $per_page   Number of commits to return.
 	 * @return array<int, array<string, string>>|\WP_Error Commit list or WP_Error on failure.
 	 */
-	public function get_commits( string $owner, string $repo, string $branch, int $per_page = 10 ): array|\WP_Error {
+	public function get_commits( string $owner, string $repository, string $branch, int $per_page = 10 ): array|\WP_Error {
 		$result = $this->get(
-			'/repositories/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+			'/repositories/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository )
 			. '/commits/' . rawurlencode( $branch ) . '?pagelen=' . $per_page
 		);
 
@@ -275,13 +275,13 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * credentials to Amazon, so resolve the Location ourselves and fetch it unauthenticated.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  Repository workspace slug.
-	 * @param string $repo   Repository slug.
-	 * @param string $branch Branch ref.
+	 * @param string $owner      Repository workspace slug.
+	 * @param string $repository Repository slug.
+	 * @param string $branch     Branch ref.
 	 * @return string|\WP_Error Absolute path to the temp ZIP file, or WP_Error on failure.
 	 */
-	public function download_zip( string $owner, string $repo, string $branch ): string|\WP_Error {
-		$url = 'https://bitbucket.org/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+	public function download_zip( string $owner, string $repository, string $branch ): string|\WP_Error {
+		$url = 'https://bitbucket.org/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository )
 			. '/get/' . rawurlencode( $branch ) . '.zip';
 
 		$headers = $this->headers();
@@ -387,16 +387,16 @@ class Bitbucket_API implements Git_Provider_Interface {
 	 * Fetches the raw content of a single file from a repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  Repository workspace slug.
-	 * @param string $repo   Repository slug.
-	 * @param string $path   File path within the repository.
-	 * @param string $branch Branch, tag, or SHA reference.
+	 * @param string $owner      Repository workspace slug.
+	 * @param string $repository Repository slug.
+	 * @param string $path       File path within the repository.
+	 * @param string $branch     Branch, tag, or SHA reference.
 	 * @return string|\WP_Error File content on success, WP_Error on failure.
 	 */
-	private function get_raw_content( string $owner, string $repo, string $path, string $branch ): string|\WP_Error {
+	private function get_raw_content( string $owner, string $repository, string $path, string $branch ): string|\WP_Error {
 		$encoded_path = implode( '/', array_map( 'rawurlencode', explode( '/', ltrim( $path, '/' ) ) ) );
 		$response     = wp_remote_get(
-			$this->base . '/repositories/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+			$this->base . '/repositories/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository )
 			. '/src/' . rawurlencode( $branch ) . '/' . $encoded_path,
 			[
 				'headers' => $this->headers(),

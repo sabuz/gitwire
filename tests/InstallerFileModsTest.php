@@ -65,7 +65,7 @@ class InstallerFileModsTest extends TestCase {
 
 	/**
 	 * The refusal has to land before the lock is taken, or a blocked attempt
-	 * leaves a lock row behind that stalls the repo for ten minutes.
+	 * leaves a lock row behind that stalls the repository for ten minutes.
 	 *
 	 * @return void
 	 */

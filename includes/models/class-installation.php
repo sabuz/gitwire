@@ -107,7 +107,7 @@ class Installation extends Model_Base {
 	 * @param string $full_name Repository full name.
 	 * @return array<string, mixed>|null
 	 */
-	public function find_by_repo( string $provider, string $full_name ): ?array {
+	public function find_by_repository( string $provider, string $full_name ): ?array {
 		return $this->get_row(
 			[
 				'provider'  => $provider,
@@ -242,14 +242,14 @@ class Installation extends Model_Base {
 	}
 
 	/**
-	 * Returns rows that share an install_path but belong to a different repo.
+	 * Returns rows that share an install_path but belong to a different repository.
 	 *
 	 * Used during replace-installs to evict stale records that claimed the same directory.
 	 *
 	 * @since 1.0.0
 	 * @param string $install_path Directory path to match.
-	 * @param string $provider     Provider of the current repo to exclude.
-	 * @param string $full_name    Full name of the current repo to exclude.
+	 * @param string $provider     Provider of the current repository to exclude.
+	 * @param string $full_name    Full name of the current repository to exclude.
 	 * @return array<int, array<string, mixed>>
 	 */
 	public function find_others_by_path( string $install_path, string $provider, string $full_name ): array {
@@ -269,7 +269,7 @@ class Installation extends Model_Base {
 	 * @param string $full_name Repository full name.
 	 * @return bool
 	 */
-	public function delete_by_repo( string $provider, string $full_name ): bool {
+	public function delete_by_repository( string $provider, string $full_name ): bool {
 		$ok = $this->delete_rows(
 			[
 				'provider'  => $provider,

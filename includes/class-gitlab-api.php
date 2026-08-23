@@ -144,7 +144,7 @@ class GitLab_API implements Git_Provider_Interface {
 	 * @param int    $page     Page number for paginated results.
 	 * @return array<int, mixed>|\WP_Error Project list on success, WP_Error on failure.
 	 */
-	public function get_repos( string $username, int $page = 1 ): array|\WP_Error {
+	public function get_repositories( string $username, int $page = 1 ): array|\WP_Error {
 		if ( '' === $this->token && '' !== $username ) {
 			return $this->get(
 				'/users/' . rawurlencode( $username ) . '/projects?per_page=100&page=' . $page
@@ -238,16 +238,16 @@ class GitLab_API implements Git_Provider_Interface {
 	 *
 	 * @since 1.0.0
 	 * @param string            $owner         GitLab namespace (group or username).
-	 * @param string            $repo          Project path.
+	 * @param string            $repository    Project path.
 	 * @param string            $branch        Branch, tag, or SHA to inspect.
 	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
-		$project_id = rawurlencode( $owner . '/' . $repo );
+	public function detect_type( string $owner, string $repository, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
+		$project_id = rawurlencode( $owner . '/' . $repository );
 
 		return Repository_Detector::detect(
-			$repo,
+			$repository,
 			$branch,
 			function ( $ref ) use ( $project_id ) {
 				$contents = $this->get(
@@ -267,7 +267,7 @@ class GitLab_API implements Git_Provider_Interface {
 					$contents
 				);
 			},
-			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref ),
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repository, $path, $ref ),
 			$cached_result
 		);
 	}
@@ -276,12 +276,12 @@ class GitLab_API implements Git_Provider_Interface {
 	 * Returns all branches for a project.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner GitLab namespace.
-	 * @param string $repo  Project path.
+	 * @param string $owner      GitLab namespace.
+	 * @param string $repository Project path.
 	 * @return array<int, mixed>|\WP_Error Branch list on success, WP_Error on failure.
 	 */
-	public function get_branches( string $owner, string $repo ): array|\WP_Error {
-		$project_id = rawurlencode( $owner . '/' . $repo );
+	public function get_branches( string $owner, string $repository ): array|\WP_Error {
+		$project_id = rawurlencode( $owner . '/' . $repository );
 		return $this->get( '/projects/' . $project_id . '/repository/branches?per_page=100' );
 	}
 
@@ -289,14 +289,14 @@ class GitLab_API implements Git_Provider_Interface {
 	 * Returns the last N commits for a branch, normalised to a flat array.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner    GitLab namespace.
-	 * @param string $repo     Project path.
-	 * @param string $branch   Branch, tag, or SHA.
-	 * @param int    $per_page Number of commits to return (max 100).
+	 * @param string $owner      GitLab namespace.
+	 * @param string $repository Project path.
+	 * @param string $branch     Branch, tag, or SHA.
+	 * @param int    $per_page   Number of commits to return (max 100).
 	 * @return array<int, array<string, string>>|\WP_Error Commit list or WP_Error on failure.
 	 */
-	public function get_commits( string $owner, string $repo, string $branch, int $per_page = 10 ): array|\WP_Error {
-		$project_id = rawurlencode( $owner . '/' . $repo );
+	public function get_commits( string $owner, string $repository, string $branch, int $per_page = 10 ): array|\WP_Error {
+		$project_id = rawurlencode( $owner . '/' . $repository );
 		$data       = $this->get(
 			'/projects/' . $project_id
 			. '/repository/commits?ref_name=' . rawurlencode( $branch ) . '&per_page=' . $per_page
@@ -322,23 +322,23 @@ class GitLab_API implements Git_Provider_Interface {
 	/**
 	 * Downloads a project archive ZIP and returns the local temp-file path.
 	 *
-	 * Streamed to disk so large repos never sit in memory. Redirects are resolved by
+	 * Streamed to disk so large repositories never sit in memory. Redirects are resolved by
 	 * hand rather than followed: instances backed by object storage 302 to a signed
 	 * URL on another host, and WP_Http would replay the auth header there.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  GitLab namespace.
-	 * @param string $repo   Project path.
-	 * @param string $branch Branch, tag, or SHA to download.
+	 * @param string $owner      GitLab namespace.
+	 * @param string $repository Project path.
+	 * @param string $branch     Branch, tag, or SHA to download.
 	 * @return string|\WP_Error Local temp file path on success, WP_Error on failure.
 	 */
-	public function download_zip( string $owner, string $repo, string $branch ): string|\WP_Error {
+	public function download_zip( string $owner, string $repository, string $branch ): string|\WP_Error {
 		$safe = $this->assert_base_url_safe();
 		if ( is_wp_error( $safe ) ) {
 			return $safe;
 		}
 
-		$project_id = rawurlencode( $owner . '/' . $repo );
+		$project_id = rawurlencode( $owner . '/' . $repository );
 		$url        = $this->base . '/projects/' . $project_id
 			. '/repository/archive.zip?sha=' . rawurlencode( $branch );
 
@@ -421,19 +421,19 @@ class GitLab_API implements Git_Provider_Interface {
 	 * Fetches the raw content of a single file from a project.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  Project namespace.
-	 * @param string $repo   Project path.
-	 * @param string $path   File path within the project.
-	 * @param string $branch Branch, tag, or SHA reference.
+	 * @param string $owner      Project namespace.
+	 * @param string $repository Project path.
+	 * @param string $path       File path within the project.
+	 * @param string $branch     Branch, tag, or SHA reference.
 	 * @return string|\WP_Error File content on success, WP_Error on failure.
 	 */
-	private function get_raw_content( string $owner, string $repo, string $path, string $branch ): string|\WP_Error {
+	private function get_raw_content( string $owner, string $repository, string $path, string $branch ): string|\WP_Error {
 		$safe = $this->assert_base_url_safe();
 		if ( is_wp_error( $safe ) ) {
 			return $safe;
 		}
 
-		$project_id = rawurlencode( $owner . '/' . $repo );
+		$project_id = rawurlencode( $owner . '/' . $repository );
 		$file_path  = rawurlencode( $path );
 
 		$response = wp_remote_get(

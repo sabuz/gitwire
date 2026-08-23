@@ -436,7 +436,7 @@ export default function App( { initialData } ) {
 						installed={ installed }
 						settings={ settings }
 						onGoToSettings={ () => handleGoToTab( 'settings' ) }
-						onOpenAddRepo={ () =>
+						onOpenAddRepository={ () =>
 							handleGoToTab( 'add-repository' )
 						}
 						onRefresh={ refreshInstalled }

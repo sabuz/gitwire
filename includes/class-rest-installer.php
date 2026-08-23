@@ -70,12 +70,12 @@ class REST_Installer {
 	}
 
 	/**
-	 * Writes or replaces the commit cache for a repo/branch.
+	 * Writes or replaces the commit cache for a repository/branch.
 	 *
 	 * @since 1.0.0
-	 * @param int                              $installation_id Primary key of the gitwire_installations row.
-	 * @param string                           $branch          Branch name.
-	 * @param array<int, array<string, mixed>> $commits         Commit list.
+	 * @param int                                 $installation_id Primary key of the gitwire_installations row.
+	 * @param string                              $branch          Branch name.
+	 * @param array<int, array<string,    mixed>> $commits         Commit list.
 	 * @return void
 	 */
 	private static function save_cached_commits( int $installation_id, string $branch, array $commits ): void {
@@ -87,9 +87,9 @@ class REST_Installer {
 	 *
 	 * @since 1.0.0
 	 * @param array<int, array<string, mixed>> $commits   Commit list.
-	 * @param string                           $provider  Git provider.
-	 * @param string                           $full_name Repository full name.
-	 * @param string                           $branch    Branch name.
+	 * @param string                           $provider     Git provider.
+	 * @param string                           $full_name    Repository full name.
+	 * @param string                           $branch       Branch name.
 	 * @return array<int, array<string, mixed>>
 	 */
 	private static function annotate_commits_with_fatal( array $commits, string $provider, string $full_name, string $branch ): array {
@@ -114,26 +114,26 @@ class REST_Installer {
 	 *
 	 * @since 1.0.0
 	 * @param string      $owner         Repository owner.
-	 * @param string      $repo          Repository name.
+	 * @param string      $repository    Repository name.
 	 * @param string      $branch        Branch name.
 	 * @param string      $provider      Git provider: 'github', 'gitlab', or 'bitbucket'.
 	 * @param string|null $connection_id Connection ID used for the install.
 	 * @return void
 	 */
-	private static function store_head( string $owner, string $repo, string $branch, string $provider, ?string $connection_id = null ): void {
-		$record = Installer::get_record( $provider, $owner . '/' . $repo );
+	private static function store_head( string $owner, string $repository, string $branch, string $provider, ?string $connection_id = null ): void {
+		$record = Installer::get_record( $provider, $owner . '/' . $repository );
 		if ( ! $record ) {
 			return;
 		}
 
 		$api     = self::make_api( $provider, $connection_id );
-		$commits = $api->get_commits( $owner, $repo, $branch );
+		$commits = $api->get_commits( $owner, $repository, $branch );
 		if ( is_wp_error( $commits ) || empty( $commits ) ) {
 			return;
 		}
 
 		// Use one fetch because its newest entry provides the requested head commit.
-		Installer::set_head( $provider, $owner . '/' . $repo, $commits[0]['sha'] );
+		Installer::set_head( $provider, $owner . '/' . $repository, $commits[0]['sha'] );
 		self::save_cached_commits( $record['id'], $branch, $commits );
 	}
 
@@ -159,7 +159,7 @@ class REST_Installer {
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
 					],
-					'repo'          => [
+					'repository'    => [
 						'required'          => true,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
@@ -342,15 +342,15 @@ class REST_Installer {
 	 */
 	public static function install( \WP_REST_Request $req ): array|\WP_Error {
 		$owner      = (string) $req->get_param( 'owner' );
-		$repo       = (string) $req->get_param( 'repo' );
+		$repository = (string) $req->get_param( 'repository' );
 		$branch     = sanitize_text_field( $req->get_param( 'branch' ) ?? 'main' );
 		$type       = (string) $req->get_param( 'type' );
 		$slug       = sanitize_file_name( $req->get_param( 'slug' ) ?? '' );
 		$replace    = (bool) $req->get_param( 'replace' );
 		$force_type = (bool) $req->get_param( 'force_type' );
 
-		if ( ! $owner || ! $repo ) {
-			return new \WP_Error( 'missing_params', __( 'Missing owner or repo.', 'gitwire' ), [ 'status' => 400 ] );
+		if ( ! $owner || ! $repository ) {
+			return new \WP_Error( 'missing_params', __( 'Missing owner or repository.', 'gitwire' ), [ 'status' => 400 ] );
 		}
 
 		$settings      = Settings::get_raw();
@@ -373,7 +373,7 @@ class REST_Installer {
 			$provider = (string) $req->get_param( 'provider' );
 
 			$api      = self::make_api( $provider, $connection_id );
-			$detected = $api->detect_type( $owner, $repo, $branch );
+			$detected = $api->detect_type( $owner, $repository, $branch );
 
 			// The provider's own message already explains what happened; a generic one hid it.
 			if ( is_wp_error( $detected ) ) {
@@ -411,22 +411,22 @@ class REST_Installer {
 		$provider = (string) $req->get_param( 'provider' );
 
 		$method    = in_array( $type, [ 'theme', 'block-theme', 'classic-theme' ], true ) ? 'install_theme' : 'install_plugin';
-		$is_update = null !== Installer::get_record( $provider, $owner . '/' . $repo );
-		$result    = Installer::$method( $owner, $repo, $branch, $slug, $provider, $replace, $connection_id );
+		$is_update = null !== Installer::get_record( $provider, $owner . '/' . $repository );
+		$result    = Installer::$method( $owner, $repository, $branch, $slug, $provider, $replace, $connection_id );
 
 		if ( is_wp_error( $result ) ) {
-			Logger::log( sprintf( '[%s] %s failed for %s/%s: %s', $provider, $is_update ? 'Update' : 'Install', $owner, $repo, $result->get_error_message() ), 'error' );
+			Logger::log( sprintf( '[%s] %s failed for %s/%s: %s', $provider, $is_update ? 'Update' : 'Install', $owner, $repository, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 
 		unset( $result['_evicted'] );
 
-		self::store_head( $owner, $repo, $branch, $provider, $connection_id );
+		self::store_head( $owner, $repository, $branch, $provider, $connection_id );
 
 		if ( $is_update ) {
-			Logger::log( sprintf( '[%s] Updated %s/%s (%s) on branch %s', $provider, $owner, $repo, $type, $branch ) );
+			Logger::log( sprintf( '[%s] Updated %s/%s (%s) on branch %s', $provider, $owner, $repository, $type, $branch ) );
 		} else {
-			Logger::log( sprintf( '[%s] Installed %s/%s as %s on branch %s', $provider, $owner, $repo, $type, $branch ) );
+			Logger::log( sprintf( '[%s] Installed %s/%s as %s on branch %s', $provider, $owner, $repository, $type, $branch ) );
 		}
 
 		return $result;
@@ -633,10 +633,10 @@ class REST_Installer {
 			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
-		$provider  = (string) $record['provider'];
-		$full_name = (string) $record['full_name'];
-		$owner     = (string) $record['owner'];
-		$repo      = (string) $record['repo'];
+		$provider   = (string) $record['provider'];
+		$full_name  = (string) $record['full_name'];
+		$owner      = (string) $record['owner'];
+		$repository = (string) $record['repository'];
 
 		Error_Handler::clear_stale_activation_guard();
 
@@ -653,7 +653,7 @@ class REST_Installer {
 				$e->getLine()
 			);
 			Logger::log(
-				sprintf( '[%s] Activation failed for %s/%s: %s', $provider, $owner, $repo, $detail ),
+				sprintf( '[%s] Activation failed for %s/%s: %s', $provider, $owner, $repository, $detail ),
 				'error'
 			);
 			return new \WP_Error(
@@ -668,11 +668,11 @@ class REST_Installer {
 		}
 
 		if ( is_wp_error( $result ) ) {
-			Logger::log( sprintf( '[%s] Activation failed for %s/%s: %s', $provider, $owner, $repo, $result->get_error_message() ), 'error' );
+			Logger::log( sprintf( '[%s] Activation failed for %s/%s: %s', $provider, $owner, $repository, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 
-		Logger::log( sprintf( '[%s] Activated %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
+		Logger::log( sprintf( '[%s] Activated %s/%s (%s)', $provider, $owner, $repository, $record['type'] ?? 'plugin' ) );
 
 		return [ 'activated' => true ];
 	}
@@ -691,17 +691,17 @@ class REST_Installer {
 			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
-		$provider  = (string) $record['provider'];
-		$full_name = (string) $record['full_name'];
-		$owner     = (string) $record['owner'];
-		$repo      = (string) $record['repo'];
-		$result    = Installer::deactivate( $provider, $full_name );
+		$provider   = (string) $record['provider'];
+		$full_name  = (string) $record['full_name'];
+		$owner      = (string) $record['owner'];
+		$repository = (string) $record['repository'];
+		$result     = Installer::deactivate( $provider, $full_name );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 
-		Logger::log( sprintf( '[%s] Deactivated %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
+		Logger::log( sprintf( '[%s] Deactivated %s/%s (%s)', $provider, $owner, $repository, $record['type'] ?? 'plugin' ) );
 
 		return [ 'deactivated' => true ];
 	}
@@ -720,9 +720,9 @@ class REST_Installer {
 			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
-		$owner  = (string) $record['owner'];
-		$repo   = (string) $record['repo'];
-		$branch = sanitize_text_field( $req->get_param( 'branch' ) ?? '' );
+		$owner      = (string) $record['owner'];
+		$repository = (string) $record['repository'];
+		$branch     = sanitize_text_field( $req->get_param( 'branch' ) ?? '' );
 
 		if ( ! $branch ) {
 			return new \WP_Error( 'missing_branch', __( 'Branch is required.', 'gitwire' ), [ 'status' => 400 ] );
@@ -751,12 +751,12 @@ class REST_Installer {
 
 		if ( is_wp_error( $result ) ) {
 			$action = $is_pull ? 'Pull' : 'Switch branch';
-			Logger::log( sprintf( '[%s] %s failed for %s/%s: %s', $provider, $action, $owner, $repo, $result->get_error_message() ), 'error' );
+			Logger::log( sprintf( '[%s] %s failed for %s/%s: %s', $provider, $action, $owner, $repository, $result->get_error_message() ), 'error' );
 			return $result;
 		}
 
 		$stored_conn_id = $override_id ?? ( $existing_record['connection_id'] ?? null );
-		self::store_head( $owner, $repo, $branch, $provider, $stored_conn_id );
+		self::store_head( $owner, $repository, $branch, $provider, $stored_conn_id );
 
 		if ( ! $is_pull ) {
 			// Clear the previous branch's remote head so sync_installed() resolves it again.
@@ -765,9 +765,9 @@ class REST_Installer {
 
 		$type = $existing_record['type'] ?? 'plugin';
 		if ( $is_pull ) {
-			Logger::log( sprintf( '[%s] Pulled %s/%s (%s) on branch %s', $provider, $owner, $repo, $type, $branch ) );
+			Logger::log( sprintf( '[%s] Pulled %s/%s (%s) on branch %s', $provider, $owner, $repository, $type, $branch ) );
 		} else {
-			Logger::log( sprintf( '[%s] Switched %s/%s (%s) to branch %s', $provider, $owner, $repo, $type, $branch ) );
+			Logger::log( sprintf( '[%s] Switched %s/%s (%s) to branch %s', $provider, $owner, $repository, $type, $branch ) );
 		}
 
 		return $result;
@@ -787,10 +787,10 @@ class REST_Installer {
 			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
-		$provider  = (string) $record['provider'];
-		$full_name = (string) $record['full_name'];
-		$owner     = (string) $record['owner'];
-		$repo      = (string) $record['repo'];
+		$provider   = (string) $record['provider'];
+		$full_name  = (string) $record['full_name'];
+		$owner      = (string) $record['owner'];
+		$repository = (string) $record['repository'];
 
 		if ( 'plugin' === ( $record['type'] ?? '' ) ) {
 			if ( ! function_exists( 'is_plugin_active' ) ) {
@@ -830,7 +830,7 @@ class REST_Installer {
 			Error_Handler::abort_pending_guard();
 		}
 
-		Logger::log( sprintf( '[%s] Uninstalled %s/%s (%s)', $provider, $owner, $repo, $record['type'] ?? 'plugin' ) );
+		Logger::log( sprintf( '[%s] Uninstalled %s/%s (%s)', $provider, $owner, $repository, $record['type'] ?? 'plugin' ) );
 
 		return [ 'removed' => true ];
 	}
@@ -900,10 +900,10 @@ class REST_Installer {
 			return new \WP_Error( 'gitwire_not_found', __( 'Repository is not installed.', 'gitwire' ), [ 'status' => 404 ] );
 		}
 
-		$provider  = (string) $record['provider'];
-		$full_name = (string) $record['full_name'];
-		$owner     = (string) $record['owner'];
-		$repo      = (string) $record['repo'];
+		$provider   = (string) $record['provider'];
+		$full_name  = (string) $record['full_name'];
+		$owner      = (string) $record['owner'];
+		$repository = (string) $record['repository'];
 
 		$installation_id = $record['id'];
 		$cached          = self::get_cached_commits( $installation_id, $record['branch'] );
@@ -912,7 +912,7 @@ class REST_Installer {
 		}
 
 		$api     = self::make_api( $provider, $record['connection_id'] ?? null );
-		$commits = $api->get_commits( $owner, $repo, $record['branch'] );
+		$commits = $api->get_commits( $owner, $repository, $record['branch'] );
 
 		if ( is_wp_error( $commits ) ) {
 			return $commits;

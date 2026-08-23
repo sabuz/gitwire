@@ -21,7 +21,7 @@ export const getPublicConnectionRateLimit = ( id ) =>
 export const getSettings = () => apiFetch( { path: `${ BASE }/settings` } );
 export const saveSettings = ( data ) =>
 	apiFetch( { path: `${ BASE }/settings`, method: 'POST', data } );
-export const getRepos = ( {
+export const getRepositories = ( {
 	offset = 0,
 	search = '',
 	connectionIds = [],
@@ -31,11 +31,11 @@ export const getRepos = ( {
 		params.set( 'search', search );
 	}
 	connectionIds.forEach( ( id ) => params.append( 'connection_ids[]', id ) );
-	return apiFetch( { path: `${ BASE }/repos?${ params }` } );
+	return apiFetch( { path: `${ BASE }/repositories?${ params }` } );
 };
-export const clearCache = ( mode = 'repos' ) =>
+export const clearCache = ( mode = 'repositories' ) =>
 	apiFetch( {
-		path: `${ BASE }/repos/cache?mode=${ mode }`,
+		path: `${ BASE }/repositories/cache?mode=${ mode }`,
 		method: 'DELETE',
 	} );
 export const getInstalled = () => apiFetch( { path: `${ BASE }/installed` } );
@@ -44,42 +44,42 @@ export const syncInstalled = () =>
 
 export const detectBatch = ( repositories ) =>
 	apiFetch( {
-		path: `${ BASE }/repos/detect-batch`,
+		path: `${ BASE }/repositories/detect-batch`,
 		method: 'POST',
 		data: { repositories },
 	} );
 
 export const getBranches = (
 	owner,
-	repo,
+	repository,
 	provider = 'github',
 	connectionId = ''
 ) =>
 	apiFetch( {
 		path:
-			`${ BASE }/repos/${ encodeURIComponent(
+			`${ BASE }/repositories/${ encodeURIComponent(
 				owner
 			) }/${ encodeURIComponent(
-				repo
+				repository
 			) }/branches?provider=${ provider }` +
 			( connectionId
 				? `&connection_id=${ encodeURIComponent( connectionId ) }`
 				: '' ),
 	} );
 
-export const detectRepo = (
+export const detectRepository = (
 	owner,
-	repo,
+	repository,
 	branch,
 	provider = 'github',
 	connectionId = ''
 ) =>
 	apiFetch( {
 		path:
-			`${ BASE }/repos/${ encodeURIComponent(
+			`${ BASE }/repositories/${ encodeURIComponent(
 				owner
 			) }/${ encodeURIComponent(
-				repo
+				repository
 			) }/detect?branch=${ encodeURIComponent(
 				branch
 			) }&provider=${ provider }` +
@@ -139,9 +139,9 @@ export const saveAutoUpdate = ( id, autoUpdate ) =>
 		data: { auto_update: autoUpdate },
 	} );
 
-export const resolveRepo = ( url ) =>
+export const resolveRepository = ( url ) =>
 	apiFetch( {
-		path: `${ BASE }/repos/resolve`,
+		path: `${ BASE }/repositories/resolve`,
 		method: 'POST',
 		data: { url },
 	} );

@@ -5,11 +5,11 @@ import * as api from '../api';
 const BATCH_SIZE = 10;
 
 /**
- * @param {Object} repo Repository object with provider and full_name.
+ * @param {Object} repository Repository object with provider and full_name.
  * @return {string} Detection cache key.
  */
-export function detectionKey( repo ) {
-	return `${ repo.provider }:${ repo.full_name }`;
+export function detectionKey( repository ) {
+	return `${ repository.provider }:${ repository.full_name }`;
 }
 
 function detectionsReducer( state, action ) {
@@ -56,10 +56,10 @@ export function useRepositoryDetection() {
 	detectionsRef.current = detections;
 
 	const runBatch = useCallback( async ( repositories ) => {
-		const toDetect = repositories.filter( ( repo ) => {
-			const key = detectionKey( repo );
+		const toDetect = repositories.filter( ( repository ) => {
+			const key = detectionKey( repository );
 			return (
-				! repo.installed &&
+				! repository.installed &&
 				! pendingRef.current.has( key ) &&
 				! detectionsRef.current[ key ]
 			);
@@ -71,18 +71,18 @@ export function useRepositoryDetection() {
 
 		for ( let i = 0; i < toDetect.length; i += BATCH_SIZE ) {
 			const chunk = toDetect.slice( i, i + BATCH_SIZE );
-			chunk.forEach( ( repo ) =>
-				pendingRef.current.add( detectionKey( repo ) )
+			chunk.forEach( ( repository ) =>
+				pendingRef.current.add( detectionKey( repository ) )
 			);
 
 			try {
 				const response = await api.detectBatch(
-					chunk.map( ( repo ) => ( {
-						owner: repo.owner,
-						repo: repo.name,
-						branch: repo.default_branch,
-						provider: repo.provider,
-						connection_id: repo.connection_id || '',
+					chunk.map( ( repository ) => ( {
+						owner: repository.owner,
+						repository: repository.name,
+						branch: repository.default_branch,
+						provider: repository.provider,
+						connection_id: repository.connection_id || '',
 					} ) )
 				);
 				dispatch( {
@@ -108,26 +108,26 @@ export function useRepositoryDetection() {
 				}
 			} catch {
 				const fallback = {};
-				chunk.forEach( ( repo ) => {
-					fallback[ detectionKey( repo ) ] = {
+				chunk.forEach( ( repository ) => {
+					fallback[ detectionKey( repository ) ] = {
 						type: 'unknown',
 						confidence: 'none',
 					};
 				} );
 				dispatch( { type: 'set_batch', payload: fallback } );
 			} finally {
-				chunk.forEach( ( repo ) =>
-					pendingRef.current.delete( detectionKey( repo ) )
+				chunk.forEach( ( repository ) =>
+					pendingRef.current.delete( detectionKey( repository ) )
 				);
 			}
 		}
 	}, [] );
 
-	const seedFromRepos = useCallback( ( repositories ) => {
+	const seedFromRepositories = useCallback( ( repositories ) => {
 		const seeded = {};
-		repositories.forEach( ( repo ) => {
-			if ( repo.detection ) {
-				seeded[ detectionKey( repo ) ] = repo.detection;
+		repositories.forEach( ( repository ) => {
+			if ( repository.detection ) {
+				seeded[ detectionKey( repository ) ] = repository.detection;
 			}
 		} );
 		if ( Object.keys( seeded ).length ) {
@@ -141,5 +141,5 @@ export function useRepositoryDetection() {
 		dispatchPaused( { type: 'reset' } );
 	}, [] );
 
-	return { detections, paused, runBatch, seedFromRepos, reset };
+	return { detections, paused, runBatch, seedFromRepositories, reset };
 }

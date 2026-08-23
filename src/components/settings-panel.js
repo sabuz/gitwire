@@ -230,11 +230,11 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const [ autoDetectType, setAutoDetectType ] = useState(
 		settings.auto_detect_type !== false
 	);
-	const [ reposPerPage, setReposPerPage ] = useState(
-		settings.repos_per_page ?? 20
+	const [ repositoriesPerPage, setRepositoriesPerPage ] = useState(
+		settings.repositories_per_page ?? 20
 	);
-	const [ excludedRepos, setExcludedRepos ] = useState(
-		settings.excluded_repos ?? []
+	const [ excludedRepositories, setExcludedRepositories ] = useState(
+		settings.excluded_repositories ?? []
 	);
 	const [ repositoryRefreshFrequency, setRepositoryRefreshFrequency ] =
 		useState( settings.repository_refresh_frequency ?? 'daily' );
@@ -248,11 +248,12 @@ function BrowseDetectionCard( { settings, onSave } ) {
 	const [ shallowDetection, setShallowDetection ] = useState(
 		!! settings.shallow_detection
 	);
-	const [ repoSuggestions, setRepoSuggestions ] = useState( [] );
-	const [ excludedRepoInput, setExcludedRepoInput ] = useState( '' );
+	const [ repositorySuggestions, setRepositorySuggestions ] = useState( [] );
+	const [ excludedRepositoryInput, setExcludedRepositoryInput ] =
+		useState( '' );
 	const suggestionsRequestedRef = useRef( false );
 
-	const wantsSuggestions = excludedRepoInput.trim().length >= 2;
+	const wantsSuggestions = excludedRepositoryInput.trim().length >= 2;
 
 	/*
 	 * Load repository suggestions only after the field is used. Loading them on mount
@@ -263,9 +264,9 @@ function BrowseDetectionCard( { settings, onSave } ) {
 			return;
 		}
 		suggestionsRequestedRef.current = true;
-		api.getRepos( { offset: 0 } )
+		api.getRepositories( { offset: 0 } )
 			.then( ( result ) => {
-				setRepoSuggestions(
+				setRepositorySuggestions(
 					( result.repositories ?? [] ).map( ( r ) => r.full_name )
 				);
 			} )
@@ -319,25 +320,28 @@ function BrowseDetectionCard( { settings, onSave } ) {
 		} ).catch( () => {} );
 	};
 
-	const handleReposPerPageChange = ( newVal ) => {
-		setReposPerPage( newVal );
-		save( { repos_per_page: newVal }, () =>
-			setReposPerPage( reposPerPage )
+	const handleRepositoriesPerPageChange = ( newVal ) => {
+		setRepositoriesPerPage( newVal );
+		save( { repositories_per_page: newVal }, () =>
+			setRepositoriesPerPage( repositoriesPerPage )
 		).catch( () => {} );
 	};
 
-	const handleExcludedReposChange = ( tokens ) => {
+	const handleExcludedRepositoriesChange = ( tokens ) => {
 		const valid = tokens.filter( ( t ) =>
 			/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test( t )
 		);
 		if ( valid.length < tokens.length ) {
 			toast.error(
-				__( 'Use owner/repo format, e.g. acme/my-plugin.', 'gitwire' )
+				__(
+					'Use owner/repository format, e.g. acme/my-plugin.',
+					'gitwire'
+				)
 			);
 		}
-		setExcludedRepos( valid );
-		save( { excluded_repos: valid }, () =>
-			setExcludedRepos( excludedRepos )
+		setExcludedRepositories( valid );
+		save( { excluded_repositories: valid }, () =>
+			setExcludedRepositories( excludedRepositories )
 		).catch( () => {} );
 	};
 
@@ -427,7 +431,7 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					checked={ backgroundTypeDetection }
 					disabled={ ! detectionActive }
 					help={ __(
-						'Detect types for unscanned repos in the background every 30 minutes, taking a bigger batch while GitHub quota sits idle. Best for large collections.',
+						'Detect types for unscanned repositories in the background every 30 minutes, taking a bigger batch while GitHub quota sits idle. Best for large collections.',
 						'gitwire'
 					) }
 					label={ __( 'Background Type Pre-Detection', 'gitwire' ) }
@@ -458,8 +462,8 @@ function BrowseDetectionCard( { settings, onSave } ) {
 						'Number of repositories shown per page in the Browse tab.',
 						'gitwire'
 					) }
-					value={ reposPerPage }
-					onChange={ handleReposPerPageChange }
+					value={ repositoriesPerPage }
+					onChange={ handleRepositoriesPerPageChange }
 				>
 					<ToggleGroupControlOption label="10" value={ 10 } />
 					<ToggleGroupControlOption label="20" value={ 20 } />
@@ -474,13 +478,15 @@ function BrowseDetectionCard( { settings, onSave } ) {
 					__next40pxDefaultSize
 					label={ __( 'Excluded Repositories', 'gitwire' ) }
 					help={ __(
-						'Repositories never shown in Browse. Use owner/repo format, one per entry.',
+						'Repositories never shown in Browse. Use owner/repository format, one per entry.',
 						'gitwire'
 					) }
-					value={ excludedRepos }
-					suggestions={ wantsSuggestions ? repoSuggestions : [] }
-					onChange={ handleExcludedReposChange }
-					onInputChange={ setExcludedRepoInput }
+					value={ excludedRepositories }
+					suggestions={
+						wantsSuggestions ? repositorySuggestions : []
+					}
+					onChange={ handleExcludedRepositoriesChange }
+					onInputChange={ setExcludedRepositoryInput }
 					tokenizeOnSpace={ false }
 					__experimentalExpandOnFocus={ wantsSuggestions }
 				/>
@@ -567,8 +573,8 @@ function BrowseDetectionCard( { settings, onSave } ) {
 }
 
 function InstalledUpdatesCard( { settings, onSave } ) {
-	const [ showRepoLabel, setShowRepoLabel ] = useState(
-		settings.show_repo_label !== false
+	const [ showRepositoryLabel, setShowRepositoryLabel ] = useState(
+		settings.show_repository_label !== false
 	);
 	const [ blockCommitOnFatal, setBlockCommitOnFatal ] = useState(
 		settings.block_commit_on_fatal !== false
@@ -580,10 +586,10 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 	const save = ( payload, rollback ) =>
 		persistSetting( payload, onSave, rollback );
 
-	const handleShowRepoLabelChange = ( newVal ) => {
-		setShowRepoLabel( newVal );
-		save( { show_repo_label: newVal }, () =>
-			setShowRepoLabel( ! newVal )
+	const handleShowRepositoryLabelChange = ( newVal ) => {
+		setShowRepositoryLabel( newVal );
+		save( { show_repository_label: newVal }, () =>
+			setShowRepositoryLabel( ! newVal )
 		).catch( () => {} );
 	};
 
@@ -611,13 +617,13 @@ function InstalledUpdatesCard( { settings, onSave } ) {
 			<CardBody>
 				<ToggleControl
 					__nextHasNoMarginBottom
-					checked={ showRepoLabel }
+					checked={ showRepositoryLabel }
 					help={ __(
 						'Shows a [Gitwire] label next to managed plugin and theme names on the Plugins and Themes screens.',
 						'gitwire'
 					) }
-					label={ __( 'Repo Label', 'gitwire' ) }
-					onChange={ handleShowRepoLabelChange }
+					label={ __( 'Repository Label', 'gitwire' ) }
+					onChange={ handleShowRepositoryLabelChange }
 				/>
 
 				<Spacer marginTop={ 4 } />

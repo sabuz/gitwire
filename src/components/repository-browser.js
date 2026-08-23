@@ -101,12 +101,15 @@ function FilterOption( { label, checked, onChange } ) {
 }
 
 /**
- * @param {Object} installed Installed repositories map from app state.
- * @param {Object} repo      Browse repository record.
+ * @param {Object} installed  Installed repositories map from app state.
+ * @param {Object} repository Browse repository record.
  * @return {Object|null} Matching installed record, if any.
  */
-function lookupInstalled( installed, repo ) {
-	return installed[ `${ repo.provider }:${ repo.full_name }` ] ?? null;
+function lookupInstalled( installed, repository ) {
+	return (
+		installed[ `${ repository.provider }:${ repository.full_name }` ] ??
+		null
+	);
 }
 
 /**
@@ -148,7 +151,7 @@ export default function RepositoryBrowser( {
 	const showSourceBadge =
 		[ hasGitHub, hasGitLab, hasBitbucket ].filter( Boolean ).length > 1;
 
-	const { detections, paused, runBatch, seedFromRepos, reset } =
+	const { detections, paused, runBatch, seedFromRepositories, reset } =
 		useRepositoryDetection();
 
 	const [ repositories, setRepositories ] = useState( [] );
@@ -174,7 +177,7 @@ export default function RepositoryBrowser( {
 	// Show type filters only when type detection is enabled; source filters remain independent.
 	const hasAnyFilters = autoDetectType || showSourceBadge;
 
-	const loadRepos = useCallback(
+	const loadRepositories = useCallback(
 		async (
 			offset,
 			append = false,
@@ -188,17 +191,19 @@ export default function RepositoryBrowser( {
 				: [];
 			setLoading( true );
 			try {
-				const result = await api.getRepos( {
+				const result = await api.getRepositories( {
 					offset,
 					search: searchTerm,
 					connectionIds,
 				} );
-				const repos = result.repositories ?? [];
+				const fetchedRepositories = result.repositories ?? [];
 				setRepositories( ( prev ) =>
-					append ? [ ...prev, ...repos ] : repos
+					append
+						? [ ...prev, ...fetchedRepositories ]
+						: fetchedRepositories
 				);
 				setHasMore( result.has_more ?? false );
-				seedFromRepos( repos );
+				seedFromRepositories( fetchedRepositories );
 				( result.connection_errors ?? [] ).forEach( ( err ) => {
 					toast.error(
 						sprintf(
@@ -221,8 +226,9 @@ export default function RepositoryBrowser( {
 				} );
 				if ( autoDetectType ) {
 					runBatch(
-						repos.filter(
-							( repo ) => ! lookupInstalled( installed, repo )
+						fetchedRepositories.filter(
+							( repository ) =>
+								! lookupInstalled( installed, repository )
 						)
 					);
 				}
@@ -234,7 +240,13 @@ export default function RepositoryBrowser( {
 				setLoading( false );
 			}
 		},
-		[ autoDetectType, connections, installed, runBatch, seedFromRepos ]
+		[
+			autoDetectType,
+			connections,
+			installed,
+			runBatch,
+			seedFromRepositories,
+		]
 	);
 
 	const connIds = ( connections ?? [] ).map( ( c ) => c.id ).join( ',' );
@@ -250,12 +262,12 @@ export default function RepositoryBrowser( {
 		setRepositories( [] );
 		setHasMore( false );
 		reset();
-		loadRepos( 0, false, '' );
+		loadRepositories( 0, false, '' );
 	}, [ connIds ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Keep the current list visible until the refetch completes so failures preserve it.
 	const handleRefresh = useCallback(
-		async ( mode = 'repos' ) => {
+		async ( mode = 'repositories' ) => {
 			setLoading( true );
 			try {
 				const result = await api.clearCache( mode );
@@ -270,7 +282,7 @@ export default function RepositoryBrowser( {
 					);
 				} );
 				reset();
-				await loadRepos( 0, false, search, activeSourceFilters );
+				await loadRepositories( 0, false, search, activeSourceFilters );
 			} catch ( e ) {
 				toast.error(
 					e.message ||
@@ -279,11 +291,16 @@ export default function RepositoryBrowser( {
 				setLoading( false );
 			}
 		},
-		[ loadRepos, reset, search, activeSourceFilters ]
+		[ loadRepositories, reset, search, activeSourceFilters ]
 	);
 
 	const handleLoadMore = () => {
-		loadRepos( repositories.length, true, search, activeSourceFilters );
+		loadRepositories(
+			repositories.length,
+			true,
+			search,
+			activeSourceFilters
+		);
 	};
 
 	// Reload the server results after the search term changes, except on initial mount.
@@ -294,7 +311,12 @@ export default function RepositoryBrowser( {
 		}
 		clearTimeout( searchTimerRef.current );
 		searchTimerRef.current = setTimeout( () => {
-			loadRepos( 0, false, search, activeSourceFiltersRef.current );
+			loadRepositories(
+				0,
+				false,
+				search,
+				activeSourceFiltersRef.current
+			);
 		}, 350 );
 		return () => clearTimeout( searchTimerRef.current );
 	}, [ search ] ); // eslint-disable-line react-hooks/exhaustive-deps
@@ -307,7 +329,7 @@ export default function RepositoryBrowser( {
 		}
 		setRepositories( [] );
 		setHasMore( false );
-		loadRepos( 0, false, search, activeSourceFilters );
+		loadRepositories( 0, false, search, activeSourceFilters );
 	}, [ activeSourceFilters ] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const toggleTypeFilter = ( value ) => {
@@ -632,7 +654,7 @@ export default function RepositoryBrowser( {
 							disabled={ loading }
 							isBusy={ loading }
 							variant="secondary"
-							onClick={ () => handleRefresh( 'repos' ) }
+							onClick={ () => handleRefresh( 'repositories' ) }
 						>
 							{ __( 'Refresh Repositories', 'gitwire' ) }
 						</Button>
@@ -661,7 +683,7 @@ export default function RepositoryBrowser( {
 											onClick={ () => {
 												onClose();
 												handleRefresh(
-													'repos_and_types'
+													'repositories_and_types'
 												);
 											} }
 										>
@@ -743,29 +765,34 @@ export default function RepositoryBrowser( {
 			) }
 
 			{ filtered.length > 0 && (
-				<div className="gitwire-repo-grid">
-					{ filtered.map( ( repo ) => (
-						<RepoCard
-							key={ `${ repo.provider }:${ repo.full_name }` }
+				<div className="gitwire-repository-grid">
+					{ filtered.map( ( repository ) => (
+						<RepositoryCard
+							key={ `${ repository.provider }:${ repository.full_name }` }
 							autoDetectType={ autoDetectType }
-							detection={ detections[ detectionKey( repo ) ] }
+							detection={
+								detections[ detectionKey( repository ) ]
+							}
 							detectionPaused={ paused.keys.has(
-								detectionKey( repo )
+								detectionKey( repository )
 							) }
-							installed={ lookupInstalled( installed, repo ) }
-							repo={ repo }
+							installed={ lookupInstalled(
+								installed,
+								repository
+							) }
+							repository={ repository }
 							showSourceBadge={ showSourceBadge }
 							smartInstall={ smartInstall }
 							onInstall={
 								onInstallRequest
 									? () =>
 											onInstallRequest(
-												repo,
+												repository,
 												detections[
-													detectionKey( repo )
+													detectionKey( repository )
 												]
 											)
-									: () => setModal( repo )
+									: () => setModal( repository )
 							}
 						/>
 					) ) }
@@ -791,13 +818,13 @@ export default function RepositoryBrowser( {
 					connectionId={ modal.connection_id }
 					detection={ detections[ detectionKey( modal ) ] }
 					provider={ modal.provider }
-					repo={ modal }
+					repository={ modal }
 					smartInstall={ smartInstall }
 					onClose={ () => setModal( null ) }
 					onInstalled={ ( result ) => {
-						const repoFullName = modal.full_name;
+						const repositoryFullName = modal.full_name;
 						setModal( null );
-						onPostInstall( result, repoFullName );
+						onPostInstall( result, repositoryFullName );
 					} }
 				/>
 			) }
@@ -805,8 +832,8 @@ export default function RepositoryBrowser( {
 	);
 }
 
-const RepoCard = memo( function ( {
-	repo,
+const RepositoryCard = memo( function ( {
+	repository,
 	detection,
 	detectionPaused,
 	installed,
@@ -821,7 +848,9 @@ const RepoCard = memo( function ( {
 
 	// Handle both boolean and string values because "0" is truthy in JavaScript.
 	const isPrivate =
-		repo.private === true || repo.private === 1 || repo.private === '1';
+		repository.private === true ||
+		repository.private === 1 ||
+		repository.private === '1';
 
 	const canInstall =
 		! isInstalled &&
@@ -835,24 +864,24 @@ const RepoCard = memo( function ( {
 		! isInstalled && detection?.type === 'unknown' && smartInstall;
 
 	return (
-		<Card className="gitwire-repo-card" size="small">
+		<Card className="gitwire-repository-card" size="small">
 			<CardBody>
 				<Flex align="flex-start" gap={ 2 } justify="space-between">
 					<FlexBlock>
-						{ repo.full_name &&
-							( repo.html_url ? (
+						{ repository.full_name &&
+							( repository.html_url ? (
 								<a
-									className="gitwire-repo-name"
-									href={ repo.html_url }
+									className="gitwire-repository-name"
+									href={ repository.html_url }
 									rel="noopener noreferrer"
 									target="_blank"
 								>
-									{ repo.full_name }
+									{ repository.full_name }
 									<ExternalLinkIcon />
 								</a>
 							) : (
-								<span className="gitwire-repo-name">
-									{ repo.full_name }
+								<span className="gitwire-repository-name">
+									{ repository.full_name }
 								</span>
 							) ) }
 					</FlexBlock>
@@ -881,15 +910,15 @@ const RepoCard = memo( function ( {
 						) }
 					</FlexItem>
 				</Flex>
-				<div className="gitwire-repo-badges">
+				<div className="gitwire-repository-badges">
 					{ showSourceBadge && (
 						<span
 							className={ `gitwire-badge gitwire-badge--${
-								repo.provider ?? 'github'
+								repository.provider ?? 'github'
 							}` }
 						>
-							<ProviderIcon provider={ repo.provider } />
-							{ providerLabel( repo.provider ?? 'github' ) }
+							<ProviderIcon provider={ repository.provider } />
+							{ providerLabel( repository.provider ?? 'github' ) }
 						</span>
 					) }
 					<span
@@ -907,19 +936,19 @@ const RepoCard = memo( function ( {
 						installed={ installed }
 						paused={ detectionPaused }
 					/>
-					{ repo.last_activity_at && (
+					{ repository.last_activity_at && (
 						<Tooltip
 							text={ `${ __(
 								'Last Updated',
 								'gitwire'
 							) }: ${ new Date(
-								repo.last_activity_at
+								repository.last_activity_at
 							).toLocaleString( undefined, {
 								dateStyle: 'medium',
 								timeStyle: 'short',
 							} ) }` }
 						>
-							<span className="gitwire-repo-updated">
+							<span className="gitwire-repository-updated">
 								<svg
 									aria-hidden="true"
 									fill="none"
@@ -935,7 +964,7 @@ const RepoCard = memo( function ( {
 									<polyline points="8,4.5 8,8 10.5,10" />
 								</svg>
 								{ relativeTimeFromDate(
-									repo.last_activity_at
+									repository.last_activity_at
 								) }
 							</span>
 						</Tooltip>
@@ -945,7 +974,7 @@ const RepoCard = memo( function ( {
 		</Card>
 	);
 } );
-RepoCard.displayName = 'RepoCard';
+RepositoryCard.displayName = 'RepositoryCard';
 
 function TypeBadge( { detection, installed, autoDetectType, paused } ) {
 	if ( installed ) {

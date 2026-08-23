@@ -21,7 +21,7 @@ import DetectionBadge from './detection-badge';
  * Renders without a modal wrapper so it can be embedded in another modal.
  *
  * @param {Object}      props                      Component props.
- * @param {Object}      props.repo                 Repository data object.
+ * @param {Object}      props.repository           Repository data object.
  * @param {string}      props.provider             Git provider.
  * @param {string}      [props.connectionId]       Connection ID used to fetch this repository.
  * @param {boolean}     props.smartInstall         Whether smart install is enabled.
@@ -34,7 +34,7 @@ import DetectionBadge from './detection-badge';
  * @return {JSX.Element} The rendered install form.
  */
 export function InstallForm( {
-	repo,
+	repository,
 	provider = 'github',
 	connectionId = '',
 	smartInstall,
@@ -46,7 +46,9 @@ export function InstallForm( {
 	onInstallingChange,
 } ) {
 	const [ allBranches, setAllBranches ] = useState( [] );
-	const [ branch, setBranch ] = useState( repo.default_branch || 'main' );
+	const [ branch, setBranch ] = useState(
+		repository.default_branch || 'main'
+	);
 	const [ branchFilter, setBranchFilter ] = useState( '' );
 	const [ detection, setDetection ] = useState( initialDetection );
 	const [ type, setType ] = useState(
@@ -56,7 +58,7 @@ export function InstallForm( {
 			? initialDetection.type
 			: 'plugin'
 	);
-	const [ slug, setSlug ] = useState( normalizeSlug( repo.name ) );
+	const [ slug, setSlug ] = useState( normalizeSlug( repository.name ) );
 	const [ slugConflict, setSlugConflict ] = useState( false );
 	const [ slugChecking, setSlugChecking ] = useState( true );
 	const [ replace, setReplace ] = useState( false );
@@ -80,7 +82,7 @@ export function InstallForm( {
 
 	const branchOptions = useMemo( () => {
 		const filter = branchFilter.toLowerCase();
-		const defaultBranch = repo.default_branch || 'main';
+		const defaultBranch = repository.default_branch || 'main';
 		const source = allBranches.length ? allBranches : [ defaultBranch ];
 		const filtered = filter
 			? source.filter( ( b ) => b.toLowerCase().includes( filter ) )
@@ -91,12 +93,17 @@ export function InstallForm( {
 			top.splice( 10 );
 		}
 		return top.map( ( b ) => ( { label: b, value: b } ) );
-	}, [ allBranches, branchFilter, branch, repo.default_branch ] );
+	}, [ allBranches, branchFilter, branch, repository.default_branch ] );
 
 	useEffect( () => {
 		// Skip branch loading when the detection result blocks installation.
 		if ( ! blockedBySmartInstall ) {
-			api.getBranches( repo.owner, repo.name, provider, connectionId )
+			api.getBranches(
+				repository.owner,
+				repository.name,
+				provider,
+				connectionId
+			)
 				.then( ( b ) => setAllBranches( b ) )
 				.catch( () => {} );
 		}
@@ -106,10 +113,10 @@ export function InstallForm( {
 		 * provided.
 		 */
 		if ( ! initialDetection && autoDetectType ) {
-			api.detectRepo(
-				repo.owner,
-				repo.name,
-				repo.default_branch,
+			api.detectRepository(
+				repository.owner,
+				repository.name,
+				repository.default_branch,
 				provider,
 				connectionId
 			)
@@ -192,8 +199,8 @@ export function InstallForm( {
 			}
 
 			const result = await api.install( {
-				owner: repo.owner,
-				repo: repo.name,
+				owner: repository.owner,
+				repository: repository.name,
 				branch,
 				type: installType,
 				provider,
@@ -321,7 +328,7 @@ export function InstallForm( {
  * Install modal: wraps InstallForm in a WordPress Modal.
  *
  * @param {Object}      props                  Component props.
- * @param {Object}      props.repo             Repository data object.
+ * @param {Object}      props.repository       Repository data object.
  * @param {boolean}     props.smartInstall     Whether smart install is enabled.
  * @param {boolean}     [props.autoDetectType] Whether type detection runs at all.
  * @param {string}      [props.connectionId]   Connection ID used to fetch this repository.
@@ -332,7 +339,7 @@ export function InstallForm( {
  * @return {JSX.Element} The rendered install modal.
  */
 export default function InstallModal( {
-	repo,
+	repository,
 	provider = 'github',
 	connectionId = '',
 	smartInstall,
@@ -353,7 +360,7 @@ export default function InstallModal( {
 				<span className="gitwire-modal__title">
 					{ __( 'Install', 'gitwire' ) }{ ' ' }
 					<span style={ { color: 'var(--gitwire-color-accent)' } }>
-						{ repo.full_name }
+						{ repository.full_name }
 					</span>
 				</span>
 			}
@@ -364,7 +371,7 @@ export default function InstallModal( {
 				connectionId={ connectionId }
 				detection={ detection }
 				provider={ provider }
-				repo={ repo }
+				repository={ repository }
 				smartInstall={ smartInstall }
 				onBack={ onClose }
 				onInstalled={ onInstalled }

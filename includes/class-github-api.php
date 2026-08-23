@@ -104,7 +104,7 @@ class GitHub_API implements Git_Provider_Interface {
 	 * @param int    $page     Page number for paginated results.
 	 * @return array<int, mixed>|\WP_Error Repository list on success, WP_Error on failure.
 	 */
-	public function get_repos( string $username, int $page = 1 ): array|\WP_Error {
+	public function get_repositories( string $username, int $page = 1 ): array|\WP_Error {
 		if ( $this->token ) {
 			$endpoint = '/user/repos?per_page=100&page=' . $page
 				. '&sort=updated&affiliation=owner,collaborator,organization_member';
@@ -117,26 +117,26 @@ class GitHub_API implements Git_Provider_Interface {
 	}
 
 	/**
-	 * Detects whether a repo is a WordPress plugin, classic theme, or block theme.
+	 * Detects whether a repository is a WordPress plugin, classic theme, or block theme.
 	 *
 	 * Detection rules live in Repository_Detector::detect().
 	 *
 	 * @since 1.0.0
 	 * @param string            $owner         GitHub repository owner.
-	 * @param string            $repo          Repository name.
+	 * @param string            $repository    Repository name.
 	 * @param string            $branch        Branch, tag, or SHA to inspect.
 	 * @param array<mixed>|null $cached_result Pre-fetched file listing to skip the API call.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
-	public function detect_type( string $owner, string $repo, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
+	public function detect_type( string $owner, string $repository, string $branch = 'HEAD', ?array $cached_result = null ): array|\WP_Error {
 		return Repository_Detector::detect(
-			$repo,
+			$repository,
 			$branch,
 			fn( $ref ) => $this->get(
-				'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+				'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository )
 				. '/contents?ref=' . rawurlencode( $ref )
 			),
-			fn( $path, $ref ) => $this->get_raw_content( $owner, $repo, $path, $ref ),
+			fn( $path, $ref ) => $this->get_raw_content( $owner, $repository, $path, $ref ),
 			$cached_result
 		);
 	}
@@ -145,13 +145,13 @@ class GitHub_API implements Git_Provider_Interface {
 	 * Returns all branches for a repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner GitHub repository owner.
-	 * @param string $repo  Repository name.
+	 * @param string $owner      GitHub repository owner.
+	 * @param string $repository Repository name.
 	 * @return array<int, mixed>|\WP_Error Branch list on success, WP_Error on failure.
 	 */
-	public function get_branches( string $owner, string $repo ): array|\WP_Error {
+	public function get_branches( string $owner, string $repository ): array|\WP_Error {
 		return $this->get(
-			'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo ) . '/branches?per_page=100'
+			'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository ) . '/branches?per_page=100'
 		);
 	}
 
@@ -159,15 +159,15 @@ class GitHub_API implements Git_Provider_Interface {
 	 * Returns the last N commits for a branch, normalised to a flat array.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner    GitHub repository owner.
-	 * @param string $repo     Repository name.
-	 * @param string $branch   Branch, tag, or SHA.
-	 * @param int    $per_page Number of commits to return (max 100).
+	 * @param string $owner      GitHub repository owner.
+	 * @param string $repository Repository name.
+	 * @param string $branch     Branch, tag, or SHA.
+	 * @param int    $per_page   Number of commits to return (max 100).
 	 * @return array<int, array<string, string>>|\WP_Error Commit list or WP_Error on failure.
 	 */
-	public function get_commits( string $owner, string $repo, string $branch, int $per_page = 10 ): array|\WP_Error {
+	public function get_commits( string $owner, string $repository, string $branch, int $per_page = 10 ): array|\WP_Error {
 		$data = $this->get(
-			'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+			'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository )
 			. '/commits?sha=' . rawurlencode( $branch ) . '&per_page=' . $per_page
 		);
 
@@ -198,13 +198,13 @@ class GitHub_API implements Git_Provider_Interface {
 	 * so WordPress can stream it to disk without holding it in memory.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  GitHub repository owner.
-	 * @param string $repo   Repository name.
-	 * @param string $branch Branch, tag, or SHA to download.
+	 * @param string $owner      GitHub repository owner.
+	 * @param string $repository Repository name.
+	 * @param string $branch     Branch, tag, or SHA to download.
 	 * @return string|\WP_Error Local temp file path on success, WP_Error on failure.
 	 */
-	public function download_zip( string $owner, string $repo, string $branch ): string|\WP_Error {
-		$api_url = self::BASE . '/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+	public function download_zip( string $owner, string $repository, string $branch ): string|\WP_Error {
+		$api_url = self::BASE . '/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository )
 			. '/zipball/' . rawurlencode( $branch );
 
 		$response = wp_remote_get(
@@ -287,15 +287,15 @@ class GitHub_API implements Git_Provider_Interface {
 	 * Fetches the decoded content of a single file from a repository.
 	 *
 	 * @since 1.0.0
-	 * @param string $owner  Repository owner.
-	 * @param string $repo   Repository name.
-	 * @param string $path   File path within the repository.
-	 * @param string $branch Branch, tag, or SHA reference.
+	 * @param string $owner      Repository owner.
+	 * @param string $repository Repository name.
+	 * @param string $path       File path within the repository.
+	 * @param string $branch     Branch, tag, or SHA reference.
 	 * @return string|\WP_Error Decoded file content on success, WP_Error on failure.
 	 */
-	private function get_raw_content( string $owner, string $repo, string $path, string $branch ): string|\WP_Error {
+	private function get_raw_content( string $owner, string $repository, string $path, string $branch ): string|\WP_Error {
 		$result = $this->get(
-			'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repo )
+			'/repos/' . rawurlencode( $owner ) . '/' . rawurlencode( $repository )
 			. '/contents/' . rawurlencode( $path ) . '?ref=' . rawurlencode( $branch )
 		);
 		if ( is_wp_error( $result ) ) {

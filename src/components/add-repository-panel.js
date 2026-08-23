@@ -26,9 +26,9 @@ export default function AddRepositoryPanel( {
 } ) {
 	const [ urlImportOpen, setUrlImportOpen ] = useState( false );
 
-	const handleUrlImportInstall = ( result, repoFullName ) => {
+	const handleUrlImportInstall = ( result, repositoryFullName ) => {
 		setUrlImportOpen( false );
-		onPostInstall( result, repoFullName );
+		onPostInstall( result, repositoryFullName );
 	};
 
 	const panelFallback = (
@@ -38,7 +38,7 @@ export default function AddRepositoryPanel( {
 	);
 
 	return (
-		<div className="gitwire-add-repo-page">
+		<div className="gitwire-add-repository-page">
 			<Suspense fallback={ panelFallback }>
 				<RepositoryBrowser
 					connections={ connections }

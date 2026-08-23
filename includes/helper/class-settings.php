@@ -66,14 +66,14 @@ class Settings {
 				'default' => true,
 			],
 			// Page size determines the number of detection requests; unauthenticated GitHub allows 60 per hour.
-			'repos_per_page'                    => [
+			'repositories_per_page'             => [
 				'type'    => 'int',
 				'default' => 20,
 				'min'     => 10,
 				'max'     => 100,
 			],
-			'excluded_repos'                    => [
-				'type'    => 'repo_list',
+			'excluded_repositories'             => [
+				'type'    => 'repository_list',
 				'default' => [],
 			],
 			'repository_refresh_frequency'      => [
@@ -94,7 +94,7 @@ class Settings {
 				'type'    => 'bool',
 				'default' => false,
 			],
-			'show_repo_label'                   => [
+			'show_repository_label'             => [
 				'type'    => 'bool',
 				'default' => true,
 			],
@@ -220,7 +220,7 @@ class Settings {
 				}
 				return $rule['default'];
 
-			case 'repo_list':
+			case 'repository_list':
 				if ( ! is_array( $value ) ) {
 					return $rule['default'];
 				}

@@ -93,7 +93,7 @@ class Repository_Detector {
 	 * shallow re-check from reusing a guess.
 	 *
 	 * @since 1.0.0
-	 * @param string                    $repo_name         Repository slug used for main-file priority.
+	 * @param string                    $repository_name   Repository slug used for main-file priority.
 	 * @param string                    $branch            Branch ref to inspect.
 	 * @param callable                  $get_root_contents Callable returning root file list.
 	 * @param callable                  $get_file_content  Callable returning raw file contents.
@@ -101,7 +101,7 @@ class Repository_Detector {
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function detect(
-		string $repo_name,
+		string $repository_name,
 		string $branch,
 		callable $get_root_contents,
 		callable $get_file_content,
@@ -115,7 +115,7 @@ class Repository_Detector {
 
 		/*
 		 * Shallow re-check: reuse the cached result only when the root listing is
-		 * byte-for-byte what produced it. Checking key_files alone let a repo that
+		 * byte-for-byte what produced it. Checking key_files alone let a repository that
 		 * converted from plugin to theme keep the old type forever, as long as the
 		 * files the old decision rested on happened to survive.
 		 */
@@ -195,7 +195,7 @@ class Repository_Detector {
 			}
 		}
 
-		$priority_names = [ strtolower( $repo_name ) . '.php', 'plugin.php', 'index.php' ];
+		$priority_names = [ strtolower( $repository_name ) . '.php', 'plugin.php', 'index.php' ];
 		$php_files      = array_filter(
 			array_keys( $files ),
 			static fn( $n ) => str_ends_with( $n, '.php' ) && ( $files[ $n ]['type'] ?? '' ) === 'file'
@@ -274,7 +274,7 @@ class Repository_Detector {
 	 *
 	 * @since 1.0.0
 	 * @param array<string, mixed> $result   Detection result.
-	 * @param array<int, mixed>    $contents Root listing the result was derived from.
+	 * @param array<int,    mixed> $contents Root listing the result was derived from.
 	 * @return array<string, mixed>
 	 */
 	private static function stamp( array $result, array $contents ): array {

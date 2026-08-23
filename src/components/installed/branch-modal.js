@@ -22,7 +22,7 @@ export default function BranchModal( {
 	onSwitched,
 	onRefresh,
 } ) {
-	const { owner, repo, branch } = item || {};
+	const { owner, repository, branch } = item || {};
 	const [ allBranches, setAllBranches ] = useState( [] );
 	const [ branchFilter, setBranchFilter ] = useState( '' );
 	const [ selectedBranch, setSelectedBranch ] = useState( '' );
@@ -37,13 +37,13 @@ export default function BranchModal( {
 		setAllBranches( [] );
 		api.getBranches(
 			owner,
-			repo,
+			repository,
 			item.provider ?? 'github',
 			item.connection_id ?? ''
 		)
 			.then( setAllBranches )
 			.catch( () => setAllBranches( [] ) );
-	}, [ item, owner, repo ] );
+	}, [ item, owner, repository ] );
 
 	const branchOptions = useMemo( () => {
 		if ( ! item ) {
@@ -93,7 +93,7 @@ export default function BranchModal( {
 				<span className="gitwire-modal__title">
 					{ __( 'Switch Branch', 'gitwire' ) }{ ' ' }
 					<span style={ { color: 'var(--gitwire-color-accent)' } }>
-						{ item.repo }
+						{ item.repository }
 					</span>
 				</span>
 			}

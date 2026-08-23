@@ -188,13 +188,13 @@ class Repository extends Model_Base {
 	 *
 	 * @since 1.0.0
 	 * @param string                           $connection_id Connection ID.
-	 * @param array<int, array<string, mixed>> $repos Array of repository payloads from the provider API.
+	 * @param array<int, array<string, mixed>> $repositories Array of repository payloads from the provider API.
 	 * @param string                           $provider      Provider key; overrides each repository's provider when set.
 	 * @param string                           $stamp         Cycle marker for updated_at; empty uses the current time.
 	 * @return bool False when nothing was written.
 	 */
-	public function upsert_batch( string $connection_id, array $repos, string $provider = '', string $stamp = '' ): bool {
-		if ( empty( $repos ) ) {
+	public function upsert_batch( string $connection_id, array $repositories, string $provider = '', string $stamp = '' ): bool {
+		if ( empty( $repositories ) ) {
 			return false;
 		}
 
@@ -203,24 +203,24 @@ class Repository extends Model_Base {
 		$now   = '' !== $stamp ? $stamp : current_datetime()->format( 'Y-m-d H:i:s' );
 
 		$rows = [];
-		foreach ( $repos as $repo ) {
-			$full_name = $repo['full_name'] ?? '';
+		foreach ( $repositories as $repository ) {
+			$full_name = $repository['full_name'] ?? '';
 			if ( ! $full_name ) {
 				continue;
 			}
-			$raw_at   = $repo['last_activity_at'] ?? '';
+			$raw_at   = $repository['last_activity_at'] ?? '';
 			$ts       = $raw_at ? (int) strtotime( $raw_at ) : 0;
 			$last_act = $ts > 0 ? gmdate( 'Y-m-d H:i:s', $ts ) : '1970-01-01 00:00:00';
 
 			$rows[] = [
 				$connection_id,
-				$provider ? $provider : ( $repo['provider'] ?? '' ),
-				$repo['owner'] ?? '',
-				$repo['name'] ?? '',
+				$provider ? $provider : ( $repository['provider'] ?? '' ),
+				$repository['owner'] ?? '',
+				$repository['name'] ?? '',
 				$full_name,
-				(int) ( $repo['private'] ?? false ),
-				$repo['html_url'] ?? '',
-				$repo['default_branch'] ?? 'main',
+				(int) ( $repository['private'] ?? false ),
+				$repository['html_url'] ?? '',
+				$repository['default_branch'] ?? 'main',
 				$last_act,
 				$now,
 			];
@@ -286,7 +286,7 @@ class Repository extends Model_Base {
 	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider.
-	 * @param string $full_name Repository full name (owner/repo).
+	 * @param string $full_name Repository full name (owner/repository).
 	 * @return array<string, mixed>|null Decoded type_meta merged with `type`, or null when not detected.
 	 */
 	public function get_type( string $provider, string $full_name ): ?array {
@@ -309,7 +309,7 @@ class Repository extends Model_Base {
 	 *
 	 * @since 1.0.0
 	 * @param string                    $provider  Git provider.
-	 * @param string                    $full_name Repository full name (owner/repo).
+	 * @param string                    $full_name Repository full name (owner/repository).
 	 * @param string                    $type      Detection type: 'plugin', 'block-theme', etc.
 	 * @param array<string, mixed>|null $meta  Detection payload (confidence, name, key_files).
 	 * @return bool

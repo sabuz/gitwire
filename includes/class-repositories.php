@@ -48,8 +48,8 @@ class Repositories {
 				'connection_ids' => $connection_ids,
 				'offset'         => $offset,
 				'search'         => $search,
-				'per_page'       => (int) ( $settings['repos_per_page'] ?? 20 ),
-				'excluded'       => (array) ( $settings['excluded_repos'] ?? [] ),
+				'per_page'       => (int) ( $settings['repositories_per_page'] ?? 20 ),
+				'excluded'       => (array) ( $settings['excluded_repositories'] ?? [] ),
 			]
 		);
 	}
@@ -72,33 +72,33 @@ class Repositories {
 	 * one row per repository, and reads use its default branch.
 	 *
 	 * @since 1.0.0
-	 * @param string $provider Provider key.
-	 * @param string $owner    Repository owner.
-	 * @param string $repo     Repository name.
+	 * @param string $provider   Provider key.
+	 * @param string $owner      Repository owner.
+	 * @param string $repository Repository name.
 	 * @return array<string, mixed>|null Cached detection or null when missing.
 	 */
-	public static function get_repository_type( string $provider, string $owner, string $repo ): ?array {
-		return Repository::instance()->get_type( $provider, $owner . '/' . $repo );
+	public static function get_repository_type( string $provider, string $owner, string $repository ): ?array {
+		return Repository::instance()->get_type( $provider, $owner . '/' . $repository );
 	}
 
 	/**
 	 * Stores a detection result.
 	 *
 	 * Updates all matching browse-cache rows, then upserts a connection-agnostic row so
-	 * repos imported directly from a URL (not yet in the browse cache) are also covered.
+	 * repositories imported directly from a URL (not yet in the browse cache) are also covered.
 	 * The result array must include 'type'; remaining fields go into type_meta.
 	 *
 	 * @since 1.0.0
-	 * @param string               $provider Provider key.
-	 * @param string               $owner    Repository owner.
-	 * @param string               $repo     Repository name.
+	 * @param string               $provider   Provider key.
+	 * @param string               $owner      Repository owner.
+	 * @param string               $repository Repository name.
 	 * @param array<string, mixed> $result   Detection payload (must include 'type').
 	 * @return void
 	 */
-	public static function set_repository_type( string $provider, string $owner, string $repo, array $result ): void {
+	public static function set_repository_type( string $provider, string $owner, string $repository, array $result ): void {
 		$type = $result['type'] ?? '';
 		$meta = array_diff_key( $result, [ 'type' => true ] );
-		Repository::instance()->set_type( $provider, $owner . '/' . $repo, $type, ! empty( $meta ) ? $meta : null );
+		Repository::instance()->set_type( $provider, $owner . '/' . $repository, $type, ! empty( $meta ) ? $meta : null );
 	}
 
 	/**
@@ -202,7 +202,7 @@ class Repositories {
 	 * Fetches all pages of the repository list for every known connection.
 	 *
 	 * After each connection completes successfully, rows not touched in this cycle
-	 * (repos removed from the provider) are deleted. A sweep that runs out of its time
+	 * (repositories removed from the provider) are deleted. A sweep that runs out of its time
 	 * budget parks a cursor and returns; the next tick resumes that connection
 	 * mid-sweep, and its stale rows are left alone until the sweep actually finishes.
 	 *
@@ -377,18 +377,18 @@ class Repositories {
 		$targets = [];
 
 		foreach ( Installer::get_installed() as $rec ) {
-			$provider = $rec['provider'] ?? 'github';
-			$owner    = $rec['owner'] ?? '';
-			$repo     = $rec['repo'] ?? '';
-			if ( ! $owner || ! $repo ) {
+			$provider   = $rec['provider'] ?? 'github';
+			$owner      = $rec['owner'] ?? '';
+			$repository = $rec['repository'] ?? '';
+			if ( ! $owner || ! $repository ) {
 				continue;
 			}
 
 			// Key results by repository so multiple installs are detected only once.
-			$targets[ $provider . ':' . $owner . '/' . $repo ] = [
+			$targets[ $provider . ':' . $owner . '/' . $repository ] = [
 				'provider'      => $provider,
 				'owner'         => $owner,
-				'repo'          => $repo,
+				'repository'    => $repository,
 				'branch'        => $rec['branch'] ?? 'main',
 				'connection_id' => ! empty( $rec['connection_id'] ) ? $rec['connection_id'] : null,
 			];
@@ -403,10 +403,10 @@ class Repositories {
 				}
 			}
 
-			$result = REST_Repositories::detect_type_for_repo(
+			$result = REST_Repositories::detect_type_for_repository(
 				$target['provider'],
 				$target['owner'],
-				$target['repo'],
+				$target['repository'],
 				$target['branch'],
 				$target['connection_id']
 			);
@@ -414,7 +414,7 @@ class Repositories {
 				continue;
 			}
 
-			self::set_repository_type( $target['provider'], $target['owner'], $target['repo'], $result );
+			self::set_repository_type( $target['provider'], $target['owner'], $target['repository'], $result );
 		}
 	}
 
@@ -497,7 +497,7 @@ class Repositories {
 					}
 				}
 
-				$result = REST_Repositories::detect_type_for_repo(
+				$result = REST_Repositories::detect_type_for_repository(
 					$row['provider'],
 					$row['owner'],
 					$row['name'],

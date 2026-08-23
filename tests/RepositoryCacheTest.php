@@ -29,12 +29,12 @@ class RepositoryCacheTest extends TestCase {
 	}
 
 	/**
-	 * Builds n plausible repo payloads.
+	 * Builds n plausible repository payloads.
 	 *
 	 * @param int $count How many.
 	 * @return array<int, array<string, mixed>>
 	 */
-	private function repos( int $count ): array {
+	private function repositories( int $count ): array {
 		$out = [];
 		for ( $i = 0; $i < $count; $i++ ) {
 			$out[] = [
@@ -51,21 +51,21 @@ class RepositoryCacheTest extends TestCase {
 	}
 
 	public function test_a_single_page_is_written_in_one_statement(): void {
-		Repository::instance()->upsert_batch( 'conn-1', $this->repos( 100 ), 'github' );
+		Repository::instance()->upsert_batch( 'conn-1', $this->repositories( 100 ), 'github' );
 
 		$this->assertCount( 1, $this->wpdb->queries_matching( 'INSERT INTO' ) );
 	}
 
 	public function test_writes_are_chunked_at_one_hundred_rows(): void {
-		Repository::instance()->upsert_batch( 'conn-1', $this->repos( 250 ), 'github' );
+		Repository::instance()->upsert_batch( 'conn-1', $this->repositories( 250 ), 'github' );
 
 		$inserts = $this->wpdb->queries_matching( 'INSERT INTO' );
 
 		$this->assertCount( 3, $inserts, '250 rows should be 3 statements, not 250' );
 	}
 
-	public function test_a_large_account_does_not_produce_one_query_per_repo(): void {
-		Repository::instance()->upsert_batch( 'conn-1', $this->repos( 5000 ), 'github' );
+	public function test_a_large_account_does_not_produce_one_query_per_repository(): void {
+		Repository::instance()->upsert_batch( 'conn-1', $this->repositories( 5000 ), 'github' );
 
 		$inserts = $this->wpdb->queries_matching( 'INSERT INTO' );
 
@@ -83,7 +83,7 @@ class RepositoryCacheTest extends TestCase {
 	}
 
 	public function test_every_row_in_a_chunk_reaches_the_statement(): void {
-		Repository::instance()->upsert_batch( 'conn-1', $this->repos( 3 ), 'github' );
+		Repository::instance()->upsert_batch( 'conn-1', $this->repositories( 3 ), 'github' );
 
 		$sql = $this->wpdb->queries_matching( 'INSERT INTO' )[0];
 
@@ -94,7 +94,7 @@ class RepositoryCacheTest extends TestCase {
 	}
 
 	public function test_type_columns_stay_out_of_the_update_clause(): void {
-		Repository::instance()->upsert_batch( 'conn-1', $this->repos( 2 ), 'github' );
+		Repository::instance()->upsert_batch( 'conn-1', $this->repositories( 2 ), 'github' );
 
 		$sql    = $this->wpdb->queries_matching( 'INSERT INTO' )[0];
 		$update = substr( $sql, (int) strpos( $sql, 'ON DUPLICATE KEY UPDATE' ) );
@@ -105,15 +105,15 @@ class RepositoryCacheTest extends TestCase {
 	}
 
 	public function test_a_row_without_a_full_name_is_skipped_without_shifting_the_rest(): void {
-		$repos   = $this->repos( 2 );
-		$repos[] = [ 'owner' => 'acme' ];
-		$repos[] = [
+		$repositories   = $this->repositories( 2 );
+		$repositories[] = [ 'owner' => 'acme' ];
+		$repositories[] = [
 			'full_name' => 'acme/last',
 			'owner'     => 'acme',
 			'name'      => 'last',
 		];
 
-		Repository::instance()->upsert_batch( 'conn-1', $repos, 'github' );
+		Repository::instance()->upsert_batch( 'conn-1', $repositories, 'github' );
 
 		$sql = $this->wpdb->queries_matching( 'INSERT INTO' )[0];
 
@@ -133,7 +133,7 @@ class RepositoryCacheTest extends TestCase {
 	}
 
 	public function test_the_cycle_stamp_is_used_when_supplied(): void {
-		Repository::instance()->upsert_batch( 'conn-1', $this->repos( 1 ), 'github', '2026-01-02 03:04:05' );
+		Repository::instance()->upsert_batch( 'conn-1', $this->repositories( 1 ), 'github', '2026-01-02 03:04:05' );
 
 		$this->assertStringContainsString( '2026-01-02 03:04:05', $this->wpdb->queries_matching( 'INSERT INTO' )[0] );
 	}

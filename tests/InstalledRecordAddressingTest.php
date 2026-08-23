@@ -71,24 +71,24 @@ class InstalledRecordAddressingTest extends TestCase {
 	 * @dataProvider namespaces
 	 * @param string $full_name Stored full name.
 	 * @param string $owner     Expected owner.
-	 * @param string $repo      Expected repo.
+	 * @param string $repository      Expected repository.
 	 */
-	public function test_owner_and_repo_split_on_the_last_slash( string $full_name, string $owner, string $repo ): void {
+	public function test_owner_and_repository_split_on_the_last_slash( string $full_name, string $owner, string $repository ): void {
 		$rec = Installer::get_record( 'gitlab', $full_name );
 
 		$this->assertNotNull( $rec, "record for {$full_name} should exist" );
 		$this->assertSame( $owner, $rec['owner'] );
-		$this->assertSame( $repo, $rec['repo'] );
+		$this->assertSame( $repository, $rec['repository'] );
 	}
 
 	/**
 	 * @dataProvider namespaces
 	 * @param string $full_name Stored full name.
 	 */
-	public function test_owner_and_repo_recombine_into_full_name( string $full_name ): void {
+	public function test_owner_and_repository_recombine_into_full_name( string $full_name ): void {
 		$rec = Installer::get_record( 'gitlab', $full_name );
 
-		$this->assertSame( $full_name, $rec['owner'] . '/' . $rec['repo'] );
+		$this->assertSame( $full_name, $rec['owner'] . '/' . $rec['repository'] );
 	}
 
 	/**
@@ -101,7 +101,7 @@ class InstalledRecordAddressingTest extends TestCase {
 	public function test_the_recombined_pair_still_finds_its_own_record( string $full_name ): void {
 		$rec = Installer::get_record( 'gitlab', $full_name );
 
-		$this->assertNotNull( Installer::get_record( 'gitlab', $rec['owner'] . '/' . $rec['repo'] ) );
+		$this->assertNotNull( Installer::get_record( 'gitlab', $rec['owner'] . '/' . $rec['repository'] ) );
 	}
 
 	public function test_lookup_by_id_returns_the_right_record(): void {

@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Registers and handles the /repos REST routes.
+ * Registers and handles the /repositories REST routes.
  */
 class REST_Repositories {
 
@@ -64,7 +64,7 @@ class REST_Repositories {
 	}
 
 	/**
-	 * Registers /repos routes.
+	 * Registers /repositories routes.
 	 *
 	 * @since 1.0.0
 	 * @return void
@@ -74,10 +74,10 @@ class REST_Repositories {
 
 		register_rest_route(
 			$namespace,
-			'/repos',
+			'/repositories',
 			[
 				'methods'             => 'GET',
-				'callback'            => [ self::class, 'get_repos' ],
+				'callback'            => [ self::class, 'get_repositories' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
 				'args'                => [
 					'offset'         => [
@@ -101,7 +101,7 @@ class REST_Repositories {
 
 		register_rest_route(
 			$namespace,
-			'/repos/cache',
+			'/repositories/cache',
 			[
 				'methods'             => 'DELETE',
 				'callback'            => [ self::class, 'clear_cache' ],
@@ -109,8 +109,8 @@ class REST_Repositories {
 				'args'                => [
 					'mode' => [
 						'type'    => 'string',
-						'default' => 'repos',
-						'enum'    => [ 'repos', 'repos_and_types', 'types' ],
+						'default' => 'repositories',
+						'enum'    => [ 'repositories', 'repositories_and_types', 'types' ],
 					],
 				],
 			]
@@ -123,7 +123,7 @@ class REST_Repositories {
 		 */
 		register_rest_route(
 			$namespace,
-			'/repos/(?P<owner>.+)/(?P<repo>[^/]+)/branches',
+			'/repositories/(?P<owner>.+)/(?P<repository>[^/]+)/branches',
 			[
 				'methods'             => 'GET',
 				'callback'            => [ self::class, 'get_branches' ],
@@ -137,10 +137,10 @@ class REST_Repositories {
 
 		register_rest_route(
 			$namespace,
-			'/repos/(?P<owner>.+)/(?P<repo>[^/]+)/detect',
+			'/repositories/(?P<owner>.+)/(?P<repository>[^/]+)/detect',
 			[
 				'methods'             => 'GET',
-				'callback'            => [ self::class, 'detect_repo' ],
+				'callback'            => [ self::class, 'detect_repository' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
 				'args'                => [
 					'provider'      => self::provider_arg(),
@@ -156,7 +156,7 @@ class REST_Repositories {
 
 		register_rest_route(
 			$namespace,
-			'/repos/detect-batch',
+			'/repositories/detect-batch',
 			[
 				'methods'             => 'POST',
 				'callback'            => [ self::class, 'detect_batch' ],
@@ -172,10 +172,10 @@ class REST_Repositories {
 
 		register_rest_route(
 			$namespace,
-			'/repos/resolve',
+			'/repositories/resolve',
 			[
 				'methods'             => 'POST',
-				'callback'            => [ self::class, 'resolve_repo' ],
+				'callback'            => [ self::class, 'resolve_repository' ],
 				'permission_callback' => [ REST::class, 'can_manage' ],
 				'args'                => [
 					'url' => [
@@ -206,7 +206,7 @@ class REST_Repositories {
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>|\WP_Error Repository payload on success, WP_Error on failure.
 	 */
-	public static function get_repos( \WP_REST_Request $req ): array|\WP_Error {
+	public static function get_repositories( \WP_REST_Request $req ): array|\WP_Error {
 		$offset     = max( 0, (int) ( $req->get_param( 'offset' ) ?? 0 ) );
 		$search     = (string) $req->get_param( 'search' );
 		$filter_ids = array_values( array_filter( (array) ( $req->get_param( 'connection_ids' ) ?? [] ) ) );
@@ -297,7 +297,7 @@ class REST_Repositories {
 	}
 
 	/**
-	 * Merges current installed status into a cached repo list payload.
+	 * Merges current installed status into a cached repository list payload.
 	 *
 	 * @since 1.0.0
 	 * @param array<string, mixed> $payload Repo list payload from cache.
@@ -306,9 +306,9 @@ class REST_Repositories {
 	private static function merge_installed( array $payload ): array {
 		$installed               = Installer::get_installed();
 		$payload['repositories'] = array_map(
-			static function ( $repo ) use ( $installed ) {
-				$repo['installed'] = $installed[ ( $repo['provider'] ?? '' ) . ':' . ( $repo['full_name'] ?? '' ) ] ?? null;
-				return $repo;
+			static function ( $repository ) use ( $installed ) {
+				$repository['installed'] = $installed[ ( $repository['provider'] ?? '' ) . ':' . ( $repository['full_name'] ?? '' ) ] ?? null;
+				return $repository;
 			},
 			$payload['repositories'] ?? []
 		);
@@ -345,7 +345,7 @@ class REST_Repositories {
 				? Provider_Factory::make( 'bitbucket', $connection_id )
 				: new Bitbucket_API( '', '' );
 			// Authenticated requests discover workspaces through /user/workspaces.
-			$result = $api->get_repos( $workspace, $page );
+			$result = $api->get_repositories( $workspace, $page );
 
 			if ( is_wp_error( $result ) ) {
 				return $result;
@@ -398,7 +398,7 @@ class REST_Repositories {
 			$api    = $has_auth
 				? Provider_Factory::make( 'gitlab', $connection_id )
 				: new GitLab_API( '', $gitlab_url, $connection_id );
-			$result = $api->get_repos( $username, $page );
+			$result = $api->get_repositories( $username, $page );
 
 			if ( is_wp_error( $result ) ) {
 				return $result;
@@ -445,7 +445,7 @@ class REST_Repositories {
 		 * keyed by. Built directly, every listing counted against the 'anon' bucket.
 		 */
 		$api    = Provider_Factory::make( 'github', $connection_id );
-		$result = $api->get_repos( $username, $page );
+		$result = $api->get_repositories( $username, $page );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -483,13 +483,13 @@ class REST_Repositories {
 	 * @since 1.0.0
 	 * @param string      $provider      Provider key.
 	 * @param string      $owner         Repository owner.
-	 * @param string      $repo          Repository name.
+	 * @param string      $repository    Repository name.
 	 * @param string      $branch        Branch name.
 	 * @param string|null $connection_id Connection ID for authenticated requests.
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	public static function detect_type_for_repo( string $provider, string $owner, string $repo, string $branch, ?string $connection_id = null ): array|\WP_Error {
-		return self::make_api( $provider, $connection_id )->detect_type( $owner, $repo, $branch );
+	public static function detect_type_for_repository( string $provider, string $owner, string $repository, string $branch, ?string $connection_id = null ): array|\WP_Error {
+		return self::make_api( $provider, $connection_id )->detect_type( $owner, $repository, $branch );
 	}
 
 	/**
@@ -501,7 +501,7 @@ class REST_Repositories {
 	 */
 	public static function get_branches( \WP_REST_Request $req ): array|\WP_Error {
 		$owner         = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo          = sanitize_text_field( $req->get_param( 'repo' ) );
+		$repository    = sanitize_text_field( $req->get_param( 'repository' ) );
 		$provider      = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 
@@ -512,7 +512,7 @@ class REST_Repositories {
 			}
 		}
 
-		$result = self::make_api( $provider, '' !== $connection_id ? $connection_id : null )->get_branches( $owner, $repo );
+		$result = self::make_api( $provider, '' !== $connection_id ? $connection_id : null )->get_branches( $owner, $repository );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -528,20 +528,20 @@ class REST_Repositories {
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>|\WP_Error Detection result on success, WP_Error on failure.
 	 */
-	public static function detect_repo( \WP_REST_Request $req ): array|\WP_Error {
+	public static function detect_repository( \WP_REST_Request $req ): array|\WP_Error {
 		$owner         = sanitize_text_field( $req->get_param( 'owner' ) );
-		$repo          = sanitize_text_field( $req->get_param( 'repo' ) );
+		$repository    = sanitize_text_field( $req->get_param( 'repository' ) );
 		$branch        = sanitize_text_field( $req->get_param( 'branch' ) ?? 'HEAD' );
 		$provider      = sanitize_key( $req->get_param( 'provider' ) ?? 'github' );
 		$connection_id = sanitize_text_field( $req->get_param( 'connection_id' ) ?? '' );
 
-		$cached = Repositories::get_repository_type( $provider, $owner, $repo );
+		$cached = Repositories::get_repository_type( $provider, $owner, $repository );
 		if ( is_array( $cached ) ) {
 			return $cached;
 		}
 
 		$api    = self::make_api( $provider, '' !== $connection_id ? $connection_id : null );
-		$result = $api->detect_type( $owner, $repo, $branch );
+		$result = $api->detect_type( $owner, $repository, $branch );
 
 		if ( is_wp_error( $result ) ) {
 			if ( '' !== $connection_id ) {
@@ -560,7 +560,7 @@ class REST_Repositories {
 			];
 		}
 
-		Repositories::set_repository_type( $provider, $owner, $repo, $result );
+		Repositories::set_repository_type( $provider, $owner, $repository, $result );
 
 		return $result;
 	}
@@ -575,7 +575,7 @@ class REST_Repositories {
 	 *
 	 * @since 1.0.0
 	 * @param \WP_REST_Request $req REST request object.
-	 * @return array<string, mixed> Detections keyed by provider:owner/repo, plus any
+	 * @return array<string, mixed> Detections keyed by provider:owner/repository, plus any
 	 *                              paused keys and the reason they were skipped.
 	 */
 	public static function detect_batch( \WP_REST_Request $req ): array {
@@ -613,13 +613,13 @@ class REST_Repositories {
 			$out_of_time = ( time() - $started ) >= $budget;
 
 			$owner         = sanitize_text_field( $entry['owner'] ?? '' );
-			$repo          = sanitize_text_field( $entry['repo'] ?? '' );
+			$repository    = sanitize_text_field( $entry['repository'] ?? '' );
 			$branch        = sanitize_text_field( $entry['branch'] ?? 'HEAD' );
 			$provider      = sanitize_key( $entry['provider'] ?? 'github' );
 			$connection_id = sanitize_text_field( $entry['connection_id'] ?? '' );
 			$connection_id = '' !== $connection_id ? $connection_id : null;
 
-			if ( ! $owner || ! $repo ) {
+			if ( ! $owner || ! $repository ) {
 				continue;
 			}
 
@@ -627,8 +627,8 @@ class REST_Repositories {
 				$provider = 'github';
 			}
 
-			$key    = $provider . ':' . $owner . '/' . $repo;
-			$cached = Repositories::get_repository_type( $provider, $owner, $repo );
+			$key    = $provider . ':' . $owner . '/' . $repository;
+			$cached = Repositories::get_repository_type( $provider, $owner, $repository );
 			if ( is_array( $cached ) ) {
 				$results[ $key ] = $cached;
 				continue;
@@ -663,7 +663,7 @@ class REST_Repositories {
 				}
 			}
 
-			$result = self::detect_type_for_repo( $provider, $owner, $repo, $branch, $connection_id );
+			$result = self::detect_type_for_repository( $provider, $owner, $repository, $branch, $connection_id );
 
 			if ( is_wp_error( $result ) ) {
 				Logger::log( sprintf( 'Detection failed for %s: %s', $key, $result->get_error_message() ), 'error' );
@@ -683,7 +683,7 @@ class REST_Repositories {
 				continue;
 			}
 
-			Repositories::set_repository_type( $provider, $owner, $repo, $result );
+			Repositories::set_repository_type( $provider, $owner, $repository, $result );
 			$results[ $key ] = $result;
 		}
 
@@ -737,22 +737,22 @@ class REST_Repositories {
 	 */
 	private static function enrich_with_detections( array $payload ): array {
 		$payload['repositories'] = array_map(
-			static function ( $repo ) {
+			static function ( $repository ) {
 				// get_repositories() reads type_meta directly from the cache row.
-				if ( isset( $repo['type_meta'] ) ) {
-					$repo['detection'] = array_merge( $repo['type_meta'], [ 'type' => $repo['type'] ?? '' ] );
-					unset( $repo['type_meta'] );
-					return $repo;
+				if ( isset( $repository['type_meta'] ) ) {
+					$repository['detection'] = array_merge( $repository['type_meta'], [ 'type' => $repository['type'] ?? '' ] );
+					unset( $repository['type_meta'] );
+					return $repository;
 				}
 				$detection = Repositories::get_repository_type(
-					$repo['provider'] ?? '',
-					$repo['owner'] ?? '',
-					$repo['name'] ?? ''
+					$repository['provider'] ?? '',
+					$repository['owner'] ?? '',
+					$repository['name'] ?? ''
 				);
 				if ( is_array( $detection ) ) {
-					$repo['detection'] = $detection;
+					$repository['detection'] = $detection;
 				}
-				return $repo;
+				return $repository;
 			},
 			$payload['repositories'] ?? []
 		);
@@ -769,10 +769,10 @@ class REST_Repositories {
 	 * is the same one cron runs, so a connection larger than one API page is not
 	 * truncated to its first page.
 	 *
-	 * 'repos' only relists. Rows already in the cache keep their stored type, since
-	 * upsert_batch() never touches the type columns, so a repo the provider just added
+	 * 'repositories' only relists. Rows already in the cache keep their stored type, since
+	 * upsert_batch() never touches the type columns, so a repository the provider just added
 	 * still lands untyped and gets detected without re-detecting everything else.
-	 * 'repos_and_types' relists and drops every stored type, so each repo is typed
+	 * 'repositories_and_types' relists and drops every stored type, so each repository is typed
 	 * again on an API round trip. 'types' skips the relist and only drops stored
 	 * types, for when the list itself is not in question.
 	 *
@@ -787,7 +787,7 @@ class REST_Repositories {
 	public static function clear_cache( \WP_REST_Request $req ): array {
 		$mode          = (string) $req->get_param( 'mode' );
 		$refresh_list  = 'types' !== $mode;
-		$refresh_types = ( 'types' === $mode || 'repos_and_types' === $mode )
+		$refresh_types = ( 'types' === $mode || 'repositories_and_types' === $mode )
 			&& Settings::is_type_detection_enabled();
 
 		$connections = array_values(
@@ -842,32 +842,32 @@ class REST_Repositories {
 	 * @param \WP_REST_Request $req REST request object.
 	 * @return array<string, mixed>|\WP_Error Resolve payload or WP_Error on bad URL.
 	 */
-	public static function resolve_repo( \WP_REST_Request $req ): array|\WP_Error {
+	public static function resolve_repository( \WP_REST_Request $req ): array|\WP_Error {
 		$url    = sanitize_text_field( (string) $req->get_param( 'url' ) );
-		$parsed = self::parse_repo_url( $url );
+		$parsed = self::parse_repository_url( $url );
 
 		if ( is_wp_error( $parsed ) ) {
 			return $parsed;
 		}
 
-		$provider = $parsed['provider'];
-		$owner    = $parsed['owner'];
-		$repo     = $parsed['repo'];
-		$branch   = $parsed['branch'];
+		$provider   = $parsed['provider'];
+		$owner      = $parsed['owner'];
+		$repository = $parsed['repository'];
+		$branch     = $parsed['branch'];
 
 		$anon_api  = self::make_anon_api( $parsed );
 		$detect_br = '' !== $branch ? $branch : 'HEAD';
-		$detected  = $anon_api->detect_type( $owner, $repo, $detect_br );
+		$detected  = $anon_api->detect_type( $owner, $repository, $detect_br );
 		$error     = is_wp_error( $detected ) ? self::describe_resolve_failure( $detected ) : null;
 
 		return [
-			'provider'  => $provider,
-			'owner'     => $owner,
-			'repo'      => $repo,
-			'branch'    => '' !== $branch ? $branch : null,
-			'is_public' => null === $error,
-			'detection' => null === $error ? $detected : null,
-			'error'     => $error,
+			'provider'   => $provider,
+			'owner'      => $owner,
+			'repository' => $repository,
+			'branch'     => '' !== $branch ? $branch : null,
+			'is_public'  => null === $error,
+			'detection'  => null === $error ? $detected : null,
+			'error'      => $error,
 		];
 	}
 
@@ -915,10 +915,10 @@ class REST_Repositories {
 	 * @param string $url Raw URL from the client.
 	 * @return array<string, string>|\WP_Error Parsed components or WP_Error.
 	 */
-	private static function parse_repo_url( string $url ): array|\WP_Error {
+	private static function parse_repository_url( string $url ): array|\WP_Error {
 		$invalid = new \WP_Error(
 			'invalid_url',
-			/* translators: shown when the pasted URL is not a GitHub/GitLab/Bitbucket repo link */
+			/* translators: shown when the pasted URL is not a GitHub/GitLab/Bitbucket repository link */
 			__( "We couldn't recognize this link. Use GitHub, GitLab, or Bitbucket.", 'gitwire' ),
 			[ 'status' => 400 ]
 		);
@@ -941,7 +941,7 @@ class REST_Repositories {
 			return [
 				'provider'   => 'github',
 				'owner'      => $m[1],
-				'repo'       => $m[2],
+				'repository' => $m[2],
 				'branch'     => isset( $m[3] ) ? trim( $m[3], '/' ) : '',
 				'gitlab_url' => '',
 			];
@@ -958,7 +958,7 @@ class REST_Repositories {
 			return [
 				'provider'   => 'bitbucket',
 				'owner'      => $m[1],
-				'repo'       => $m[2],
+				'repository' => $m[2],
 				'branch'     => $branch,
 				'gitlab_url' => '',
 			];
@@ -1004,13 +1004,13 @@ class REST_Repositories {
 				return $invalid;
 			}
 
-			$repo_name = array_pop( $segments );
-			$owner     = implode( '/', $segments );
+			$repository_name = array_pop( $segments );
+			$owner           = implode( '/', $segments );
 
 			return [
 				'provider'   => 'gitlab',
 				'owner'      => $owner,
-				'repo'       => $repo_name,
+				'repository' => $repository_name,
 				'branch'     => $branch,
 				'gitlab_url' => $is_custom_gitlab ? $custom_url : '',
 			];
@@ -1023,7 +1023,7 @@ class REST_Repositories {
 	 * Returns an anonymous (no-token) API client for the given parsed URL components.
 	 *
 	 * @since 1.0.0
-	 * @param array<string, string> $parsed Output of parse_repo_url().
+	 * @param array<string, string> $parsed Output of parse_repository_url().
 	 * @return Git_Provider_Interface
 	 */
 	private static function make_anon_api( array $parsed ): Git_Provider_Interface {
