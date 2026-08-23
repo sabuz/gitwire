@@ -162,7 +162,10 @@ export default function InstalledPanel( {
 						) }
 						{ item.update_available &&
 							( hasKnownFatalUpdate( item ) ? (
-								<Tooltip text={ knownFatalTooltip( item ) }>
+								<Tooltip
+									className="gitwire-tooltip-wrap"
+									text={ knownFatalTooltip( item ) }
+								>
 									<span className="gitwire-badge gitwire-badge--warning is-update-blocked">
 										{ knownFatalBadgeLabel( item ) }
 									</span>

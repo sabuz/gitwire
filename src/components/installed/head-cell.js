@@ -66,7 +66,12 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 			>
 				{ displaySha }
 			</Button>
-			<Tooltip text={ pullTooltip }>
+			<Tooltip
+				className={
+					isKnownFatalUpdate ? 'gitwire-tooltip-wrap' : undefined
+				}
+				text={ pullTooltip }
+			>
 				<Button
 					className={ pulling ? 'gitwire-spin' : '' }
 					disabled={ pulling || item.activation_pending }
