@@ -930,13 +930,18 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 	const checkedAt = rateData?.updated_at ?? null;
 
 	const hasRateLimit = rateData && rateData.rate_limit > 0;
-	const pct = hasRateLimit
-		? Math.round( ( rateData.rate_remaining / rateData.rate_limit ) * 100 )
+	// The bar fills with usage, not what's left, so "empty" never reads as "fine."
+	const usedPct = hasRateLimit
+		? Math.round(
+				( ( rateData.rate_limit - rateData.rate_remaining ) /
+					rateData.rate_limit ) *
+					100
+		  )
 		: 0;
-	let barColor = '#cf222e';
-	if ( pct > 50 ) {
-		barColor = '#4ac26b';
-	} else if ( pct > 20 ) {
+	let barColor = '#4ac26b';
+	if ( usedPct > 80 ) {
+		barColor = '#cf222e';
+	} else if ( usedPct > 50 ) {
 		barColor = '#e3b341';
 	}
 
@@ -1079,7 +1084,7 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 								style={ { marginBottom: 6 } }
 							>
 								<span style={ { color: '#50575e' } }>
-									{ __( 'Requests Remaining', 'gitwire' ) }
+									{ __( 'API Usage', 'gitwire' ) }
 								</span>
 								<strong>
 									{ rateData.rate_remaining?.toLocaleString() }
@@ -1091,7 +1096,7 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 								<div
 									className="gitwire-rate-fill"
 									style={ {
-										width: `${ pct }%`,
+										width: `${ usedPct }%`,
 										background: barColor,
 									} }
 								/>
