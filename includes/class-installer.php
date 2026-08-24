@@ -1027,6 +1027,11 @@ class Installer {
 	/**
 	 * Remembers a remote SHA that failed active bootstrap validation.
 	 *
+	 * Also syncs remote_head to this SHA. Nothing else does: the pull that
+	 * discovered the fatal never applied it, and the cron that would otherwise
+	 * catch it up is not guaranteed to run soon. Without this, head and
+	 * remote_head stay equal and the Update Blocked badge never appears.
+	 *
 	 * @since 1.0.0
 	 * @param string $provider  Git provider.
 	 * @param string $full_name Repository full name.
@@ -1044,6 +1049,8 @@ class Installer {
 			] : $sha,
 			5 * MINUTE_IN_SECONDS
 		);
+
+		self::set_remote_head( $provider, $full_name, $sha );
 	}
 
 	/**
