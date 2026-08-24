@@ -116,22 +116,28 @@ class Error_Handler {
 	}
 
 	/**
-	 * Installs the exception handler when a guard is already in flight.
+	 * Installs the exception handler when a guard is already in flight, or
+	 * unconditionally during our own scrape loopback.
 	 *
 	 * Runs late on plugins_loaded so we sit above debug plugins that set their own
 	 * handler (Query Monitor swallows the exception otherwise, see #6). Skipped on
-	 * the front end, which has no install to roll back, except for our own scrape
-	 * loopback: Theme_Scraper always checks home_url() as its second request, and
-	 * that leg needs the same protection or Query Monitor swallows it there instead.
+	 * the front end, which has no install to roll back -- except a scrape request,
+	 * which always arms regardless of the guard option. Theme_Scraper's activation
+	 * path deletes the guard before scraping (to keep the loopback's own shutdown
+	 * from double-rolling-back) and its update path never writes one at all, so
+	 * gating on the option here would leave both scrape legs unprotected.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function maybe_arm_exception_handler(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$is_scrape_request = ! empty( $_REQUEST['wp_scrape_key'] );
+		if ( ! empty( $_REQUEST['wp_scrape_key'] ) ) {
+			self::arm_exception_handler();
+			return;
+		}
 
-		if ( ! Plugin::is_management_request() && ! $is_scrape_request ) {
+		if ( ! Plugin::is_management_request() ) {
 			return;
 		}
 
