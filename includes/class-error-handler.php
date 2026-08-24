@@ -210,10 +210,11 @@ class Error_Handler {
 	/**
 	 * Flags an uncaught exception before delegating to the next handler in the chain.
 	 *
-	 * Only reachable while a guard is armed. The re-throw below is what lets PHP
-	 * terminate the way it normally would; it reports the fatal at this line rather
-	 * than the origin, so the notice and the log both use the recorded location
-	 * instead of whatever PHP prints.
+	 * Only reachable once arm_exception_handler() has run, whether for a guarded
+	 * install or one of our own scrape requests. The re-throw below is what lets
+	 * PHP terminate the way it normally would; it reports the fatal at this line
+	 * rather than the origin, so the notice and the log both use the recorded
+	 * location instead of whatever PHP prints.
 	 *
 	 * @since 1.0.0
 	 * @param \Throwable $e The uncaught exception or error.
