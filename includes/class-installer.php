@@ -1340,25 +1340,33 @@ class Installer {
 		}
 
 		/*
-		 * Short-circuit a retry of a known-fatal commit before paying for the archive.
-		 * The guard further down runs after the plugin has been deactivated, which makes
-		 * is_active_install() false and leaves it unreachable on the very retry it exists for.
+		 * Resolve the remote HEAD once, before downloading, for an already-active
+		 * install. The guard further down runs after the plugin has been
+		 * deactivated, which makes is_active_install() false and leaves it
+		 * unreachable on the very retry it exists for, so this is the only place
+		 * a plugin retry is actually caught; themes reuse this same value there.
 		 */
+		$remote_sha = null;
 		if ( is_dir( $install_path )
 			&& self::is_active_install( $type, $slug, $all_installed[ $current_key ]['basename'] ?? null )
 		) {
-			$known = self::get_known_fatal_remote_head( $provider, $full_name, $branch );
-			if ( $known && self::fetch_remote_head_sha( $api, $owner, $repository, $branch ) === $known ) {
+			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repository, $branch );
+			if ( $remote_sha && self::matches_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha ) ) {
 				return new \WP_Error(
 					'gitwire_known_fatal_head',
-					self::known_fatal_head_message( $type, $known, self::get_known_fatal_location( $provider, $full_name, $branch ) ),
+					self::known_fatal_head_message( $type, $remote_sha, self::get_known_fatal_location( $provider, $full_name, $branch ) ),
 					[ 'status' => 409 ]
 				);
 			}
 		}
 
-		// Download the repository archive.
-		$zip_file = $api->download_zip( $owner, $repository, $branch );
+		/*
+		 * Download by the resolved commit when we have one, not the branch name.
+		 * Archive endpoints cache branch-name downloads at the CDN layer, so a
+		 * push can still serve the previous commit's zip for a short window even
+		 * though the commits API we just called already reports the new HEAD.
+		 */
+		$zip_file = $api->download_zip( $owner, $repository, $remote_sha ?? $branch );
 		if ( is_wp_error( $zip_file ) ) {
 			return $zip_file;
 		}
@@ -1387,14 +1395,16 @@ class Installer {
 
 		$sync_theme_guard = $is_active_update && Repository_Detector::is_theme( $type );
 
-		$remote_sha = null;
 		if ( $is_active_update ) {
 			if ( Repository_Detector::is_theme( $type ) ) {
 				self::clear_guard_feedback();
 				delete_option( 'gitwire_running_task' );
 			}
 
-			$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repository, $branch );
+			// Already resolved above for the normal case; refetch only if that check didn't run.
+			if ( null === $remote_sha ) {
+				$remote_sha = self::fetch_remote_head_sha( $api, $owner, $repository, $branch );
+			}
 			if ( $remote_sha && self::matches_known_fatal_remote_head( $provider, $full_name, $branch, $remote_sha ) ) {
 				wp_delete_file( $zip_file );
 				return new \WP_Error(
