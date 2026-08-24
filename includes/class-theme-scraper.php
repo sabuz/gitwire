@@ -518,8 +518,9 @@ class Theme_Scraper {
 	private static function to_wp_error( array $result, string $context, string $subject = 'theme' ): \WP_Error {
 		$code      = $result['code'] ?? '';
 		$is_plugin = 'plugin' === $subject;
+		$is_fatal  = self::is_php_fatal_result( $result );
 
-		if ( self::is_php_fatal_result( $result ) ) {
+		if ( $is_fatal ) {
 			$detail = self::trim_fatal_message( $result['message'] );
 			if ( 'activation' === $context ) {
 				$message = $is_plugin
@@ -598,7 +599,9 @@ class Theme_Scraper {
 			'gitwire_theme_scrape_failed',
 			$message,
 			[
-				'status' => 500,
+				// Matches the retry guard's own gitwire_known_fatal_head status: a detected
+				// fatal is the same conflict whether this is the first time or a retry.
+				'status' => $is_fatal ? 409 : 500,
 				'scrape' => $result,
 			]
 		);
