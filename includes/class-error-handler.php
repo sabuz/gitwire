@@ -119,15 +119,19 @@ class Error_Handler {
 	 * Installs the exception handler when a guard is already in flight.
 	 *
 	 * Runs late on plugins_loaded so we sit above debug plugins that set their own
-	 * handler (Query Monitor swallows the exception otherwise, see #6). Skipped
-	 * entirely on the front end, which has no install to roll back and should not
-	 * pay for the guard lookup.
+	 * handler (Query Monitor swallows the exception otherwise, see #6). Skipped on
+	 * the front end, which has no install to roll back, except for our own scrape
+	 * loopback: Theme_Scraper always checks home_url() as its second request, and
+	 * that leg needs the same protection or Query Monitor swallows it there instead.
 	 *
 	 * @since 1.0.0
 	 * @return void
 	 */
 	public static function maybe_arm_exception_handler(): void {
-		if ( ! Plugin::is_management_request() ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$is_scrape_request = ! empty( $_REQUEST['wp_scrape_key'] );
+
+		if ( ! Plugin::is_management_request() && ! $is_scrape_request ) {
 			return;
 		}
 
