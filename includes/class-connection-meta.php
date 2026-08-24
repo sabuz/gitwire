@@ -252,8 +252,9 @@ class Connection_Meta {
 	/**
 	 * Returns cached-or-fresh GitHub rate data for a public connection.
 	 *
-	 * Returns cached data when it was refreshed within the last 15 minutes;
-	 * otherwise fetches live from the GitHub API and updates the cache.
+	 * Returns cached data when it was refreshed within the last 15 minutes and
+	 * GitHub's own reset time for that reading has not passed yet; otherwise
+	 * fetches live from the GitHub API and updates the cache.
 	 *
 	 * @since 1.0.0
 	 * @param string $id         Public connection ID.
@@ -263,8 +264,16 @@ class Connection_Meta {
 	 */
 	public static function get_public_github_rate( string $id, string $username, string $avatar_url = '' ): ?array {
 		$cached = self::get_public_connections_metadata( $id );
+
 		// A zero rate limit indicates a new row; always fetch fresh data.
-		if ( null !== $cached && ( $cached['rate_limit'] ?? 0 ) > 0 && ( time() - ( $cached['updated_at'] ?? 0 ) ) < 900 ) {
+		$is_recent = null !== $cached
+			&& ( $cached['rate_limit'] ?? 0 ) > 0
+			&& ( time() - ( $cached['updated_at'] ?? 0 ) ) < 900;
+
+		// GitHub's own window may have already reset even inside our 15-minute cache.
+		$reset_passed = $cached && ( $cached['rate_reset'] ?? 0 ) > 0 && time() >= $cached['rate_reset'];
+
+		if ( $is_recent && ! $reset_passed ) {
 			return $cached;
 		}
 
