@@ -116,16 +116,17 @@ class Error_Handler {
 	}
 
 	/**
-	 * Installs the exception handler when a guard is already in flight, or
-	 * unconditionally during our own scrape loopback.
+	 * Installs the exception handler when a guard is in flight, or during one
+	 * of our own scrape requests.
 	 *
 	 * Runs late on plugins_loaded so we sit above debug plugins that set their own
 	 * handler (Query Monitor swallows the exception otherwise, see #6). Skipped on
-	 * the front end, which has no install to roll back -- except a scrape request,
-	 * which always arms regardless of the guard option. Theme_Scraper's activation
-	 * path deletes the guard before scraping (to keep the loopback's own shutdown
-	 * from double-rolling-back) and its update path never writes one at all, so
-	 * gating on the option here would leave both scrape legs unprotected.
+	 * the front end, which has no install to roll back. A scrape request is the
+	 * one exception: it always arms regardless of the guard option, because
+	 * Theme_Scraper's activation path deletes the guard before scraping (to keep
+	 * the loopback's own shutdown from double-rolling-back), and its update path
+	 * never writes one at all. Gating on the option here would leave both scrape
+	 * legs unprotected.
 	 *
 	 * @since 1.0.0
 	 * @return void
