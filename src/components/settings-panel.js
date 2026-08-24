@@ -930,13 +930,12 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 	const checkedAt = rateData?.updated_at ?? null;
 
 	const hasRateLimit = rateData && rateData.rate_limit > 0;
-	// The bar fills with usage, not what's left, so "empty" never reads as "fine."
+	// The label and bar both read as usage, so the number has to be requests used, not what's left.
+	const used = hasRateLimit
+		? rateData.rate_limit - rateData.rate_remaining
+		: 0;
 	const usedPct = hasRateLimit
-		? Math.round(
-				( ( rateData.rate_limit - rateData.rate_remaining ) /
-					rateData.rate_limit ) *
-					100
-		  )
+		? Math.round( ( used / rateData.rate_limit ) * 100 )
 		: 0;
 	let barColor = '#4ac26b';
 	if ( usedPct > 80 ) {
@@ -1087,7 +1086,7 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 									{ __( 'API Usage', 'gitwire' ) }
 								</span>
 								<strong>
-									{ rateData.rate_remaining?.toLocaleString() }
+									{ used.toLocaleString() }
 									{ ' / ' }
 									{ rateData.rate_limit?.toLocaleString() }
 								</strong>
