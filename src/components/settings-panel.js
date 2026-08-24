@@ -1079,7 +1079,7 @@ function PublicConnectionDetail( { rec, rateData, onBack, onRemoved } ) {
 								style={ { marginBottom: 6 } }
 							>
 								<span style={ { color: '#50575e' } }>
-									{ __( 'API Usage', 'gitwire' ) }
+									{ __( 'Requests Remaining', 'gitwire' ) }
 								</span>
 								<strong>
 									{ rateData.rate_remaining?.toLocaleString() }
