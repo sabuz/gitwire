@@ -215,6 +215,31 @@ Filters the resolved credential array immediately before a provider API client i
 
 ---
 
+### `gitwire_rate_limited_message`
+
+Filters GitHub's rate-limit message before it reaches the caller. The unauthenticated wording mentions Gitwire Pro; use this to replace it when the request came from a connection that already has Pro (or another extension) attached, where pitching Pro from inside Pro reads oddly.
+
+**Parameters**
+
+| # | Type | Description |
+|---|------|-------------|
+| 1 | `string` | The rate-limit message. |
+| 2 | `string` | Connection ID used for this request, empty for anonymous. |
+| 3 | `bool`   | Whether the request carried a token. |
+
+**Return:** `string`
+
+```php
+add_filter( 'gitwire_rate_limited_message', function ( string $message, string $connection_id, bool $authenticated ): string {
+    if ( $authenticated ) {
+        return $message;
+    }
+    return __( "GitHub's hourly rate limit for unauthenticated requests has been reached. It resets automatically within the hour.", 'my-extension' );
+}, 10, 3 );
+```
+
+---
+
 ### `gitwire_detection_batch_size`
 
 Filters the number of repositories to type-detect per background cron cycle. Lower this on resource-constrained servers; raise it to speed up initial detection on large installs.
