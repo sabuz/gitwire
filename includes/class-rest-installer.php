@@ -495,22 +495,37 @@ class REST_Installer {
 			}
 		}
 
-		$pending_orphans = get_option( 'gitwire_orphan_queue' );
-		if ( is_array( $pending_orphans ) && $pending_orphans ) {
-			delete_option( 'gitwire_orphan_queue' );
-			foreach ( $pending_orphans as $item ) {
-				$orphaned[] = $item;
-			}
-		}
-
 		return [
 			'installed' => self::annotate_installed( $records ),
-			'orphaned'  => $orphaned,
+			'orphaned'  => array_merge( $orphaned, self::drain_orphan_queue() ),
 		];
 	}
 
 	/**
-	 * Prunes records whose directory is gone and re-finds missing plugin entry files.
+	 * Returns and clears notices queued when a plugin or theme was deleted through
+	 * the standard WordPress interface.
+	 *
+	 * Installer::queue_deleted_notice() writes here from the deleted_plugin/deleted_theme
+	 * hooks, which fire outside of any Gitwire request and so have no response to attach
+	 * a notice to. Both get_installed() and sync_installed() drain it so the notice reaches
+	 * the client regardless of which one the app happens to call on load.
+	 *
+	 * @since 1.0.0
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function drain_orphan_queue(): array {
+		$pending = get_option( 'gitwire_orphan_queue' );
+		if ( ! is_array( $pending ) || ! $pending ) {
+			return [];
+		}
+
+		delete_option( 'gitwire_orphan_queue' );
+		return $pending;
+	}
+
+	/**
+	 * Prunes records whose directory is gone, re-finds missing plugin entry files,
+	 * and drains any orphan notices queued by a deletion through core's own UI.
 	 *
 	 * @since 1.0.0
 	 * @return array<string, mixed> Synced installed records and any orphaned entries.
@@ -546,7 +561,7 @@ class REST_Installer {
 
 		return [
 			'installed' => self::annotate_installed( $records ),
-			'orphaned'  => $orphaned,
+			'orphaned'  => array_merge( $orphaned, self::drain_orphan_queue() ),
 		];
 	}
 
