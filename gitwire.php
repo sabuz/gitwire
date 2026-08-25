@@ -6,8 +6,8 @@
  * Version:           1.0.0
  * Requires at least: 7.0
  * Requires PHP:      8.0
- * Author:            Gitwire
- * Author URI:        https://gitwire.app
+ * Author:            Nazmul Sabuz
+ * Author URI:        https://profiles.wordpress.org/nazsabuz
  * License:           GPL-2.0-or-later
  * Text Domain:       gitwire
  *
