@@ -2,7 +2,7 @@
 
 ## Environment
 
-- Site: http://gw.test/ (Laravel Valet)
+- Site: <http://gw.test/> (Laravel Valet)
 - Plugins: User Switching installed
 - Accounts: Administrator, Editor, Author (use User Switching to switch roles)
 

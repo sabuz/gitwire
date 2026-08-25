@@ -41,6 +41,7 @@ Document every remote request the plugin makes:
 ### readme.txt Structure
 
 Required sections:
+
 - `=== Plugin Name ===`
 - `Contributors:`, `Tags:`, `Requires at least:`, `Tested up to:`, `Stable tag:`, `License:`
 - `== Description ==`
@@ -54,7 +55,7 @@ Required sections:
 
 These live in the `/assets/` directory at the **root of the SVN repository**, a sibling of `/trunk/` and `/tags/`. They are not part of the plugin and never ship in the zip, so nothing here belongs in this git repo's own `assets/` directory.
 
-```
+```text
 gitwire/            <- SVN root
 ├── assets/         <- these files
 ├── trunk/          <- the plugin itself
@@ -118,7 +119,7 @@ Based on common WordPress.org rejection reasons:
 ## Submission Process
 
 1. Create a WordPress.org account (if not already done)
-2. Submit via https://wordpress.org/plugins/developers/add/
+2. Submit via <https://wordpress.org/plugins/developers/add/>
 3. Allow 1-2 weeks for initial review
 4. Respond to reviewer feedback promptly (reviewers give 2 weeks to respond before closing)
 5. Once approved, SVN commit is the publication method

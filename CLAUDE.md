@@ -43,6 +43,7 @@ Write comments like a developer left a quick note, not like documentation. Prefe
 **One line uses `//`. More than one line uses `/* */`. Never stack `//` lines.**
 
 Bad, stacked `//`:
+
 ```php
 // We need to check if the file exists before we attempt to read it
 // because if it doesn't exist the file_get_contents call will fail
@@ -50,11 +51,13 @@ Bad, stacked `//`:
 ```
 
 Good, when one line carries it:
+
 ```php
 // file_get_contents warns on missing files.
 ```
 
 Good, when it genuinely needs two:
+
 ```php
 /*
  * Bitbucket 302s to an S3 host and WP_Http replays the header set,
@@ -71,8 +74,8 @@ If a comment wants four or more lines, it wants a doc instead. Cut it down or mo
 Detection priority, highest confidence first:
 
 1. `style.css` with `Theme Name:` header → confirmed theme
-   - + `theme.json` → block theme (high)
-   - + `templates/` dir → block theme (high)
+   - `theme.json` → block theme (high)
+   - `templates/` dir → block theme (high)
    - else → classic theme
 2. PHP file with `Plugin Name:` header → plugin (high)
 3. `functions.php` alone → classic theme (medium)

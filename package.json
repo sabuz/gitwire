@@ -44,7 +44,7 @@
 		"lint": "npm run lint:js && npm run lint:scss && npm run lint:php",
 		"lint:js": "wp-scripts lint-js src/ --ext .js,.jsx,.ts,.tsx",
 		"lint:js:fix": "wp-scripts lint-js src/ --ext .js,.jsx,.ts,.tsx --fix",
-		"lint:md:docs": "wp-scripts lint-md-docs",
+		"lint:md": "wp-scripts lint-md-docs",
 		"lint:php": "composer phpcs",
 		"lint:php:fix": "composer phpcbf",
 		"lint:phpstan": "composer phpstan",

@@ -86,7 +86,7 @@ Every recurring event Gitwire schedules, all safe to hook or to trigger by hand 
 
 Filters the full list of connections (all scopes, including Pro private rows and public rows).
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -113,7 +113,7 @@ add_filter( 'gitwire_connections_all', function ( array $connections ): array {
 
 Filters the public-safe, scope-filtered connection list visible to the current user. Credentials are already stripped before this filter fires.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -128,7 +128,7 @@ Filters the public-safe, scope-filtered connection list visible to the current u
 
 Filters the connection record returned for a specific connection ID.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -143,7 +143,7 @@ Filters the connection record returned for a specific connection ID.
 
 Filters the first connection record found for a given provider.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -164,7 +164,7 @@ Return an array with provider-specific keys, or `null` to fall through to the ne
 **GitLab credential keys:** `token`, `gitlab_url`
 **Bitbucket credential keys:** `email`, `api_token`, `workspace`
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -188,7 +188,7 @@ add_filter( 'gitwire_get_credentials', function ( ?array $creds, string $id ): ?
 
 Filters the credentials for the default connection of a provider. Called when no connection ID is specified.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -203,7 +203,7 @@ Filters the credentials for the default connection of a provider. Called when no
 
 Filters the resolved credential array immediately before a provider API client is instantiated. Use this to inject or override credentials at the API level.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -219,7 +219,7 @@ Filters the resolved credential array immediately before a provider API client i
 
 Filters GitHub's rate-limit message before it reaches the caller. The unauthenticated wording mentions Gitwire Pro; use this to replace it when the request came from a connection that already has Pro (or another extension) attached, where pitching Pro from inside Pro reads oddly.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -246,7 +246,7 @@ Filters the number of repositories to type-detect per background cron cycle. Low
 
 The default is adaptive: `100` when the lowest cached GitHub rate-limit reading still shows 3,000 or more requests left for the hour, `25` otherwise. Only GitHub qualifies for the larger batch. GitLab meters per minute, so a fresh minute always reads as idle regardless of what the next half hour holds, and Bitbucket reports no usage headers outside scaled-tier organisations.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -264,7 +264,7 @@ add_filter( 'gitwire_detection_batch_size', fn() => 10 );
 
 Filters how long one background type-detection tick may spend calling providers before it stops and leaves the rest for the next tick. Cron requests inherit `max_execution_time` from php.ini, commonly 30 seconds, and stopping short of it is what lets the resume cursor be written instead of the request being killed mid-batch.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -282,7 +282,7 @@ add_filter( 'gitwire_detection_time_budget', fn() => 10 );
 
 Filters how long one repository-list refresh may spend sweeping provider pages. Applies to both the scheduled sweep and the Browse tab's Refresh button, which share the same code path. When the budget runs out mid-connection, a cursor is parked and the next cron tick resumes from that page — stale rows are left in place until the sweep actually reaches the last page.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
@@ -300,7 +300,7 @@ add_filter( 'gitwire_refresh_time_budget', fn() => 45 );
 
 Filters how long one `POST /repos/detect-batch` request may spend calling providers. Each repository costs a tree listing plus up to five file fetches, so a full batch of ten can be seventy round trips. Whatever is ready when the budget runs out is returned; the rest stay undetected and are picked up by a later request or by background detection.
 
-**Parameters**
+#### Parameters
 
 | # | Type | Description |
 |---|------|-------------|
