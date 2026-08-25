@@ -1,4 +1,5 @@
 import { toast } from '../../toast';
+import { linkifyGitwirePro } from '../../linkify-gitwire-pro';
 
 import { __, sprintf } from '@wordpress/i18n';
 import { useState, useCallback, useMemo } from '@wordpress/element';
@@ -48,7 +49,10 @@ export default function HeadCell( { item, onRefresh, onOpenCommits } ) {
 			onRefresh();
 		} catch ( e ) {
 			clearCommitsCache( item );
-			toast.error( e.message || __( 'Pull failed.', 'gitwire' ) );
+			toast.error(
+				linkifyGitwirePro( e.message ) ||
+					__( 'Pull failed.', 'gitwire' )
+			);
 			onRefresh();
 		} finally {
 			setPulling( false );

@@ -1,4 +1,5 @@
 import { toast } from '../toast';
+import { linkifyGitwirePro } from '../linkify-gitwire-pro';
 
 import { __, sprintf } from '@wordpress/i18n';
 import {
@@ -312,7 +313,10 @@ export default function ImportFromUrl( {
 				`${ resolved.owner }/${ resolved.repository }`
 			);
 		} catch ( e ) {
-			toast.error( e.message || __( 'Installation failed.', 'gitwire' ) );
+			toast.error(
+				linkifyGitwirePro( e.message ) ||
+					__( 'Installation failed.', 'gitwire' )
+			);
 			setStep( 'resolved' );
 		}
 	}, [
@@ -420,7 +424,7 @@ export default function ImportFromUrl( {
 			{ /* Resolve error */ }
 			{ step === 'error' && checkError && (
 				<p className="gitwire-import-url__message is-error">
-					{ checkError }
+					{ linkifyGitwirePro( checkError ) }
 				</p>
 			) }
 

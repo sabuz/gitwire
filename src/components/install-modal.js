@@ -1,4 +1,5 @@
 import { toast } from '../toast';
+import { linkifyGitwirePro } from '../linkify-gitwire-pro';
 
 import { __ } from '@wordpress/i18n';
 import { useState, useEffect, useRef, useMemo } from '@wordpress/element';
@@ -210,7 +211,10 @@ export function InstallForm( {
 			} );
 			onInstalled( result );
 		} catch ( e ) {
-			toast.error( e.message || __( 'Installation failed.', 'gitwire' ) );
+			toast.error(
+				linkifyGitwirePro( e.message ) ||
+					__( 'Installation failed.', 'gitwire' )
+			);
 			setInstallingState( false );
 		}
 	};

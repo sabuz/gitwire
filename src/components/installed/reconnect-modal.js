@@ -1,4 +1,5 @@
 import { toast } from '../../toast';
+import { linkifyGitwirePro } from '../../linkify-gitwire-pro';
 
 import { __, sprintf } from '@wordpress/i18n';
 import { useState, useEffect } from '@wordpress/element';
@@ -67,7 +68,10 @@ export default function ReconnectModal( {
 			onRefresh();
 			onClose();
 		} catch ( e ) {
-			toast.error( e.message || __( 'Pull failed.', 'gitwire' ) );
+			toast.error(
+				linkifyGitwirePro( e.message ) ||
+					__( 'Pull failed.', 'gitwire' )
+			);
 		} finally {
 			setPulling( null );
 		}

@@ -1,4 +1,5 @@
 import { toast, Toaster } from './toast';
+import { linkifyGitwirePro } from './linkify-gitwire-pro';
 
 import { __, sprintf } from '@wordpress/i18n';
 import {
@@ -245,7 +246,7 @@ export default function App( { initialData } ) {
 				} )
 				.catch( ( e ) => {
 					toast.error(
-						e?.message ||
+						linkifyGitwirePro( e?.message ) ||
 							__(
 								'Failed to load. Please reload the page.',
 								'gitwire'

@@ -1,4 +1,5 @@
 import { toast } from '../toast';
+import { linkifyGitwirePro } from '../linkify-gitwire-pro';
 
 import { __, sprintf } from '@wordpress/i18n';
 import {
@@ -212,12 +213,14 @@ export default function RepositoryBrowser( {
 				seedFromRepositories( fetchedRepositories );
 				( result.connection_errors ?? [] ).forEach( ( err ) => {
 					toast.error(
-						sprintf(
-							/* translators: 1: provider name (e.g. GitLab), 2: error message */
-							__( '%1$s: %2$s', 'gitwire' ),
-							providerLabel( err.provider ),
-							err.message
-						)
+						<>
+							{ sprintf(
+								/* translators: %s: provider name (e.g. GitLab) */
+								__( '%s:', 'gitwire' ),
+								providerLabel( err.provider )
+							) }{ ' ' }
+							{ linkifyGitwirePro( err.message ) }
+						</>
 					);
 				} );
 				( result.connection_warnings ?? [] ).forEach( ( warn ) => {
@@ -240,7 +243,8 @@ export default function RepositoryBrowser( {
 				}
 			} catch ( e ) {
 				toast.error(
-					e.message || __( 'Failed to load repositories.', 'gitwire' )
+					linkifyGitwirePro( e.message ) ||
+						__( 'Failed to load repositories.', 'gitwire' )
 				);
 			} finally {
 				setLoading( false );
@@ -291,7 +295,7 @@ export default function RepositoryBrowser( {
 				await loadRepositories( 0, false, search, activeSourceFilters );
 			} catch ( e ) {
 				toast.error(
-					e.message ||
+					linkifyGitwirePro( e.message ) ||
 						__( 'Failed to refresh repositories.', 'gitwire' )
 				);
 				setLoading( false );

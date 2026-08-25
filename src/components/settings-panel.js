@@ -1,4 +1,5 @@
 import { toast } from '../toast';
+import { linkifyGitwirePro } from '../linkify-gitwire-pro';
 
 import { __ } from '@wordpress/i18n';
 import { useState, useCallback, useEffect, useRef } from '@wordpress/element';
@@ -1199,7 +1200,8 @@ function AddPublicConnectionForm( { onCreated, onCancel } ) {
 		} catch ( e ) {
 			setUsernameError( true );
 			toast.error(
-				e?.message || __( 'Could not add connection.', 'gitwire' )
+				linkifyGitwirePro( e?.message ) ||
+					__( 'Could not add connection.', 'gitwire' )
 			);
 		} finally {
 			setSaving( false );
