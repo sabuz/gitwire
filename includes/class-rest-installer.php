@@ -524,8 +524,11 @@ class REST_Installer {
 	}
 
 	/**
-	 * Prunes records whose directory is gone, re-finds missing plugin entry files,
-	 * and drains any orphan notices queued by a deletion through core's own UI.
+	 * Prunes records whose directory is gone and re-finds missing plugin entry files.
+	 *
+	 * Also drains the orphan queue, same as get_installed(): a plugin or theme
+	 * deleted through core's own UI queues its notice there since the deletion
+	 * hook fires with no request to attach a response to.
 	 *
 	 * @since 1.0.0
 	 * @return array<string, mixed> Synced installed records and any orphaned entries.
