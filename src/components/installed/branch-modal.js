@@ -1,10 +1,11 @@
 import { toast } from '../../toast';
 
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 import { useState, useEffect, useMemo } from '@wordpress/element';
 import { Button, ComboboxControl, Flex, Modal } from '@wordpress/components';
 
 import * as api from '../../api';
+import { linkifyGitwirePro } from '../../linkify-gitwire-pro';
 
 /**
  * Modal for switching the active branch of an installed repository.
@@ -111,13 +112,11 @@ export default function BranchModal( {
 					className="gitwire-detect-note gitwire-detect-blocked"
 					style={ { margin: '0 0 12px' } }
 				>
-					{ sprintf(
-						/* translators: %s: reason the branch list could not be fetched */
-						__(
-							"Couldn't load the branch list: %s Only the current branch is shown below.",
-							'gitwire'
-						),
-						loadError
+					{ __( "Couldn't load the branch list:", 'gitwire' ) }{ ' ' }
+					{ linkifyGitwirePro( loadError ) }{ ' ' }
+					{ __(
+						'Only the current branch is shown below.',
+						'gitwire'
 					) }
 				</p>
 			) }
