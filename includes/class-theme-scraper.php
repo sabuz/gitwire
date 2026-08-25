@@ -595,12 +595,15 @@ class Theme_Scraper {
 				: __( 'The update was not applied because theme validation failed, so the change was reverted.', 'gitwire' );
 		}
 
+		/*
+		 * Matches the retry guard's own gitwire_known_fatal_head status: a
+		 * detected fatal is the same conflict whether this is the first time
+		 * or a retry.
+		 */
 		return new \WP_Error(
 			'gitwire_theme_scrape_failed',
 			$message,
 			[
-				// Matches the retry guard's own gitwire_known_fatal_head status: a detected
-				// fatal is the same conflict whether this is the first time or a retry.
 				'status' => $is_fatal ? 409 : 500,
 				'scrape' => $result,
 			]
