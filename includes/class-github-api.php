@@ -384,6 +384,22 @@ class GitHub_API implements Git_Provider_Interface {
 				? __( "GitHub's hourly rate limit for this account has been reached. It resets automatically within the hour.", 'gitwire' )
 				: __( "GitHub's hourly rate limit for unauthenticated requests has been reached. It resets automatically within the hour. Gitwire Pro adds authenticated connections with a much higher limit.", 'gitwire' );
 
+			/**
+			 * Filters the rate-limit message before it reaches the caller.
+			 *
+			 * The unauthenticated wording pitches Gitwire Pro, which reads oddly when the
+			 * request came from a Pro connection that just happens to have no token (a
+			 * public username-only connection). Gitwire Pro hooks this to drop that
+			 * sentence in that case.
+			 *
+			 * @since 1.0.0
+			 * @param string $message       The rate-limit message.
+			 * @param string $connection_id Connection ID used for this request, empty for anonymous.
+			 * @param bool   $authenticated Whether the request carried a token.
+			 * @return string
+			 */
+			$message = (string) apply_filters( 'gitwire_rate_limited_message', $message, $this->connection_id, (bool) $this->token );
+
 			return new \WP_Error( 'gitwire_rate_limited', $message, [ 'status' => $code ] );
 		}
 
